@@ -40,6 +40,26 @@ function isLegal(board, pos, occ) {
   return !occ.has(posKey(pos));
 }
 
+/** Native Tb bans Manhattan (l7) distance <= 3 from the snake head. */
+const SPAWN_RADIUS = 3;
+
+function outsideSpawnRadius(head, pos, maxDist = SPAWN_RADIUS) {
+  if (!pos) return false;
+  if (!head) return true;
+  const d = Math.abs(head.x - pos.x) + Math.abs(head.y - pos.y);
+  return d > maxDist;
+}
+
+function findLegalSpawn(board, occ, head) {
+  const size = board;
+  const total = size.width * size.height;
+  for (let i = 0; i < total; i++) {
+    const pos = { x: i % size.width, y: (i / size.width) | 0 };
+    if (isLegal(board, pos, occ) && outsideSpawnRadius(head, pos)) return pos;
+  }
+  return null;
+}
+
 function assertAllLegal(state) {
   const board = state.board;
   assert.ok(board, "board size required");
@@ -88,6 +108,27 @@ describe("chess legal spawn contract (offline)", () => {
     const tryPair = (partnerLegal) => (partnerLegal ? 2 : 0);
     assert.equal(tryPair(false), 0);
     assert.equal(tryPair(true) % 2, 0);
+  });
+
+  it("spawn radius: cells within Manhattan 3 of head are rejected", () => {
+    const board = { width: 17, height: 15 };
+    const head = { x: 8, y: 7 };
+    const occ = new Set();
+    assert.equal(outsideSpawnRadius(head, { x: 8, y: 7 }), false); // on head
+    assert.equal(outsideSpawnRadius(head, { x: 8, y: 10 }), false); // dist 3
+    assert.equal(outsideSpawnRadius(head, { x: 8, y: 11 }), true); // dist 4
+    assert.equal(outsideSpawnRadius(head, { x: 11, y: 10 }), true); // dist 6
+    assert.equal(outsideSpawnRadius(head, { x: 10, y: 8 }), false); // dist 3
+    const near = findLegalSpawn(board, occ, head);
+    assert.ok(near, "some cell outside radius exists");
+    assert.equal(outsideSpawnRadius(head, near), true);
+    // 3x3 board: every cell is within dist 2 of center → no legal spawn
+    const onlyNear = findLegalSpawn(
+      { width: 3, height: 3 },
+      new Set(),
+      { x: 1, y: 1 }
+    );
+    assert.equal(onlyNear, null);
   });
 });
 
@@ -149,6 +190,19 @@ describe("chess legal spawn (browser)", { skip: !runBrowser }, () => {
               });
             }
           }
+          const head = g.oa.ka[0];
+          const radiusBad = [];
+          const fresh = added === 2 ? apples.slice(-2) : [];
+          for (const a of fresh) {
+            if (!window.chess_outside_spawn_radius(g, a.pos)) {
+              radiusBad.push({ x: a.pos.x, y: a.pos.y, head: { x: head.x, y: head.y } });
+            }
+          }
+          // Exhaustive fallback must still respect radius even without Tb.
+          const occScan = window.chess_occupied_keys(g, apples, new Set());
+          const scan = window.chess_find_legal_spawn(board, null, occScan, null);
+          const scanOk =
+            !scan || window.chess_outside_spawn_radius(g, scan);
           const keys = apples.map((a) => `${a.pos.x},${a.pos.y}`);
           const delta = apples.length - before;
           const animated =
@@ -156,6 +210,8 @@ describe("chess legal spawn (browser)", { skip: !runBrowser }, () => {
           return {
             ok:
               illegal.length === 0 &&
+              radiusBad.length === 0 &&
+              scanOk &&
               new Set(keys).size === keys.length &&
               delta === added &&
               (delta === 0 || delta === 2) &&
@@ -166,6 +222,9 @@ describe("chess legal spawn (browser)", { skip: !runBrowser }, () => {
             animated,
             delta,
             illegal,
+            radiusBad,
+            scanOk,
+            scan: scan ? { x: scan.x, y: scan.y } : null,
             duplicates: keys.length - new Set(keys).size,
             board: {
               width: board.oa.width,

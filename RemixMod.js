@@ -8077,6 +8077,56 @@ window.ChessMod.alterSnakeCode = function (code) {
     return k == null || !occupiedKeys.has(k);
   };
 
+  // Native Tb bans cells with l7(board, head, cell) <= 3 when portal/shield
+  // spawn (b===2). Chess enables shield via f7(..., 15), so new piece spawns
+  // must keep the same head radius. Start-layout (iaF) positions are exempt.
+  window.chess_spawn_radius = 3;
+
+  window.chess_spawn_dist = function chess_spawn_dist(board, from, to) {
+    if (!from || !to) return Infinity;
+    if (typeof l7 === "function" && board) {
+      try {
+        return l7(board, from, to);
+      } catch (_e) {}
+    }
+    return Math.abs(from.x - to.x) + Math.abs(from.y - to.y);
+  };
+
+  window.chess_outside_spawn_radius = function chess_outside_spawn_radius(
+    game,
+    pos,
+    maxDist
+  ) {
+    if (!pos || pos.x == null || pos.y == null) return false;
+    const limit =
+      maxDist == null ? window.chess_spawn_radius : maxDist;
+    const snake = game && game.oa;
+    const head = snake && snake.ka && snake.ka[0];
+    if (!head) return true;
+    const board = game.ka || (game.wa && game.wa.oa) || null;
+    if (window.chess_spawn_dist(board, head, pos) <= limit) return false;
+    // Twin snake: also ban the head-radius mirror, matching Tb.
+    if (
+      snake &&
+      snake.settings &&
+      typeof f7 === "function" &&
+      f7(snake.settings, 7) &&
+      typeof k7 === "function" &&
+      board
+    ) {
+      try {
+        const twin = k7(board, pos);
+        if (
+          twin &&
+          window.chess_spawn_dist(board, head, twin) <= limit
+        ) {
+          return false;
+        }
+      } catch (_e) {}
+    }
+    return true;
+  };
+
   window.chess_make_pos = function chess_make_pos(x, y) {
     if (typeof _ !== "undefined" && _ && typeof _.Sd === "function") {
       return new _.Sd(x, y);
@@ -8084,28 +8134,32 @@ window.ChessMod.alterSnakeCode = function (code) {
     return { x: x, y: y };
   };
 
-  // Prefer native freePos/Tb (spawn radius); validate; fall back to full board scan.
+  // Prefer native freePos/Tb (spawn radius); validate; fall back to board scan
+  // that still enforces the same head radius (never unrestricted).
   window.chess_find_legal_spawn = function chess_find_legal_spawn(
     board,
     freePos,
     occupiedKeys,
     excludeRef
   ) {
+    const game = window.__remixGame;
+    const ok = function (p) {
+      return (
+        p &&
+        window.chess_is_legal_spawn(board, p, occupiedKeys) &&
+        window.chess_outside_spawn_radius(game, p)
+      );
+    };
     if (typeof freePos === "function" && board) {
       for (let attempt = 0; attempt < 12; attempt++) {
         const p = freePos(board, excludeRef || null, 2);
-        if (p && window.chess_is_legal_spawn(board, p, occupiedKeys)) {
-          return p;
-        }
+        if (ok(p)) return p;
       }
     }
-    const game = window.__remixGame;
     if (game && typeof game.Tb === "function") {
       for (let attempt = 0; attempt < 8; attempt++) {
         const p = game.Tb(excludeRef || null, 2);
-        if (p && window.chess_is_legal_spawn(board, p, occupiedKeys)) {
-          return p;
-        }
+        if (ok(p)) return p;
       }
     }
     const size = window.chess_board_size(board);
@@ -8117,7 +8171,7 @@ window.ChessMod.alterSnakeCode = function (code) {
       const x = i % size.width;
       const y = (i / size.width) | 0;
       const pos = window.chess_make_pos(x, y);
-      if (window.chess_is_legal_spawn(board, pos, occupiedKeys)) return pos;
+      if (ok(pos)) return pos;
     }
     return null;
   };
@@ -8212,8 +8266,12 @@ window.ChessMod.alterSnakeCode = function (code) {
     const iB = mgr.ka.length - 1;
     const occA = window.chess_occupied_keys(game, mgr.ka, new Set([iA]));
     const occB = window.chess_occupied_keys(game, mgr.ka, new Set([iB]));
-    const okA = window.chess_is_legal_spawn(board, mgr.ka[iA].pos, occA);
-    const okB = window.chess_is_legal_spawn(board, mgr.ka[iB].pos, occB);
+    const okA =
+      window.chess_is_legal_spawn(board, mgr.ka[iA].pos, occA) &&
+      window.chess_outside_spawn_radius(game, mgr.ka[iA].pos);
+    const okB =
+      window.chess_is_legal_spawn(board, mgr.ka[iB].pos, occB) &&
+      window.chess_outside_spawn_radius(game, mgr.ka[iB].pos);
     const same =
       window.chess_pos_key(mgr.ka[iA].pos) ===
       window.chess_pos_key(mgr.ka[iB].pos);
@@ -9178,12 +9236,13 @@ window.BurgerMod.alterSnakeCode = function (code) {
   }
 
   // Aging overlay on fruit drawImage.
-  // Expression-safe (Visibility leaves this call after `&&`). Small grey circle
-  // from the tick-cached burgerGrey — never canvas.filter.
+  // Expression-safe (Visibility leaves this call after `&&`). Dark circle from
+  // the tick-cached burgerGrey — never canvas.filter. Near expiry it reads as a
+  // near-black disk so the poison transition is obvious.
   if (code.match(/this\.ka\.drawImage\(f,0,0,g,g,-d\/2,-d\/2,d,d\);/)) {
     code = code.assertReplace(
       /this\.ka\.drawImage\(f,0,0,g,g,-d\/2,-d\/2,d,d\);/,
-      `(this.ka.drawImage(f,0,0,g,g,-d/2,-d/2,d,d),b&&!b.nla&&b.burgerGrey>0&&(this.ka.globalAlpha=Math.min(.5,b.burgerGrey/200),this.ka.fillStyle="#666",this.ka.beginPath(),this.ka.arc(0,0,d*.2266,0,6.283185307179586),this.ka.fill(),this.ka.globalAlpha=1));`
+      `(this.ka.drawImage(f,0,0,g,g,-d/2,-d/2,d,d),b&&!b.nla&&b.burgerGrey>0&&(this.ka.globalAlpha=Math.min(.85,b.burgerGrey/110),this.ka.fillStyle="#1a1a1a",this.ka.beginPath(),this.ka.arc(0,0,d*.32,0,6.283185307179586),this.ka.fill(),this.ka.globalAlpha=1));`
     );
   } else {
     console.error("BurgerMod: failed to find fruit drawImage for greyscale");

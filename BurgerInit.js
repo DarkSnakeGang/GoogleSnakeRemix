@@ -691,12 +691,13 @@ window.BurgerMod.alterSnakeCode = function (code) {
   }
 
   // Aging overlay on fruit drawImage.
-  // Expression-safe (Visibility leaves this call after `&&`). Small grey circle
-  // from the tick-cached burgerGrey — never canvas.filter.
+  // Expression-safe (Visibility leaves this call after `&&`). Dark circle from
+  // the tick-cached burgerGrey — never canvas.filter. Near expiry it reads as a
+  // near-black disk so the poison transition is obvious.
   if (code.match(/this\.ka\.drawImage\(f,0,0,g,g,-d\/2,-d\/2,d,d\);/)) {
     code = code.assertReplace(
       /this\.ka\.drawImage\(f,0,0,g,g,-d\/2,-d\/2,d,d\);/,
-      `(this.ka.drawImage(f,0,0,g,g,-d/2,-d/2,d,d),b&&!b.nla&&b.burgerGrey>0&&(this.ka.globalAlpha=Math.min(.5,b.burgerGrey/200),this.ka.fillStyle="#666",this.ka.beginPath(),this.ka.arc(0,0,d*.2266,0,6.283185307179586),this.ka.fill(),this.ka.globalAlpha=1));`
+      `(this.ka.drawImage(f,0,0,g,g,-d/2,-d/2,d,d),b&&!b.nla&&b.burgerGrey>0&&(this.ka.globalAlpha=Math.min(.85,b.burgerGrey/110),this.ka.fillStyle="#1a1a1a",this.ka.beginPath(),this.ka.arc(0,0,d*.32,0,6.283185307179586),this.ka.fill(),this.ka.globalAlpha=1));`
     );
   } else {
     console.error("BurgerMod: failed to find fruit drawImage for greyscale");
