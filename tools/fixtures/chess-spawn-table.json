@@ -1,0 +1,28 @@
+{
+  "description": "Chess start counts and fruit-eat spawn rules (absolute positions filled by npm run board).",
+  "source": "Portal pair layout via iaF force + qaF/Mn pairing",
+  "startCounts": {
+    "1": 2,
+    "3": 6,
+    "5": 10,
+    "10": 20,
+    "dice": 2,
+    "bomb": 2,
+    "tally": 10
+  },
+  "afterFruitEat": {
+    "1": "+2",
+    "3": "+2",
+    "5": "+2",
+    "10": "+2",
+    "dice": "2R for roll R in 1..6",
+    "bomb": "48 on first fruit (24 pairs), then +2 per later fruit",
+    "tally": "+10 after last index of wave"
+  },
+  "rules": {
+    "unlock": "exactly one opposite piece -> fruit; not an eat; no spawn",
+    "halfPair": "never — all-or-nothing under spawn radius",
+    "mobile": "match Portal isMobile offsets"
+  },
+  "dumps": "Per count/size dumps: chess-spawn-table-c{count}-s{size}.json from npm run board"
+}

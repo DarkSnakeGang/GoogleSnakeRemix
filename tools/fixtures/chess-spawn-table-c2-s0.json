@@ -1,0 +1,122 @@
+{
+  "seed": 42,
+  "count": 2,
+  "size": 0,
+  "capturedAt": "2026-08-05T17:13:23.094Z",
+  "portal": {
+    "board": {
+      "width": 17,
+      "height": 15
+    },
+    "positions": [
+      {
+        "x": 12,
+        "y": 5
+      },
+      {
+        "x": 12,
+        "y": 9
+      },
+      {
+        "x": 10,
+        "y": 4
+      },
+      {
+        "x": 10,
+        "y": 10
+      },
+      {
+        "x": 8,
+        "y": 3
+      },
+      {
+        "x": 8,
+        "y": 11
+      },
+      {
+        "x": 6,
+        "y": 2
+      },
+      {
+        "x": 6,
+        "y": 12
+      },
+      {
+        "x": 14,
+        "y": 6
+      },
+      {
+        "x": 14,
+        "y": 8
+      }
+    ]
+  },
+  "chess": {
+    "board": {
+      "width": 17,
+      "height": 15
+    },
+    "positions": [
+      {
+        "x": 12,
+        "y": 5,
+        "color": "w",
+        "piece": "queen"
+      },
+      {
+        "x": 12,
+        "y": 9,
+        "color": "b",
+        "piece": "pawn"
+      },
+      {
+        "x": 10,
+        "y": 4,
+        "color": "w",
+        "piece": "pawn"
+      },
+      {
+        "x": 10,
+        "y": 10,
+        "color": "b",
+        "piece": "rook"
+      },
+      {
+        "x": 8,
+        "y": 3,
+        "color": "w",
+        "piece": "pawn"
+      },
+      {
+        "x": 8,
+        "y": 11,
+        "color": "b",
+        "piece": "king"
+      },
+      {
+        "x": 6,
+        "y": 2,
+        "color": "w",
+        "piece": "pawn"
+      },
+      {
+        "x": 6,
+        "y": 12,
+        "color": "b",
+        "piece": "bishop"
+      },
+      {
+        "x": 14,
+        "y": 6,
+        "color": "w",
+        "piece": "bishop"
+      },
+      {
+        "x": 14,
+        "y": 8,
+        "color": "b",
+        "piece": "pawn"
+      }
+    ]
+  }
+}

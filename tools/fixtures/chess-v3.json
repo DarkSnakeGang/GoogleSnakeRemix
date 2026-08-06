@@ -1,0 +1,19 @@
+{
+  "capturedAt": "2026-08-05T17:08:45.416Z",
+  "url": "https://googlesnakemods.com/v/3/",
+  "note": "Reference dump of original ChessMod on game v3. Layouts may need a started game; re-run after manual play if empty.",
+  "snapshot": {
+    "hasChess": true,
+    "head_state": "OPEN",
+    "appleCount": 1,
+    "apples": [
+      {
+        "x": 12,
+        "y": 7,
+        "type": 0
+      }
+    ],
+    "title": "Google Snake Mods",
+    "bodySnippet": "0\nChess Mod\n0\n0\nPlay\nCurrent mod: Chess Mod\nChange mod"
+  }
+}

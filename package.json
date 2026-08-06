@@ -1,0 +1,19 @@
+{
+  "name": "google-snake-remix",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Remix Mod for Google Snake — Chess + Candy + Burger on More Pudding",
+  "scripts": {
+    "build": "python RemixBuilder.py",
+    "check": "node tools/patchcheck.mjs",
+    "fetch-game": "node tools/fetch-game.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "board": "node tools/board.mjs",
+    "capture": "node tools/capture-v3.mjs",
+    "postinstall": "npx playwright install chromium"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}

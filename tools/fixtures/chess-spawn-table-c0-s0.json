@@ -1,0 +1,42 @@
+{
+  "seed": 42,
+  "count": 0,
+  "size": 0,
+  "capturedAt": "2026-08-05T17:13:31.708Z",
+  "portal": {
+    "board": {
+      "width": 17,
+      "height": 15
+    },
+    "positions": [
+      {
+        "x": 11,
+        "y": 5
+      },
+      {
+        "x": 11,
+        "y": 9
+      }
+    ]
+  },
+  "chess": {
+    "board": {
+      "width": 17,
+      "height": 15
+    },
+    "positions": [
+      {
+        "x": 11,
+        "y": 5,
+        "color": "w",
+        "piece": "pawn"
+      },
+      {
+        "x": 11,
+        "y": 9,
+        "color": "b",
+        "piece": "pawn"
+      }
+    ]
+  }
+}
