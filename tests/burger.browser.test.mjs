@@ -158,6 +158,13 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       const fresh = s.apples.filter((a) => !a.nla);
       assert.equal(poisons.length, 1, "expired fruit becomes poison");
       assert.equal(fresh.length, 1, "replacement fresh spawned");
+      assert.equal(
+        poisons[0].burgerTimer,
+        20,
+        "poison inherits the fruit's max as its lifetime"
+      );
+      assert.equal(poisons[0].burgerTimerMax, 20);
+      assert.equal(poisons[0].burgerGrey || 0, 0, "poison has no grey indicator");
       const expected = 25 + s.snake.length;
       assert.equal(
         fresh[0].burgerTimer,
@@ -169,7 +176,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
     }
   });
 
-  it("fresh eat clears poisons but does not reset other fruits' timers", async () => {
+  it("fresh eat leaves poisons alone and does not reset other fruits' timers", async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 13, headless: true });
     try {
@@ -187,17 +194,24 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       const mid = await h.page.evaluate(() => {
         const g = window.__remixGame;
         const kept = g.wa.ka.find((a) => a && a._burgerKeep && !a.nla);
+        const poison = g.wa.ka.find((a) => a && a.nla);
         return {
           poisons: g.wa.ka.filter((a) => a.nla).length,
           keptTimer: kept ? kept.burgerTimer : null,
+          poisonTimer: poison ? poison.burgerTimer : null,
+          poisonMax: poison ? poison.burgerTimerMax : null,
         };
       });
       assert.ok(mid.poisons >= 1, "poison present before eat");
       assert.equal(mid.keptTimer, 16, "kept fruit aged by one tick only");
+      assert.equal(mid.poisonMax, 10, "poison lifetime is the fruit's max");
+      // Poison also ticks on the expire tick after being created... actually
+      // make_poison sets timer=max in the same tick after the fresh hit 0, so
+      // it starts at max and does not decrement until the next tick.
+      assert.equal(mid.poisonTimer, 10);
 
       const eat = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        // Eat a fresh that is NOT the kept mid-timer fruit.
         const fresh = g.wa.ka.find((a) => a && !a.nla && !a._burgerKeep);
         if (!fresh) return { ok: false, reason: "no non-kept fresh" };
         const head = g.oa.ka[0];
@@ -210,35 +224,43 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         fresh.pos.x = next.x;
         fresh.pos.y = next.y;
         const scoreBefore = g.Oh;
+        const poisonsBefore = g.wa.ka.filter((a) => a.nla).length;
         g.tick();
         return {
           ok: true,
           scoreBefore,
           scoreAfter: g.Oh,
+          poisonsBefore,
           afterPoisons: g.wa.ka.filter((a) => a.nla).length,
         };
       });
       assert.equal(eat.ok, true, JSON.stringify(eat));
-      assert.equal(eat.afterPoisons, 0, "all poisons cleared on fresh eat");
+      assert.ok(
+        eat.afterPoisons >= eat.poisonsBefore - 0,
+        "poisons are not cleared on fresh eat: " + JSON.stringify(eat)
+      );
+      assert.equal(eat.afterPoisons, eat.poisonsBefore);
       assert.equal(eat.scoreAfter, eat.scoreBefore + 1);
 
       const after = await h.page.evaluate(() => {
         const g = window.__remixGame;
         const kept = g.wa.ka.find((a) => a && a._burgerKeep && !a.nla);
+        const poison = g.wa.ka.find((a) => a && a.nla);
         return {
           keptTimer: kept ? kept.burgerTimer : null,
+          poisonTimer: poison ? poison.burgerTimer : null,
           timers: g.wa.ka.filter((a) => !a.nla).map((a) => a.burgerTimer),
           length: g.oa.ka.length,
         };
       });
-      // Eat tick ages every eligible fruit by 1, so 16 → 15. Must NOT have
-      // been re-rolled to the post-eat length-based value.
+      // Eat tick ages every eligible fruit/poison by 1.
       assert.equal(
         after.keptTimer,
         15,
         "pre-existing countdown kept ticking, not reset: " +
           JSON.stringify(after)
       );
+      assert.equal(after.poisonTimer, 9, "poison kept ticking through the eat");
       const expectedNew = 25 + after.length;
       assert.notEqual(after.keptTimer, expectedNew);
       assert.ok(
@@ -295,7 +317,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
     }
   });
 
-  it("fresh eat survives several poisons sitting ahead of it in the apple list", async () => {
+  it("fresh eat with poisons ahead in the list does not crash; poisons remain", async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 13, headless: true });
     try {
@@ -352,11 +374,51 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         "poisons must sit ahead of the eaten fruit"
       );
       assert.equal(eaten.error, null, "eating must not throw");
-      assert.equal(eaten.poisons, 0, "all poisons cleared");
+      assert.equal(
+        eaten.poisons,
+        eaten.before.poisons,
+        "poisons remain after fresh eat"
+      );
       assert.equal(eaten.holes, 0, "no undefined slots left in the apple list");
       assert.equal(eaten.fresh, 5, "5a board is refilled");
       assert.equal(eaten.score, eaten.before.score + 1);
       assert.deepEqual(h.modErrors(), []);
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("poison timer expiry removes the poison with no replacement", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 19, headless: true });
+    try {
+      await h.start({ mode: "burger", count: COUNT.ONE, size: SIZE.NORMAL });
+      await h.page.evaluate(() => {
+        const a = window.__remixGame.wa.ka[0];
+        a.burgerTimer = 1;
+        a.burgerTimerMax = 10;
+      });
+      await h.tick(1);
+      let s = await h.state();
+      assert.equal(s.apples.filter((a) => a.nla).length, 1);
+      assert.equal(s.apples.filter((a) => !a.nla).length, 1);
+
+      await h.page.evaluate(() => {
+        const p = window.__remixGame.wa.ka.find((a) => a.nla);
+        p.burgerTimer = 1;
+      });
+      await h.tick(1);
+      s = await h.state();
+      assert.equal(
+        s.apples.filter((a) => a.nla).length,
+        0,
+        "poison despawned when its timer hit zero"
+      );
+      assert.equal(
+        s.apples.filter((a) => !a.nla).length,
+        1,
+        "fresh fruit left alone"
+      );
     } finally {
       await h.close();
     }

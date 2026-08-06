@@ -294,12 +294,20 @@ window.BurgerMod.alterSnakeCode = function (code) {
     return null;
   };
 
-  window.burger_make_poison = function burger_make_poison(apple) {
+  window.burger_make_poison = function burger_make_poison(apple, game) {
     if (!apple) return;
+    // Poison keeps the fruit's original max as its lifetime — no grey indicator.
+    const life = apple.burgerTimerMax | 0;
     apple.nla = true;
-    apple.burgerTimer = 0;
-    apple.burgerTimerMax = 0;
-    apple.burgerGrey = 0; // freeze visual — timer no longer moves
+    apple.burgerGrey = 0;
+    if (life > 0) {
+      apple.burgerTimer = life;
+      apple.burgerTimerMax = life;
+    } else {
+      const t = window.burger_timer_roll(game);
+      apple.burgerTimer = t;
+      apple.burgerTimerMax = t;
+    }
     // nla alone only greys the fruit out, and Pudding's skull swap is behind a
     // user setting. Burger always wants the skull, so set the type directly.
     const skull = window.burger_skull_type();
@@ -347,7 +355,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   // Expire one fresh apple to poison, then try to spawn a replacement.
   window.burger_expire_apple = function burger_expire_apple(game, apple) {
     const seq = apple && apple.sequenceNumber;
-    window.burger_make_poison(apple);
+    window.burger_make_poison(apple, game);
     const spawned = window.burger_spawn_fresh(game, seq);
     const freshLeft = window.burger_fresh_count(game.wa.ka);
     if (!spawned && freshLeft === 0) {
@@ -355,12 +363,21 @@ window.BurgerMod.alterSnakeCode = function (code) {
     }
   };
 
+  // Poison timer ran out — just remove it (no replacement, no indicator).
+  window.burger_despawn_poison = function burger_despawn_poison(game, apple) {
+    if (!game || !game.wa || !game.wa.ka || !apple) return;
+    const i = game.wa.ka.indexOf(apple);
+    if (i >= 0) game.wa.ka.splice(i, 1);
+  };
+
   window.burger_apple_timer_eligible = function burger_apple_timer_eligible(
     game,
     apple
   ) {
-    if (!apple || apple.nla) return false;
-    // Tally: only the current index ages.
+    if (!apple) return false;
+    // Poisons always count down (no tally gate, no grey overlay).
+    if (apple.nla) return true;
+    // Tally: only the current index ages for fresh fruit.
     if (game.settings && game.settings.ka === 6) {
       const cur = game.wa ? game.wa.wa : 1;
       if (apple.sequenceNumber !== undefined && apple.sequenceNumber !== cur) {
@@ -379,8 +396,16 @@ window.BurgerMod.alterSnakeCode = function (code) {
     for (let i = 0; i < apples.length; i++) {
       const a = apples[i];
       if (!window.burger_apple_timer_eligible(game, a)) continue;
-      if (a.burgerTimer == null) window.burger_assign_timer(a, game);
-      // Already at zero: expire once, never keep decrementing past it.
+      if (a.burgerTimer == null) {
+        if (a.nla) {
+          const t = window.burger_timer_roll(game);
+          a.burgerTimer = t;
+          a.burgerTimerMax = t;
+        } else {
+          window.burger_assign_timer(a, game);
+        }
+      }
+      // Already at zero: resolve once, never keep decrementing past it.
       if ((a.burgerTimer | 0) <= 0) {
         a.burgerTimer = 0;
         toExpire.push(a);
@@ -389,25 +414,24 @@ window.BurgerMod.alterSnakeCode = function (code) {
       a.burgerTimer = (a.burgerTimer | 0) - 1;
       if (a.burgerTimer <= 0) {
         a.burgerTimer = 0;
-        a.burgerGrey = 100;
+        if (!a.nla) a.burgerGrey = 100;
         toExpire.push(a);
-      } else if ((a.burgerTimerMax - a.burgerTimer) % 3 === 0) {
-        // Only refresh the cached overlay every 3 ticks.
+      } else if (!a.nla && (a.burgerTimerMax - a.burgerTimer) % 3 === 0) {
+        // Only refresh the cached overlay every 3 ticks (fresh fruit only).
         window.burger_update_grey(a);
       }
     }
     for (let i = 0; i < toExpire.length; i++) {
       if (game.lj) break;
-      if (toExpire[i].nla) continue;
-      if (apples.indexOf(toExpire[i]) < 0) continue;
-      window.burger_expire_apple(game, toExpire[i]);
+      const a = toExpire[i];
+      if (apples.indexOf(a) < 0) continue;
+      if (a.nla) window.burger_despawn_poison(game, a);
+      else window.burger_expire_apple(game, a);
     }
   };
 
-  // `eatenIndex` is the caller's live index of the eaten apple in game.wa.ka.
-  // Removing poisons shifts that array, and the eat path keeps using the index
-  // afterwards (Mn/naF respawn, the splice fallback, the enclosing for loop),
-  // so hand back the corrected index for the caller to assign.
+  // Poisons are no longer cleared on fresh eat — they keep their own timers.
+  // Still clear the eaten slot's timer so Mn's reused apple gets a new roll.
   window.burger_on_fresh_eaten = function burger_on_fresh_eaten(
     game,
     eatenIndex
@@ -415,18 +439,13 @@ window.BurgerMod.alterSnakeCode = function (code) {
     if (!game || !game.wa) return eatenIndex;
     window.just_ate = "fruit";
     window.burger_fruits_eaten = (window.burger_fruits_eaten | 0) + 1;
-    // Poisons cleared first; native Mn/respawn runs after this hook in the eat path.
-    const shift = window.burger_clear_all_poisons(game.wa, eatenIndex);
-    const newIdx = (eatenIndex | 0) - shift;
-    // Clear the eaten slot's timer so Mn's reused apple gets a fresh roll in
-    // after_respawn. Do NOT re-roll other fruits — their countdowns keep going.
-    const eaten = game.wa.ka[newIdx];
+    const eaten = game.wa.ka[eatenIndex | 0];
     if (eaten && !eaten.nla) {
       eaten.burgerTimer = null;
       eaten.burgerTimerMax = null;
       eaten.burgerGrey = 0;
     }
-    return newIdx;
+    return eatenIndex | 0;
   };
 
   window.burger_after_respawn = function burger_after_respawn(game) {

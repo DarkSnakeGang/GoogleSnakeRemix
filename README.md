@@ -66,8 +66,8 @@ Chess reuses **Portal’s pair layout** at start (`iaF` force) and Portal’s al
 
 - Classic start and layout — no poison pairs (native Poison's `uaF` half-board pairing is gated off).
 - Each fresh fruit gets a timer of `W+H−7`, plus snake length while length ≤ half the board, then minus the overshoot after that (no random stagger). Existing fruits keep their countdown when you eat; only the respawned/new fruit rolls a new timer.
-- Aging uses a small tick-cached grey circle overlay (not `canvas.filter`), refreshed every 3 ticks. At zero the timer freezes and the fruit becomes a skull poison.
-- Eating a fresh fruit removes **every** poison, then the board refills as usual.
+- On expiry a fresh fruit becomes a skull poison that inherits that fruit's max as its own silent timer (no grey circle); a replacement fresh fruit also spawns (Tally keeps the same sequence number). When a poison's timer hits zero it simply disappears.
+- Eating a fresh fruit does **not** clear poisons — they keep counting down on their own. Only the respawned/new fruit rolls a new timer; existing fresh fruits keep theirs.
 - Eating a poison triggers native Poison control loss, with no score and no growth.
 - Late game (`body length >= W*H - 5`) fresh fruit never spawns on the head's four neighbours, and you win only once no fresh fruit remains and no legal spawn is left.
 
