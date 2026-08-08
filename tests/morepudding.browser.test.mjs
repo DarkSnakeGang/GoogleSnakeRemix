@@ -120,4 +120,141 @@ describe("MorePudding base (browser)", { skip: !runBrowser }, () => {
       await h.close();
     }
   });
+
+  it("loads Custom Bowl API, settings UI, and portal type picking with Remix modes", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 11, headless: true });
+    try {
+      await h.start({ mode: "classic", count: COUNT.FIVE, size: SIZE.NORMAL });
+
+      const api = await h.page.evaluate(() => {
+        const btn = document.getElementById("CustomBowlFruits");
+        if (typeof window.TogglePortalPairsPanel === "function") {
+          window.TogglePortalPairsPanel();
+        }
+        const panel = document.getElementById("fruit-bowl-popup-pudding");
+        const enable = document.getElementById("fruit-bowl-enable");
+        const grid = document.getElementById("fruit-bowl-grid");
+        const aaSrc =
+          typeof window.__aaF === "function" ? String(window.__aaF) : "";
+        return {
+          hasCustomBowl: !!window.CustomBowl,
+          hasPick: typeof window.pickCustomPortalType === "function",
+          hasGive: typeof window.give_custom_pair === "function",
+          hasToggle: typeof window.TogglePortalPairsPanel === "function",
+          hasButton: !!btn,
+          panelOpen:
+            !!panel &&
+            panel.style.display === "block" &&
+            panel.style.visibility === "visible",
+          hasEnable: !!enable,
+          gridCells: grid ? grid.querySelectorAll("[data-fruit]").length : 0,
+          aaFHooked: /pickCustomPortalType|PortalPairs/.test(aaSrc),
+          settings: !!(
+            window.pudding_settings &&
+            typeof window.pudding_settings.PortalPairs === "boolean" &&
+            window.pudding_settings.SelectedPairsByCount
+          ),
+        };
+      });
+      assert.equal(api.hasCustomBowl, true, JSON.stringify(api));
+      assert.equal(api.hasPick, true, JSON.stringify(api));
+      assert.equal(api.hasGive, true, JSON.stringify(api));
+      assert.equal(api.hasToggle, true, JSON.stringify(api));
+      assert.equal(api.hasButton, true, JSON.stringify(api));
+      assert.equal(api.panelOpen, true, JSON.stringify(api));
+      assert.equal(api.hasEnable, true, JSON.stringify(api));
+      assert.ok(api.gridCells >= 10, "fruit grid populated: " + JSON.stringify(api));
+      assert.equal(api.settings, true, JSON.stringify(api));
+      // __aaF is exposed after Burger's h7 patch once a game has booted.
+      assert.equal(api.aaFHooked, true, "aaF carries Custom Bowl hook: " + JSON.stringify(api));
+
+      // Enable custom bowl + fruit bowl on portal; types must stay in the pool.
+      const portalRun = await h.page.evaluate(() => {
+        const pool = [0, 1, 2, 3, 5];
+        window.pudding_settings.PortalPairs = true;
+        window.pudding_settings.SelectedPairs = pool.slice();
+        window.pudding_settings.SelectedPairsByCount["2"] = pool.slice();
+        window.fruit_selected = 24;
+        if (typeof window.saveSettings === "function") window.saveSettings();
+
+        const g = window.__remixGame;
+        g.settings.ob = 2;
+        g.settings.ub = 2;
+        g.settings.Ca = 2;
+        g.settings.ka = 2;
+        // Fruit setting index used by aaF (bowl = 24).
+        for (const key of Object.keys(g.settings)) {
+          if (g.settings[key] === window.fruit_selected || key === "oa") {
+            /* keep */
+          }
+        }
+        // Match Fruit library's fruit_selected mirror onto the settings field aaF reads.
+        const aaSrc = String(window.__aaF);
+        const m = aaSrc.match(/a\.settings\.([A-Za-z0-9_$]+)===\s*24/);
+        const fruitKey = m && m[1];
+        if (fruitKey) g.settings[fruitKey] = 24;
+
+        g.wa.reset();
+        const types = g.wa.ka.map((a) => a.type);
+        const inPool = types.every((t) => pool.includes(t));
+        const paired =
+          types.length >= 2 &&
+          types.every((t, i) => i % 2 === 1 || types[i + 1] === t);
+
+        // Remix modes still start cleanly with Custom Bowl enabled.
+        const modes = {};
+        for (const [name, id] of [
+          ["candy", window.CANDY_MODE],
+          ["chess", window.CHESS_MODE],
+          ["burger", window.BURGER_MODE],
+        ]) {
+          window.CurrentModeNum = id;
+          g.settings.ob = id;
+          g.settings.ub = id;
+          g.wa.reset();
+          if (
+            name === "burger" &&
+            typeof window.__uaF === "function" &&
+            window.isBurgerActive &&
+            window.isBurgerActive()
+          ) {
+            window.__uaF(g.wa);
+          }
+          modes[name] = {
+            apples: g.wa.ka.length,
+            pieces: g.wa.ka.filter((a) => a.isPiece).length,
+            poisons: g.wa.ka.filter((a) => a.nla).length,
+          };
+        }
+
+        if (typeof window.PortalPairsPanelHide === "function") {
+          window.PortalPairsPanelHide();
+        }
+
+        return {
+          fruitKey,
+          types,
+          inPool,
+          paired,
+          modes,
+          pick: window.pickCustomPortalType(g.wa),
+        };
+      });
+
+      assert.ok(portalRun.fruitKey, "found aaF fruit settings key");
+      assert.equal(portalRun.inPool, true, JSON.stringify(portalRun));
+      assert.equal(portalRun.paired, true, JSON.stringify(portalRun));
+      assert.ok(
+        [0, 1, 2, 3, 5].includes(portalRun.pick),
+        "pickCustomPortalType stays in pool: " + JSON.stringify(portalRun)
+      );
+      assert.ok(portalRun.modes.candy.apples > 0, JSON.stringify(portalRun.modes));
+      assert.ok(portalRun.modes.chess.pieces > 0, JSON.stringify(portalRun.modes));
+      assert.equal(portalRun.modes.burger.poisons, 0, JSON.stringify(portalRun.modes));
+      assert.deepEqual(h.modErrors(), [], "no mod errors with Custom Bowl active");
+    } finally {
+      await h.close();
+    }
+  });
 });
