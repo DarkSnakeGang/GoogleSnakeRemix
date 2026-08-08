@@ -9576,6 +9576,110 @@ window.DiceCounts.runCodeBefore = function () {
     img.src = window.NATIVE_DICE_ICON;
   };
 
+  // Black dice: crush body to near-black, keep white pips.
+  window.remixBlackenDiceIcon = function remixBlackenDiceIcon(done) {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = function () {
+      try {
+        const c = document.createElement("canvas");
+        c.width = 40;
+        c.height = 40;
+        const ctx = c.getContext("2d");
+        ctx.drawImage(img, 0, 0, 40, 40);
+        const imageData = ctx.getImageData(0, 0, 40, 40);
+        const d = imageData.data;
+
+        function rgbToHsl(r, g, b) {
+          r /= 255;
+          g /= 255;
+          b /= 255;
+          const max = Math.max(r, g, b);
+          const min = Math.min(r, g, b);
+          const l = (max + min) / 2;
+          if (max === min) return [0, 0, l];
+          const delta = max - min;
+          const s = l > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+          let h;
+          if (max === r) h = ((g - b) / delta + (g < b ? 6 : 0)) / 6;
+          else if (max === g) h = ((b - r) / delta + 2) / 6;
+          else h = ((r - g) / delta + 4) / 6;
+          return [h, s, l];
+        }
+
+        function hslToRgb(h, s, l) {
+          if (s === 0) {
+            const v = Math.round(l * 255);
+            return [v, v, v];
+          }
+          function hue2rgb(p, q, t) {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1 / 6) return p + (q - p) * 6 * t;
+            if (t < 1 / 2) return q;
+            if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+            return p;
+          }
+          const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+          const p = 2 * l - q;
+          return [
+            Math.round(hue2rgb(p, q, h + 1 / 3) * 255),
+            Math.round(hue2rgb(p, q, h) * 255),
+            Math.round(hue2rgb(p, q, h - 1 / 3) * 255),
+          ];
+        }
+
+        for (let i = 0; i < d.length; i += 4) {
+          if (d[i + 3] < 8) continue;
+          const hsl = rgbToHsl(d[i], d[i + 1], d[i + 2]);
+          if (hsl[1] < 0.12 || hsl[2] > 0.88) continue;
+          const l = Math.max(0.06, Math.min(0.22, hsl[2] * 0.35));
+          const rgb = hslToRgb(hsl[0], 0.04, l);
+          d[i] = rgb[0];
+          d[i + 1] = rgb[1];
+          d[i + 2] = rgb[2];
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+        done(c.toDataURL("image/png"));
+      } catch (e) {
+        console.error("DiceCounts: blacken failed", e);
+        done(window.NATIVE_DICE_ICON);
+      }
+    };
+    img.onerror = function () {
+      done(window.NATIVE_DICE_ICON);
+    };
+    img.src = window.NATIVE_DICE_ICON;
+  };
+
+  window.remixEnsureBlackDiceSettings = function remixEnsureBlackDiceSettings() {
+    if (!window.pudding_settings || typeof window.pudding_settings !== "object") {
+      window.pudding_settings = {};
+    }
+    let min = Number(window.pudding_settings.BlackDiceMin);
+    let max = Number(window.pudding_settings.BlackDiceMax);
+    if (!Number.isFinite(min)) min = 6;
+    if (!Number.isFinite(max)) max = 24;
+    min = Math.max(1, Math.min(10000, Math.floor(min)));
+    max = Math.max(1, Math.min(10000, Math.floor(max)));
+    if (min > max) {
+      const t = min;
+      min = max;
+      max = t;
+    }
+    window.pudding_settings.BlackDiceMin = min;
+    window.pudding_settings.BlackDiceMax = max;
+    return { min: min, max: max };
+  };
+
+  window.remixBlackDiceRoll = function remixBlackDiceRoll() {
+    const range = window.remixEnsureBlackDiceSettings();
+    return (
+      range.min + Math.floor(Math.random() * (range.max - range.min + 1))
+    );
+  };
+
   window.uiImage =
     window.uiImage ||
     function (src) {
@@ -9590,7 +9694,9 @@ window.DiceCounts.runCodeBefore = function () {
 
   window.remixIsColoredDice = function remixIsColoredDice(ka) {
     return (
-      ka === window.BLUE_DICE_COUNT || ka === window.GREEN_DICE_COUNT
+      ka === window.BLUE_DICE_COUNT ||
+      ka === window.GREEN_DICE_COUNT ||
+      ka === window.BLACK_DICE_COUNT
     );
   };
 
@@ -9604,6 +9710,9 @@ window.DiceCounts.runCodeBefore = function () {
     }
     if (ka === window.GREEN_DICE_COUNT) {
       return 4 + Math.floor(Math.random() * 6);
+    }
+    if (ka === window.BLACK_DICE_COUNT) {
+      return window.remixBlackDiceRoll();
     }
     return null;
   };
@@ -9698,17 +9807,23 @@ window.DiceCounts.runCodeBefore = function () {
   const countRoot = document.querySelector("#count");
   if (!countRoot) return;
 
+  window.remixEnsureBlackDiceSettings();
+
   const blueImg = window.uiImage(window.NATIVE_DICE_ICON);
   blueImg.alt = "Blue Dice";
   const greenImg = window.uiImage(window.NATIVE_DICE_ICON);
   greenImg.alt = "Green Dice";
+  const blackImg = window.uiImage(window.NATIVE_DICE_ICON);
+  blackImg.alt = "Black Dice";
   countRoot.appendChild(blueImg);
   countRoot.appendChild(greenImg);
+  countRoot.appendChild(blackImg);
   window.BLUE_DICE_COUNT = [...countRoot.children].indexOf(blueImg);
   window.GREEN_DICE_COUNT = [...countRoot.children].indexOf(greenImg);
+  window.BLACK_DICE_COUNT = [...countRoot.children].indexOf(blackImg);
   window._remixDiceCountsInserted = true;
 
-  // Native dice ~hue 11°. Rotate to blue (~215°) / green (~125°).
+  // Native dice ~hue 11°. Rotate to blue (~215°) / green (~125°); blacken for Black.
   // TopBar snapshots count_img_arr at alter-time (still red) — refresh on tint.
   window.remixHueShiftDiceIcon(204, function (url) {
     blueImg.src = url;
@@ -9717,6 +9832,10 @@ window.DiceCounts.runCodeBefore = function () {
   window.remixHueShiftDiceIcon(114, function (url) {
     greenImg.src = url;
     window.remixRefreshHudCountIcon(window.GREEN_DICE_COUNT, url);
+  });
+  window.remixBlackenDiceIcon(function (url) {
+    blackImg.src = url;
+    window.remixRefreshHudCountIcon(window.BLACK_DICE_COUNT, url);
   });
 
   function onColoredDiceSelected() {
@@ -9727,12 +9846,14 @@ window.DiceCounts.runCodeBefore = function () {
   }
   blueImg.addEventListener("click", onColoredDiceSelected);
   greenImg.addEventListener("click", onColoredDiceSelected);
+  blackImg.addEventListener("click", onColoredDiceSelected);
 
   window.remixRefreshCountImgArr();
 
   if (!window.countToTxt) window.countToTxt = {};
   window.countToTxt[window.BLUE_DICE_COUNT] = { name: "Blue Dice" };
   window.countToTxt[window.GREEN_DICE_COUNT] = { name: "Green Dice" };
+  window.countToTxt[window.BLACK_DICE_COUNT] = { name: "Black Dice" };
 
   if (
     typeof window.HandleCount === "function" &&
@@ -9742,10 +9863,84 @@ window.DiceCounts.runCodeBefore = function () {
     window.HandleCount = function (count) {
       if (count === window.BLUE_DICE_COUNT) return "Blue Dice, ";
       if (count === window.GREEN_DICE_COUNT) return "Green Dice, ";
+      if (count === window.BLACK_DICE_COUNT) return "Black Dice, ";
       return orig(count);
     };
     window.HandleCount.__dicePatched = true;
   }
+
+  // Black Dice spawn range UI lives in main Pudding Settings (not Custom Bowl).
+  window.remixSyncBlackDiceSettingsUi = function remixSyncBlackDiceSettingsUi() {
+    const range = window.remixEnsureBlackDiceSettings();
+    const minEl = document.getElementById("black-dice-min");
+    const maxEl = document.getElementById("black-dice-max");
+    if (minEl) minEl.value = String(range.min);
+    if (maxEl) maxEl.value = String(range.max);
+  };
+
+  window.remixInjectBlackDiceSettingsUi = function remixInjectBlackDiceSettingsUi() {
+    if (document.getElementById("black-dice-settings")) {
+      window.remixSyncBlackDiceSettingsUi();
+      return;
+    }
+    const settingsRoot =
+      document.getElementsByClassName("sEOCsb")[0] ||
+      document.getElementById("settings-box") ||
+      null;
+    if (!settingsRoot) return;
+
+    window.remixEnsureBlackDiceSettings();
+    const block = document.createElement("div");
+    block.id = "black-dice-settings";
+    block.style.cssText =
+      "margin:6px 3px;padding:8px 10px;border-radius:6px;" +
+      "background:rgba(0,0,0,0.18);border:1px solid rgba(255,255,255,0.14);" +
+      "color:white;font-family:Roboto,Arial,sans-serif;";
+    block.innerHTML =
+      '<div style="font-size:14px;font-weight:bold;margin-bottom:4px;">Black Dice spawn range</div>' +
+      '<div style="font-size:12px;opacity:0.85;margin-bottom:8px;">Fruits spawned when the last apple is eaten (1–10000)</div>' +
+      '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">' +
+      '<label style="font-size:13px;margin:0;">Min ' +
+      '<input id="black-dice-min" type="number" min="1" max="10000" step="1" ' +
+      'style="width:5.5em;margin-left:6px;padding:3px 6px;border-radius:4px;border:1px solid #ccc;" />' +
+      "</label>" +
+      '<label style="font-size:13px;margin:0;">Max ' +
+      '<input id="black-dice-max" type="number" min="1" max="10000" step="1" ' +
+      'style="width:5.5em;margin-left:6px;padding:3px 6px;border-radius:4px;border:1px solid #ccc;" />' +
+      "</label>" +
+      "</div>";
+
+    const anchor =
+      document.getElementById("TimerSettings") ||
+      document.getElementById("CustomBowlFruits");
+    if (anchor && anchor.parentElement) {
+      if (anchor.nextSibling) {
+        anchor.parentElement.insertBefore(block, anchor.nextSibling);
+      } else {
+        anchor.parentElement.appendChild(block);
+      }
+    } else {
+      settingsRoot.appendChild(block);
+    }
+
+    function commit() {
+      const minEl = document.getElementById("black-dice-min");
+      const maxEl = document.getElementById("black-dice-max");
+      if (!minEl || !maxEl) return;
+      window.pudding_settings.BlackDiceMin = Number(minEl.value);
+      window.pudding_settings.BlackDiceMax = Number(maxEl.value);
+      window.remixEnsureBlackDiceSettings();
+      window.remixSyncBlackDiceSettingsUi();
+      if (typeof window.saveSettings === "function") window.saveSettings();
+    }
+    document.getElementById("black-dice-min").addEventListener("change", commit);
+    document.getElementById("black-dice-max").addEventListener("change", commit);
+    window.remixSyncBlackDiceSettingsUi();
+  };
+
+  setTimeout(function () {
+    window.remixInjectBlackDiceSettingsUi();
+  }, 0);
 };
 
 ////////////////////////////////////////////////////////////////////

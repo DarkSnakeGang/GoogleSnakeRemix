@@ -8,7 +8,7 @@ Remix Mod for Google Snake — adds **Chess Mode**, **Candy Mode** and **Burger 
 - **Chess Mode** — chess-piece apples with attack/unlock rules; own trophy (does **not** replace Shield)
 - **Burger Mode** — every fruit carries a timer; it greys out as it ages, turns into a skull poison when it runs out, and a fresh one spawns. Eating a fresh fruit clears every poison on the board; eating a poison costs you control like native Poison mode.
 - **Cat Speed** — between Normal and Fast in feel (`0.85×`), appended after MoreMenu speeds
-- **Blue / Green Dice** — original DiceMod counts (roll **1–12** / **4–9** when the last apple is eaten); tinted game dice icons after Nuke
+- **Blue / Green / Black Dice** — DiceMod-style counts (roll **1–12** / **4–9** / **custom spawn range**) when the last apple is eaten; tinted game dice icons after Nuke. **Black Dice** min/max fruits per roll (default **6–24**, clamp **1–10000**) are set in Pudding Settings.
 - **Blender** — separate Candy, Chess and Burger toggles with their own icons in the Blender panel
 - **Chess Pieces** hide toggle added to the Visibility panel
 

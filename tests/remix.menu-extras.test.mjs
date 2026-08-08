@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 
 const runBrowser = process.env.RUN_BROWSER_TESTS === "1";
 
-describe("Cat Speed + Blue/Green Dice (browser)", { skip: !runBrowser }, () => {
-  it("places Cat after MoreMenu speeds and Blue/Green dice after Nuke", async () => {
+describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
+  it("places Cat after MoreMenu speeds and Blue/Green/Black dice after Nuke", async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 21, headless: true });
     try {
@@ -24,9 +24,11 @@ describe("Cat Speed + Blue/Green Dice (browser)", { skip: !runBrowser }, () => {
           turtleStill3: speed[3]?.src?.includes("Turtle-Bunny"),
           blue: window.BLUE_DICE_COUNT,
           green: window.GREEN_DICE_COUNT,
+          black: window.BLACK_DICE_COUNT,
           blueAlt: count[window.BLUE_DICE_COUNT]?.alt,
           greenAlt: count[window.GREEN_DICE_COUNT]?.alt,
-          errors: (window.__remixModErrors || []).slice?.() || [],
+          blackAlt: count[window.BLACK_DICE_COUNT]?.alt,
+          defaults: window.remixEnsureBlackDiceSettings(),
         };
       });
       assert.ok(menu.catIndex >= 14, "cat after MoreMenu: " + JSON.stringify(menu));
@@ -35,8 +37,12 @@ describe("Cat Speed + Blue/Green Dice (browser)", { skip: !runBrowser }, () => {
       assert.equal(menu.turtleStill3, true, JSON.stringify(menu));
       assert.ok(menu.blue > 12, "blue after MoreMenu: " + JSON.stringify(menu));
       assert.equal(menu.green, menu.blue + 1, JSON.stringify(menu));
+      assert.equal(menu.black, menu.green + 1, JSON.stringify(menu));
       assert.equal(menu.blueAlt, "Blue Dice");
       assert.equal(menu.greenAlt, "Green Dice");
+      assert.equal(menu.blackAlt, "Black Dice");
+      assert.equal(menu.defaults.min, 6, JSON.stringify(menu));
+      assert.equal(menu.defaults.max, 24, JSON.stringify(menu));
       assert.deepEqual(h.modErrors(), [], "no mod errors");
     } finally {
       await h.close();
@@ -189,6 +195,112 @@ describe("Cat Speed + Blue/Green Dice (browser)", { skip: !runBrowser }, () => {
       assert.equal(probe.arrData, true, JSON.stringify(probe));
       assert.ok(probe.visibleKinds.includes("data"), JSON.stringify(probe));
       assert.ok(!probe.visibleKinds.includes("red"), JSON.stringify(probe));
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("Black Dice rolls use Pudding Settings spawn range (default 6–24)", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 25, headless: true });
+    try {
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
+      const probe = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        const defaults = window.remixEnsureBlackDiceSettings();
+        const rollsDefault = [];
+        for (let i = 0; i < 40; i++) {
+          rollsDefault.push(window.remixColoredDiceRoll(window.BLACK_DICE_COUNT));
+        }
+
+        window.pudding_settings.BlackDiceMin = 10;
+        window.pudding_settings.BlackDiceMax = 12;
+        window.remixEnsureBlackDiceSettings();
+        const rollsCustom = [];
+        for (let i = 0; i < 30; i++) {
+          rollsCustom.push(window.remixBlackDiceRoll());
+        }
+
+        window.pudding_settings.BlackDiceMin = 50;
+        window.pudding_settings.BlackDiceMax = 5;
+        const swapped = window.remixEnsureBlackDiceSettings();
+
+        window.pudding_settings.BlackDiceMin = 0;
+        window.pudding_settings.BlackDiceMax = 99999;
+        const clamped = window.remixEnsureBlackDiceSettings();
+
+        // Settings UI in main Pudding Settings (not Custom Bowl)
+        window.remixInjectBlackDiceSettingsUi();
+        const inFruitBowl = !!document.querySelector(
+          "#fruit-bowl-popup-pudding #black-dice-settings"
+        );
+        const minEl = document.getElementById("black-dice-min");
+        const maxEl = document.getElementById("black-dice-max");
+        if (minEl && maxEl) {
+          minEl.value = "7";
+          maxEl.value = "9";
+          minEl.dispatchEvent(new Event("change"));
+        }
+        const afterUi = window.remixEnsureBlackDiceSettings();
+
+        window.pudding_settings.BlackDiceMin = 6;
+        window.pudding_settings.BlackDiceMax = 24;
+        window.remixEnsureBlackDiceSettings();
+        function eatLast(ka) {
+          g.settings.ka = ka;
+          g.settings.Ca = ka;
+          g.wa.reset();
+          const snake = g.oa.ka;
+          for (let i = 0; i < snake.length; i++) {
+            snake[i].x = 3;
+            snake[i].y = 3;
+          }
+          g.oa.direction = "RIGHT";
+          const apples = g.wa.ka;
+          while (apples.length > 1) apples.pop();
+          if (!apples.length) return 0;
+          apples[0].pos.x = 4;
+          apples[0].pos.y = 3;
+          g.tick();
+          return g.wa.ka.length;
+        }
+        const live = [];
+        for (let i = 0; i < 12; i++) live.push(eatLast(window.BLACK_DICE_COUNT));
+
+        return {
+          defaults,
+          rollsDefault,
+          rollsCustom,
+          swapped,
+          clamped,
+          afterUi,
+          hasUi: !!(minEl && maxEl),
+          inFruitBowl,
+          live,
+          blackIdx: window.BLACK_DICE_COUNT,
+        };
+      });
+
+      assert.equal(probe.defaults.min, 6, JSON.stringify(probe));
+      assert.equal(probe.defaults.max, 24, JSON.stringify(probe));
+      for (const n of probe.rollsDefault) {
+        assert.ok(n >= 6 && n <= 24, "default roll " + n);
+      }
+      for (const n of probe.rollsCustom) {
+        assert.ok(n >= 10 && n <= 12, "custom roll " + n);
+      }
+      assert.equal(probe.swapped.min, 5, JSON.stringify(probe.swapped));
+      assert.equal(probe.swapped.max, 50, JSON.stringify(probe.swapped));
+      assert.equal(probe.clamped.min, 1, JSON.stringify(probe.clamped));
+      assert.equal(probe.clamped.max, 10000, JSON.stringify(probe.clamped));
+      assert.equal(probe.hasUi, true, JSON.stringify(probe));
+      assert.equal(probe.inFruitBowl, false, "must not be in Custom Bowl panel");
+      assert.equal(probe.afterUi.min, 7, JSON.stringify(probe));
+      assert.equal(probe.afterUi.max, 9, JSON.stringify(probe));
+      for (const n of probe.live) {
+        assert.ok(n >= 6 && n <= 24, "live black " + n + " " + JSON.stringify(probe.live));
+      }
       assert.deepEqual(h.modErrors(), [], "no mod errors");
     } finally {
       await h.close();
