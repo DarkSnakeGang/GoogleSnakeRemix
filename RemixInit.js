@@ -91,6 +91,8 @@ window.RemixMod.runCodeBefore = function () {
   window.CandyMod.runCodeBefore();
   window.ChessMod.runCodeBefore();
   window.BurgerMod.runCodeBefore();
+  // After Chess/Burger helpers exist: re-enable SpeedInfo and gate its data.
+  window.RemixSpeedInfo.runCodeBefore();
 };
 
 ////////////////////////////////////////////////////////////////////
@@ -103,6 +105,7 @@ window.RemixMod.alterSnakeCode = function (code) {
   code = window.CandyMod.alterSnakeCode(code);
   code = window.ChessMod.alterSnakeCode(code);
   code = window.BurgerMod.alterSnakeCode(code);
+  code = window.RemixSpeedInfo.alterSnakeCode(code);
   return code;
 };
 
@@ -115,6 +118,7 @@ window.RemixMod.runCodeAfter = function () {
   window.CandyMod.runCodeAfter && window.CandyMod.runCodeAfter();
   window.ChessMod.runCodeAfter && window.ChessMod.runCodeAfter();
   window.BurgerMod.runCodeAfter && window.BurgerMod.runCodeAfter();
+  window.RemixSpeedInfo.runCodeAfter && window.RemixSpeedInfo.runCodeAfter();
 
   let modIndicator = document.createElement("div");
   modIndicator.style =

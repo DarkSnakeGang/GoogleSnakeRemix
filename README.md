@@ -24,11 +24,14 @@ This downloads `MorePudding.js` (and bootstrap CSS) from [GoogleSnakePudding](ht
 2. `CandyInit.js`
 3. `ChessInit.js`
 4. `BurgerInit.js`
-5. `RemixInit.js`
+5. `RemixSpeedInfoInit.js`
+6. `RemixInit.js`
 
 Output: **`RemixMod.js`** (committed for raw-GitHub / custom URL use).
 
 More Pudding already bundles Pudding Mod, Visibility Mod and More Menu Mod and runs them in that order, so Remix calls `window.MorePudding` rather than wiring those three itself. `RemixInit.js` still falls back to Pudding + Visibility directly if a build ever ships without More Pudding.
+
+**SpeedInfo:** Remix re-enables Pudding's SpeedInfo toggle (normally locked to PuddingMod). It shows TimeKeeper / SRC data only in **Chess** and **Burger**; every other mode shows `Switch to PuddingMod`.
 
 ## Load
 
