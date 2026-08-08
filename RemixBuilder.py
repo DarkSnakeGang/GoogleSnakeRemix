@@ -26,6 +26,8 @@ def main():
         "CandyInit.js",
         "ChessInit.js",
         "BurgerInit.js",
+        "CatSpeedInit.js",
+        "DiceCountsInit.js",
         "RemixSpeedInfoInit.js",
         "RemixInit.js",
     ]

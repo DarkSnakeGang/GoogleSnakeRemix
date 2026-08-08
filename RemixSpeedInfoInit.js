@@ -11,6 +11,9 @@ window.RemixSpeedInfo = {};
 // TimeKeeper's mode bit → name switch only knows Wall…Peaceful, so Remix
 // trophies rendered as "Unknown". We also fix getCurrentMode: Pudding treated
 // the last trophy as Blender, but Remix appends Candy/Chess/Burger after it.
+//
+// Timer settings (#edit-mode) is hardcoded Classic…Peaceful; we add only
+// Candy/Chess/Burger (index-aligned; gaps stay hidden so PB keys match).
 window.RemixSpeedInfo.runCodeBefore = function () {
   window.remixNativeBlenderMode = 22;
 
@@ -324,6 +327,167 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     window.getRecordSRC.__remixGated = true;
   }
 
+  // Timer settings (#edit-mode) is hardcoded Classic…Peaceful. Append only
+  // Candy / Chess / Burger. Hidden placeholders fill index gaps (e.g. Blender)
+  // so getSelected indices still match mode ids for PB storage.
+  window.remixEnsureTimerEditModes = function remixEnsureTimerEditModes() {
+    window.remixSpeedInfoEnsureModeLabels();
+    const editMode = document.getElementById("edit-mode");
+    if (!editMode) return;
+
+    const unsBorder = "0.5vh ridge #00000000";
+    const selBorder = "0.5vh ridge #af4490ff";
+    const baseStyle =
+      "cursor: pointer; border-radius: 1vh; width: 3.5vh; height: 3.5vh;";
+
+    const remixModes = [
+      {
+        id: window.CANDY_MODE,
+        icon: window.CANDY_ICON,
+        name: "Candy",
+      },
+      {
+        id: window.CHESS_MODE,
+        icon: window.CHESS_ICON,
+        name: "Chess",
+      },
+      {
+        id: window.BURGER_MODE,
+        icon: window.BURGER_ICON,
+        name: "Burger",
+      },
+    ].filter(function (m) {
+      return typeof m.id === "number" && m.icon;
+    });
+    if (!remixModes.length) return;
+
+    const byId = {};
+    for (const m of remixModes) byId[m.id] = m;
+    const maxId = Math.max.apply(
+      null,
+      remixModes.map(function (m) {
+        return m.id;
+      })
+    );
+
+    function refreshTimesFromMode() {
+      const countSel =
+        document.querySelector("#edit-count .sel") ||
+        document.querySelector("#edit-count img");
+      if (countSel) countSel.click();
+    }
+
+    function paintSelection(selectedIdx) {
+      for (let i = 0; i < editMode.children.length; i++) {
+        const c = editMode.children[i];
+        const on = i === selectedIdx;
+        c.style.border = on ? selBorder : unsBorder;
+        c.className = on ? "sel" : "uns";
+      }
+    }
+
+    function selectModeImg(img) {
+      const idx = [...editMode.children].indexOf(img);
+      paintSelection(idx);
+      refreshTimesFromMode();
+    }
+
+    function ensureSlot(i) {
+      const want = byId[i];
+      let img = editMode.children[i];
+      if (want) {
+        if (!img) {
+          img = document.createElement("img");
+          editMode.appendChild(img);
+        }
+        img.className = img.className === "sel" ? "sel" : "uns";
+        img.style.cssText =
+          baseStyle +
+          " border: " +
+          (img.className === "sel" ? selBorder : unsBorder) +
+          ";";
+        img.style.display = "";
+        img.src = want.icon;
+        img.alt = want.name;
+        img.removeAttribute("data-remix-placeholder");
+        if (!img.__remixModeClick) {
+          img.addEventListener("click", function () {
+            selectModeImg(img);
+          });
+          img.__remixModeClick = true;
+        }
+        return;
+      }
+
+      // Gap (e.g. Blender at 22): keep index alignment, do not show an icon.
+      if (!img) {
+        img = document.createElement("img");
+        img.className = "uns";
+        img.setAttribute("data-remix-placeholder", "1");
+        img.alt = "";
+        img.style.display = "none";
+        editMode.appendChild(img);
+      } else if (
+        img.getAttribute("data-remix-placeholder") === "1" ||
+        i === window.remixNativeBlenderMode
+      ) {
+        img.setAttribute("data-remix-placeholder", "1");
+        img.style.display = "none";
+        img.alt = "";
+        img.removeAttribute("src");
+      }
+    }
+
+    for (let i = editMode.children.length; i <= maxId; i++) {
+      ensureSlot(i);
+    }
+    // Re-apply for slots that already existed from a prior open / old mirror.
+    for (const m of remixModes) ensureSlot(m.id);
+    if (typeof window.remixNativeBlenderMode === "number") {
+      ensureSlot(window.remixNativeBlenderMode);
+    }
+
+    const live =
+      typeof window.CurrentModeNum === "number"
+        ? window.CurrentModeNum
+        : typeof window.getSelected === "function"
+          ? window.getSelected("#trophy")
+          : 0;
+    if (byId[live] && editMode.children[live]) {
+      paintSelection(live);
+    }
+  };
+
+  if (
+    typeof window.editTimer === "function" &&
+    !window.editTimer.__remixModes
+  ) {
+    const origEdit = window.editTimer;
+    window.editTimer = function remixEditTimer() {
+      const opening = !document.getElementById("edit-box");
+      origEdit.apply(this, arguments);
+      if (opening && document.getElementById("edit-box")) {
+        window.remixEnsureTimerEditModes();
+        const countSel = document.querySelector("#edit-count .sel");
+        if (countSel) countSel.click();
+      }
+    };
+    window.editTimer.__remixModes = true;
+  }
+
+  // BootstrapMenu binds click to the pre-wrap editTimer reference — rebind.
+  window.remixBindTimerSettingsButton = function remixBindTimerSettingsButton() {
+    const btn = document.getElementById("TimerSettings");
+    if (!btn || btn.__remixEditBound) return;
+    const fresh = btn.cloneNode(true);
+    btn.parentNode.replaceChild(fresh, btn);
+    fresh.addEventListener("click", function () {
+      window.editTimer();
+    });
+    fresh.__remixEditBound = true;
+  };
+  window.remixBindTimerSettingsButton();
+
   window.remixSpeedInfoEnableCheckbox();
   if (
     window.pudding_settings &&
@@ -357,6 +521,7 @@ window.RemixSpeedInfo.alterSnakeCode = function (code) {
 ////////////////////////////////////////////////////////////////////
 
 window.RemixSpeedInfo.runCodeAfter = function () {
+  window.remixBindTimerSettingsButton && window.remixBindTimerSettingsButton();
   window.remixSpeedInfoEnableCheckbox && window.remixSpeedInfoEnableCheckbox();
   if (
     window.pudding_settings &&

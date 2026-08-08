@@ -7,6 +7,8 @@ Remix Mod for Google Snake — adds **Chess Mode**, **Candy Mode** and **Burger 
 - **Candy Mode** — extra snake length (+1..+6) per fruit; own trophy after Blender
 - **Chess Mode** — chess-piece apples with attack/unlock rules; own trophy (does **not** replace Shield)
 - **Burger Mode** — every fruit carries a timer; it greys out as it ages, turns into a skull poison when it runs out, and a fresh one spawns. Eating a fresh fruit clears every poison on the board; eating a poison costs you control like native Poison mode.
+- **Cat Speed** — between Normal and Fast in feel (`0.85×`), appended after MoreMenu speeds
+- **Blue / Green Dice** — original DiceMod counts (roll **1–12** / **4–9** when the last apple is eaten); tinted game dice icons after Nuke
 - **Blender** — separate Candy, Chess and Burger toggles with their own icons in the Blender panel
 - **Chess Pieces** hide toggle added to the Visibility panel
 
@@ -24,14 +26,18 @@ This downloads `MorePudding.js` (and bootstrap CSS) from [GoogleSnakePudding](ht
 2. `CandyInit.js`
 3. `ChessInit.js`
 4. `BurgerInit.js`
-5. `RemixSpeedInfoInit.js`
-6. `RemixInit.js`
+5. `CatSpeedInit.js`
+6. `DiceCountsInit.js`
+7. `RemixSpeedInfoInit.js`
+8. `RemixInit.js`
 
 Output: **`RemixMod.js`** (committed for raw-GitHub / custom URL use).
 
 More Pudding already bundles Pudding Mod, Visibility Mod and More Menu Mod and runs them in that order, so Remix calls `window.MorePudding` rather than wiring those three itself. `RemixInit.js` still falls back to Pudding + Visibility directly if a build ever ships without More Pudding.
 
 **SpeedInfo:** Remix re-enables Pudding's SpeedInfo toggle (normally locked to PuddingMod). It shows TimeKeeper / SRC data only in **Chess** and **Burger**; every other mode shows `Switch to PuddingMod`.
+
+**Timer settings:** The Custom Timer/Splits dialog's mode row adds **Candy**, **Chess**, and **Burger** so those modes can store PBs/splits like the vanilla ones.
 
 ## Load
 

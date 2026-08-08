@@ -102,4 +102,72 @@ describe("Remix SpeedInfo gate (browser)", { skip: !runBrowser }, () => {
       await h.close();
     }
   });
+
+  it("Timer settings lists Candy, Chess and Burger modes", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 14, headless: true });
+    try {
+      await h.start({ mode: "candy", count: COUNT.ONE, size: SIZE.NORMAL });
+      const probe = await h.page.evaluate(() => {
+        const btn = document.getElementById("TimerSettings");
+        if (!btn) return { ok: false, reason: "no TimerSettings button" };
+        // Close if already open via window API, then open via the real button
+        // (BootstrapMenu originally captured a stale editTimer reference).
+        if (document.getElementById("edit-box") && window.editTimer) {
+          window.editTimer();
+        }
+        btn.click();
+        const editMode = document.getElementById("edit-mode");
+        if (!editMode) {
+          return { ok: false, reason: "missing edit-mode after button click" };
+        }
+        const candyIdx = window.CANDY_MODE;
+        const chessIdx = window.CHESS_MODE;
+        const burgerIdx = window.BURGER_MODE;
+        const blenderIdx = window.remixNativeBlenderMode;
+        const blenderEl = editMode.children[blenderIdx];
+        return {
+          ok: true,
+          candyIdx,
+          chessIdx,
+          burgerIdx,
+          blenderIdx,
+          hasCandy: !!editMode.children[candyIdx],
+          hasChess: !!editMode.children[chessIdx],
+          hasBurger: !!editMode.children[burgerIdx],
+          candySrc: editMode.children[candyIdx]?.src || "",
+          chessSrc: editMode.children[chessIdx]?.src || "",
+          burgerSrc: editMode.children[burgerIdx]?.src || "",
+          candySel: editMode.children[candyIdx]?.className === "sel",
+          candyAlt: editMode.children[candyIdx]?.alt,
+          chessAlt: editMode.children[chessIdx]?.alt,
+          burgerAlt: editMode.children[burgerIdx]?.alt,
+          blenderHidden:
+            !blenderEl ||
+            blenderEl.style.display === "none" ||
+            blenderEl.getAttribute("data-remix-placeholder") === "1",
+          blenderVisibleSrc:
+            blenderEl && blenderEl.style.display !== "none" ? blenderEl.src : "",
+          patched: !!window.editTimer.__remixModes,
+          btnBound: !!btn.__remixEditBound,
+        };
+      });
+      assert.equal(probe.ok, true, JSON.stringify(probe));
+      assert.equal(probe.patched, true, JSON.stringify(probe));
+      assert.equal(probe.hasCandy, true, JSON.stringify(probe));
+      assert.equal(probe.hasChess, true, JSON.stringify(probe));
+      assert.equal(probe.hasBurger, true, JSON.stringify(probe));
+      assert.equal(probe.candyAlt, "Candy", JSON.stringify(probe));
+      assert.equal(probe.chessAlt, "Chess", JSON.stringify(probe));
+      assert.equal(probe.burgerAlt, "Burger", JSON.stringify(probe));
+      assert.equal(probe.candySel, true, "candy selected when live mode is candy");
+      assert.equal(probe.blenderHidden, true, "Blender must not appear: " + JSON.stringify(probe));
+      assert.equal(probe.blenderVisibleSrc, "", JSON.stringify(probe));
+      assert.ok(probe.chessSrc.includes("bn.png") || probe.chessSrc.length > 0, JSON.stringify(probe));
+      assert.ok(probe.burgerSrc.includes("burger") || probe.burgerSrc.length > 0, JSON.stringify(probe));
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
 });
