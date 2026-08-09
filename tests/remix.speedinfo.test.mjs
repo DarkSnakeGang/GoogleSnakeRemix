@@ -113,6 +113,94 @@ describe("Remix SpeedInfo gate (browser)", { skip: !runBrowser }, () => {
     }
   });
 
+  it("Chess/Burger TimeKeeper only tracks official counts through Tally", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 16, headless: true });
+    try {
+      await h.start({ mode: "chess", count: COUNT.ONE, size: SIZE.NORMAL });
+      const probe = await h.page.evaluate(() => {
+        const official = [];
+        for (let count = 0; count <= 6; count++) {
+          official.push(
+            window.timeKeeper.shouldTrack({
+              modeKey: "chess",
+              count,
+              speed: 0,
+              size: 0,
+            })
+          );
+        }
+        const beyond = [7, 12, window.BLUE_DICE_COUNT, window.BLACK_DICE_COUNT].map(
+          (count) => ({
+            count,
+            track: window.timeKeeper.shouldTrack({
+              modeKey: "chess",
+              count,
+              speed: 0,
+              size: 0,
+            }),
+          })
+        );
+
+        return {
+          official,
+          beyond,
+          patched: !!window.timeKeeper.shouldTrack.__remixOfficial,
+          blueOfficial: window.remixTimeKeeperOfficialSettings({
+            modeKey: "chess",
+            count: window.BLUE_DICE_COUNT,
+            speed: 0,
+            size: 0,
+          }),
+        };
+      });
+
+      assert.equal(probe.patched, true, JSON.stringify(probe));
+      assert.ok(
+        probe.official.every(Boolean),
+        "0..Tally must track: " + JSON.stringify(probe.official)
+      );
+      for (const row of probe.beyond) {
+        assert.equal(row.track, false, JSON.stringify(row));
+      }
+      assert.equal(probe.blueOfficial, false, JSON.stringify(probe));
+
+      await h.start({ mode: "burger", count: COUNT.TALLY, size: SIZE.NORMAL });
+      const burger = await h.page.evaluate(async () => {
+        window.pudding_settings.SpeedInfo = true;
+        const tallyTrack = window.timeKeeper.shouldTrack({
+          modeKey: "burger",
+          count: 6,
+          speed: 0,
+          size: 0,
+        });
+        // TimeKeeper reads count from the settings DOM; stub a MoreMenu index.
+        const origGet = window.timeKeeper.getCurrentSetting.bind(window.timeKeeper);
+        window.timeKeeper.getCurrentSetting = function (name) {
+          if (name === "count") return 7;
+          return origGet(name);
+        };
+        const allowed = window.remixSpeedInfoAllowed();
+        await window.SpeedInfoUpdate();
+        const out = {
+          tallyTrack,
+          allowed,
+          label: (document.getElementById("mode-selected") || {}).innerHTML || "",
+          att: (document.getElementById("att") || {}).innerHTML || "",
+        };
+        window.timeKeeper.getCurrentSetting = origGet;
+        return out;
+      });
+      assert.equal(burger.tallyTrack, true, JSON.stringify(burger));
+      assert.equal(burger.allowed, false, JSON.stringify(burger));
+      assert.match(burger.label, /Official counts only/i);
+      assert.equal(burger.att, "", JSON.stringify(burger));
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
+
   it("Chess/Burger SRC Highscore rows use CE level boards (not blank)", async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 15, headless: true });

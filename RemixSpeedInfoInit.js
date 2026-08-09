@@ -8,17 +8,73 @@ window.RemixSpeedInfo = {};
 // modeKeys like "chess", "wall+burger"). Remix still gates SpeedInfo panel
 // data to Chess / Burger; other modes show a switch prompt.
 //
+// Chess/Burger TimeKeeper only tracks official apple counts 0..Tally (6),
+// plus Normal/Fast/Slow and Standard/Small/Large — not MoreMenu / colored dice.
+//
 // Timer settings (#edit-mode) is hardcoded Classic…Peaceful; we add only
 // Candy/Chess/Burger (index-aligned; gaps stay hidden so PB keys match).
 window.RemixSpeedInfo.runCodeBefore = function () {
   window.remixNativeBlenderMode = 22;
+  // Last vanilla count index (1 / 3 / 5 / 10 / Dice / Bomb / Tally).
+  window.REMIX_OFFICIAL_COUNT_MAX = 6;
+
+  window.remixChessBurgerTimeKeeperActive =
+    function remixChessBurgerTimeKeeperActive() {
+      return !!(
+        (window.isChessActive && window.isChessActive()) ||
+        (window.isBurgerActive && window.isBurgerActive())
+      );
+    };
+
+  window.remixTimeKeeperOfficialSettings =
+    function remixTimeKeeperOfficialSettings(ctx) {
+      const c =
+        ctx ||
+        (window.timeKeeper &&
+        typeof window.timeKeeper.resolveRunContext === "function"
+          ? window.timeKeeper.resolveRunContext()
+          : null);
+      if (!c) return false;
+      const maxCount =
+        typeof window.REMIX_OFFICIAL_COUNT_MAX === "number"
+          ? window.REMIX_OFFICIAL_COUNT_MAX
+          : 6;
+      return (
+        typeof c.count === "number" &&
+        c.count >= 0 &&
+        c.count <= maxCount &&
+        typeof c.speed === "number" &&
+        c.speed >= 0 &&
+        c.speed <= 2 &&
+        typeof c.size === "number" &&
+        c.size >= 0 &&
+        c.size <= 2
+      );
+    };
 
   window.remixSpeedInfoAllowed = function remixSpeedInfoAllowed() {
-    return !!(
-      (window.isChessActive && window.isChessActive()) ||
-      (window.isBurgerActive && window.isBurgerActive())
+    return (
+      window.remixChessBurgerTimeKeeperActive() &&
+      window.remixTimeKeeperOfficialSettings()
     );
   };
+
+  // Chess/Burger: never record PBs outside official count/speed/size.
+  if (
+    window.timeKeeper &&
+    typeof window.timeKeeper.shouldTrack === "function" &&
+    !window.timeKeeper.shouldTrack.__remixOfficial
+  ) {
+    const origShouldTrack = window.timeKeeper.shouldTrack;
+    window.timeKeeper.shouldTrack = function remixShouldTrack(ctx) {
+      if (!origShouldTrack.call(this, ctx)) return false;
+      if (window.remixChessBurgerTimeKeeperActive()) {
+        return window.remixTimeKeeperOfficialSettings(ctx);
+      }
+      return true;
+    };
+    window.timeKeeper.shouldTrack.__remixOfficial = true;
+  }
 
   window.remixSpeedInfoEnsureModeLabels = function remixSpeedInfoEnsureModeLabels() {
     if (!window.modeToTxt) window.modeToTxt = {};
@@ -191,13 +247,7 @@ window.RemixSpeedInfo.runCodeBefore = function () {
       gamemode + ", " + countTxt.substring(0, countTxt.lastIndexOf(","));
   };
 
-  window.remixSpeedInfoShowSwitchMessage = function remixSpeedInfoShowSwitchMessage() {
-    const set = function (id, html) {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = html;
-    };
-    set("mode-selected", "Switch to PuddingMod");
-    set("mode-selected2", "");
+  window.remixSpeedInfoClearRows = function remixSpeedInfoClearRows() {
     for (const id of [
       "25",
       "50",
@@ -216,9 +266,29 @@ window.RemixSpeedInfo.runCodeBefore = function () {
       "Alltrack",
       "Htrack",
     ]) {
-      set(id, "");
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = "";
     }
   };
+
+  window.remixSpeedInfoShowSwitchMessage = function remixSpeedInfoShowSwitchMessage() {
+    const modeLabel = document.getElementById("mode-selected");
+    if (modeLabel) modeLabel.innerHTML = "Switch to PuddingMod";
+    const modeLabel2 = document.getElementById("mode-selected2");
+    if (modeLabel2) modeLabel2.innerHTML = "";
+    window.remixSpeedInfoClearRows();
+  };
+
+  window.remixSpeedInfoShowOfficialOnlyMessage =
+    function remixSpeedInfoShowOfficialOnlyMessage() {
+      const modeLabel = document.getElementById("mode-selected");
+      if (modeLabel) {
+        modeLabel.innerHTML = "Official counts only (1–Tally)";
+      }
+      const modeLabel2 = document.getElementById("mode-selected2");
+      if (modeLabel2) modeLabel2.innerHTML = "";
+      window.remixSpeedInfoClearRows();
+    };
 
   window.remixSpeedInfoEnableCheckbox = function remixSpeedInfoEnableCheckbox() {
     if (window.isSnakeMobileVersion) return;
@@ -284,8 +354,12 @@ window.RemixSpeedInfo.runCodeBefore = function () {
       if (!window.pudding_settings || !window.pudding_settings.SpeedInfo) {
         return;
       }
-      if (!window.remixSpeedInfoAllowed()) {
+      if (!window.remixChessBurgerTimeKeeperActive()) {
         window.remixSpeedInfoShowSwitchMessage();
+        return;
+      }
+      if (!window.remixTimeKeeperOfficialSettings()) {
+        window.remixSpeedInfoShowOfficialOnlyMessage();
         return;
       }
       window.remixInstallModeRegistry();
@@ -303,8 +377,12 @@ window.RemixSpeedInfo.runCodeBefore = function () {
       if (!window.pudding_settings || !window.pudding_settings.SpeedInfo) {
         return;
       }
-      if (!window.remixSpeedInfoAllowed()) {
+      if (!window.remixChessBurgerTimeKeeperActive()) {
         window.remixSpeedInfoShowSwitchMessage();
+        return;
+      }
+      if (!window.remixTimeKeeperOfficialSettings()) {
+        window.remixSpeedInfoShowOfficialOnlyMessage();
         return;
       }
       window.remixSpeedInfoEnsureModeLabels();
@@ -322,8 +400,12 @@ window.RemixSpeedInfo.runCodeBefore = function () {
       if (!window.pudding_settings || !window.pudding_settings.SpeedInfo) {
         return;
       }
-      if (!window.remixSpeedInfoAllowed()) {
+      if (!window.remixChessBurgerTimeKeeperActive()) {
         window.remixSpeedInfoShowSwitchMessage();
+        return;
+      }
+      if (!window.remixTimeKeeperOfficialSettings()) {
+        window.remixSpeedInfoShowOfficialOnlyMessage();
         return;
       }
       window.remixSpeedInfoEnsureModeLabels();

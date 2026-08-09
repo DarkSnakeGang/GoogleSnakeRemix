@@ -37,7 +37,7 @@ More Pudding already bundles Pudding Mod, Visibility Mod and More Menu Mod and r
 
 **ModeRegistry:** Upstream TimeKeeper / SpeedInfo now use stable mode keys (`chess`, `wall+burger`, …). Remix registers Candy/Chess/Burger, detects Blender by `random.png` (not “last trophy”), and keeps blender mix keys in sync with the Remix blend toggles.
 
-**SpeedInfo:** Remix keeps the toggle usable and shows TimeKeeper / SRC data only in **Chess** and **Burger**; every other mode shows `Switch to PuddingMod`. Chess/Burger map to Category Extensions level boards (including High Score), matching FastSnakeStats.
+**SpeedInfo:** Remix keeps the toggle usable and shows TimeKeeper / SRC data only in **Chess** and **Burger**; every other mode shows `Switch to PuddingMod`. Chess/Burger map to Category Extensions level boards (including High Score), matching FastSnakeStats. TimeKeeper for those modes only tracks **official counts through Tally** (plus Normal/Fast/Slow and Standard/Small/Large) — not MoreMenu or colored-dice counts.
 
 **Timer settings:** The Custom Timer/Splits dialog's mode row adds **Candy**, **Chess**, and **Burger** so those modes can store PBs/splits like the vanilla ones.
 
