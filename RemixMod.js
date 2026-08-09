@@ -1138,6 +1138,26 @@ window.TimeKeeper.make = function () {
         };
     };
 
+    // Prefer the mode/settings frozen at run start so score events after a
+    // trophy switch (reset/death) cannot write PBs into the newly selected mode.
+    window.timeKeeper.getSaveContext = function () {
+        if (
+            (window.timeKeeper.runStarted || window.timeKeeper.playing) &&
+            typeof window.timeKeeper.mode === "string" &&
+            typeof window.timeKeeper.count === "number" &&
+            typeof window.timeKeeper.speed === "number" &&
+            typeof window.timeKeeper.size === "number"
+        ) {
+            return {
+                modeKey: window.timeKeeper.mode,
+                count: window.timeKeeper.count,
+                speed: window.timeKeeper.speed,
+                size: window.timeKeeper.size,
+            };
+        }
+        return window.timeKeeper.resolveRunContext();
+    };
+
     window.timeKeeper.buildKey = function (prefix, ctx) {
         const c = ctx || window.timeKeeper.resolveRunContext();
         return prefix + "-" + c.modeKey + "-" + c.count + "-" + c.speed + "-" + c.size;
@@ -1180,6 +1200,8 @@ window.TimeKeeper.make = function () {
         if (score == 25 || score == 50 || score == 100) {
             window.timeKeeper.savePB(time, score);
         }
+        // Mirror milestone PBs: refresh Highscore as soon as this run beats the stored best
+        window.timeKeeper.updateHighscoreLive(time, score);
     };
 
     window.timeKeeper.gotAll = function (time, score) {
@@ -1240,8 +1262,52 @@ window.TimeKeeper.make = function () {
         return getSelectedIndex(name);
     };
 
+    // Mid-run: write Highscore PB when the current apple count beats the stored best
+    // (does not touch sum — death still accumulates run totals for average).
+    window.timeKeeper.updateHighscoreLive = function (time, score) {
+        const ctx = window.timeKeeper.getSaveContext();
+        if (!window.timeKeeper.shouldTrack(ctx)) return;
+        if (typeof score !== "number" || isNaN(score)) return;
+
+        time = Math.floor(time);
+        const storage = window.timeKeeper.getStorage();
+        const name = window.timeKeeper.buildKey("H", ctx);
+        const appleTime =
+            typeof window.timeKeeper.lastAppleTime !== "undefined"
+                ? window.timeKeeper.lastAppleTime
+                : time;
+        const appleDate =
+            typeof window.timeKeeper.lastAppleDate !== "undefined"
+                ? window.timeKeeper.lastAppleDate
+                : new Date();
+
+        if (typeof storage[name] == "undefined") {
+            storage[name] = {
+                high: score,
+                time: appleTime,
+                date: appleDate,
+                sum: 0,
+            };
+            window.timeKeeper.setStorage(storage);
+            window.timeKeeper.refreshSpeedInfo();
+            return;
+        }
+
+        const cur = storage[name];
+        if (
+            score > cur.high ||
+            (score == cur.high && appleTime < cur.time)
+        ) {
+            cur.high = score;
+            cur.time = appleTime;
+            cur.date = appleDate;
+            window.timeKeeper.setStorage(storage);
+            window.timeKeeper.refreshSpeedInfo();
+        }
+    };
+
     window.timeKeeper.saveScore = function (time, score) {
-        const ctx = window.timeKeeper.resolveRunContext();
+        const ctx = window.timeKeeper.getSaveContext();
         if (!window.timeKeeper.shouldTrack(ctx)) return;
 
         if (typeof window.timeKeeper.lastAppleDate == "undefined") {
@@ -1262,6 +1328,7 @@ window.TimeKeeper.make = function () {
                 sum: score,
             };
         } else {
+            if (typeof storage[name].sum !== "number") storage[name].sum = 0;
             storage[name].sum += score;
             if (
                 score > storage[name].high ||
@@ -1277,7 +1344,7 @@ window.TimeKeeper.make = function () {
     };
 
     window.timeKeeper.savePB = function (time, score) {
-        const ctx = window.timeKeeper.resolveRunContext();
+        const ctx = window.timeKeeper.getSaveContext();
         if (!window.timeKeeper.shouldTrack(ctx)) return;
 
         time = Math.floor(time);
@@ -2527,6 +2594,8 @@ window.SpeedInfo.make = function () {
     const gameIDs = ["o1y9pyk6", "9dow0go1"];
     window.first_time_call = true;
     window.requestsMade = 0;
+    // Invalidate in-flight WR/tracking paints when settings change mid-fetch
+    let srcQueryId = 0;
 
     // FastSnakeStats runs-derived WR timelines (preferred over legacy daily/ snapshots)
     const FASTSNAKE_BASE = "https://raw.githubusercontent.com/DarkSnakeGang/FastSnakeStats/refs/heads/main/time-travel-cache";
@@ -3188,6 +3257,7 @@ window.SpeedInfo.make = function () {
       });
 
     window.getRecordSRC = async function (level) {
+        const queryId = srcQueryId;
 
         if(window.daily_challenge){
             EmptyAll();
@@ -3254,6 +3324,7 @@ window.SpeedInfo.make = function () {
             return;
         }
         if (!shouldShowCategory(level, size, mode)) {
+            if (queryId !== srcQueryId) return;
             if (level === "H") HandleHighscore("Empty");
             else if (level === "100") Handle100("Empty");
             else if (level === "50") Handle50("Empty");
@@ -3263,6 +3334,7 @@ window.SpeedInfo.make = function () {
         }
         // Highscore WR: FSS typical HS modes; Tally CE-HS modes on Tally (not Peaceful)
         if (level === "H" && !canShowSrcHighscore(mode, count)) {
+            if (queryId !== srcQueryId) return;
             HandleHighscore("Empty");
             return;
         }
@@ -3295,9 +3367,12 @@ window.SpeedInfo.make = function () {
             if (window.NepDebug) {
                 console.error("Failed to get runs-derived record:", error);
             }
+            if (queryId !== srcQueryId) return;
             EmptyAll();
             return;
         }
+
+        if (queryId !== srcQueryId) return;
 
         if (window.NepDebug) {
             console.log(`Record data for key ${cacheKey}:`, recordData);
@@ -3354,6 +3429,8 @@ window.SpeedInfo.make = function () {
                 }]
             }
         };
+
+        if (queryId !== srcQueryId) return;
 
         switch (level) {
             case "H": HandleHighscore(runData); break;
@@ -3456,6 +3533,7 @@ window.SpeedInfo.make = function () {
     };
 
     window.getTrackedRecord = async function (level) {
+        const queryId = srcQueryId;
         const trackIds = {
             "25": "25track",
             "50": "50track",
@@ -3511,6 +3589,7 @@ window.SpeedInfo.make = function () {
 
         try {
             const board = await loadRunsBoard(modeName, level);
+            if (queryId !== srcQueryId) return;
             const best = findBestTrackedRun(board, playerName, categoryKey);
             if (!best) {
                 el.innerHTML = `${labels[level]}: None`;
@@ -3526,6 +3605,7 @@ window.SpeedInfo.make = function () {
                 el.innerHTML = formatTrackRow(labels[level], text, best.weblink);
             }
         } catch (error) {
+            if (queryId !== srcQueryId) return;
             if (window.NepDebug) {
                 console.error("Tracked run lookup failed:", error);
             }
@@ -3534,22 +3614,35 @@ window.SpeedInfo.make = function () {
     };
 
     window.getAllSrc = async function () {
+        const queryId = ++srcQueryId;
         if (isBlenderMode() || window.daily_challenge) {
             EmptyAll();
             return;
         }
         updateSrcAndTrackingVisibility();
+        // Drop previous mode's WR/tracking immediately so it can't linger during fetch
+        Handle25("Empty");
+        Handle50("Empty");
+        Handle100("Empty");
+        HandleAll("Empty");
+        HandleHighscore("Empty");
+        EmptyTracking();
+
         const levels = ["25", "50", "100", "All", "H"];
         for (const element of levels) {
+            if (queryId !== srcQueryId) return;
             await getRecordSRC(element);
         }
+        if (queryId !== srcQueryId) return;
         if (getTrackedPlayerName()) {
             for (const element of levels) {
+                if (queryId !== srcQueryId) return;
                 await window.getTrackedRecord(element);
             }
         } else {
             EmptyTracking();
         }
+        if (queryId !== srcQueryId) return;
         if (typeof window.fillTrackedPlayerSuggestions === "function") {
             window.fillTrackedPlayerSuggestions();
         }
@@ -4011,8 +4104,8 @@ window.SpeedInfo.alterCode = function (code) {
 
     window.CurrentModeNum = 0;
     mode_regex = new RegExp(/case "trophy"\:/)
-    // Set mode first, then refresh SRC (microtask so CurrentModeNum is assigned)
-    mode_get_code = `case "trophy":queueMicrotask(function(){window.getAllSrc().catch(function(e){console.error('getAllSrc error:',e);});});window.CurrentModeNum = `
+    // Set mode first, then refresh personal + SRC after CurrentModeNum is assigned
+    mode_get_code = `case "trophy":queueMicrotask(function(){window.SpeedInfoUpdate().catch(function(e){console.error('SpeedInfoUpdate error:',e);});window.getAllSrc().catch(function(e){console.error('getAllSrc error:',e);});});window.CurrentModeNum = `
     code = code.assertReplace(mode_regex, mode_get_code);
 
     /*
@@ -11506,11 +11599,11 @@ window.RemixSpeedInfo.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.RemixSpeedInfo.alterSnakeCode = function (code) {
-  // Pudding now injects: case "trophy":queueMicrotask(() => getAllSrc()); …
-  // and getAllSrc ends with SpeedInfoUpdate — both are Remix-gated already.
+  // Pudding refreshes SpeedInfo + SRC on trophy change via queueMicrotask.
+  // Both window.SpeedInfoUpdate / getAllSrc are Remix-gated already.
   if (
     code.match(
-      /case "trophy":queueMicrotask\(function\(\)\{window\.getAllSrc\(\)/
+      /case "trophy":queueMicrotask\(function\(\)\{window\.(?:SpeedInfoUpdate|getAllSrc)\(\)/
     )
   ) {
     return code;

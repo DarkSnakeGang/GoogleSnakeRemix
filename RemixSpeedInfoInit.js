@@ -591,11 +591,11 @@ window.RemixSpeedInfo.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.RemixSpeedInfo.alterSnakeCode = function (code) {
-  // Pudding now injects: case "trophy":queueMicrotask(() => getAllSrc()); …
-  // and getAllSrc ends with SpeedInfoUpdate — both are Remix-gated already.
+  // Pudding refreshes SpeedInfo + SRC on trophy change via queueMicrotask.
+  // Both window.SpeedInfoUpdate / getAllSrc are Remix-gated already.
   if (
     code.match(
-      /case "trophy":queueMicrotask\(function\(\)\{window\.getAllSrc\(\)/
+      /case "trophy":queueMicrotask\(function\(\)\{window\.(?:SpeedInfoUpdate|getAllSrc)\(\)/
     )
   ) {
     return code;
