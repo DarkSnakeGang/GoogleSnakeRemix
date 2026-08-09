@@ -41,6 +41,9 @@ describe("Remix SpeedInfo gate (browser)", { skip: !runBrowser }, () => {
         const label = (document.getElementById("mode-selected") || {}).innerHTML || "";
         const modeStr = window.timeKeeper.getCurrentMode();
         const formatted = window.remixTimeKeeperFormatGamemode(modeStr);
+        const modes = window.ModeRegistry
+          ? window.ModeRegistry.listActiveModes()
+          : [];
         return {
           allowed: window.remixSpeedInfoAllowed(),
           modeLabel: label,
@@ -48,11 +51,18 @@ describe("Remix SpeedInfo gate (browser)", { skip: !runBrowser }, () => {
           hasUnknown: /Unknown/.test(label) || /Unknown/.test(formatted),
           formatted,
           modeStr,
+          modeKeyIsChess: modeStr === "chess",
+          registryHasChess: modes.some((m) => m.id === "chess"),
+          blenderNotLast:
+            modes.length > 0 && modes[modes.length - 1].id !== "blender",
         };
       });
       assert.equal(chess.allowed, true, JSON.stringify(chess));
       assert.equal(chess.isSwitch, false, JSON.stringify(chess));
       assert.equal(chess.hasUnknown, false, JSON.stringify(chess));
+      assert.equal(chess.modeKeyIsChess, true, JSON.stringify(chess));
+      assert.equal(chess.registryHasChess, true, JSON.stringify(chess));
+      assert.equal(chess.blenderNotLast, true, JSON.stringify(chess));
       assert.match(chess.modeLabel, /Chess/);
 
       await h.start({ mode: "burger", count: COUNT.ONE, size: SIZE.NORMAL });
@@ -97,6 +107,70 @@ describe("Remix SpeedInfo gate (browser)", { skip: !runBrowser }, () => {
       assert.equal(candy.hasUnknown, false, JSON.stringify(candy));
       assert.match(candy.formatted, /Candy/);
 
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("Chess/Burger SRC Highscore rows use CE level boards (not blank)", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 15, headless: true });
+    try {
+      for (const mode of ["chess", "burger"]) {
+        await h.start({ mode, count: COUNT.ONE, size: SIZE.NORMAL });
+        const probe = await h.page.evaluate(async () => {
+          if (window.pudding_settings) window.pudding_settings.SpeedInfo = true;
+          window.remixSpeedInfoEnsureModeLabels();
+          const modeId = window.CurrentModeNum;
+          const modeName = window.modeToTxt[modeId]?.name;
+          const modeKey = window.timeKeeper.getCurrentMode();
+          const count = window.timeKeeper.getCurrentSetting("count");
+          const speed = window.timeKeeper.getCurrentSetting("speed");
+          const size = window.timeKeeper.getCurrentSetting("size");
+          // Seed a personal HS so SpeedInfoUpdate can attach a submit link.
+          const key = "H-" + modeKey + "-" + count + "-" + speed + "-" + size;
+          const storage = JSON.parse(localStorage.getItem("snake_timeKeeper") || "{}");
+          storage[key] = { high: 12, attempts: 1, average: 12 };
+          localStorage.setItem("snake_timeKeeper", JSON.stringify(storage));
+
+          await window.getRecordSRC("H");
+          const hsrc = (document.getElementById("Hsrc") || {}).innerHTML || "";
+          await window.SpeedInfoUpdate();
+          const personal = (document.getElementById("H") || {}).innerHTML || "";
+          return {
+            modeId,
+            modeName,
+            modeKey,
+            key,
+            hsrc,
+            personal,
+            hsrcBlank: !hsrc.trim(),
+            hsrcShows:
+              /Highscore:\s*None/i.test(hsrc) || /Highscore:.*Apple/i.test(hsrc),
+            personalHasCeLink: /speedrun\.com\/snake_game_ce/.test(personal),
+          };
+        });
+        assert.ok(
+          probe.modeName === "Chess" || probe.modeName === "Burger",
+          JSON.stringify(probe)
+        );
+        assert.equal(
+          probe.hsrcBlank,
+          false,
+          mode + " Hsrc must not be emptied: " + JSON.stringify(probe)
+        );
+        assert.equal(
+          probe.hsrcShows,
+          true,
+          mode + " Hsrc should show WR or None: " + JSON.stringify(probe)
+        );
+        assert.equal(
+          probe.personalHasCeLink,
+          true,
+          mode + " personal HS must link to CE: " + JSON.stringify(probe)
+        );
+      }
       assert.deepEqual(h.modErrors(), [], "no mod errors");
     } finally {
       await h.close();

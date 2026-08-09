@@ -619,4 +619,68 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       await h.close();
     }
   });
+
+  it("Blender Burger+Chess: expired pieces lose piece status and cannot unlock", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 19, headless: true });
+    try {
+      await h.start({ mode: "chess", count: COUNT.ONE, size: SIZE.NORMAL });
+      const probe = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        // Enable Burger+Chess blender mix
+        window.chess_blending = true;
+        window.burger_blending = true;
+        window.CurrentModeNum = 22;
+        g.settings.ob = 22;
+        g.settings.ub = 22;
+        if (!g.settings.ZSa) g.settings.ZSa = new Set();
+        g.settings.ZSa.add(window.CHESS_MODE);
+        g.settings.ZSa.add(window.BURGER_MODE);
+        g.wa.reset();
+        window.appleArray = g.wa.ka;
+
+        const piece = g.wa.ka.find((a) => a && a.isPiece && !a.nla);
+        if (!piece) {
+          return { ok: false, reason: "no piece after chess blender reset" };
+        }
+        const color = piece.ChessColor;
+        const px = piece.pos.x;
+        const py = piece.pos.y;
+        const wasPiece = !!piece.isPiece;
+
+        window.burger_make_poison(piece, g);
+
+        // Opposite color carrier should not unlock a poison.
+        window.head_state = "rook";
+        window.head_color = color === "w" ? "b" : "w";
+        window.appleArray = g.wa.ka;
+        const unlocked = window.capture_attempt(px, py);
+
+        return {
+          ok: true,
+          wasPiece,
+          isPiece: !!piece.isPiece,
+          nla: !!piece.nla,
+          chessPiece: piece.ChessPiece,
+          chessColor: piece.ChessColor,
+          unlocked,
+          headStill: window.head_state,
+          eatingPiece: window.chess_eating_piece(),
+        };
+      });
+
+      assert.equal(probe.ok, true, JSON.stringify(probe));
+      assert.equal(probe.wasPiece, true, JSON.stringify(probe));
+      assert.equal(probe.nla, true, JSON.stringify(probe));
+      assert.equal(probe.isPiece, false, "poison must not stay a piece");
+      assert.equal(probe.chessPiece, undefined, JSON.stringify(probe));
+      assert.equal(probe.chessColor, undefined, JSON.stringify(probe));
+      assert.equal(probe.unlocked, false, "poison must not unlock");
+      assert.equal(probe.headStill, "rook", "carrier stays armed");
+      assert.equal(probe.eatingPiece, false, JSON.stringify(probe));
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
 });

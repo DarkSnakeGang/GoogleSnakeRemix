@@ -69,7 +69,7 @@ window.Theme = {};
 window.Theme.make = function () {
 
   // style for all pudding sidebar overlays
-  window.puddingSidebarStyle = 'position:absolute;left:100%;z-index:10000;background-color:#4a752c;padding:8px;display:block;border-radius:3px;width:220px;height:584px;top:0px;';
+  window.puddingSidebarStyle = 'position:absolute;left:100%;z-index:10000;background-color:#4a752c;padding:8px;display:block;border-radius:3px;width:220px;height:584px;top:0px;overflow:hidden;';
 
   let advancedSettings = JSON.parse(localStorage.getItem('snakeAdvancedSettings')) ?? {};
 
@@ -768,11 +768,10 @@ window.Counter.alterCode = function (code) {
     counter_reset_code = `;stats.inputs.game = 0;
     stats.walls.game = 0;
     window.wallCoords = [];
-    window.timeKeeper.playing = false;
     window.BootstrapHide();
     stats.plays.session++;
     stats.plays.lifetime++;
-    window.timeKeeper.addAttempt(window.timeKeeper.mode, window.timeKeeper.count, window.timeKeeper.speed, window.timeKeeper.size);
+    window.timeKeeper.addAttempt();
     saveStatistics();
     stats.visible = true;
     if((window.CurrentModeNum != 1 && window.CurrentModeNum != 19) && stats.statShown == "walls"){
@@ -787,10 +786,9 @@ window.Counter.alterCode = function (code) {
 
     window.IncrementCounter = function(){
 
-        if(!window.timeKeeper.playing)
+        if(!window.timeKeeper.runStarted)
         {
             window.timeKeeper.start();
-            window.timeKeeper.playing = true;
         }
 
         stats.inputs.game++;
@@ -802,6 +800,8 @@ window.Counter.alterCode = function (code) {
 
 
     document.addEventListener('keydown', (event)=> {
+        const ae = document.activeElement;
+        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT' || ae.isContentEditable)) return;
         if(!event.repeat)
         {
             if ((event.key === 'ArrowRight') || (event.code === 'KeyD')){
@@ -879,356 +879,587 @@ window.Counter.alterCode = function (code) {
 
     return code;
 }
+window.ModeRegistry = {};
+
+// Known middle modes (between Classic and Peaceful). Peaceful/Classic/Blender are positional.
+window.ModeRegistry.MIDDLE = [
+    { id: "wall", label: "Wall", trophySrcHints: ["trophy_01"], bitIndexV3: 0 },
+    { id: "portal", label: "Portal", trophySrcHints: ["trophy_02"], bitIndexV3: 1 },
+    { id: "cheese", label: "Cheese", trophySrcHints: ["trophy_03"], bitIndexV3: 2 },
+    { id: "borderless", label: "Borderless", trophySrcHints: ["trophy_04"], bitIndexV3: 3 },
+    { id: "twin", label: "Twin", trophySrcHints: ["trophy_05"], bitIndexV3: 4 },
+    { id: "winged", label: "Winged", trophySrcHints: ["trophy_06"], bitIndexV3: 5 },
+    { id: "yin_yang", label: "Yin Yang", trophySrcHints: ["trophy_07"], bitIndexV3: 6 },
+    { id: "key", label: "Key", trophySrcHints: ["trophy_08"], bitIndexV3: 7 },
+    { id: "sokoban", label: "Sokoban", trophySrcHints: ["trophy_09"], bitIndexV3: 8 },
+    { id: "poison", label: "Poison", trophySrcHints: ["trophy_10"], bitIndexV3: 9 },
+    { id: "dimension", label: "Dimension", trophySrcHints: ["trophy_11"], bitIndexV3: 10 },
+    { id: "minesweeper", label: "Minesweeper", trophySrcHints: ["trophy_12"], bitIndexV3: 11 },
+    { id: "statue", label: "Statue", trophySrcHints: ["trophy_13"], bitIndexV3: 12 },
+    { id: "light", label: "Light", trophySrcHints: ["trophy_14"], bitIndexV3: 13 },
+    { id: "shield", label: "Shield", trophySrcHints: ["/v16/trophy_15"], bitIndexV3: 14 },
+    { id: "arrow", label: "Arrow", trophySrcHints: ["/v17/trophy_15"], bitIndexV3: 15 },
+    { id: "hotdog", label: "Hotdog", trophySrcHints: ["trophy_16"], bitIndexV3: 16 },
+    { id: "magnet", label: "Magnet", trophySrcHints: ["trophy_17"], bitIndexV3: 17 },
+    { id: "gate", label: "Gate", trophySrcHints: ["trophy_18"], bitIndexV3: 18 },
+    { id: "bridge", label: "Bridge", trophySrcHints: ["trophy_19"], bitIndexV3: 19 },
+];
+
+window.ModeRegistry.LABELS = (function () {
+    const map = { classic: "Classic", peaceful: "Peaceful", blender: "Blender" };
+    for (const m of window.ModeRegistry.MIDDLE) map[m.id] = m.label;
+    return map;
+})();
+
+window.ModeRegistry._byBitV3 = (function () {
+    const map = Object.create(null);
+    for (const m of window.ModeRegistry.MIDDLE) map[m.bitIndexV3] = m.id;
+    map[20] = "peaceful"; // v3 bitstring: Peaceful was last bit before Blender
+    return map;
+})();
+
+window.ModeRegistry._matchMiddleId = function (src) {
+    if (!src) return null;
+    const s = String(src);
+    for (const m of window.ModeRegistry.MIDDLE) {
+        for (const hint of m.trophySrcHints) {
+            if (s.includes(hint)) return m.id;
+        }
+    }
+    return null;
+};
+
+window.ModeRegistry._provisionalId = function (src, index) {
+    if (src) {
+        const m = String(src).match(/trophy_(\d+)/i);
+        if (m) return "trophy_" + m[1];
+    }
+    return "unknown_" + index;
+};
+
+window.ModeRegistry._trophySrc = function (child) {
+    const img = child && (child.querySelector && child.querySelector("img"));
+    return img ? img.src : "";
+};
+
+window.ModeRegistry.listActiveModes = function () {
+    const root = document.getElementById("trophy");
+    if (!root || !root.children || root.children.length === 0) {
+        return [{ id: "classic", label: "Classic", index: 0 }];
+    }
+    const children = [...root.children];
+    const last = children.length - 1;
+    const used = new Set();
+    const list = [];
+
+    for (let i = 0; i < children.length; i++) {
+        let id;
+        if (i === 0) {
+            id = "classic";
+        } else if (i === last) {
+            id = "blender";
+        } else if (i === last - 1) {
+            id = "peaceful";
+        } else {
+            const src = window.ModeRegistry._trophySrc(children[i]);
+            id = window.ModeRegistry._matchMiddleId(src);
+            // Fallback: expected slot among middle modes when layout matches catalog length
+            if (!id) {
+                const middleSlot = i - 1; // index into MIDDLE
+                if (middleSlot >= 0 && middleSlot < window.ModeRegistry.MIDDLE.length) {
+                    id = window.ModeRegistry.MIDDLE[middleSlot].id;
+                } else {
+                    id = window.ModeRegistry._provisionalId(src, i);
+                }
+            }
+            if (used.has(id)) id = window.ModeRegistry._provisionalId(src, i);
+        }
+        used.add(id);
+        list.push({
+            id,
+            label: window.ModeRegistry.LABELS[id] || id,
+            index: i,
+        });
+    }
+    return list;
+};
+
+window.ModeRegistry.has = function (id) {
+    return window.ModeRegistry.listActiveModes().some((m) => m.id === id);
+};
+
+window.ModeRegistry.labelModeKey = function (key) {
+    if (!key) return "Classic";
+    if (key === "classic") return "Classic";
+    if (key.indexOf("+") === -1) {
+        return window.ModeRegistry.LABELS[key] || key;
+    }
+    return key.split("+").map((id) => window.ModeRegistry.LABELS[id] || id).join(", ");
+};
+
+window.ModeRegistry.bitstringV3ToModeKey = function (bits) {
+    if (!bits || typeof bits !== "string") return "classic";
+    if (!/^[01]+$/.test(bits)) return "classic";
+    const ids = [];
+    for (let i = 0; i < bits.length; i++) {
+        if (bits[i] === "1") {
+            ids.push(window.ModeRegistry._byBitV3[i] || ("unknown_bit_" + i));
+        }
+    }
+    if (ids.length === 0) return "classic";
+    if (ids.length === 1) return ids[0];
+    return ids.slice().sort().join("+");
+};
+
+window.ModeRegistry._blenderSelectedIds = function (modes) {
+    // Blender UI: find random.png row and read which mode toggles are selected
+    let element = null;
+    for (const i of document.querySelectorAll("img")) {
+        if (i.src && i.src.includes("random.png")) {
+            element = i;
+            break;
+        }
+    }
+    if (!element) return [];
+    try {
+        const row = element.parentElement.parentElement.parentElement;
+        const ids = [];
+        let counter = -1;
+        for (const child of row.children) {
+            counter++;
+            if (counter === 0) continue;
+            const selected =
+                child.firstElementChild &&
+                child.firstElementChild.classList.length > 1 &&
+                child.firstElementChild.children.length > 0;
+            if (!selected) continue;
+            // Map blender toggle order to modes excluding classic/blender: indices 1..n-2 of trophy list
+            const modeIndex = counter; // 1-based into middle+peaceful relative to old scrape
+            // Prefer matching by mode list: blender toggles align with trophies 1..last-1
+            const trophyModes = modes.filter((m) => m.id !== "classic" && m.id !== "blender");
+            const entry = trophyModes[counter - 1];
+            if (entry) ids.push(entry.id);
+        }
+        return ids;
+    } catch (e) {
+        return [];
+    }
+};
+
+window.ModeRegistry.getCurrentModeKey = function () {
+    const modes = window.ModeRegistry.listActiveModes();
+    if (!modes.length) return "classic";
+
+    let selectedIndex = 0;
+    if (window.timeKeeper && typeof window.timeKeeper.getCurrentSetting === "function") {
+        selectedIndex = window.timeKeeper.getCurrentSetting("trophy");
+    } else {
+        // Fallback: odd-class-out on #trophy
+        const root = document.getElementById("trophy");
+        if (root) {
+            const classNames = [];
+            let notUnique = "";
+            for (const el of root.children) {
+                if (classNames.indexOf(el.className) === -1) classNames.push(el.className);
+                else {
+                    notUnique = el.className;
+                    break;
+                }
+            }
+            let n = 0;
+            for (const el of root.children) {
+                if (el.className !== notUnique) {
+                    selectedIndex = n;
+                    break;
+                }
+                n++;
+            }
+        }
+    }
+
+    if (selectedIndex < 0 || selectedIndex >= modes.length) selectedIndex = 0;
+    const selected = modes[selectedIndex];
+
+    if (selected.id === "classic") return "classic";
+    if (selected.id !== "blender") return selected.id;
+
+    const combo = window.ModeRegistry._blenderSelectedIds(modes);
+    if (!combo.length) return "blender";
+    return combo.slice().sort().join("+");
+};
+
+window.ModeRegistry.make = function () {
+    window.isBridge = window.ModeRegistry.has("bridge");
+};
+
+window.ModeRegistry.alterCode = function (code) {
+    return code;
+};
 window.TimeKeeper = {};
 
 window.TimeKeeper.make = function () {
-
     /*
-    storage:
-    att-modeStr-count-speed-size : number of attempts of this mode
-    25-modeStr-count-speed-size: {time: time of 25 score, date: date of 25 score, att: number of attempts that reached 25 score, sum: total time of all attempts that reached 25 score}
-    50, 100 and ALL idem.
-    H-modeStr-count-speed-size: {high: highscore of this mode, time: time of the highscore run, date: date of the highscore run, sum: total score of all attempts}
-*/
+    storage v4:
+    att-modeKey-count-speed-size : number of started attempts
+    25|50|100|ALL-modeKey-count-speed-size: {time, date, att, sum}
+    H-modeKey-count-speed-size: {high, time, date, sum}
+    modeKey = classic | wall | ... | peaceful | wall+portal (blender)
+    */
     window.timeKeeper = {};
     window.timeKeeper.debug = false;
-    //called on every apple
+    window.timeKeeper.playing = false;
+    window.timeKeeper.runStarted = false;
+    window.timeKeeper.dialogActive = false;
+
+    window.timeKeeper.refreshSpeedInfo = function () {
+        if (typeof window.SpeedInfoUpdate === "function") {
+            window.SpeedInfoUpdate().catch(function (e) {
+                console.error("SpeedInfoUpdate error:", e);
+            });
+        }
+    };
+
+    window.timeKeeper.shouldTrack = function (ctx) {
+        if (window.daily_challenge) return false;
+        if (typeof window.aimTrainer !== "undefined" || typeof window.megaWholeSnakeObject !== "undefined") {
+            return false;
+        }
+        const c = ctx || window.timeKeeper.resolveRunContext();
+        if (c.count > 6 || c.speed > 2 || c.size > 2) return false;
+        return true;
+    };
+
+    window.timeKeeper.resolveRunContext = function () {
+        return {
+            modeKey: window.ModeRegistry.getCurrentModeKey(),
+            count: window.timeKeeper.getCurrentSetting("count"),
+            speed: window.timeKeeper.getCurrentSetting("speed"),
+            size: window.timeKeeper.getCurrentSetting("size"),
+        };
+    };
+
+    window.timeKeeper.buildKey = function (prefix, ctx) {
+        const c = ctx || window.timeKeeper.resolveRunContext();
+        return prefix + "-" + c.modeKey + "-" + c.count + "-" + c.speed + "-" + c.size;
+    };
+
+    window.timeKeeper.getStorage = function () {
+        return JSON.parse(localStorage.getItem("snake_timeKeeper") || '{"version":4}');
+    };
+
+    window.timeKeeper.setStorage = function (storage) {
+        localStorage.setItem("snake_timeKeeper", JSON.stringify(storage));
+    };
+
+    // Compat: callers expecting mode "string" now get stable modeKey
+    window.timeKeeper.getCurrentMode = function () {
+        return window.ModeRegistry.getCurrentModeKey();
+    };
+
+    window.timeKeeper.ensurePlaying = function () {
+        if (!window.timeKeeper.runStarted) {
+            window.timeKeeper.start();
+        } else {
+            window.timeKeeper.playing = true;
+        }
+    };
+
     window.timeKeeper.gotApple = function (time, score) {
         stats.apples.session++;
         stats.apples.lifetime++;
         updateCounterDisplay();
-        if (window.pudding_settings.randomizeThemeApple) {
+        if (window.pudding_settings && window.pudding_settings.randomizeThemeApple) {
             window.setTheme(window.getRandomThemeName());
         }
-        if(window.daily_challenge) {
-            return;
-        }
-        if (window.timeKeeper.debug) {
-            //console.log("got Apple %s, %s", time, score);
-        }
-        if (localStorage.getItem('snakeChosenMod') != "PuddingMod"){
-            return;
-        }
+        if (!window.timeKeeper.shouldTrack()) return;
+
+        window.timeKeeper.ensurePlaying();
         window.timeKeeper.lastAppleDate = new Date();
         window.timeKeeper.lastAppleTime = time;
-        //save time
+
         if (score == 25 || score == 50 || score == 100) {
-            if (window.timeKeeper.debug) {
-                //console.log("Saving PB for %s Ticks, %s Apples", time, score);
-            }
-            window.timeKeeper.savePB(time, score, window.timeKeeper.mode, window.timeKeeper.count, window.timeKeeper.speed, window.timeKeeper.size);
+            window.timeKeeper.savePB(time, score);
         }
-    }
+    };
 
-    //called when you get all apples
     window.timeKeeper.gotAll = function (time, score) {
-        if(window.daily_challenge) {
-            return;
-        }
-        if (window.timeKeeper.debug) {
-            //console.log("got All %s, %s", time, score);
-        }
-        if (localStorage.getItem('snakeChosenMod') != "PuddingMod"){
-            return;
-        }
-        window.timeKeeper.savePB(time, "ALL", window.timeKeeper.mode, window.timeKeeper.count, window.timeKeeper.speed, window.timeKeeper.size);
-    }
+        if (!window.timeKeeper.shouldTrack()) return;
+        window.timeKeeper.ensurePlaying();
+        window.timeKeeper.savePB(time, "ALL");
+    };
 
-    //called when you're dead, every time.
     window.timeKeeper.death = function (time, score) {
-        if (window.timeKeeper.debug) {
-            //console.log("death %s, %s", time, score);
-        }
-        if (localStorage.getItem('snakeChosenMod') != "PuddingMod"){
+        if (!window.timeKeeper.shouldTrack()) {
+            window.timeKeeper.playing = false;
             return;
         }
-        if (window.timeKeeper.playing) {
-            window.timeKeeper.playing = false;
-            window.timeKeeper.saveScore(time, score, window.timeKeeper.mode, window.timeKeeper.count, window.timeKeeper.speed, window.timeKeeper.size);
+        if (window.timeKeeper.playing || window.timeKeeper.runStarted) {
+            window.timeKeeper.saveScore(time, score);
         }
-    }
+        window.timeKeeper.playing = false;
+    };
 
-    //called when you start gamed d
     window.timeKeeper.start = function () {
-        if (window.timeKeeper.debug) {
-            //console.log("start");
-        }
         window.timeKeeper.playing = true;
-        //save current settings
-        window.timeKeeper.mode = window.timeKeeper.getCurrentMode();
-        window.timeKeeper.count = window.timeKeeper.getCurrentSetting("count");
-        window.timeKeeper.speed = window.timeKeeper.getCurrentSetting("speed");
-        window.timeKeeper.size = window.timeKeeper.getCurrentSetting("size");
-    }
+        window.timeKeeper.runStarted = true;
+        const ctx = window.timeKeeper.resolveRunContext();
+        window.timeKeeper.mode = ctx.modeKey;
+        window.timeKeeper.count = ctx.count;
+        window.timeKeeper.speed = ctx.speed;
+        window.timeKeeper.size = ctx.size;
+    };
 
-    window.timeKeeper.getCurrentMode = function () {
-        element = "";
-        for (i of document.querySelectorAll('img')) {
-            if (i.src.includes('random.png')) {
-                element = i;
-            }
-        }
-        counter = -1;
-        modeStr = "";
-        for (child of element.parentElement.parentElement.parentElement.children) {
-            counter++;
-            if (counter == 0) { continue; };
-            if (child.firstElementChild.classList.length > 1 && child.firstElementChild.children.length > 0) {
-                modeStr += "1";
-            }
-            else {
-                modeStr += "0";
-            }
-        }
-
-        let mode = window.timeKeeper.getCurrentSetting("trophy");
-        let trophyCount = document.getElementById("trophy").children.length;
-        if (mode != trophyCount - 1) {	//not on blender mode
-            modeStr = "";
-            // Bits cover every trophy except Classic (0) and Blender (last)
-            for (t = 1; t < trophyCount - 1; t++) {
-                if (t == mode) {
-                    modeStr += "1";
-                }
-                else {
-                    modeStr += "0";
-                }
-            }
-        }
-        return modeStr
-    }
-
-    //get the current setting, name = 'count', 'speed', 'size' or 'trophy'
+    // get the current setting, name = 'count', 'speed', 'size' or 'trophy'
     window.timeKeeper.getCurrentSetting = function (name) {
         let getSelectedIndex = function (name) {
             let elementList = document.getElementById(name);
+            if (!elementList) return 0;
             let number = 0;
             let classNames = [];
             let notUnique = "";
-            for (element of elementList.children) {
+            for (const element of elementList.children) {
                 if (classNames.indexOf(element.className) == -1) {
                     classNames.push(element.className);
-                }
-                else {
+                } else {
                     notUnique = element.className;
                     break;
                 }
             }
-            for (element of elementList.children) {
+            for (const element of elementList.children) {
                 if (element.className != notUnique) {
                     return number;
                 }
                 number++;
             }
             return 0;
-        }
+        };
 
-        if(name != 'trophy'){
-            return eval(window[name + '_var'])
+        if (name != "trophy") {
+            return eval(window[name + "_var"]);
         }
-
         return getSelectedIndex(name);
-    }
+    };
 
-    //save highscore
-    window.timeKeeper.saveScore = function (time, score, mode, count, speed, size) {
-        // count > 6 = beyond Tally (MoreMenu / custom); also skip MouseMode / Level Editor
-        if (count > 6 || speed > 2 || size > 2 || typeof window.aimTrainer !== 'undefined' || typeof window.megaWholeSnakeObject !== 'undefined') {
-            return;
-        }
-        if (typeof (window.timeKeeper.lastAppleDate) == "undefined") {
+    window.timeKeeper.saveScore = function (time, score) {
+        const ctx = window.timeKeeper.resolveRunContext();
+        if (!window.timeKeeper.shouldTrack(ctx)) return;
+
+        if (typeof window.timeKeeper.lastAppleDate == "undefined") {
             window.timeKeeper.lastAppleDate = new Date();
         }
-        if (typeof (window.timeKeeper.lastAppleTime) == "undefined") {
+        if (typeof window.timeKeeper.lastAppleTime == "undefined") {
             window.timeKeeper.lastAppleTime = time;
         }
 
         time = Math.floor(time);
-        let storage = localStorage.getItem("snake_timeKeeper");
-        storage = JSON.parse(storage);
-        let name = "H" + "-" + mode + "-" + count + "-" + speed + "-" + size;
-        //if undefined, save new high
-        if (typeof (storage[name]) == "undefined") {
-            storage[name] = { "high": score, "time": window.timeKeeper.lastAppleTime, "date": window.timeKeeper.lastAppleDate, "sum": score };
-        }
-        else {
-            //increase sum
+        const storage = window.timeKeeper.getStorage();
+        const name = window.timeKeeper.buildKey("H", ctx);
+        if (typeof storage[name] == "undefined") {
+            storage[name] = {
+                high: score,
+                time: window.timeKeeper.lastAppleTime,
+                date: window.timeKeeper.lastAppleDate,
+                sum: score,
+            };
+        } else {
             storage[name].sum += score;
-            if (score > storage[name].high || (score == storage[name].high && time < storage[name].time)) {
-                //save new pb
+            if (
+                score > storage[name].high ||
+                (score == storage[name].high && time < storage[name].time)
+            ) {
                 storage[name].high = score;
                 storage[name].time = window.timeKeeper.lastAppleTime;
                 storage[name].date = window.timeKeeper.lastAppleDate;
             }
         }
-        localStorage.setItem("snake_timeKeeper", JSON.stringify(storage));
-    }
+        window.timeKeeper.setStorage(storage);
+        window.timeKeeper.refreshSpeedInfo();
+    };
 
-    //save 25, 50, 100 or 'ALL' score
-    window.timeKeeper.savePB = function (time, score, mode, count, speed, size) {
-        // count > 6 = beyond Tally (MoreMenu / custom); also skip MouseMode / Level Editor
-        if (count > 6 || speed > 2 || size > 2 || typeof window.aimTrainer !== 'undefined' || typeof window.megaWholeSnakeObject !== 'undefined') {
-            return;
-        }
+    window.timeKeeper.savePB = function (time, score) {
+        const ctx = window.timeKeeper.resolveRunContext();
+        if (!window.timeKeeper.shouldTrack(ctx)) return;
 
         time = Math.floor(time);
-        let storage = localStorage.getItem("snake_timeKeeper");
-        storage = JSON.parse(storage);
-        let name = score.toString() + "-" + mode + "-" + count + "-" + speed + "-" + size;
+        const storage = window.timeKeeper.getStorage();
+        const name = window.timeKeeper.buildKey(String(score), ctx);
 
-        //if undefined, save new pb
-        if (typeof (storage[name]) == "undefined") {
-            storage[name] = { "time": time, "date": new Date(), "att": 1, "sum": time };
-        }
-        else {
-            //increase attempt
-            if (typeof (storage[name].att) == "undefined") { storage[name].att = 0 };
+        if (typeof storage[name] == "undefined") {
+            storage[name] = { time: time, date: new Date(), att: 1, sum: time };
+        } else {
+            if (typeof storage[name].att == "undefined") storage[name].att = 0;
             storage[name].att += 1;
-            //increase sum
-            if (typeof (storage[name].sum) == "undefined") { storage[name].sum = 0 };
+            if (typeof storage[name].sum == "undefined") storage[name].sum = 0;
             storage[name].sum += time;
-            if (time < storage[name].time) {		//only pb when lower time then stored
-                storage[name] = { "time": time, "date": new Date(), "att": storage[name].att, "sum": storage[name].sum };
+            if (time < storage[name].time) {
+                storage[name] = {
+                    time: time,
+                    date: new Date(),
+                    att: storage[name].att,
+                    sum: storage[name].sum,
+                };
             }
         }
+        window.timeKeeper.setStorage(storage);
+        window.timeKeeper.refreshSpeedInfo();
+    };
 
-        localStorage.setItem("snake_timeKeeper", JSON.stringify(storage));
-    }
-
-    //function to add attempt to localStorage
-    window.timeKeeper.addAttempt = function (mode, count, speed, size) {
-        let storage = localStorage.getItem("snake_timeKeeper");
-        storage = JSON.parse(storage);
-        let name = "att" + "-" + mode + "-" + count + "-" + speed + "-" + size;
-        if (typeof (storage[name]) == "undefined") {
-            storage[name] = 1;
+    // Only count if a run had actually started (not play→esc→play)
+    window.timeKeeper.addAttempt = function () {
+        if (!window.timeKeeper.runStarted) {
+            window.timeKeeper.playing = false;
+            return;
         }
-        else {
+        const ctx = {
+            modeKey: window.timeKeeper.mode || window.ModeRegistry.getCurrentModeKey(),
+            count:
+                typeof window.timeKeeper.count === "number"
+                    ? window.timeKeeper.count
+                    : window.timeKeeper.getCurrentSetting("count"),
+            speed:
+                typeof window.timeKeeper.speed === "number"
+                    ? window.timeKeeper.speed
+                    : window.timeKeeper.getCurrentSetting("speed"),
+            size:
+                typeof window.timeKeeper.size === "number"
+                    ? window.timeKeeper.size
+                    : window.timeKeeper.getCurrentSetting("size"),
+        };
+        if (!window.timeKeeper.shouldTrack(ctx)) {
+            window.timeKeeper.runStarted = false;
+            window.timeKeeper.playing = false;
+            return;
+        }
+
+        const storage = window.timeKeeper.getStorage();
+        const name = window.timeKeeper.buildKey("att", ctx);
+        if (typeof storage[name] == "undefined") {
+            storage[name] = 1;
+        } else {
             storage[name] += 1;
         }
-        localStorage.setItem("snake_timeKeeper", JSON.stringify(storage));
-    }
+        window.timeKeeper.setStorage(storage);
+        window.timeKeeper.runStarted = false;
+        window.timeKeeper.playing = false;
+        window.timeKeeper.refreshSpeedInfo();
+    };
 
     window.timeKeeper.setAttempts = function (attempts) {
-        if (isNaN(attempts)) {
-            //console.log(attempts.toString() + " is not a number!");
-            return;
-        }
-        let storage = localStorage.getItem("snake_timeKeeper");
-        storage = JSON.parse(storage);
-        mode = window.timeKeeper.getCurrentMode()
-        count = window.timeKeeper.getCurrentSetting("count");
-        speed = window.timeKeeper.getCurrentSetting("speed");
-        size = window.timeKeeper.getCurrentSetting("size");
-        let name = "att" + "-" + mode + "-" + count + "-" + speed + "-" + size;
-        storage[name] = {};
+        if (isNaN(attempts)) return;
+        const storage = window.timeKeeper.getStorage();
+        const name = window.timeKeeper.buildKey("att");
         storage[name] = attempts;
-        localStorage.setItem("snake_timeKeeper", JSON.stringify(storage));
-    }
+        window.timeKeeper.setStorage(storage);
+        window.timeKeeper.refreshSpeedInfo();
+    };
 
     window.timeKeeper.setPB = function (time, score, attempts, average) {
-        if (isNaN(time)) {
-            //console.log(time.toString() + " is not a number!");
-            return;
-        }
-        if (score != 25 && score != 50 && score != 100 && score != "ALL") {
-            //console.log(score + " has to be 25, 50, 100 or \"ALL\"!");
-            return;
-        }
-        if (isNaN(attempts)) {
-            //console.log(attempts.toString() + " is not a number!");
-            return;
-        }
-        if (isNaN(average)) {
-            //console.log(average.toString() + " is not a number!");
-            return;
-        }
-        let storage = localStorage.getItem("snake_timeKeeper");
-        storage = JSON.parse(storage);
-        mode = window.timeKeeper.getCurrentMode()
-        count = window.timeKeeper.getCurrentSetting("count");
-        speed = window.timeKeeper.getCurrentSetting("speed");
-        size = window.timeKeeper.getCurrentSetting("size");
-        let name = score.toString() + "-" + mode + "-" + count + "-" + speed + "-" + size;
-        storage[name] = {};
-        storage[name].time = time;
-        storage[name].date = new Date();
-        storage[name].att = attempts;
-        storage[name].sum = Math.round(average * attempts);
-        localStorage.setItem("snake_timeKeeper", JSON.stringify(storage));
-    }
+        if (isNaN(time)) return;
+        if (score != 25 && score != 50 && score != 100 && score != "ALL") return;
+        if (isNaN(attempts)) return;
+        if (isNaN(average)) return;
+        const storage = window.timeKeeper.getStorage();
+        const name = window.timeKeeper.buildKey(String(score));
+        storage[name] = {
+            time: time,
+            date: new Date(),
+            att: attempts,
+            sum: Math.round(average * attempts),
+        };
+        window.timeKeeper.setStorage(storage);
+        window.timeKeeper.refreshSpeedInfo();
+    };
 
     window.timeKeeper.setScore = function (highscore, time, average) {
-        if (isNaN(highscore)) {
-            //console.log(highscore.toString() + " is not a number!");
-            return;
-        }
-        if (isNaN(time)) {
-            //console.log(time.toString() + " is not a number!");
-            return;
-        }
-        if (isNaN(average)) {
-            //console.log(average.toString() + " is not a number!");
-            return;
-        }
-        let storage = localStorage.getItem("snake_timeKeeper");
-        storage = JSON.parse(storage);
-        mode = window.timeKeeper.getCurrentMode()
-        count = window.timeKeeper.getCurrentSetting("count");
-        speed = window.timeKeeper.getCurrentSetting("speed");
-        size = window.timeKeeper.getCurrentSetting("size");
-        let name = "H" + "-" + mode + "-" + count + "-" + speed + "-" + size;
-        storage[name] = {};
-        storage[name].high = highscore;
-        storage[name].time = time;
-        storage[name].date = new Date();
-        storage[name].sum = average * storage["att" + "-" + mode + "-" + count + "-" + speed + "-" + size];
-        localStorage.setItem("snake_timeKeeper", JSON.stringify(storage));
-    }
+        if (isNaN(highscore)) return;
+        if (isNaN(time)) return;
+        if (isNaN(average)) return;
+        const storage = window.timeKeeper.getStorage();
+        const ctx = window.timeKeeper.resolveRunContext();
+        const name = window.timeKeeper.buildKey("H", ctx);
+        const attKey = window.timeKeeper.buildKey("att", ctx);
+        const att = typeof storage[attKey] === "number" ? storage[attKey] : 0;
+        storage[name] = {
+            high: highscore,
+            time: time,
+            date: new Date(),
+            sum: average * att,
+        };
+        window.timeKeeper.setStorage(storage);
+        window.timeKeeper.refreshSpeedInfo();
+    };
 
-    //generate storage if it doesn't exist, or import from old file format.
+    window.timeKeeper.formatDuration = function (ms) {
+        ms = Math.floor(ms);
+        const hours = Math.floor(ms / 3600000);
+        const minutes = String(Math.floor((ms - hours * 3600000) / 60000)).padStart(2, "0");
+        const seconds = String(
+            Math.floor((ms - minutes * 60000 - hours * 3600000) / 1000)
+        ).padStart(2, "0");
+        const mseconds = String(
+            ms - minutes * 60000 - seconds * 1000 - hours * 3600000
+        ).padStart(3, "0");
+        if (hours == 0) return minutes + ":" + seconds + ":" + mseconds;
+        return hours + ":" + minutes + ":" + seconds + ":" + mseconds;
+    };
+
+    // ms → SRC-like 1m2s345ms (shared with SpeedInfo personal rows)
+    window.timeKeeper.formatTimeSrcStyle = function (ms) {
+        ms = Math.floor(Number(ms) || 0);
+        const hours = Math.floor(ms / 3600000);
+        const minutes = Math.floor((ms % 3600000) / 60000);
+        const seconds = Math.floor((ms % 60000) / 1000);
+        const milliseconds = ms % 1000;
+        let out = "";
+        if (hours > 0) out += hours + "h";
+        if (minutes > 0 || hours > 0) out += minutes + "m";
+        out += seconds + "s";
+        if (hours === 0) out += String(milliseconds).padStart(3, "0") + "ms";
+        if (hours > 0) out = out.split("s")[0] + "s";
+        return out;
+    };
+
     window.timeKeeper.makeStorage = function () {
         let storage = localStorage.getItem("snake_timeKeeper");
         if (storage == null) {
-            storage = {};
-            storage["version"] = 2;
-
-            //try to read version 1 to new storage type
-            old_pbs = localStorage.getItem("snake_pbs");
+            storage = { version: 2 };
+            const old_pbs = localStorage.getItem("snake_pbs");
             if (old_pbs != null) {
-                old_pbs = JSON.parse(old_pbs);
-                //console.log("Converting local storage to new storage type");
-                for (mode = 0; mode < 20; mode++) {
-                    modeStr = "00000000000000000000".split("");
-                    if (mode != 0) {
-                        modeStr[mode - 1] = '1';
-                    }
-                    modeStr = modeStr.join('');
-
-                    for (count = 0; count < 5; count++) {
-                        for (speed = 0; speed < 3; speed++) {
-                            for (size = 0; size < 3; size++) {
-                                for (let score of ["25", "50", "100", "ALL", "att"]) {
-                                    let name = score + "-" + mode + "-" + count + "-" + speed + "-" + size;
-                                    if (typeof (old_pbs[name]) != "undefined") {
-                                        //console.log(name, old_pbs[name]);
-                                        newName = score + "-" + modeStr + "-" + count + "-" + speed + "-" + size;
-                                        storage[newName] = old_pbs[name];
+                const old = JSON.parse(old_pbs);
+                for (let mode = 0; mode < 20; mode++) {
+                    let modeStr = "00000000000000000000".split("");
+                    if (mode != 0) modeStr[mode - 1] = "1";
+                    modeStr = modeStr.join("");
+                    for (let count = 0; count < 5; count++) {
+                        for (let speed = 0; speed < 3; speed++) {
+                            for (let size = 0; size < 3; size++) {
+                                for (const score of ["25", "50", "100", "ALL", "att", "H"]) {
+                                    const name =
+                                        score + "-" + mode + "-" + count + "-" + speed + "-" + size;
+                                    if (typeof old[name] != "undefined") {
+                                        storage[
+                                            score +
+                                                "-" +
+                                                modeStr +
+                                                "-" +
+                                                count +
+                                                "-" +
+                                                speed +
+                                                "-" +
+                                                size
+                                        ] = old[name];
                                     }
-
                                 }
                             }
                         }
                     }
                 }
             }
-        }
-        else {
+        } else {
             storage = JSON.parse(storage);
         }
 
-        // v2 (20-bit modeStr) -> v3 (21-bit): insert Bridge bit before Peaceful
-        if (storage["version"] == 2) {
+        if (storage.version == 2) {
             const migrated = { version: 3 };
             for (const key of Object.keys(storage)) {
                 if (key === "version") continue;
@@ -1236,7 +1467,8 @@ window.TimeKeeper.make = function () {
                 if (parts.length >= 5 && /^[01]{20}$/.test(parts[1])) {
                     const modeStr = parts[1];
                     const newModeStr = modeStr.slice(0, 19) + "0" + modeStr.slice(19);
-                    migrated[parts[0] + "-" + newModeStr + "-" + parts.slice(2).join("-")] = storage[key];
+                    migrated[parts[0] + "-" + newModeStr + "-" + parts.slice(2).join("-")] =
+                        storage[key];
                 } else {
                     migrated[key] = storage[key];
                 }
@@ -1244,107 +1476,50 @@ window.TimeKeeper.make = function () {
             storage = migrated;
         }
 
-        if (storage["version"] != 3) {
-            alert("Something went wrong with you localStorage!");
+        if (storage.version == 3) {
+            const migrated = { version: 4 };
+            for (const key of Object.keys(storage)) {
+                if (key === "version") continue;
+                const parts = key.split("-");
+                if (parts.length >= 5 && /^[01]{21}$/.test(parts[1])) {
+                    const modeKey = window.ModeRegistry.bitstringV3ToModeKey(parts[1]);
+                    migrated[parts[0] + "-" + modeKey + "-" + parts.slice(2).join("-")] =
+                        storage[key];
+                } else {
+                    migrated[key] = storage[key];
+                }
+            }
+            storage = migrated;
+        }
+
+        if (storage.version != 4) {
+            console.error("TimeKeeper storage version unexpected:", storage.version);
+            storage.version = 4;
         }
         localStorage.setItem("snake_timeKeeper", JSON.stringify(storage));
-    }
+    };
 
-    window.timeKeeper.dialogActive = false;
-
-    //generate and show the dialog
     window.timeKeeper.showDialog = function () {
-
-        //make dialog
         window.timeKeeper.dialogActive = true;
-        document.getElementById('time-keeper').innerHTML = 'Hide Details';
+        const btn = document.getElementById("time-keeper");
+        if (btn) btn.innerHTML = "Hide Details";
 
-        //dialog = document.createElement("dialog");
-        dialog = document.createElement("div");
-
+        const dialog = document.createElement("div");
         dialog.setAttribute("open", "");
         dialog.setAttribute("id", "timeKeeperDialog");
 
-        let count = window.timeKeeper.getCurrentSetting("count");
-        let speed = window.timeKeeper.getCurrentSetting("speed");
-        let size = window.timeKeeper.getCurrentSetting("size");
-        let modeStr = window.timeKeeper.getCurrentMode("size");
-        //change modeStr to gamemode
-        counter = 0
-        var gamemode = "";
-        for (t of modeStr) {
-            if (t == 1) {
-                if(window.isBridge){
-                    switch (counter) {
-                        case 0: gamemode += "Wall, "; break;
-                        case 1: gamemode += "Portal, "; break;
-                        case 2: gamemode += "Cheese, "; break;
-                        case 3: gamemode += "Borderless, "; break;
-                        case 4: gamemode += "Twin, "; break;
-                        case 5: gamemode += "Winged, "; break;
-                        case 6: gamemode += "YinYang, "; break;
-                        case 7: gamemode += "Key, "; break;
-                        case 8: gamemode += "Sokoban, "; break;
-                        case 9: gamemode += "Poison, "; break;
-                        case 10: gamemode += "Dimension, "; break;
-                        case 11: gamemode += "Minesweeper, "; break;
-                        case 12: gamemode += "Statue, "; break;
-                        case 13: gamemode += "Light, "; break;
-                        case 14: gamemode += "Shield, "; break;
-                        case 15: gamemode += "Arrow, "; break;
-                        case 16: gamemode += "Hotdog, "; break;
-                        case 17: gamemode += "Magnet, "; break;
-                        case 18: gamemode += "Gate, "; break;
-                        case 19: gamemode += "Bridge, "; break;
-                        case 20: gamemode += "Peaceful, "; break;
-                        default: gamemode += "Unknown, "; break;
-                    }
-                }else{
-                    switch (counter) {
-                        case 0: gamemode += "Wall, "; break;
-                        case 1: gamemode += "Portal, "; break;
-                        case 2: gamemode += "Cheese, "; break;
-                        case 3: gamemode += "Borderless, "; break;
-                        case 4: gamemode += "Twin, "; break;
-                        case 5: gamemode += "Winged, "; break;
-                        case 6: gamemode += "YinYang, "; break;
-                        case 7: gamemode += "Key, "; break;
-                        case 8: gamemode += "Sokoban, "; break;
-                        case 9: gamemode += "Poison, "; break;
-                        case 10: gamemode += "Dimension, "; break;
-                        case 11: gamemode += "Minesweeper, "; break;
-                        case 12: gamemode += "Statue, "; break;
-                        case 13: gamemode += "Light, "; break;
-                        case 14: gamemode += "Shield, "; break;
-                        case 15: gamemode += "Arrow, "; break;
-                        case 16: gamemode += "Hotdog, "; break;
-                        case 17: gamemode += "Magnet, "; break;
-                        case 18: gamemode += "Gate, "; break;
-                        case 19: gamemode += "Skip, "; break;
-                        case 20: gamemode += "Peaceful, "; break;
-                        default: gamemode += "Unknown, "; break;
-                    }
-                }
-            }
-            counter++;
-        }
-        if (gamemode == "") {
-            gamemode = "Classic, ";
-        }
-        gamemode = gamemode.substring(0, gamemode.lastIndexOf(","));
+        const ctx = window.timeKeeper.resolveRunContext();
+        const gamemode = window.ModeRegistry.labelModeKey(ctx.modeKey);
 
-        //add level information
-        bold = document.createElement('u');
-        textnode = document.createTextNode("Speed Info Details");
-        bold.style = 'color:white;font-family:Roboto,Arial;'
-        //textnode.style = 'color:white;font-family:Arial;'
-        bold.appendChild(textnode);
-        //buttonClose.style = 'color:white;background:black'; font-family:roboto;
+        const bold = document.createElement("u");
+        bold.appendChild(document.createTextNode("TimeKeeper Details"));
+        bold.style = "color:white;font-family:Roboto,Arial;";
         dialog.appendChild(bold);
         dialog.appendChild(document.createElement("br"));
         dialog.appendChild(document.createTextNode("Mode: " + gamemode));
         dialog.appendChild(document.createElement("br"));
-        switch (count) {
+
+        switch (ctx.count) {
             case 0: dialog.appendChild(document.createTextNode("1 Apple, ")); break;
             case 1: dialog.appendChild(document.createTextNode("3 Apples, ")); break;
             case 2: dialog.appendChild(document.createTextNode("5 Apples, ")); break;
@@ -1354,272 +1529,178 @@ window.TimeKeeper.make = function () {
             case 6: dialog.appendChild(document.createTextNode("Tally count, ")); break;
             default: dialog.appendChild(document.createTextNode("MoreMenu Apples, ")); break;
         }
-        switch (speed) {
+        switch (ctx.speed) {
             case 0: dialog.appendChild(document.createTextNode("Normal speed, ")); break;
             case 1: dialog.appendChild(document.createTextNode("Fast speed, ")); break;
             case 2: dialog.appendChild(document.createTextNode("Slow speed, ")); break;
             default: dialog.appendChild(document.createTextNode("MoreMenu speed, ")); break;
-
         }
-        switch (size) {
+        switch (ctx.size) {
             case 0: dialog.appendChild(document.createTextNode("Normal size")); break;
             case 1: dialog.appendChild(document.createTextNode("Small size")); break;
             case 2: dialog.appendChild(document.createTextNode("Large size")); break;
             default: dialog.appendChild(document.createTextNode("MoreMenu size")); break;
         }
-        //dialog.style = 'border-radius: 10px;'
 
-        //add stats
         dialog.appendChild(document.createElement("br"));
         dialog.appendChild(document.createElement("br"));
-        storage = JSON.parse(localStorage["snake_timeKeeper"]);
+        const storage = window.timeKeeper.getStorage();
         let totalAttempts = 0;
 
-        for (let score of ["att", "25", "50", "100", "ALL", "H"]) {
-            let name = score + "-" + modeStr + "-" + count + "-" + speed + "-" + size;
-            if (typeof (storage[name]) != "undefined") {
+        for (const score of ["att", "25", "50", "100", "ALL", "H"]) {
+            const name = window.timeKeeper.buildKey(score, ctx);
+            if (typeof storage[name] == "undefined") continue;
 
-                bold = document.createElement('span');
-                switch (score) {
-                    case "25": bold.appendChild(document.createTextNode("25 Apples:")); break;
-                    case "50": bold.appendChild(document.createTextNode("50 Apples:")); break;
-                    case "100": bold.appendChild(document.createTextNode("100 Apples:")); break;
-                    case "ALL": bold.appendChild(document.createTextNode("All Apples:")); break;
-                    case "att": bold.appendChild(document.createTextNode("Total Attempts: ")); break;
-                    case "H": bold.appendChild(document.createTextNode("Highscore: ")); break;
-                    default: break;
-                }
-                dialog.appendChild(bold);
-
-                if (score == "att") {
-                    totalAttempts = storage[name];
-                    dialog.appendChild(document.createTextNode(totalAttempts));
-                    dialog.appendChild(document.createElement("br"));
-                }
-                else if (score == "H") {
-                    dialog.appendChild(document.createTextNode(storage[name].high));
-                }
-
-                dialog.appendChild(document.createElement("br"));
-
-                if (score == "att")
-                    continue;
-
-                hours = Math.floor(storage[name].time / 3600000);
-                minutes = String(Math.floor((storage[name].time-hours*3600000) / 60000)).padStart(2, "0");
-                seconds = String(Math.floor((storage[name].time - minutes * 60000-hours*3600000) / 1000)).padStart(2, "0");
-                mseconds = String(storage[name].time - minutes * 60000 - seconds * 1000-hours*3600000).padStart(3, "0");
-                if(hours==0){
-                    if (score != "H") {
-                        dialog.appendChild(document.createTextNode("Best Time: " + minutes + ":" + seconds + ":" + mseconds));
-                        dialog.appendChild(document.createElement("br"));
-                        dialog.appendChild(document.createTextNode("Achieved on: " + new Date(storage[name].date).toString()));
-                        dialog.appendChild(document.createElement("br"));
-                    }
-                    else {
-                        dialog.appendChild(document.createTextNode("Duration: " + minutes + ":" + seconds + ":" + mseconds));
-                        dialog.appendChild(document.createElement("br"));
-                        dialog.appendChild(document.createTextNode("Achieved on: " + new Date(storage[name].date).toString()));
-                        dialog.appendChild(document.createElement("br"));
-                        dialog.appendChild(document.createTextNode("Average score: " + (Math.round(100 * (storage[name].sum / totalAttempts)) / 100).toString()));
-                        dialog.appendChild(document.createElement("br"));
-                    }
-                    if (storage[name].att != undefined && storage[name].sum != undefined) {
-                        let time = Math.floor(storage[name].sum / storage[name].att);
-                        hours = Math.floor(storage[name].time / 3600000)
-                        minutes = String(Math.floor((time - hours * 3600000) / 60000)).padStart(2, "0");
-                        seconds = String(Math.floor((time - minutes * 60000-hours*3600000) / 1000)).padStart(2, "0");
-                        mseconds = String(time - minutes * 60000 - seconds * 1000-hours*3600000).padStart(3, "0");
-                        dialog.appendChild(document.createTextNode("Attempts to this point: " + storage[name].att));
-                        dialog.appendChild(document.createElement("br"));
-                        dialog.appendChild(document.createTextNode("Average: " + minutes + ":" + seconds + ":" + mseconds));
-                        dialog.appendChild(document.createElement("br"));
-                    }
-                    dialog.appendChild(document.createElement("br"));
-                }else{
-                    if (score != "H") {
-                        dialog.appendChild(document.createTextNode("Best Time: " + hours + ":" + minutes + ":" + seconds + ":" + mseconds));
-                        dialog.appendChild(document.createElement("br"));
-                        dialog.appendChild(document.createTextNode("Achieved on: " + new Date(storage[name].date).toString()));
-                        dialog.appendChild(document.createElement("br"));
-                    }
-                    else {
-                        dialog.appendChild(document.createTextNode("Duration: " + hours + ":" + minutes + ":" + seconds + ":" + mseconds));
-                        dialog.appendChild(document.createElement("br"));
-                        dialog.appendChild(document.createTextNode("Achieved on: " + new Date(storage[name].date).toString()));
-                        dialog.appendChild(document.createElement("br"));
-                        dialog.appendChild(document.createTextNode("Average score: " + (Math.round(100 * (storage[name].sum / totalAttempts)) / 100).toString()));
-                        dialog.appendChild(document.createElement("br"));
-                    }
-                    if (storage[name].att != undefined && storage[name].sum != undefined) {
-                        let time = Math.floor(storage[name].sum / storage[name].att);
-                        hours = Math.floor(storage[name].time / 3600000)
-                        minutes = String(Math.floor((time - hours * 3600000) / 60000)).padStart(2, "0");
-                        seconds = String(Math.floor((time - minutes * 60000-hours*3600000) / 1000)).padStart(2, "0");
-                        mseconds = String(time - minutes * 60000 - seconds * 1000-hours*3600000).padStart(3, "0");
-                        dialog.appendChild(document.createTextNode("Attempts to this point: " + storage[name].att));
-                        dialog.appendChild(document.createElement("br"));
-                        dialog.appendChild(document.createTextNode("Average: " + hours + ":" + minutes + ":" + seconds + ":" + mseconds));
-                        dialog.appendChild(document.createElement("br"));
-                    }
-                    dialog.appendChild(document.createElement("br"));
-                }
+            const label = document.createElement("span");
+            switch (score) {
+                case "25": label.appendChild(document.createTextNode("25 Apples:")); break;
+                case "50": label.appendChild(document.createTextNode("50 Apples:")); break;
+                case "100": label.appendChild(document.createTextNode("100 Apples:")); break;
+                case "ALL": label.appendChild(document.createTextNode("All Apples:")); break;
+                case "att": label.appendChild(document.createTextNode("Total Attempts: ")); break;
+                case "H": label.appendChild(document.createTextNode("Highscore: ")); break;
+                default: break;
             }
+            dialog.appendChild(label);
+
+            if (score == "att") {
+                totalAttempts = storage[name];
+                dialog.appendChild(document.createTextNode(totalAttempts));
+                dialog.appendChild(document.createElement("br"));
+                dialog.appendChild(document.createElement("br"));
+                continue;
+            }
+
+            if (score == "H") {
+                dialog.appendChild(document.createTextNode(storage[name].high));
+            }
+            dialog.appendChild(document.createElement("br"));
+
+            const bestLabel = score == "H" ? "Duration: " : "Best Time: ";
+            dialog.appendChild(
+                document.createTextNode(bestLabel + window.timeKeeper.formatDuration(storage[name].time))
+            );
+            dialog.appendChild(document.createElement("br"));
+            dialog.appendChild(
+                document.createTextNode("Achieved on: " + new Date(storage[name].date).toString())
+            );
+            dialog.appendChild(document.createElement("br"));
+
+            if (score == "H" && totalAttempts > 0) {
+                dialog.appendChild(
+                    document.createTextNode(
+                        "Average score: " +
+                            (Math.round((100 * storage[name].sum) / totalAttempts) / 100).toString()
+                    )
+                );
+                dialog.appendChild(document.createElement("br"));
+            }
+
+            if (storage[name].att != undefined && storage[name].sum != undefined && storage[name].att > 0) {
+                const avg = Math.floor(storage[name].sum / storage[name].att);
+                dialog.appendChild(document.createTextNode("Attempts to this point: " + storage[name].att));
+                dialog.appendChild(document.createElement("br"));
+                dialog.appendChild(
+                    document.createTextNode("Average: " + window.timeKeeper.formatDuration(avg))
+                );
+                dialog.appendChild(document.createElement("br"));
+            }
+            dialog.appendChild(document.createElement("br"));
         }
 
-        //buttonClose
-        //dialog.appendChild(document.createElement("br"));
-        buttonClose = document.createElement("button");
+        const buttonClose = document.createElement("button");
         buttonClose.appendChild(document.createTextNode("Close"));
-        buttonClose.addEventListener("click", (e) => {
+        buttonClose.addEventListener("click", function () {
             window.timeKeeper.toggleDialog();
         });
-
-        buttonClose.style = 'color:white;background-color:' + window.button_color+';';
-        buttonClose.className = 'btn';
+        buttonClose.style = "color:white;background-color:" + window.button_color + ";";
+        buttonClose.className = "btn";
         dialog.appendChild(buttonClose);
 
-        //buttonExport
-        buttonExport = document.createElement("button");
-        buttonExport.appendChild(document.createTextNode("Export"));
-        buttonExport.addEventListener("click", function () {
-            download("timeKeeper - " + new Date().toString() + ".txt", "To import: open snake -> open console -> paste the following:\nlocalStorage[\"snake_timeKeeper\"]='" + localStorage["snake_timeKeeper"] + "'");
-        });
-        //dialog.appendChild(buttonExport); // Disabled export button, I don't want this.
-
-        //add dialog
-        div = document.querySelector("body");
-        dialog.setAttribute("style", "outline: none;border-radius: 10px;z-index:10100;background:"+window.real_topbar_color+";color:white;font-family:Roboto,Arial;");
-        dialog.style.outline = "none";
+        dialog.setAttribute(
+            "style",
+            "outline: none;border-radius: 10px;z-index:10100;background:" +
+                window.real_topbar_color +
+                ";color:white;font-family:Roboto,Arial;"
+        );
         dialog.classList.add("custom-dialog");
-
-        div.insertBefore(dialog, div.firstChild)
-
-
+        const body = document.querySelector("body");
+        body.insertBefore(dialog, body.firstChild);
     };
 
-    //Function to find the snake code, and apply changes.
-    window.timeKeeper.setup = function () {
-        //just make storage, this used to also alter snake code
-        window.timeKeeper.makeStorage();
-        return;
-    }
-
-    //console.log("Enabling TimeKeeper")
-    window.timeKeeper.setup();
-
     window.timeKeeper.hideDialog = function () {
-        //remove dialog when click on ok
-        child = document.getElementById("timeKeeperDialog");
-        child.parentElement.removeChild(child);
+        const child = document.getElementById("timeKeeperDialog");
+        if (child && child.parentElement) child.parentElement.removeChild(child);
         window.timeKeeper.dialogActive = false;
-        document.getElementById('time-keeper').innerHTML = 'Show Details';
-
-    }
+        const btn = document.getElementById("time-keeper");
+        if (btn) btn.innerHTML = "Show Details";
+    };
 
     window.timeKeeper.toggleDialog = function () {
-        if (window.timeKeeper.dialogActive) {
-            window.timeKeeper.hideDialog();
-        }
-        else {
-            window.timeKeeper.showDialog();
-        }
-    }
+        if (window.timeKeeper.dialogActive) window.timeKeeper.hideDialog();
+        else window.timeKeeper.showDialog();
+    };
 
-    /*
-    tempID = "time-keeper"; // Inspect element on Timer and take jsname from it
-    document.querySelector("button[jsname^=\"" + tempID + "\"]").addEventListener("click", (e) => {
-        window.timeKeeper.toggleDialog();
-    });
-    TimerID = "yddQF"; // Inspect element on Timer and take jsname from it
-    document.querySelector("div[jsname^=\"" + TimerID + "\"]").addEventListener("click", (e) => {
-        window.timeKeeper.toggleDialog();
-    });
-    */
-}
+    window.timeKeeper.setup = function () {
+        window.timeKeeper.makeStorage();
+        if (window.ModeRegistry && typeof window.ModeRegistry.has === "function") {
+            window.isBridge = window.ModeRegistry.has("bridge");
+        }
+    };
+
+    window.timeKeeper.setup();
+};
 
 window.TimeKeeper.alterCode = function (code) {
-    // TimeKeeper stuff start
-    //change stepfunction to run gotApple(), gotAll() and death()
-
-    // This is the full tick function
-    func_regex = new RegExp(/tick\(\){[^\\]{1,4000}light=Math.max[\s\S]*?=function/)
-    window.catchError(func_regex, code)
+    func_regex = new RegExp(/tick\(\){[^\\]{1,4000}light=Math.max[\s\S]*?=function/);
+    window.catchError(func_regex, code);
     let func = code.match(/tick\(\){[^\\]{1,4000}light=Math.max[\s\S]*?=function/)[0];
     StartOfNext = func.substring(func.lastIndexOf(";"), func.length);
     func = func.substring(0, func.lastIndexOf(";"));
-    if (window.NepDebug) {
-        console.log(func);
-    }
-    //let modeFunc = func.match(/1}\);[^%]{0,10}/)[0];
-    //let modeFunc = func.match(/[a-zA-Z0-9$]{1,4}\([a-zA-Z0-9$]{1,4}.[a-zA-Z0-9$]{1,8},11\)&&/)[0];
 
-    //modeFunc = modeFunc.substring(modeFunc.indexOf("(") + 1, modeFunc.lastIndexOf("("));
-    //modeFunc = modeFunc.split('(')[0];
-    //scoreFunc = func.match(/25\!\=\=this.[a-zA-Z0-9$]{1,4}/)[0]; // Need to figure this out
-    scoreFuncVar = func.match(/[a-zA-Z0-9$]{1,4}\=\=\=\n?25/)[0].split('=')[0]; // Assuming he wanted just the "this.score"
-    scoreFunc = func.match(`${window.escapeRegex(scoreFuncVar.replace('\n', ''))}=\n?this.[a-zA-Z0-9$]{1,6}`)[0].split('=')[1]
-    ////console.log(scoreFunc)
-    //scoreFunc = scoreFunc.substring(scoreFunc.indexOf("this."),scoreFunc.size);
-    //timeFunc = func.match(/this.[a-zA-Z0-9$]{1,6}\*this.[a-zA-Z0-9$]{1,6}/)[0];
-    // Now has weird vars that obfuscate, it's "this.ticks" * "this.{1,4}"
+    scoreFuncVar = func.match(/[a-zA-Z0-9$]{1,4}\=\=\=\n?25/)[0].split("=")[0];
+    scoreFunc = func.match(
+        `${window.escapeRegex(scoreFuncVar.replace("\n", ""))}=\n?this.[a-zA-Z0-9$]{1,6}`
+    )[0].split("=")[1];
     timeFunc = func.match(/\([a-zA-Z0-9$]{1,6}\*[a-zA-Z0-9$]{1,6}\)/)[0];
-    ticksVar = timeFunc.split('(')[1].split("*")[0];
-    tickLengthVar = timeFunc.split("*")[1].split(')')[0];
-    realTicks = func.match(`${escapeRegex(ticksVar)}=this.[a-zA-Z0-9$]{1,6}`)[0].split('=')[1];
-    realTickLength = func.match(`${escapeRegex(tickLengthVar)}=this.[a-zA-Z0-9$]{1,6}`)[0].split('=')[1];
-    realTimeFunc = `${realTicks}*${realTickLength}`;
-    timeFunc = realTimeFunc;
-    ////console.log(timeFunc)
-    //ownFuncIndex = func.indexOf(func.match(/!1}\);\([^%]{0,10}/)[0])+5; // No idea how this ever worked
-    ownFunc = "window.timeKeeper.gotApple(Math.floor(" + timeFunc + ")," + scoreFunc + ");"
-    //func = func.slice(0, ownFuncIndex) + ownFunc + func.slice(ownFuncIndex); // Cool but no, just going to insert before the if 25 50 100 instead
-    if25_regex = new RegExp(/if\([a-zA-Z0-9$]{1,4}\=\=\=\n?25/)
+    ticksVar = timeFunc.split("(")[1].split("*")[0];
+    tickLengthVar = timeFunc.split("*")[1].split(")")[0];
+    realTicks = func.match(`${escapeRegex(ticksVar)}=this.[a-zA-Z0-9$]{1,6}`)[0].split("=")[1];
+    realTickLength = func.match(`${escapeRegex(tickLengthVar)}=this.[a-zA-Z0-9$]{1,6}`)[0].split(
+        "="
+    )[1];
+    timeFunc = `${realTicks}*${realTickLength}`;
+
+    ownFunc = "window.timeKeeper.gotApple(Math.floor(" + timeFunc + ")," + scoreFunc + ");";
+    if25_regex = new RegExp(/if\([a-zA-Z0-9$]{1,4}\=\=\=\n?25/);
     ownFuncIndex = func.indexOf(func.match(if25_regex)[0]);
     func = func.slice(0, ownFuncIndex) + ownFunc + func.slice(ownFuncIndex);
-    ////console.log(func);
 
-
-
-    //change all apples to run gotAll()
-    func = func.slice(0, func.indexOf("WIN.play()") + 11) + "window.timeKeeper.gotAll(Math.floor(" + timeFunc + ")," + scoreFunc + ")," + func.slice(func.indexOf("WIN.play()") + 11);
+    func =
+        func.slice(0, func.indexOf("WIN.play()") + 11) +
+        "window.timeKeeper.gotAll(Math.floor(" +
+        timeFunc +
+        ")," +
+        scoreFunc +
+        ")," +
+        func.slice(func.indexOf("WIN.play()") + 11);
 
     death = func.match(/if\(this.[a-zA-Z0-9$]{1,4}\|\|this.[a-zA-Z0-9$]{1,4}\)/)[0];
     death = death.slice(death.indexOf("(") + 1, death.indexOf("|"));
-    func = func.slice(0, func.indexOf("{") + 1) + "if(" + death + "){window.timeKeeper.death(Math.floor(" + timeFunc + ")," + scoreFunc + ");}" + func.slice(func.indexOf("{") + 1)
-    //eval(func)
+    func =
+        func.slice(0, func.indexOf("{") + 1) +
+        "if(" +
+        death +
+        "){window.timeKeeper.death(Math.floor(" +
+        timeFunc +
+        ")," +
+        scoreFunc +
+        ");}" +
+        func.slice(func.indexOf("{") + 1);
 
     code = code.assertReplace(func_regex, func + StartOfNext);
-
-    ////console.log(code)
-
-    //change start function to run gameStart() - The "start" here fails, but this section is required for the code to work -- not anymore, fixed it earlier.
-
-    //func_regex = new RegExp(/[a-zA-Z0-9_$]{1,6}=function\(a,b\){if\(!\(a.[a-zA-Z0-9$]{1,4}[^\\]*?=function/)
-    //func = code.match(/[a-zA-Z0-9_$]{1,6}=function\(a,b\){if\(!\(a.[a-zA-Z0-9$]{1,4}[^\\]*?=function/)[0];
-    //StartOfNext = func.substring(func.lastIndexOf(";"), func.length);
-    //func = func.substring(0, func.lastIndexOf(";"));
-    //step = timeFunc.substring(0, timeFunc.indexOf("*"));
-    //step = "a" + step.slice(step.indexOf("."));
-
-    //func = func.slice(0, func.indexOf("{") + 1) + "if(" + step + "==0){window.timeKeeper.start();}" + func.slice(func.indexOf("{") + 1);
-    //eval(func)
-    //code = code.assertReplace(func_regex, func + StartOfNext);
-
-    //add eventhandler to click on time
-    //let id = code.match(/function\(a\){if\(\!a.[a-zA-Z0-9]{1,4}&&[^"]*?"[^"]*?"/)[0];
-    //id = id.substring(id.indexOf("\"")+1, id.lastIndexOf("\""));
-    //let id = code.match(/"[^"]{1,9}"[^"]{1,200}"00:00:000/)[0]; // Whatever this crap gives is the wrong thing sadly
-    //window.TimerID = id.substring(1, id.indexOf("\"",2));
-    //document.querySelector("div[jsname^=\""+id+"\"]").addEventListener("click",(e)=>{
-    //	window.timeKeeper.showDialog();
-    //});
-
-    // TimeKeeper stuff end
-    ////console.log(code)
-    // Counter stuff
     return code;
-}
+};
 window.Fruit = {};
 
 window.Fruit.make = function () {
@@ -2364,6 +2445,8 @@ window.SettingsSaver.make = function () {
                 InputDisplay: false,
                 TopBar: true,
                 SpeedInfo: false,
+                ShowWrHolders: true,
+                TrackedPlayerName: "",
                 PortalPairs: false,
                 AlwaysUniqueFruit: false,
                 SelectedPairs: defaultPoolForCount(0),
@@ -2385,6 +2468,12 @@ window.SettingsSaver.make = function () {
             }
             if (typeof pudding_settings.ScrollBar !== 'boolean') {
                 pudding_settings.ScrollBar = false;
+            }
+            if (typeof pudding_settings.ShowWrHolders !== 'boolean') {
+                pudding_settings.ShowWrHolders = true;
+            }
+            if (typeof pudding_settings.TrackedPlayerName !== 'string') {
+                pudding_settings.TrackedPlayerName = "";
             }
             pudding_settings = migrateSelectedPairsByCount(pudding_settings);
             pudding_settings.SelectedPairs = pudding_settings.SelectedPairsByCount["0"];
@@ -2432,7 +2521,7 @@ window.SpeedInfo = {};
 
 window.SpeedInfo.make = function () {
 
-    window.isBridge = (Math.floor((Math.random()* 50) + 1) != 32);
+    window.isBridge = true; // refreshed from ModeRegistry when trophies exist
 
     // First game must be CE, the other is the normal game
     const gameIDs = ["o1y9pyk6", "9dow0go1"];
@@ -2443,20 +2532,310 @@ window.SpeedInfo.make = function () {
     const FASTSNAKE_BASE = "https://raw.githubusercontent.com/DarkSnakeGang/FastSnakeStats/refs/heads/main/time-travel-cache";
     const RUNS_DATES_URL = `${FASTSNAKE_BASE}/metadata/available-dates-runs.json`;
     const TIMELINES_URL = `${FASTSNAKE_BASE}/runs-derived/wr-timelines.json`;
-    const CACHE_STALE_THRESHOLD = 3 * 60 * 60 * 1000; // 3 hours
 
     let timelinesData = null;
     let runsDatesMeta = null;
-    let lastTimelinesUpdate = 0;
     let timelinesPromise = null;
+    let fssVersion = null; // available-dates-runs.json lastUpdated — only reuse memory if this matches
+
+    // In-memory runs boards for the current FSS publish only
+    const runsBoardCache = Object.create(null); // key -> { data, version }
+    const runsBoardPromises = Object.create(null);
+    const LEVEL_TO_RUNS_FILE = {
+        "25": "25_Apples.json",
+        "50": "50_Apples.json",
+        "100": "100_Apples.json",
+        "All": "All_Apples.json",
+        "H": "High_Score.json",
+    };
+
+    // Match FastSnakeStats tally-boards.js (source of truth for HS columns)
+    const TYPICAL_HIGHSCORE_MODES = {
+        1: "Wall",
+        2: "Portal",
+        8: "Key",
+        9: "Sokoban",
+        10: "Poison",
+        12: "Minesweeper",
+        13: "Statue",
+        15: "Shield",
+        17: "Hotdog",
+        19: "Gate",
+        20: "Bridge",
+    };
+    const TALLY_CE_HIGHSCORE_MODES = {
+        0: "Classic",
+        3: "Cheese",
+        4: "Borderless",
+        5: "Twin",
+        6: "Winged",
+        7: "Yin Yang",
+        11: "Dimension",
+        14: "Light",
+        16: "Arrow",
+        18: "Magnet",
+    };
+
+    // Dedicated main-game High Score categories (Cheese HS was removed from SRC).
+    // Non-HS modes submit Tally highscores on Category Extensions instead.
+    const TALLY_COUNT = 6;
+    const SRC_GAME = "snake_game";
+    const SRC_GAME_CE = "snake_game_ce";
+
+    const SRC_LEVEL_BY_MODE = {
+        0: "5d7e0vvw", // Classic
+        1: "xd13o769", // Wall
+        2: "rw6e78gd", // Portal
+        3: "rdnq00qd", // Cheese
+        4: "nwl2ll0d", // Borderless
+        5: "n93mv5nd", // Twin
+        6: "z9856279", // Winged
+        7: "n93lkxz9", // Yin Yang
+        8: "z985kzr9", // Key
+        9: "rdn4ej79", // Sokoban
+        10: "ldyrq3r9", // Poison
+        11: "ldy64pz9", // Dimension
+        12: "kwjr0erd", // Minesweeper
+        13: "rdqv8kg9", // Statue
+        14: "rdqkpgmd", // Light
+        15: "xd47pv2d", // Shield
+        16: "rdnjgm69", // Arrow
+        17: "dqzzvn1d", // Hotdog
+        18: "dno527nw", // Magnet
+        19: "wkkjnjxw", // Gate
+        20: "9x1zey3d", // Bridge
+        21: "y9mrvj1w", // Peaceful
+    };
+
+    const SRC_IL_CATEGORY = {
+        "25": "mke9xe9d",
+        "50": "5dw410gk",
+        "100": "wk6nwme2",
+        "ALL": "n2yov4ed",
+        "All": "n2yov4ed",
+    };
+
+    const SRC_HS_CATEGORY_BY_MODE = {
+        1: "7kj63r42", // Wall
+        2: "n2y9g8ed", // Portal
+        8: "q25ewmv2", // Key
+        9: "xd11gn8d", // Sokoban
+        10: "wdmr0lek", // Poison
+        12: "ndxr78rd", // Minesweeper
+        13: "8249v5nd", // Statue
+        15: "02q686jk", // Shield
+        17: "mkemx192", // Hotdog
+        19: "zd31z3n2", // Gate
+        20: "mke3e76d", // Bridge
+    };
+
+    // CE "Tally Highscore (non-highscore modes)" mode values (FSS tally-boards.js)
+    const CE_TALLY_MODE_BY_MODE = {
+        0: "lr3d7n2l", // Classic
+        3: "1dknd7jl", // Cheese
+        4: "q8k3z7kq", // Borderless
+        5: "qyzm4e71", // Twin
+        6: "ln8736dl", // Winged
+        7: "10vy7e5l", // Yin Yang
+        11: "qj7odygq", // Dimension
+        14: "q65w7k7l", // Light
+        16: "lmoenj41", // Arrow
+        18: "1w4j8w5q", // Magnet
+    };
+
+    const SRC_COUNT_VAR = "0nwovxdl";
+    const SRC_COUNT_VAL = {
+        0: "mlnmj661", // 1 Apple
+        1: "5q88w7rq", // 3 Apples
+        2: "4qyoge3l", // 5 Apples
+        3: "qvvpkp7q", // 10 Apples
+        4: "qoxx6dxq", // Dice
+        5: "1pyp3vg1", // Bomb
+        6: "qznw4k2q", // Tally
+    };
+    const SRC_SIZE_VAR = "p854j77l";
+    const SRC_SIZE_VAL = {
+        0: "z19gp0jl", // Standard
+        1: "81pw5rel", // Small
+        2: "p12e0gv1", // Large
+    };
+    const SRC_IL_SPEED_VAR = "68k1g0yl";
+    const SRC_IL_SPEED_VAL = {
+        0: "192dxz4q", // Normal
+        1: "12v4922q", // Fast
+        2: "1py6exn1", // Slow
+    };
+    const SRC_HS_SPEED_VAR = "0nwomwdl";
+    const SRC_HS_SPEED_VAL = {
+        0: "xqkkj49q", // Normal
+        1: "gq7ej4n1", // Fast
+        2: "192d23kq", // Slow
+    };
+
+    const CE_TALLY_HS_CATEGORY = "rkl4elqd";
+    const CE_SPEED_VAR = "gnx3m4gn";
+    const CE_SPEED_VAL = {
+        0: "lmo2pr01", // Normal
+        1: "1w479v6q", // Fast
+        2: "qoxj984q", // Slow
+    };
+    const CE_SIZE_VAR = "ql6mkzw8";
+    const CE_SIZE_VAL = {
+        0: "q75ogky1", // Standard
+        1: "1gn6gyml", // Small
+        2: "qznw4kmq", // Large
+    };
+    const CE_MODE_VAR = "onvxz158";
+
+    // Remix / Category Extensions level boards (Chess, Burger)
+    const CE_LEVEL_BY_MODE_NAME = { Chess: "d1j51lyd", Burger: "wkk1rmqw" };
+    const CE_LEVEL_HS_CATEGORY = "8243lxgd";
+    const CE_LEVEL_IL_CATEGORY = {
+        "25": "02qm9qzd",
+        "50": "824jly32",
+        "100": "9d8eo7qd",
+        "ALL": "xd14168d",
+        "All": "xd14168d",
+    };
+    const CE_LEVEL_COUNT_VAR = "onvjo65n";
+    const CE_LEVEL_COUNT_VAL = {
+        0: "z19m7kyl", // 1 Apple
+        1: "p12d3pdq", // 3 Apples
+        2: "81pp82v1", // 5 Apples
+        3: "1gn6g6nl", // 10a
+        4: "1399n3x1", // Dice
+        5: "qznw4wgq", // Bomb
+        6: "lr3d7djl", // Tally
+    };
+    const CE_LEVEL_SIZE_VAR = "e8mpx9x8";
+    const CE_LEVEL_SIZE_VAL = {
+        0: "ln8e94nl", // Standard
+        1: "10v6popl", // Small
+        2: "14o42xwq", // Large
+    };
+    // Speed shares CE_SPEED_VAR / CE_SPEED_VAL (gnx3m4gn)
+
+    function remixCeLevelName(mode) {
+        if (window.CHESS_MODE != null && mode === window.CHESS_MODE) return "Chess";
+        if (window.BURGER_MODE != null && mode === window.BURGER_MODE) return "Burger";
+        return null;
+    }
+
+    // Match SRC/FastSnakeStats boards: no 100 on Small; Yin Yang has no 50 on Small
+    function shouldShowCategory(level, size, mode) {
+        if (level === "100" && size === 1) return false;
+        if (level === "50" && mode === 7 && size === 1) return false; // Yin Yang: no 50 on Small
+        return true;
+    }
+
+    // FSS shouldShowHighScoreColumn: typical HS modes always; CE Tally-HS modes only on Tally.
+    // Peaceful/Blender never (no FSS HS boards).
+    function canShowSrcHighscore(mode, count) {
+        if (mode === 21 || mode === 22) return false; // Peaceful, Blender
+        if (TYPICAL_HIGHSCORE_MODES[mode]) return true;
+        if (count === TALLY_COUNT && TALLY_CE_HIGHSCORE_MODES[mode]) return true;
+        // Remix CE levels (Chess/Burger) — full HS boards on snake_game_ce
+        if (window.CHESS_MODE != null && mode === window.CHESS_MODE) return true;
+        if (window.BURGER_MODE != null && mode === window.BURGER_MODE) return true;
+        return false;
+    }
+
+    // Submit link only when SRC has a real board for this mode/count
+    function canSubmitHighscore(mode, count) {
+        return canShowSrcHighscore(mode, count);
+    }
+
+    function srcVarPair(varId, valueId) {
+        return varId + "." + valueId;
+    }
+
+    // Always include defaults (1 Apple / Normal / Standard) so the form matches in-game settings
+    function buildSrcSubmitUrl(score, mode, count, speed, size) {
+        if (size > 2 || count > 6 || speed > 2) return null;
+
+        if (score === "H") {
+            const hsCat = SRC_HS_CATEGORY_BY_MODE[mode];
+            if (hsCat) {
+                const x = [
+                    hsCat,
+                    srcVarPair(SRC_COUNT_VAR, SRC_COUNT_VAL[count]),
+                    srcVarPair(SRC_HS_SPEED_VAR, SRC_HS_SPEED_VAL[speed]),
+                    srcVarPair(SRC_SIZE_VAR, SRC_SIZE_VAL[size]),
+                ].join("-");
+                return `https://www.speedrun.com/${SRC_GAME}/runs/new?x=${x}`;
+            }
+            const ceLevelName = remixCeLevelName(mode);
+            if (ceLevelName && CE_LEVEL_BY_MODE_NAME[ceLevelName]) {
+                const x = [
+                    "l_" + CE_LEVEL_BY_MODE_NAME[ceLevelName],
+                    CE_LEVEL_HS_CATEGORY,
+                    srcVarPair(CE_LEVEL_COUNT_VAR, CE_LEVEL_COUNT_VAL[count]),
+                    srcVarPair(CE_SPEED_VAR, CE_SPEED_VAL[speed]),
+                    srcVarPair(CE_LEVEL_SIZE_VAR, CE_LEVEL_SIZE_VAL[size]),
+                ].join("-");
+                return `https://www.speedrun.com/${SRC_GAME_CE}/runs/new?x=${x}`;
+            }
+            const ceMode = CE_TALLY_MODE_BY_MODE[mode];
+            if (count === TALLY_COUNT && ceMode) {
+                const x = [
+                    CE_TALLY_HS_CATEGORY,
+                    srcVarPair(CE_SPEED_VAR, CE_SPEED_VAL[speed]),
+                    srcVarPair(CE_SIZE_VAR, CE_SIZE_VAL[size]),
+                    srcVarPair(CE_MODE_VAR, ceMode),
+                ].join("-");
+                return `https://www.speedrun.com/${SRC_GAME_CE}/runs/new?x=${x}`;
+            }
+            return null;
+        }
+
+        const ceLevelNameIl = remixCeLevelName(mode);
+        if (ceLevelNameIl && CE_LEVEL_BY_MODE_NAME[ceLevelNameIl]) {
+            const ceCat = CE_LEVEL_IL_CATEGORY[score];
+            if (!ceCat) return null;
+            const x = [
+                "l_" + CE_LEVEL_BY_MODE_NAME[ceLevelNameIl],
+                ceCat,
+                srcVarPair(CE_LEVEL_COUNT_VAR, CE_LEVEL_COUNT_VAL[count]),
+                srcVarPair(CE_SPEED_VAR, CE_SPEED_VAL[speed]),
+                srcVarPair(CE_LEVEL_SIZE_VAR, CE_LEVEL_SIZE_VAL[size]),
+            ].join("-");
+            return `https://www.speedrun.com/${SRC_GAME_CE}/runs/new?x=${x}`;
+        }
+
+        const levelId = SRC_LEVEL_BY_MODE[mode];
+        const catId = SRC_IL_CATEGORY[score];
+        if (!levelId || !catId) return null;
+
+        const x = [
+            "l_" + levelId,
+            catId,
+            srcVarPair(SRC_COUNT_VAR, SRC_COUNT_VAL[count]),
+            srcVarPair(SRC_IL_SPEED_VAR, SRC_IL_SPEED_VAL[speed]),
+            srcVarPair(SRC_SIZE_VAR, SRC_SIZE_VAL[size]),
+        ].join("-");
+        return `https://www.speedrun.com/${SRC_GAME}/runs/new?x=${x}`;
+    }
+
+    function pbSubmitLink(text, score, mode, count, speed, size) {
+        const url = buildSrcSubmitUrl(score, mode, count, speed, size);
+        if (!url) return text;
+        return `<a target="_blank" style="text-decoration: none;color:#ADD8E6 !important;" href="${url}">${text}</a>`;
+    }
 
     function sleepFor(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    async function getJSON(url) {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
+    function withCacheBust(url, bust) {
+        if (!bust) return url;
+        return url + (url.indexOf("?") >= 0 ? "&" : "?") + "v=" + encodeURIComponent(bust);
+    }
+
+    async function getJSON(url, options) {
+        const opts = options || {};
+        const fetchUrl = withCacheBust(url, opts.bust);
+        const res = await fetch(fetchUrl, opts.cache === false ? { cache: "no-store" } : undefined);
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${fetchUrl}`);
         return res.json();
     }
 
@@ -2510,37 +2889,54 @@ window.SpeedInfo.make = function () {
     }
 
     async function loadRunsDerived() {
-        if (
-            timelinesData &&
-            runsDatesMeta &&
-            Date.now() - lastTimelinesUpdate < CACHE_STALE_THRESHOLD
-        ) {
-            const date = runsDatesMeta.availableDates[runsDatesMeta.availableDates.length - 1];
+        // Always check FSS metadata — whatever they published is what we use
+        let datesMeta;
+        try {
+            datesMeta = await getJSON(RUNS_DATES_URL, { cache: false });
+            window.requestsMade += 1;
+        } catch (e) {
+            if (timelinesData && runsDatesMeta) {
+                const date = runsDatesMeta.availableDates[runsDatesMeta.availableDates.length - 1];
+                return { timelines: timelinesData, date };
+            }
+            throw e;
+        }
+
+        if (!datesMeta.availableDates || !datesMeta.availableDates.length) {
+            throw new Error("No available dates in runs-derived metadata");
+        }
+
+        const version = datesMeta.lastUpdated || datesMeta.availableDates[datesMeta.availableDates.length - 1];
+
+        // Same FSS publish already in memory — reuse it (no time-based expiry)
+        if (timelinesData && fssVersion === version) {
+            runsDatesMeta = datesMeta;
+            const date = datesMeta.availableDates[datesMeta.availableDates.length - 1];
             return { timelines: timelinesData, date };
         }
+
         if (timelinesPromise) return timelinesPromise;
 
+        const datesMetaForLoad = datesMeta;
+        const versionForLoad = version;
         timelinesPromise = (async () => {
             if (window.NepDebug) {
-                console.log("Loading FastSnakeStats runs-derived timelines...");
+                console.log("Loading FastSnakeStats runs-derived timelines...", versionForLoad);
             }
-            const [dates, timelines] = await Promise.all([
-                getJSON(RUNS_DATES_URL),
-                getJSON(TIMELINES_URL),
-            ]);
-            if (!dates.availableDates || !dates.availableDates.length) {
-                throw new Error("No available dates in runs-derived metadata");
-            }
+            const timelines = await getJSON(TIMELINES_URL, { bust: versionForLoad });
             if (!timelines.boards) {
                 throw new Error("runs-derived timelines missing boards");
             }
-            runsDatesMeta = dates;
+            if (fssVersion && fssVersion !== versionForLoad) {
+                for (const k of Object.keys(runsBoardCache)) delete runsBoardCache[k];
+            }
+            runsDatesMeta = datesMetaForLoad;
             timelinesData = timelines;
-            lastTimelinesUpdate = Date.now();
-            window.requestsMade += 2;
-            const date = dates.availableDates[dates.availableDates.length - 1];
+            fssVersion = versionForLoad;
+            window.requestsMade += 1;
+            const date = datesMetaForLoad.availableDates[datesMetaForLoad.availableDates.length - 1];
             if (window.NepDebug) {
-                console.log(`Runs-derived ready as of ${date} (${Object.keys(timelines.boards).length} boards)`);
+                console.log(`Runs-derived ready as of ${date} (${Object.keys(timelines.boards).length} boards, v=${versionForLoad})`);
             }
             return { timelines, date };
         })().finally(() => {
@@ -2548,6 +2944,100 @@ window.SpeedInfo.make = function () {
         });
 
         return timelinesPromise;
+    }
+
+    function modeFolderName(modeName) {
+        return String(modeName || "").replace(/ /g, "_");
+    }
+
+    function getTrackedPlayerName() {
+        return (window.pudding_settings && window.pudding_settings.TrackedPlayerName || "").trim();
+    }
+
+    function shouldShowWrHolders() {
+        return !!(window.pudding_settings && window.pudding_settings.ShowWrHolders) && !getTrackedPlayerName();
+    }
+
+    function playerNameFromExpandedRun(run) {
+        if (!run || !run.players || !run.players.data || !run.players.data[0]) return "";
+        const p = run.players.data[0];
+        if (p.rel === "guest") return p.name || "";
+        return (p.names && p.names.international) || p.name || "";
+    }
+
+    function wrLink(href, text) {
+        return `<a target="_blank" style="text-decoration: none;color:#ADD8E6 !important;" href="${href}">${text}</a>`;
+    }
+
+    function formatWrRow(label, timeText, weblink, playerName) {
+        let html = `${label}: ${wrLink(weblink, timeText)}`;
+        if (shouldShowWrHolders() && playerName) {
+            html += `<br>${wrLink(weblink, `by ${playerName}`)}`;
+        }
+        return html;
+    }
+
+    function formatTrackRow(label, timeText, weblink) {
+        if (!weblink) return `${label}: ${timeText}`;
+        return `${label}: ${wrLink(weblink, timeText)}`;
+    }
+
+    function formatTimeTSeconds(timeT) {
+        if (typeof timeT !== "number" || !isFinite(timeT)) return "None";
+        const totalMs = Math.round(timeT * 1000);
+        const hours = Math.floor(totalMs / 3600000);
+        const minutes = Math.floor((totalMs % 3600000) / 60000);
+        const seconds = Math.floor((totalMs % 60000) / 1000);
+        const milliseconds = totalMs % 1000;
+        let convertedTime = "";
+        if (hours > 0) convertedTime += hours + "h";
+        if (minutes > 0 || hours > 0) convertedTime += minutes + "m";
+        convertedTime += seconds + "s";
+        if (hours === 0 && milliseconds > 0) {
+            convertedTime += String(milliseconds).padStart(3, "0") + "ms";
+        }
+        if (hours > 0) {
+            convertedTime = convertedTime.split("s")[0] + "s";
+        }
+        return convertedTime;
+    }
+
+    async function loadRunsBoard(modeName, level) {
+        const file = LEVEL_TO_RUNS_FILE[level];
+        if (!file) throw new Error("Unknown level for runs board: " + level);
+        await loadRunsDerived();
+        const folder = modeFolderName(modeName);
+        const cacheKey = `${folder}/${file}`;
+        const cached = runsBoardCache[cacheKey];
+        if (cached && cached.version === fssVersion) {
+            return cached.data;
+        }
+        if (runsBoardPromises[cacheKey]) return runsBoardPromises[cacheKey];
+
+        const url = `${FASTSNAKE_BASE}/runs/${folder}/${file}`;
+        runsBoardPromises[cacheKey] = (async () => {
+            const data = await getJSON(url, { bust: fssVersion });
+            window.requestsMade += 1;
+            runsBoardCache[cacheKey] = { data, version: fssVersion };
+            return data;
+        })().finally(() => {
+            delete runsBoardPromises[cacheKey];
+        });
+        return runsBoardPromises[cacheKey];
+    }
+
+    function findBestTrackedRun(boardData, playerName, categoryKey) {
+        if (!boardData || !boardData.runs) return null;
+        const target = playerName.toLowerCase();
+        let best = null;
+        for (const run of Object.values(boardData.runs)) {
+            if (!run || !run.playerName) continue;
+            if (String(run.playerName).toLowerCase() !== target) continue;
+            if (run.category !== categoryKey) continue;
+            if (typeof run.timeT !== "number") continue;
+            if (!best || run.timeT < best.timeT) best = run;
+        }
+        return best;
     }
 
     // Look up one category key as of the latest runs-derived date
@@ -2708,8 +3198,6 @@ window.SpeedInfo.make = function () {
         let size = window.timeKeeper.getCurrentSetting("size");
         let mode = window.CurrentModeNum;
 
-        const highscore_modes = [WALL, PORTAL, KEY, SOKO, POISON, MINESWEEPER, STATUE, SHIELD, HOTDOG, GATE, CHEESE, BRIDGE];
-
         // > 6 = beyond Tally (MoreMenu / custom counts)
         if (size > 2 || count > 6) {
             EmptyAll();
@@ -2719,8 +3207,17 @@ window.SpeedInfo.make = function () {
             EmptyAll();
             return;
         }
-        if (!highscore_modes.includes(mode) && level == "H") {
-            HandleHighscore("Empty")
+        if (!shouldShowCategory(level, size, mode)) {
+            if (level === "H") HandleHighscore("Empty");
+            else if (level === "100") Handle100("Empty");
+            else if (level === "50") Handle50("Empty");
+            else if (level === "25") Handle25("Empty");
+            else if (level === "All") HandleAll("Empty");
+            return;
+        }
+        // Highscore WR: FSS typical HS modes; Tally CE-HS modes on Tally (not Peaceful)
+        if (level === "H" && !canShowSrcHighscore(mode, count)) {
+            HandleHighscore("Empty");
             return;
         }
 
@@ -2765,7 +3262,8 @@ window.SpeedInfo.make = function () {
                 console.log(`No successful runs found for key: ${cacheKey}`);
             }
             if (level === "H") {
-                HandleHighscore("Empty");
+                // Visible boards with no WR yet should show "None", not a blank row
+                HandleHighscore({ data: { runs: [] } });
             } else {
                 switch (level) {
                     case "25": Handle25("Empty"); break;
@@ -2786,7 +3284,7 @@ window.SpeedInfo.make = function () {
                 console.log(`Invalid run data structure for key: ${cacheKey}`, bestRun);
             }
             if (level === "H") {
-                HandleHighscore("Empty");
+                HandleHighscore({ data: { runs: [] } });
             } else {
                 switch (level) {
                     case "25": Handle25("Empty"); break;
@@ -2805,7 +3303,8 @@ window.SpeedInfo.make = function () {
                     run: {
                         times: { primary: bestRun.times.primary },
                         weblink: bestRun.weblink
-                    }
+                    },
+                    playerName: playerNameFromExpandedRun(bestRun)
                 }]
             }
         };
@@ -2827,6 +3326,13 @@ window.SpeedInfo.make = function () {
 
     //window.getRecordSRC("H");
 
+    function EmptyTracking() {
+        for (const id of ["25track", "50track", "100track", "Alltrack", "Htrack"]) {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = "";
+        }
+    }
+
     function EmptyAll() {
         emp = "Empty"
         Handle25(emp);
@@ -2834,12 +3340,141 @@ window.SpeedInfo.make = function () {
         Handle100(emp);
         HandleAll(emp);
         HandleHighscore(emp);
+        EmptyTracking();
+        updateTrackingSectionVisibility();
     }
 
+    function updateTrackingSectionVisibility() {
+        const section = document.getElementById("tracking-section");
+        const label = document.getElementById("tracking-label");
+        if (!section) return;
+        const name = getTrackedPlayerName();
+        if (name) {
+            section.style.display = "block";
+            if (label) label.textContent = `Tracking: ${name}`;
+        } else {
+            section.style.display = "none";
+            EmptyTracking();
+        }
+    }
+
+    window.refreshTrackedPlayerUi = function () {
+        updateTrackingSectionVisibility();
+    };
+
+    window.fillTrackedPlayerSuggestions = function () {
+        const list = document.getElementById("tracked-player-suggestions");
+        if (!list) return;
+        list.innerHTML = "";
+        if (!timelinesData || !timelinesData.boards || !runsDatesMeta) return;
+        const date = runsDatesMeta.availableDates[runsDatesMeta.availableDates.length - 1];
+        const names = new Set();
+        for (const timeline of Object.values(timelinesData.boards)) {
+            const top = wrAsOf(timeline, date);
+            for (const r of top) {
+                if (r && r.n) names.add(r.n);
+            }
+        }
+        for (const name of [...names].sort((a, b) => a.localeCompare(b))) {
+            const opt = document.createElement("option");
+            opt.value = name;
+            list.appendChild(opt);
+        }
+    };
+
+    window.getTrackedRecord = async function (level) {
+        const trackIds = {
+            "25": "25track",
+            "50": "50track",
+            "100": "100track",
+            "All": "Alltrack",
+            "H": "Htrack",
+        };
+        const elId = trackIds[level];
+        const el = elId ? document.getElementById(elId) : null;
+        const labels = {
+            "25": "25 Apples",
+            "50": "50 Apples",
+            "100": "100 Apples",
+            "All": "All Apples",
+            "H": "Highscore",
+        };
+
+        if (!el) return;
+
+        const playerName = getTrackedPlayerName();
+        if (!playerName || !window.pudding_settings.SpeedInfo || window.daily_challenge) {
+            el.innerHTML = "";
+            return;
+        }
+
+        let count = window.timeKeeper.getCurrentSetting("count");
+        let speed = window.timeKeeper.getCurrentSetting("speed");
+        let size = window.timeKeeper.getCurrentSetting("size");
+        let mode = window.CurrentModeNum;
+
+        const WALL = 1, PORTAL = 2, CHEESE = 3, KEY = 8, SOKO = 9, POISON = 10;
+        const MINESWEEPER = 12, STATUE = 13, SHIELD = 15, HOTDOG = 17, GATE = 19, BRIDGE = 20, BLENDER = 22;
+        if (size > 2 || count > 6 || mode == BLENDER) {
+            el.innerHTML = "";
+            return;
+        }
+        if (!shouldShowCategory(level, size, mode)) {
+            el.innerHTML = "";
+            return;
+        }
+        // Tracking Highscore: same FSS rules as SRC WR (not Peaceful)
+        if (level === "H" && !canShowSrcHighscore(mode, count)) {
+            el.innerHTML = "";
+            return;
+        }
+
+        const modeName = window.modeToTxt[mode].name;
+        const countName = window.countToTxt[count].name;
+        const speedName = window.speedToTxt[speed].name;
+        const sizeName = window.sizeToTxt[size].name;
+        const categoryName = level === "H" ? "High Score" : level + " Apples";
+        const categoryKey = `${countName}|${speedName}|${sizeName}|${modeName}|${categoryName}`;
+
+        try {
+            const board = await loadRunsBoard(modeName, level);
+            const best = findBestTrackedRun(board, playerName, categoryKey);
+            if (!best) {
+                el.innerHTML = `${labels[level]}: None`;
+                return;
+            }
+            if (level === "H") {
+                const primary = best.time || ("PT" + best.timeT + "S");
+                const highscore = parseInt(String(primary).split(".")[1]).toString();
+                const text = (isNaN(parseInt(highscore, 10)) ? String(Math.round(best.timeT * 1000)) : highscore) + " Apples";
+                el.innerHTML = formatTrackRow(labels[level], text, best.weblink);
+            } else {
+                const text = best.time ? convertTime(best.time) : formatTimeTSeconds(best.timeT);
+                el.innerHTML = formatTrackRow(labels[level], text, best.weblink);
+            }
+        } catch (error) {
+            if (window.NepDebug) {
+                console.error("Tracked run lookup failed:", error);
+            }
+            el.innerHTML = `${labels[level]}: None`;
+        }
+    };
+
     window.getAllSrc = async function () {
+        updateTrackingSectionVisibility();
         const levels = ["25", "50", "100", "All", "H"];
         for (const element of levels) {
             await getRecordSRC(element);
+        }
+        if (getTrackedPlayerName()) {
+            for (const element of levels) {
+                await window.getTrackedRecord(element);
+            }
+        } else {
+            EmptyTracking();
+        }
+        if (typeof window.fillTrackedPlayerSuggestions === "function") {
+            window.fillTrackedPlayerSuggestions();
         }
     }
 
@@ -2855,10 +3490,14 @@ window.SpeedInfo.make = function () {
         }
 
         world_record = convertTime(response["data"]["runs"][0]["run"]["times"]["primary"]);
+        const playerName = response["data"]["runs"][0].playerName || "";
+        document.getElementById('25src').innerHTML = formatWrRow(
+            "25 Apples",
+            world_record,
+            response["data"]["runs"][0]["run"].weblink,
+            playerName
+        );
 
-        document.getElementById('25src').innerHTML = `25 Apples: <a target="_blank" style="text-decoration: none;color:#ADD8E6 !important;" href="` + response["data"]["runs"][0]["run"].weblink + `">` + world_record + `</a>`
-
-        //document.getElementById('Hsrc').href = response["data"]["runs"][0]["run"].weblink
         if (window.NepDebug) {
             //console.log("Found 25 apples " + world_record + " " + response["data"]["runs"][0]["run"].weblink)
         }
@@ -2874,8 +3513,13 @@ window.SpeedInfo.make = function () {
             return;
         }
         world_record = convertTime(response["data"]["runs"][0]["run"]["times"]["primary"]);
-
-        document.getElementById('50src').innerHTML = `50 Apples: <a target="_blank" style="text-decoration: none;color:#ADD8E6 !important;" href="` + response["data"]["runs"][0]["run"].weblink + `">` + world_record + `</a>`
+        const playerName = response["data"]["runs"][0].playerName || "";
+        document.getElementById('50src').innerHTML = formatWrRow(
+            "50 Apples",
+            world_record,
+            response["data"]["runs"][0]["run"].weblink,
+            playerName
+        );
     }
     function Handle100(response) {
         if (response == "Empty") {
@@ -2888,8 +3532,13 @@ window.SpeedInfo.make = function () {
             return;
         }
         world_record = convertTime(response["data"]["runs"][0]["run"]["times"]["primary"]);
-
-        document.getElementById('100src').innerHTML = `100 Apples: <a target="_blank" style="text-decoration: none;color:#ADD8E6 !important;" href="` + response["data"]["runs"][0]["run"].weblink + `">` + world_record + `</a>`
+        const playerName = response["data"]["runs"][0].playerName || "";
+        document.getElementById('100src').innerHTML = formatWrRow(
+            "100 Apples",
+            world_record,
+            response["data"]["runs"][0]["run"].weblink,
+            playerName
+        );
     }
     function HandleAll(response) {
         if (response == "Empty") {
@@ -2902,8 +3551,13 @@ window.SpeedInfo.make = function () {
             return;
         }
         world_record = convertTime(response["data"]["runs"][0]["run"]["times"]["primary"]);
-
-        document.getElementById('Allsrc').innerHTML = `All Apples: <a target="_blank" style="text-decoration: none;color:#ADD8E6 !important;" href="` + response["data"]["runs"][0]["run"].weblink + `">` + world_record + `</a>`
+        const playerName = response["data"]["runs"][0].playerName || "";
+        document.getElementById('Allsrc').innerHTML = formatWrRow(
+            "All Apples",
+            world_record,
+            response["data"]["runs"][0]["run"].weblink,
+            playerName
+        );
     }
 
     function HandleHighscore(response) {
@@ -2920,9 +3574,14 @@ window.SpeedInfo.make = function () {
 
         highscore = parseInt(response["data"]["runs"][0]["run"]["times"]["primary"].toString().split('.')[1]).toString();
         world_record = highscore + " Apples";
+        const playerName = response["data"]["runs"][0].playerName || "";
 
-        document.getElementById('Hsrc').innerHTML = `Highscore: <a target="_blank" style="text-decoration: none;color:#ADD8E6 !important;" href="` + response["data"]["runs"][0]["run"].weblink + `">` + world_record + `</a>`
-        //document.getElementById('Hsrc').href = response["data"]["runs"][0]["run"].weblink
+        document.getElementById('Hsrc').innerHTML = formatWrRow(
+            "Highscore",
+            world_record,
+            response["data"]["runs"][0]["run"].weblink,
+            playerName
+        );
         if (window.NepDebug) {
             //console.log("Found highscore " + highscore + " " + response["data"]["runs"][0]["run"].weblink)
         }
@@ -2970,7 +3629,11 @@ window.SpeedInfo.make = function () {
     }
 
     // Prefetch runs-derived timelines on startup
-    getLatestCacheData().catch(error => {
+    getLatestCacheData().then(() => {
+        if (typeof window.fillTrackedPlayerSuggestions === "function") {
+            window.fillTrackedPlayerSuggestions();
+        }
+    }).catch(error => {
         if (window.NepDebug) {
             console.error("Failed to initialize runs-derived data:", error);
         }
@@ -3031,12 +3694,21 @@ window.SpeedInfo.make = function () {
         <label id="100src" class="form-check-label" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;"></label><br>
         <label id="Allsrc" class="form-check-label" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;"></label><br>
         <label id="Hsrc" class="form-check-label" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;"></label><br>
+        <div id="tracking-section" style="display:none;">
+        <span id="tracking-label" style="text-decoration: underline;color:white;font-family:Roboto,Arial,sans-serif;display:flex; justify-content: center; align-items: center; text-align: center;">Tracking</span>
+        <label id="25track" class="form-check-label" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;"></label><br>
+        <label id="50track" class="form-check-label" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;"></label><br>
+        <label id="100track" class="form-check-label" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;"></label><br>
+        <label id="Alltrack" class="form-check-label" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;"></label><br>
+        <label id="Htrack" class="form-check-label" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;"></label><br>
+        </div>
         <br>
   <button class="btn" style="display:none;margin:3px;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="speedinfo-close" jsname="speedinfo-close">Close</button>
 
   `;
 
   document.getElementsByClassName('sEOCsb')[0].appendChild(speedinfoBox);
+        updateTrackingSectionVisibility();
 
         const speedinfoCloseElements = document.getElementById('speedinfo-close');
         speedinfoCloseElements.addEventListener('click', window.SpeedInfoHide);
@@ -3083,128 +3755,96 @@ window.SpeedInfo.make = function () {
     });
 
     window.SpeedInfoUpdate = async function () {
-        // Mainly for TimeKeeper, runs when "play" is clicked
+        // Mainly for TimeKeeper, runs when "play" is clicked / after PB saves
+        if (window.ModeRegistry && typeof window.ModeRegistry.has === "function") {
+            try {
+                window.isBridge = window.ModeRegistry.has("bridge");
+            } catch (e) { /* trophy DOM may be missing early */ }
+        }
+
         let count = window.timeKeeper.getCurrentSetting("count");
         let speed = window.timeKeeper.getCurrentSetting("speed");
         let size = window.timeKeeper.getCurrentSetting("size");
-        let modeStr = window.timeKeeper.getCurrentMode("size");
-        storage = JSON.parse(localStorage["snake_timeKeeper"]);
-
-        //change modeStr to gamemode
-        var counter = 0
-        var gamemode = "";
-        for (t of modeStr) {
-            if (t == 1) {
-
-                if(window.isBridge){
-                    switch (counter) {
-                        case 0: gamemode += "Wall, "; break;
-                        case 1: gamemode += "Portal, "; break;
-                        case 2: gamemode += "Cheese, "; break;
-                        case 3: gamemode += "Borderless, "; break;
-                        case 4: gamemode += "Twin, "; break;
-                        case 5: gamemode += "Winged, "; break;
-                        case 6: gamemode += "YinYang, "; break;
-                        case 7: gamemode += "Key, "; break;
-                        case 8: gamemode += "Sokoban, "; break;
-                        case 9: gamemode += "Poison, "; break;
-                        case 10: gamemode += "Dimension, "; break;
-                        case 11: gamemode += "Minesweeper, "; break;
-                        case 12: gamemode += "Statue, "; break;
-                        case 13: gamemode += "Light, "; break;
-                        case 14: gamemode += "Shield, "; break;
-                        case 15: gamemode += "Arrow, "; break;
-                        case 16: gamemode += "Hotdog, "; break;
-                        case 17: gamemode += "Magnet, "; break;
-                        case 18: gamemode += "Gate, "; break;
-                        case 19: gamemode += "Bridge, "; break;
-                        case 20: gamemode += "Peaceful, "; break;
-                        default: gamemode += "Unknown, "; break;
-                    }
-                }else{
-                    switch (counter) {
-                        case 0: gamemode += "Wall, "; break;
-                        case 1: gamemode += "Portal, "; break;
-                        case 2: gamemode += "Cheese, "; break;
-                        case 3: gamemode += "Borderless, "; break;
-                        case 4: gamemode += "Twin, "; break;
-                        case 5: gamemode += "Winged, "; break;
-                        case 6: gamemode += "YinYang, "; break;
-                        case 7: gamemode += "Key, "; break;
-                        case 8: gamemode += "Sokoban, "; break;
-                        case 9: gamemode += "Skull, "; break;
-                        case 10: gamemode += "Dimension, "; break;
-                        case 11: gamemode += "Minesweeper, "; break;
-                        case 12: gamemode += "Statue, "; break;
-                        case 13: gamemode += "Light, "; break;
-                        case 14: gamemode += "Shield, "; break;
-                        case 15: gamemode += "Arrow, "; break;
-                        case 16: gamemode += "Hotdog, "; break;
-                        case 17: gamemode += "Magnet, "; break;
-                        case 18: gamemode += "Gate, "; break;
-                        case 19: gamemode += "Skip, "; break;
-                        case 20: gamemode += "Peaceful, "; break;
-                        default: gamemode += "Unknown, "; break;
-                    }
-                }
-            }
-            counter++;
+        let modeKey = window.timeKeeper.getCurrentMode();
+        let mode = window.CurrentModeNum;
+        let storage = {};
+        try {
+            storage = JSON.parse(localStorage["snake_timeKeeper"] || "{}");
+        } catch (e) {
+            storage = {};
         }
-        if (gamemode == "") {
-            gamemode = "Classic, ";
-        }
-        //gamemode = gamemode.substring(0, gamemode.lastIndexOf(","));
+
+        const gamemode = window.ModeRegistry
+            ? window.ModeRegistry.labelModeKey(modeKey)
+            : modeKey;
+
         mode_label = document.getElementById("mode-selected");
         mode_label2 = document.getElementById("mode-selected2");
 
-        mode_label.innerHTML = gamemode + window.HandleCount(count).substring(0, window.HandleCount(count).lastIndexOf(","));
+        if (window.daily_challenge) {
+            mode_label.innerHTML = "Daily Challenge";
+            mode_label2.innerHTML = "(TimeKeeper disabled)";
+            for (const score of ["att", "25", "50", "100", "ALL", "H"]) {
+                const el = document.getElementById(score);
+                if (el) el.innerHTML = "";
+            }
+            return;
+        }
+
+        mode_label.innerHTML =
+            gamemode +
+            ", " +
+            window.HandleCount(count).substring(0, window.HandleCount(count).lastIndexOf(","));
         mode_label2.innerHTML = window.HandleSpeed(speed) + window.HandleSize(size);
 
-        //dialog = document.getElementById("speedinfo-popup-pudding");
+        const fmt = window.timeKeeper.formatTimeSrcStyle
+            ? window.timeKeeper.formatTimeSrcStyle.bind(window.timeKeeper)
+            : function (ms) {
+                  return String(ms);
+              };
 
-        for (let score of ["att", "25", "50", "100", "ALL", "H"]) {
-            let name = score + "-" + modeStr + "-" + count + "-" + speed + "-" + size;
-            bold = document.getElementById(score);
-            if(window.daily_challenge) {
-                bold.innerHTML = '';
+        for (const score of ["att", "25", "50", "100", "ALL", "H"]) {
+            const name = score + "-" + modeKey + "-" + count + "-" + speed + "-" + size;
+            const bold = document.getElementById(score);
+            if (!bold) continue;
+
+            if (score == "att") {
+                const totalAttempts = typeof storage[name] === "number" ? storage[name] : 0;
+                bold.innerHTML = "Total Attempts: " + totalAttempts;
                 continue;
             }
 
-            if (typeof (storage[name]) != "undefined") {
-
-                if (score == "att") {
-                    totalAttempts = storage[name];
-                    bold.innerHTML = "Total Attempts: " + totalAttempts;
-                    continue;
-                }
-                else if (score == "H") {
-                    bold.innerHTML = "Highscore: " + storage[name].high;
-                    continue;
-                }
-
-                hours = Math.floor(storage[name].time / 3600000);
-                minutes = String(Math.floor((storage[name].time / 60000)-hours*60)).padStart(2, "0");
-                seconds = String(Math.floor((storage[name].time - minutes * 60000-hours*3600000) / 1000)).padStart(2, "0");
-                mseconds = String(storage[name].time - minutes * 60000 - seconds * 1000-hours*3600000).padStart(3, "0");
-                score_label = "ALL" === score ? "All" : score;
-                if(hours==0){
-                    bold.innerHTML = score_label + " Apples: " + minutes + "m" + seconds + "s" + mseconds + "ms";
-                }else{
-                    bold.innerHTML = score_label + " Apples: " + hours + "h" + minutes + "m" + seconds + "s" + mseconds + "ms";
-                }
-
-            }
-            else {
+            // Match SRC visibility (100/YY50); Highscore always shown locally
+            if (!shouldShowCategory(score === "ALL" ? "All" : score, size, mode)) {
                 bold.innerHTML = "";
+                continue;
+            }
+
+            if (score == "H") {
+                if (typeof storage[name] != "undefined" && storage[name].high != null) {
+                    const highText = String(storage[name].high);
+                    bold.innerHTML =
+                        "Highscore: " +
+                        (canSubmitHighscore(mode, count)
+                            ? pbSubmitLink(highText, "H", mode, count, speed, size)
+                            : highText);
+                } else {
+                    bold.innerHTML = "Highscore: None";
+                }
+                continue;
+            }
+
+            const label = score === "ALL" ? "All Apples" : score + " Apples";
+            if (typeof storage[name] != "undefined" && storage[name].time != null) {
+                bold.innerHTML =
+                    label +
+                    ": " +
+                    pbSubmitLink(fmt(storage[name].time), score, mode, count, speed, size);
+            } else {
+                bold.innerHTML = label + ": None";
             }
         }
-
-        if(window.daily_challenge) {
-            mode_label.innerHTML = 'Daily Challenge'
-            mode_label2.innerHTML = '(TimeKeeper disabled)'
-        }
-
-    }
+    };
 
     window.HandleCount = function (count) {
         switch (count) {
@@ -3367,6 +4007,8 @@ window.InputDisplay.alterCode = function (code) {
 
   // Code to alter snake code here
   document.addEventListener('keydown', (event)=> {
+    const ae = document.activeElement;
+    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT' || ae.isContentEditable)) return;
 
     if (event.key === 'ArrowRight' || (event.code === 'KeyD')){
 
@@ -3389,6 +4031,9 @@ window.InputDisplay.alterCode = function (code) {
   });
 
   document.addEventListener('keyup', (event)=> {
+    const ae = document.activeElement;
+    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT' || ae.isContentEditable)) return;
+
     if ((event.key === 'ArrowRight') || (event.code === 'KeyD')){
 
       window.LightInputOff("right-button-id");
@@ -3533,161 +4178,268 @@ window.Timer = {
       } else {
         const theme = window.themes[getSelected('#theme', 'DqMRee tuJOWd') || getSelected('#theme', 'tuJOWd')]
 
+        const btnColor = window.button_color || '#1155CC'
         editBox = document.createElement('div')
         editBox.id = 'edit-box'
         editBox.style = `
           background-color: ${theme.real_top_bar ?? '#aaaaff'};
           border-radius: 0.5vw;
           position: absolute;
-          height: 93vh;
+          height: auto;
+          max-height: 94vh;
           z-index: 1000000;
-          top: 30px;
+          top: 20px;
           left: 50%;
           backdrop-filter: blur(5px);
           text-align: center;
-          padding: 4px;
+          padding: 6px 14px 10px;
           transform: translate(-50%, 0);
           box-shadow: 0px 0px 8px rgba(0,0,0,0.4);
           border: 1px solid ${theme.topbar_color ?? '#4444dd'};
-          font-size: 2.5vh;
+          font-size: 2vh;
           color: #ffffff;
-          width: 50vw;
+          width: 58vw;
+          max-width: 640px;
           font-family: Roboto,Arial,sans-serif;
-          overflow-y: auto;
+          overflow: hidden;
+          box-sizing: border-box;
         `
+        const sectionTitle = 'margin:4px 0 2px;font-size:2.1vh;font-weight:600;letter-spacing:0.02em;opacity:0.95;'
+        const iconRow = 'display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0.3vh;margin:0 auto 1px;'
+        const iconStyle = 'cursor: pointer; border: 0.45vh ridge #00000000; border-radius: 1vh; width: 3.2vh; height: 3.2vh;'
+        const iconSel = 'cursor: pointer; border: 0.45vh ridge #af4490ff; border-radius: 1vh; width: 3.2vh; height: 3.2vh;'
+        const halfCol = 'flex:1;min-width:0;'
         editBox.innerHTML = `
         <span id="close-box" style="
         position: absolute;
-        top: 10px;
-        right: 15px;
+        top: 8px;
+        right: 12px;
         cursor: pointer;
         color: #ffffff;
         font-size: 0.9em;
       ">&#x2715</span>
-</br>
-<label class="form-check-label" style="font-size: 3.5vh">
+<label class="form-check-label" style="font-size: 2.8vh; display:block; margin-top:2px; margin-bottom:2px;">
         Custom Timer/Splits Settings
-      </label> </br>
-</br>
+      </label>
 
-<div id="edit-mode">
-  <img class="sel" style="cursor: pointer; border: 0.5vh ridge #af4490ff; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_00.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_01.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_02.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_03.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_04.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_05.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_06.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_07.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_08.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_09.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_10.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_11.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_12.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_13.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_14.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v17/trophy_15.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v18/trophy_16.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v19/trophy_17.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v20/trophy_18.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v21/trophy_19.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v22/trophy_20.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_15.png" />
-</div>
-<br/>
-<div id="edit-count">
-  <img class="sel" style="cursor: pointer; border: 0.5vh ridge #af4490ff; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v17/count_00.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v17/count_01.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v17/count_02.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v18/count_03.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v18/count_04.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v18/count_05.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v19/count_06.png" />
-</div>
-<br/>
-<div id="edit-speed">
-  <img class="sel" style="cursor: pointer; border: 0.5vh ridge #af4490ff; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v3/speed_00.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v3/speed_01.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v3/speed_02.png" />
-</div>
-<br/>
-<div id="edit-size">
-  <img class="sel" style="cursor: pointer; border: 0.5vh ridge #af4490ff; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v4/size_00.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v4/size_01.png" />
-  <img class="uns" style="cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://www.google.com/logos/fnbx/snake_arcade/v4/size_02.png" />
-</div>
-<br/>
-
-<div id="edit-cat">
-  <img class="uns" style="background-color: #ffffff55; cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://i.postimg.cc/d1R1Y648/25.png" />
-  <img class="uns" style="background-color: #ffffff55; cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://i.postimg.cc/7hmZC6vh/50.png" />
-  <img class="uns" style="background-color: #ffffff55; cursor: pointer; border: 0.5vh ridge #00000000; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://i.postimg.cc/qqk7MK5W/100.png" />
-  <img class="sel" style="background-color: #ffffff55; cursor: pointer; border: 0.5vh ridge #af4490ff; border-radius: 1vh; width: 3.5vh; height: 3.5vh;" src="https://i.postimg.cc/52j6Cw2V/all.png" />
-</div>
-
-<br/>
-<div id="edit-times" style="left:0px;">
-  <div>
-      <label class="form-check-label" for="edit-25"> 25</label>
-      <input class="text-input" size="9" name="edit-25" id="edit-25" type="text" style="font-family:Consolas;" />
+<div style="${sectionTitle}">SpeedInfo</div>
+<div style="display:flex;gap:10px;align-items:flex-start;justify-content:center;flex-wrap:wrap;text-align:left;">
+  <div style="display:flex;align-items:center;gap:6px;padding-top:4px;">
+    <input class="form-check-input" type="checkbox" role="switch" id="ShowWrHolders" style="width:1.3em;height:1.3em;margin:0;">
+    <label class="form-check-label" for="ShowWrHolders" style="margin:0;white-space:nowrap;">Show WR holders</label>
   </div>
-  <div>
-      <label class="form-check-label" for="edit-50"> 50</label>
-      <input class="text-input" size="9" name="edit-50" id="edit-50" type="text" style="font-family:Consolas;" />
-  </div>
-  <div>
-      <label class="form-check-label" for="edit-100">100</label>
-      <input class="text-input" size="9" name="edit-100" id="edit-100" type="text" style="font-family:Consolas;" />
-  </div>
-  <div>
-      <label class="form-check-label" for="edit-ALL">ALL</label>
-      <input class="text-input" size="9" name="edit-ALL" id="edit-ALL" type="text" style="font-family:Consolas;" />
+  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+    <label for="TrackedPlayerInput" class="form-check-label" style="margin:0;white-space:nowrap;">Track player</label>
+    <input type="text" class="form-control" id="TrackedPlayerInput" list="tracked-player-suggestions" placeholder="SRC username" autocomplete="off" style="width:140px;display:inline-block;background-color:${btnColor};color:white;font-family:Roboto,Arial,sans-serif;border:1px solid rgba(255,255,255,0.25);border-radius:4px;outline:none;text-align:center;caret-color:white;padding:2px 6px;">
+    <datalist id="tracked-player-suggestions"></datalist>
+    <button class="btn" type="button" style="margin:0;color:white;background-color:${btnColor};font-family:Roboto,Arial,sans-serif;padding:2px 10px;" id="TrackedPlayerSet">Set</button>
+    <button class="btn" type="button" style="margin:0;color:white;background-color:${btnColor};font-family:Roboto,Arial,sans-serif;padding:2px 10px;" id="TrackedPlayerClear">Clear</button>
   </div>
 </div>
 
+<div style="${sectionTitle}">Mode</div>
+<div id="edit-mode" style="${iconRow}">
+  <img class="sel" style="${iconSel}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_00.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_01.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_02.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_03.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_04.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_05.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_06.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_07.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_08.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_09.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_10.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_11.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_12.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_13.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_14.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v17/trophy_15.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v18/trophy_16.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v19/trophy_17.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v20/trophy_18.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v21/trophy_19.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v22/trophy_20.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_15.png" />
+</div>
+
+<div style="${sectionTitle}">Count</div>
+<div id="edit-count" style="${iconRow}">
+  <img class="sel" style="${iconSel}" src="https://www.google.com/logos/fnbx/snake_arcade/v17/count_00.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v17/count_01.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v17/count_02.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v18/count_03.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v18/count_04.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v18/count_05.png" />
+  <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v19/count_06.png" />
+</div>
+
+<div style="display:flex;gap:12px;justify-content:center;align-items:flex-start;">
+  <div style="${halfCol}">
+    <div style="${sectionTitle}">Speed</div>
+    <div id="edit-speed" style="${iconRow}">
+      <img class="sel" style="${iconSel}" src="https://www.google.com/logos/fnbx/snake_arcade/v3/speed_00.png" />
+      <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v3/speed_01.png" />
+      <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v3/speed_02.png" />
+    </div>
+  </div>
+  <div style="${halfCol}">
+    <div style="${sectionTitle}">Size</div>
+    <div id="edit-size" style="${iconRow}">
+      <img class="sel" style="${iconSel}" src="https://www.google.com/logos/fnbx/snake_arcade/v4/size_00.png" />
+      <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v4/size_01.png" />
+      <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v4/size_02.png" />
+    </div>
+  </div>
+</div>
+
+<div style="display:flex;gap:12px;justify-content:center;align-items:flex-start;flex-wrap:wrap;">
+  <div style="${halfCol}">
+    <div style="${sectionTitle}">Category</div>
+    <div id="edit-cat" style="${iconRow}">
+      <img class="uns" style="background-color: #ffffff55; ${iconStyle}" src="https://i.postimg.cc/d1R1Y648/25.png" />
+      <img class="uns" style="background-color: #ffffff55; ${iconStyle}" src="https://i.postimg.cc/7hmZC6vh/50.png" />
+      <img class="uns" style="background-color: #ffffff55; ${iconStyle}" src="https://i.postimg.cc/qqk7MK5W/100.png" />
+      <img class="sel" style="background-color: #ffffff55; ${iconSel}" src="https://i.postimg.cc/52j6Cw2V/all.png" />
+    </div>
+  </div>
+  <div style="${halfCol}">
+    <div style="${sectionTitle}">Personal bests</div>
+    <div id="edit-times" style="left:0px;display:inline-grid;grid-template-columns:auto auto;gap:3px 8px;justify-content:center;text-align:left;">
+      <div>
+          <label class="form-check-label" for="edit-25"> 25</label>
+          <input class="text-input" size="9" name="edit-25" id="edit-25" type="text" style="font-family:Consolas;" />
+      </div>
+      <div>
+          <label class="form-check-label" for="edit-50"> 50</label>
+          <input class="text-input" size="9" name="edit-50" id="edit-50" type="text" style="font-family:Consolas;" />
+      </div>
+      <div>
+          <label class="form-check-label" for="edit-100">100</label>
+          <input class="text-input" size="9" name="edit-100" id="edit-100" type="text" style="font-family:Consolas;" />
+      </div>
+      <div>
+          <label class="form-check-label" for="edit-ALL">ALL</label>
+          <input class="text-input" size="9" name="edit-ALL" id="edit-ALL" type="text" style="font-family:Consolas;" />
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="${sectionTitle}">Custom splits</div>
 <div id="edit-customsplit" style="border-top:0px solid black">
 
 </div>
 
-<div id="edit-split">
+<div id="edit-split" style="margin-top:2px;">
   <label class="form-check-label" for="edit-splitscore">New Split</label>
   <input class="text-input" size="6" name="edit-splitscore" id="edit-splitscore" type="number" placeholder="Score" />
-  <button class="btn" style="margin:3px;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="edit-addsplit">Add</button>
+  <button class="btn" style="margin:3px;color:white;background-color:${btnColor};font-family:Roboto,Arial,sans-serif;" id="edit-addsplit">Add</button>
 </div>
-<div id="edit-customsplit" style="border-top:0px solid black">
-</br>
-<label class="form-check-label" style="flex:center;">Timer Format</label>
-<select class="form-control" id="edit-format" style="flex:center;">
-    <option value="0">0:00:00:000</option>
-    <option value="1">  00:00:000</option>
-    <option value="2">   0:00:000</option>
-    <option value="3">     00:000</option>
-    <option value="4">      0:000</option>
-    <option value="5">0:00:00.000</option>
-    <option value="6">  00:00.000</option>
-    <option value="7">   0:00.000</option>
-    <option value="8">     00.000</option>
-    <option value="9">      0.000</option>
-  </select>
-<br/>
-<input class="form-check-input" style="width: 1.5em; height: 1.5em;" type="checkbox" checked="true" name="edit-delta" id="edit-delta" />
-<label class="form-check-label" for="edit-delta">Show Delta</label>
-<br/>
-<br/>
-<label class="form-check-label" for="edit-aheadg">Ahead (gaining time)</label>
-<input class="text-input" style="margin: 0; padding: 0; border: 0; width: 6vh; height: 3vh;" name="edit-aheadg" id="edit-aheadg" type="color" />
-<label class="form-check-label" for="edit-aheadl">Ahead (losing time)</label>
-<input class="text-input" style="margin: 0; padding: 0; border: 0; width: 6vh; height: 3vh;" name="edit-aheadl" id="edit-aheadl" type="color" />
-<br/>
-<label class="form-check-label" for="edit-behindg">Behind (gaining time)</label>
-<input class="text-input" style="margin: 0; padding: 0; border: 0; width: 6vh; height: 3vh;" name="edit-behindg" id="edit-behindg" type="color" />
-<label class="form-check-label" for="edit-behindl">Behind (losing time)</label>
-<input class="text-input" style="margin: 0; padding: 0; border: 0; width: 6vh; height: 3vh;" name="edit-behindl" id="edit-behindl" type="color" />
+
+<div id="edit-display" style="margin-top:2px;">
+<div style="${sectionTitle}">Display</div>
+<div style="display:flex;gap:24px;justify-content:center;align-items:center;flex-wrap:wrap;">
+  <div style="display:flex;align-items:center;gap:8px;">
+    <label class="form-check-label" for="edit-format" style="margin:0;">Timer Format</label>
+    <select class="form-control" id="edit-format" style="display:inline-block;width:auto;margin:0;background-color:${btnColor};color:white;border:1px solid rgba(255,255,255,0.25);">
+      <option value="0">0:00:00:000</option>
+      <option value="1">  00:00:000</option>
+      <option value="2">   0:00:000</option>
+      <option value="3">     00:000</option>
+      <option value="4">      0:000</option>
+      <option value="5">0:00:00.000</option>
+      <option value="6">  00:00.000</option>
+      <option value="7">   0:00.000</option>
+      <option value="8">     00.000</option>
+      <option value="9">      0.000</option>
+    </select>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <input class="form-check-input" style="width: 1.5em; height: 1.5em; margin:0;" type="checkbox" checked="true" name="edit-delta" id="edit-delta" />
+    <label class="form-check-label" for="edit-delta" style="margin:0;">Show Delta</label>
+  </div>
+</div>
+<div style="${sectionTitle}">Delta colors</div>
+<div style="display:inline-grid;grid-template-columns:auto auto;gap:4px 18px;justify-content:center;text-align:left;align-items:center;">
+  <div><label class="form-check-label" for="edit-aheadg">Ahead (gaining)</label>
+  <input class="text-input" style="margin: 0 0 0 6px; padding: 0; border: 0; width: 5vh; height: 2.6vh; vertical-align:middle;" name="edit-aheadg" id="edit-aheadg" type="color" /></div>
+  <div><label class="form-check-label" for="edit-aheadl">Ahead (losing)</label>
+  <input class="text-input" style="margin: 0 0 0 6px; padding: 0; border: 0; width: 5vh; height: 2.6vh; vertical-align:middle;" name="edit-aheadl" id="edit-aheadl" type="color" /></div>
+  <div><label class="form-check-label" for="edit-behindg">Behind (gaining)</label>
+  <input class="text-input" style="margin: 0 0 0 6px; padding: 0; border: 0; width: 5vh; height: 2.6vh; vertical-align:middle;" name="edit-behindg" id="edit-behindg" type="color" /></div>
+  <div><label class="form-check-label" for="edit-behindl">Behind (losing)</label>
+  <input class="text-input" style="margin: 0 0 0 6px; padding: 0; border: 0; width: 5vh; height: 2.6vh; vertical-align:middle;" name="edit-behindl" id="edit-behindl" type="color" /></div>
+</div>
 
 </div>
         `
         document.body.appendChild(editBox)
         document.getElementById('close-box').addEventListener('click', function() { document.getElementById('edit-box').remove() })
+
+        const wrholders_checkbox = document.getElementById('ShowWrHolders')
+        const tracked_input = document.getElementById('TrackedPlayerInput')
+        const trackedSetBtn = document.getElementById('TrackedPlayerSet')
+        const trackedClearBtn = document.getElementById('TrackedPlayerClear')
+
+        function syncSpeedInfoExclusiveUi() {
+          const tracking = !!(window.pudding_settings.TrackedPlayerName || '').trim()
+          if (tracking) {
+            wrholders_checkbox.checked = false
+            wrholders_checkbox.disabled = true
+            wrholders_checkbox.title = 'Clear tracked player to show WR holders'
+          } else {
+            wrholders_checkbox.disabled = false
+            wrholders_checkbox.title = ''
+            wrholders_checkbox.checked = !!window.pudding_settings.ShowWrHolders
+          }
+          tracked_input.value = window.pudding_settings.TrackedPlayerName || ''
+        }
+
+        function refreshSrcAfterSpeedInfoChange() {
+          if (typeof window.refreshTrackedPlayerUi === 'function') {
+            window.refreshTrackedPlayerUi()
+          }
+          if (typeof window.getAllSrc === 'function') {
+            window.getAllSrc().catch(e => console.error('getAllSrc error:', e))
+          }
+        }
+
+        syncSpeedInfoExclusiveUi()
+        if (typeof window.fillTrackedPlayerSuggestions === 'function') {
+          window.fillTrackedPlayerSuggestions()
+        }
+
+        wrholders_checkbox.addEventListener('change', function () {
+          if (wrholders_checkbox.disabled) return
+          if (wrholders_checkbox.checked) {
+            window.pudding_settings.TrackedPlayerName = ''
+            tracked_input.value = ''
+          }
+          window.pudding_settings.ShowWrHolders = !!wrholders_checkbox.checked
+          if (typeof window.saveSettings === 'function') window.saveSettings()
+          syncSpeedInfoExclusiveUi()
+          refreshSrcAfterSpeedInfoChange()
+        })
+
+        trackedSetBtn.addEventListener('click', function () {
+          const name = (tracked_input.value || '').trim()
+          window.pudding_settings.TrackedPlayerName = name
+          if (name) {
+            window.pudding_settings.ShowWrHolders = false
+          }
+          if (typeof window.saveSettings === 'function') window.saveSettings()
+          syncSpeedInfoExclusiveUi()
+          refreshSrcAfterSpeedInfoChange()
+        })
+
+        trackedClearBtn.addEventListener('click', function () {
+          tracked_input.value = ''
+          window.pudding_settings.TrackedPlayerName = ''
+          if (typeof window.saveSettings === 'function') window.saveSettings()
+          syncSpeedInfoExclusiveUi()
+          refreshSrcAfterSpeedInfoChange()
+        })
 
         const toggleDelta = document.getElementById('edit-delta')
         toggleDelta.checked = +_showDelta
@@ -4424,7 +5176,6 @@ window.BootstrapMenu.make = function () {
     <input class="form-check-input" type="checkbox" role="switch" id="AlwaysOnTimeKeeper">
     <label class="form-check-label" for="AlwaysOnTimeKeeper" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Show SpeedInfo</label>
     </div>
-    <button class="btn" style="margin:3px;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="TimerSettings">Timer settings</button><br>
     <div class="form-check form-check-inline">
     <input class="form-check-input" type="checkbox" role="switch" id="DisableRandom">
     <label class="form-check-label" for="DisableRandom" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Disable Randomizer</label>
@@ -4433,6 +5184,7 @@ window.BootstrapMenu.make = function () {
     <input class="form-check-input" type="checkbox" role="switch" id="RemoveScrollbar">
     <label class="form-check-label" for="RemoveScrollbar" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Remove Scrollbar</label>
     </div>
+    <button class="btn" style="margin:3px;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="TimerSettings">Timer settings</button><br>
     <div class="form-check form-check-inline">
     <input class="form-check-input" type="checkbox" role="switch" id="EatThemeRandomizer">
     <label class="form-check-label" for="EatThemeRandomizer" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;" id="EatThemeRandomizer2">"Dragon Fruit"</label>
@@ -4730,7 +5482,7 @@ window.RenderDelayFix.alterCode = function (code) {
   code = assertReplace(
     code,
     /([a-zA-Z0-9_$]{1,8})\s*\(\s*a\s*\)\s*\{\s*if\s*\(\s*!this\.closed\s*\)\s*\{/,
-    "$1=window.stuffKeys=function(a){if(!this.closed){if(window.resetTime<window.lastFrameTime){"
+    "$1=window.stuffKeys=function(a){var _ae=document.activeElement;if(_ae&&(_ae.tagName==='INPUT'||_ae.tagName==='TEXTAREA'||_ae.tagName==='SELECT'||_ae.isContentEditable))return;if(!this.closed){if(window.resetTime<window.lastFrameTime){"
   );
   code = assertReplace(
     code,
@@ -5094,20 +5846,20 @@ window.CustomBowl.make = function () {
             panel.id = "fruit-bowl-popup-pudding";
             panel.style.cssText = PANEL_STYLE;
             panel.innerHTML = `
-                <div style="color:white;font-family:Roboto,Arial,sans-serif;text-align:center;margin-bottom:14px;font-size:18px;font-weight:bold;letter-spacing:0.2px;">Fruit Bowl Settings</div>
+                <div style="color:white;font-family:Roboto,Arial,sans-serif;text-align:center;margin-bottom:14px;font-size:22px;font-weight:bold;letter-spacing:0.2px;">Fruit Bowl Settings</div>
                 <div style="display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin:0 auto 12px;width:100%;">
                     <div style="display:flex;align-items:center;gap:8px;">
                         <input class="form-check-input" type="checkbox" role="switch" id="fruit-bowl-enable" style="margin:0;float:none;position:static;">
-                        <label class="form-check-label" for="fruit-bowl-enable" style="margin:0;color:white;font-family:Roboto,Arial,sans-serif;font-size:14px;line-height:1.2;">Enable custom fruit bowl</label>
+                        <label class="form-check-label" for="fruit-bowl-enable" style="margin:0;color:white;font-family:Roboto,Arial,sans-serif;font-size:16px;line-height:1.2;">Enable custom fruit bowl</label>
                     </div>
                     <div style="display:flex;align-items:center;gap:8px;">
                         <input class="form-check-input" type="checkbox" role="switch" id="fruit-bowl-always-unique" style="margin:0;float:none;position:static;">
-                        <label class="form-check-label" for="fruit-bowl-always-unique" style="margin:0;color:white;font-family:Roboto,Arial,sans-serif;font-size:14px;line-height:1.2;">Always Unique Fruit</label>
+                        <label class="form-check-label" for="fruit-bowl-always-unique" style="margin:0;color:white;font-family:Roboto,Arial,sans-serif;font-size:16px;line-height:1.2;">Always Unique Fruit</label>
                     </div>
                 </div>
-                <div id="fruit-bowl-status" style="color:#dce8c8;font-family:Roboto,Arial,sans-serif;font-size:13px;margin:0 0 12px 0;text-align:center;"></div>
+                <div id="fruit-bowl-status" style="color:#dce8c8;font-family:Roboto,Arial,sans-serif;font-size:15px;margin:0 0 12px 0;text-align:center;"></div>
                 <div id="fruit-bowl-grid" style="padding:4px 0 8px;display:flex;flex-direction:column;align-items:center;"></div>
-                <button type="button" class="btn" style="margin-top:8px;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;width:100%;padding:8px 12px;font-size:14px;" id="fruit-bowl-close">Close</button>
+                <button type="button" class="btn" style="margin:8px auto 0;display:block;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;width:auto;min-width:72px;padding:4px 14px;font-size:12px;line-height:1.2;" id="fruit-bowl-close">Close</button>
             `;
             host.appendChild(panel);
             applyPanelTheme(panel);
@@ -5363,6 +6115,7 @@ window.PuddingMod.runCodeBefore = function () {
     "Theme",
     "DistinctVisual",
     "Counter",
+    "ModeRegistry",
     "TimeKeeper",
     "Fruit",
     "TopBar",
@@ -7844,6 +8597,7 @@ window.ChessMod.alterSnakeCode = function (code) {
       let apple = window.appleArray[index];
       if (
         apple.isPiece &&
+        !apple.nla &&
         apple.pos.x == x &&
         apple.pos.y == y &&
         window.head_color != apple.ChessColor
@@ -8351,7 +9105,7 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (!window.isChessActive || !window.isChessActive()) return false;
     if (!window.head_pos || !window.appleArray) return false;
     let apple = window.findApple(window.head_pos[0], window.appleArray);
-    return !!(apple && apple.isPiece);
+    return !!(apple && apple.isPiece && !apple.nla);
   };
 
   // --- Code patches for v12 ---
@@ -8886,6 +9640,10 @@ window.BurgerMod.alterSnakeCode = function (code) {
     const life = apple.burgerTimerMax | 0;
     apple.nla = true;
     apple.burgerGrey = 0;
+    // Burger+Chess blender: expired pieces are plain poisons — not unlockable.
+    apple.isPiece = false;
+    apple.ChessPiece = undefined;
+    apple.ChessColor = undefined;
     if (life > 0) {
       apple.burgerTimer = life;
       apple.burgerTimerMax = life;
@@ -10047,13 +10805,9 @@ window.RemixSpeedInfo = {};
 //RUNCODEBEFORE
 ////////////////////////////////////////////////////////////////////
 
-// Pudding's BootstrapMenu disables SpeedInfo unless snakeChosenMod is
-// "PuddingMod". Remix keeps the toggle usable, but only Chess / Burger show
-// real SpeedInfo data — every other mode shows a switch prompt.
-//
-// TimeKeeper's mode bit → name switch only knows Wall…Peaceful, so Remix
-// trophies rendered as "Unknown". We also fix getCurrentMode: Pudding treated
-// the last trophy as Blender, but Remix appends Candy/Chess/Burger after it.
+// Pudding now keys TimeKeeper / SpeedInfo through ModeRegistry (stable
+// modeKeys like "chess", "wall+burger"). Remix still gates SpeedInfo panel
+// data to Chess / Burger; other modes show a switch prompt.
 //
 // Timer settings (#edit-mode) is hardcoded Classic…Peaceful; we add only
 // Candy/Chess/Burger (index-aligned; gaps stay hidden so PB keys match).
@@ -10080,97 +10834,162 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     }
   };
 
-  const VANILLA_BRIDGE = [
-    "Wall",
-    "Portal",
-    "Cheese",
-    "Borderless",
-    "Twin",
-    "Winged",
-    "YinYang",
-    "Key",
-    "Sokoban",
-    "Poison",
-    "Dimension",
-    "Minesweeper",
-    "Statue",
-    "Light",
-    "Shield",
-    "Arrow",
-    "Hotdog",
-    "Magnet",
-    "Gate",
-    "Bridge",
-    "Peaceful",
-  ];
-  const VANILLA_SKIP = VANILLA_BRIDGE.slice();
-  VANILLA_SKIP[19] = "Skip";
+  // Teach ModeRegistry about trophies Remix appends after Blender.
+  // Upstream assumes last trophy = Blender and second-last = Peaceful.
+  window.remixInstallModeRegistry = function remixInstallModeRegistry() {
+    if (!window.ModeRegistry) return;
 
-  window.remixTimeKeeperNameForBit = function remixTimeKeeperNameForBit(
-    bitIndex
-  ) {
-    const trophyId = bitIndex + 1;
-    if (window.CANDY_MODE != null && trophyId === window.CANDY_MODE) {
-      return "Candy";
+    window.ModeRegistry.LABELS.candy = "Candy";
+    window.ModeRegistry.LABELS.chess = "Chess";
+    window.ModeRegistry.LABELS.burger = "Burger";
+
+    if (window.ModeRegistry.listActiveModes.__remix) return;
+
+    window.ModeRegistry.listActiveModes = function remixListActiveModes() {
+      const root = document.getElementById("trophy");
+      if (!root || !root.children || root.children.length === 0) {
+        return [{ id: "classic", label: "Classic", index: 0 }];
+      }
+      const children = [...root.children];
+      let blenderIndex = -1;
+      let peacefulIndex = -1;
+      for (let i = 0; i < children.length; i++) {
+        const src = window.ModeRegistry._trophySrc(children[i]) || "";
+        if (src.includes("random.png")) blenderIndex = i;
+        if (/trophy_21(?:\.png)?/i.test(src)) peacefulIndex = i;
+      }
+      if (blenderIndex < 0 && typeof window.remixNativeBlenderMode === "number") {
+        blenderIndex = window.remixNativeBlenderMode;
+      }
+
+      const used = new Set();
+      const list = [];
+      for (let i = 0; i < children.length; i++) {
+        const src = window.ModeRegistry._trophySrc(children[i]) || "";
+        let id;
+        if (i === 0) {
+          id = "classic";
+        } else if (i === blenderIndex || src.includes("random.png")) {
+          id = "blender";
+        } else if (i === peacefulIndex || /trophy_21(?:\.png)?/i.test(src)) {
+          id = "peaceful";
+        } else if (window.CANDY_MODE != null && i === window.CANDY_MODE) {
+          id = "candy";
+        } else if (window.CHESS_MODE != null && i === window.CHESS_MODE) {
+          id = "chess";
+        } else if (window.BURGER_MODE != null && i === window.BURGER_MODE) {
+          id = "burger";
+        } else {
+          id = window.ModeRegistry._matchMiddleId(src);
+          if (!id) {
+            const middleSlot = i - 1;
+            if (
+              middleSlot >= 0 &&
+              middleSlot < window.ModeRegistry.MIDDLE.length
+            ) {
+              id = window.ModeRegistry.MIDDLE[middleSlot].id;
+            } else {
+              id = window.ModeRegistry._provisionalId(src, i);
+            }
+          }
+          if (used.has(id)) id = window.ModeRegistry._provisionalId(src, i);
+        }
+        used.add(id);
+        list.push({
+          id: id,
+          label: window.ModeRegistry.LABELS[id] || id,
+          index: i,
+        });
+      }
+      return list;
+    };
+    window.ModeRegistry.listActiveModes.__remix = true;
+
+    // Prefer live blend flags so Candy/Chess/Burger toggles stay in the key
+    // even if blender-panel DOM order drifts from trophy order.
+    if (!window.ModeRegistry.getCurrentModeKey.__remix) {
+      const origKey = window.ModeRegistry.getCurrentModeKey.bind(
+        window.ModeRegistry
+      );
+      window.ModeRegistry.getCurrentModeKey = function remixGetCurrentModeKey() {
+        const modes = window.ModeRegistry.listActiveModes();
+        let selectedIndex = 0;
+        if (
+          window.timeKeeper &&
+          typeof window.timeKeeper.getCurrentSetting === "function"
+        ) {
+          selectedIndex = window.timeKeeper.getCurrentSetting("trophy");
+        }
+        if (
+          typeof window.CurrentModeNum === "number" &&
+          window.CurrentModeNum >= 0 &&
+          window.CurrentModeNum < modes.length
+        ) {
+          selectedIndex = window.CurrentModeNum;
+        }
+        if (selectedIndex < 0 || selectedIndex >= modes.length) selectedIndex = 0;
+        const selected = modes[selectedIndex];
+        if (!selected || selected.id === "classic") return "classic";
+        if (selected.id !== "blender") return selected.id;
+
+        const ids = [];
+        // DOM-selected blender modes (vanilla + remix slots)
+        const fromDom = window.ModeRegistry._blenderSelectedIds(modes) || [];
+        for (let i = 0; i < fromDom.length; i++) {
+          if (ids.indexOf(fromDom[i]) < 0) ids.push(fromDom[i]);
+        }
+        if (window.candy_blending && ids.indexOf("candy") < 0) ids.push("candy");
+        if (window.chess_blending && ids.indexOf("chess") < 0) ids.push("chess");
+        if (window.burger_blending && ids.indexOf("burger") < 0) {
+          ids.push("burger");
+        }
+        if (!ids.length) return "blender";
+        return ids.slice().sort().join("+");
+      };
+      window.ModeRegistry.getCurrentModeKey.__remix = true;
     }
-    if (window.CHESS_MODE != null && trophyId === window.CHESS_MODE) {
-      return "Chess";
-    }
-    if (window.BURGER_MODE != null && trophyId === window.BURGER_MODE) {
-      return "Burger";
-    }
-    if (trophyId === window.remixNativeBlenderMode) return "Blender";
-    const names = window.isBridge ? VANILLA_BRIDGE : VANILLA_SKIP;
-    if (bitIndex >= 0 && bitIndex < names.length) return names[bitIndex];
-    return "Unknown";
   };
+  window.remixInstallModeRegistry();
 
-  // Build "Wall, Chess, " style label (trailing comma+space, matching Pudding).
+  // Display helper used by tests / dialogs. Accepts modeKey (preferred) or a
+  // legacy 01-bitstring from older Pudding builds.
   window.remixTimeKeeperFormatGamemode = function remixTimeKeeperFormatGamemode(
     modeStr
   ) {
-    modeStr = modeStr || "";
-    const trophyMode =
-      typeof window.CurrentModeNum === "number"
-        ? window.CurrentModeNum
-        : typeof window.timeKeeper.getCurrentSetting === "function"
-          ? window.timeKeeper.getCurrentSetting("trophy")
-          : 0;
-
-    if (trophyMode === window.remixNativeBlenderMode) {
-      let gamemode = "";
-      const vanillaLen = Math.min(modeStr.length, 21);
-      for (let i = 0; i < vanillaLen; i++) {
-        if (modeStr.charAt(i) === "1") {
-          gamemode += window.remixTimeKeeperNameForBit(i) + ", ";
-        }
+    if (window.ModeRegistry) {
+      let key = modeStr;
+      if (key == null || key === "") {
+        key = window.ModeRegistry.getCurrentModeKey();
+      } else if (/^[01]+$/.test(String(key))) {
+        key = window.ModeRegistry.bitstringV3ToModeKey(String(key));
+        // Legacy bitstrings never encoded Remix trophies; prefer live key when
+        // the selection is a Remix mode / blender mix.
+        const live = window.ModeRegistry.getCurrentModeKey();
+        if (live && live !== "classic") key = live;
       }
-      if (window.candy_blending) gamemode += "Candy, ";
-      if (window.chess_blending) gamemode += "Chess, ";
-      if (window.burger_blending) gamemode += "Burger, ";
-      if (!gamemode) gamemode = "Classic, ";
-      return gamemode;
+      const label = window.ModeRegistry.labelModeKey(key);
+      return label ? label + ", " : "Classic, ";
     }
-
-    let gamemode = "";
-    for (let i = 0; i < modeStr.length; i++) {
-      if (modeStr.charAt(i) === "1") {
-        gamemode += window.remixTimeKeeperNameForBit(i) + ", ";
-      }
-    }
-    if (!gamemode) gamemode = "Classic, ";
-    return gamemode;
+    return modeStr ? String(modeStr) + ", " : "Classic, ";
   };
 
   window.remixSpeedInfoApplyModeLabel = function remixSpeedInfoApplyModeLabel() {
     const modeLabel = document.getElementById("mode-selected");
     if (!modeLabel || typeof window.HandleCount !== "function") return;
+    if (!window.timeKeeper || typeof window.timeKeeper.getCurrentSetting !== "function") {
+      return;
+    }
     const count = window.timeKeeper.getCurrentSetting("count");
-    const modeStr = window.timeKeeper.getCurrentMode();
-    const gamemode = window.remixTimeKeeperFormatGamemode(modeStr);
+    const modeKey =
+      typeof window.timeKeeper.getCurrentMode === "function"
+        ? window.timeKeeper.getCurrentMode()
+        : window.ModeRegistry && window.ModeRegistry.getCurrentModeKey();
+    const gamemode = window.ModeRegistry
+      ? window.ModeRegistry.labelModeKey(modeKey)
+      : window.remixTimeKeeperFormatGamemode(modeKey).replace(/,\s*$/, "");
     const countTxt = window.HandleCount(count);
     modeLabel.innerHTML =
-      gamemode + countTxt.substring(0, countTxt.lastIndexOf(","));
+      gamemode + ", " + countTxt.substring(0, countTxt.lastIndexOf(","));
   };
 
   window.remixSpeedInfoShowSwitchMessage = function remixSpeedInfoShowSwitchMessage() {
@@ -10192,6 +11011,11 @@ window.RemixSpeedInfo.runCodeBefore = function () {
       "100src",
       "Allsrc",
       "Hsrc",
+      "25track",
+      "50track",
+      "100track",
+      "Alltrack",
+      "Htrack",
     ]) {
       set(id, "");
     }
@@ -10221,71 +11045,9 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     }
   };
 
-  // Fix mode bitstring: Blender is always trophy 22, not "last child".
-  if (
-    window.timeKeeper &&
-    typeof window.timeKeeper.getCurrentMode === "function" &&
-    !window.timeKeeper.getCurrentMode.__remixPatched
-  ) {
-    window.timeKeeper.getCurrentMode = function remixGetCurrentMode() {
-      const blenderId = window.remixNativeBlenderMode;
-      // CurrentModeNum is updated on trophy change (and by the harness); prefer it
-      // over the DOM trophy index so labels stay correct during play.
-      const mode =
-        typeof window.CurrentModeNum === "number"
-          ? window.CurrentModeNum
-          : window.timeKeeper.getCurrentSetting("trophy");
-      const trophyRoot = document.getElementById("trophy");
-      const trophyCount = trophyRoot ? trophyRoot.children.length : 0;
-
-      if (mode === blenderId) {
-        let element = null;
-        for (const img of document.querySelectorAll("img")) {
-          if (img.src && img.src.includes("random.png")) {
-            element = img;
-            break;
-          }
-        }
-        let modeStr = "";
-        if (
-          element &&
-          element.parentElement &&
-          element.parentElement.parentElement &&
-          element.parentElement.parentElement.parentElement
-        ) {
-          let counter = -1;
-          for (const child of element.parentElement.parentElement.parentElement
-            .children) {
-            counter++;
-            if (counter === 0) continue;
-            const inner = child.firstElementChild;
-            if (
-              inner &&
-              inner.classList.length > 1 &&
-              inner.children.length > 0
-            ) {
-              modeStr += "1";
-            } else {
-              modeStr += "0";
-            }
-          }
-        }
-        modeStr += window.candy_blending ? "1" : "0";
-        modeStr += window.chess_blending ? "1" : "0";
-        modeStr += window.burger_blending ? "1" : "0";
-        return modeStr;
-      }
-
-      // One bit per trophy after Classic (includes Blender + Remix modes).
-      let modeStr = "";
-      for (let t = 1; t < trophyCount; t++) {
-        modeStr += t === mode ? "1" : "0";
-      }
-      return modeStr;
-    };
-    window.timeKeeper.getCurrentMode.__remixPatched = true;
-  }
-
+  // Do NOT replace getCurrentMode — Pudding now returns ModeRegistry modeKeys
+  // used for PB storage. Keep a light CurrentModeNum preference on the key path
+  // (installed above). Refresh dialog labels after show.
   if (
     window.timeKeeper &&
     typeof window.timeKeeper.showDialog === "function" &&
@@ -10295,10 +11057,10 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     window.timeKeeper.showDialog = function remixShowDialog() {
       origShow.apply(this, arguments);
       const dialog = document.getElementById("timeKeeperDialog");
-      if (!dialog) return;
-      const nice = window
-        .remixTimeKeeperFormatGamemode(window.timeKeeper.getCurrentMode())
-        .replace(/,\s*$/, "");
+      if (!dialog || !window.ModeRegistry) return;
+      const nice = window.ModeRegistry.labelModeKey(
+        window.ModeRegistry.getCurrentModeKey()
+      );
       for (let i = 0; i < dialog.childNodes.length; i++) {
         const node = dialog.childNodes[i];
         if (
@@ -10327,6 +11089,7 @@ window.RemixSpeedInfo.runCodeBefore = function () {
         window.remixSpeedInfoShowSwitchMessage();
         return;
       }
+      window.remixInstallModeRegistry();
       window.remixSpeedInfoEnsureModeLabels();
       const result = await origUpdate.apply(this, arguments);
       window.remixSpeedInfoApplyModeLabel();
@@ -10484,7 +11247,6 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     for (let i = editMode.children.length; i <= maxId; i++) {
       ensureSlot(i);
     }
-    // Re-apply for slots that already existed from a prior open / old mirror.
     for (const m of remixModes) ensureSlot(m.id);
     if (typeof window.remixNativeBlenderMode === "number") {
       ensureSlot(window.remixNativeBlenderMode);
@@ -10564,6 +11326,7 @@ window.RemixSpeedInfo.alterSnakeCode = function (code) {
 ////////////////////////////////////////////////////////////////////
 
 window.RemixSpeedInfo.runCodeAfter = function () {
+  window.remixInstallModeRegistry && window.remixInstallModeRegistry();
   window.remixBindTimerSettingsButton && window.remixBindTimerSettingsButton();
   window.remixSpeedInfoEnableCheckbox && window.remixSpeedInfoEnableCheckbox();
   if (

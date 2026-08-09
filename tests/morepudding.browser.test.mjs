@@ -155,6 +155,21 @@ describe("MorePudding base (browser)", { skip: !runBrowser }, () => {
             typeof window.pudding_settings.PortalPairs === "boolean" &&
             window.pudding_settings.SelectedPairsByCount
           ),
+          alwaysUniqueToggle: !!document.getElementById(
+            "fruit-bowl-always-unique"
+          ),
+          alwaysUniqueSetting:
+            window.pudding_settings &&
+            typeof window.pudding_settings.AlwaysUniqueFruit === "boolean",
+          modeRegistry: !!(
+            window.ModeRegistry &&
+            typeof window.ModeRegistry.getCurrentModeKey === "function"
+          ),
+          remixModeRegistry: !!(
+            window.ModeRegistry &&
+            window.ModeRegistry.listActiveModes &&
+            window.ModeRegistry.listActiveModes.__remix
+          ),
         };
       });
       assert.equal(api.hasCustomBowl, true, JSON.stringify(api));
@@ -166,6 +181,10 @@ describe("MorePudding base (browser)", { skip: !runBrowser }, () => {
       assert.equal(api.hasEnable, true, JSON.stringify(api));
       assert.ok(api.gridCells >= 10, "fruit grid populated: " + JSON.stringify(api));
       assert.equal(api.settings, true, JSON.stringify(api));
+      assert.equal(api.alwaysUniqueToggle, true, JSON.stringify(api));
+      assert.equal(api.alwaysUniqueSetting, true, JSON.stringify(api));
+      assert.equal(api.modeRegistry, true, JSON.stringify(api));
+      assert.equal(api.remixModeRegistry, true, JSON.stringify(api));
       // __aaF is exposed after Burger's h7 patch once a game has booted.
       assert.equal(api.aaFHooked, true, "aaF carries Custom Bowl hook: " + JSON.stringify(api));
 

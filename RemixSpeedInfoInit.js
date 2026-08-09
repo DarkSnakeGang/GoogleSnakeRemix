@@ -4,13 +4,9 @@ window.RemixSpeedInfo = {};
 //RUNCODEBEFORE
 ////////////////////////////////////////////////////////////////////
 
-// Pudding's BootstrapMenu disables SpeedInfo unless snakeChosenMod is
-// "PuddingMod". Remix keeps the toggle usable, but only Chess / Burger show
-// real SpeedInfo data — every other mode shows a switch prompt.
-//
-// TimeKeeper's mode bit → name switch only knows Wall…Peaceful, so Remix
-// trophies rendered as "Unknown". We also fix getCurrentMode: Pudding treated
-// the last trophy as Blender, but Remix appends Candy/Chess/Burger after it.
+// Pudding now keys TimeKeeper / SpeedInfo through ModeRegistry (stable
+// modeKeys like "chess", "wall+burger"). Remix still gates SpeedInfo panel
+// data to Chess / Burger; other modes show a switch prompt.
 //
 // Timer settings (#edit-mode) is hardcoded Classic…Peaceful; we add only
 // Candy/Chess/Burger (index-aligned; gaps stay hidden so PB keys match).
@@ -37,97 +33,162 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     }
   };
 
-  const VANILLA_BRIDGE = [
-    "Wall",
-    "Portal",
-    "Cheese",
-    "Borderless",
-    "Twin",
-    "Winged",
-    "YinYang",
-    "Key",
-    "Sokoban",
-    "Poison",
-    "Dimension",
-    "Minesweeper",
-    "Statue",
-    "Light",
-    "Shield",
-    "Arrow",
-    "Hotdog",
-    "Magnet",
-    "Gate",
-    "Bridge",
-    "Peaceful",
-  ];
-  const VANILLA_SKIP = VANILLA_BRIDGE.slice();
-  VANILLA_SKIP[19] = "Skip";
+  // Teach ModeRegistry about trophies Remix appends after Blender.
+  // Upstream assumes last trophy = Blender and second-last = Peaceful.
+  window.remixInstallModeRegistry = function remixInstallModeRegistry() {
+    if (!window.ModeRegistry) return;
 
-  window.remixTimeKeeperNameForBit = function remixTimeKeeperNameForBit(
-    bitIndex
-  ) {
-    const trophyId = bitIndex + 1;
-    if (window.CANDY_MODE != null && trophyId === window.CANDY_MODE) {
-      return "Candy";
+    window.ModeRegistry.LABELS.candy = "Candy";
+    window.ModeRegistry.LABELS.chess = "Chess";
+    window.ModeRegistry.LABELS.burger = "Burger";
+
+    if (window.ModeRegistry.listActiveModes.__remix) return;
+
+    window.ModeRegistry.listActiveModes = function remixListActiveModes() {
+      const root = document.getElementById("trophy");
+      if (!root || !root.children || root.children.length === 0) {
+        return [{ id: "classic", label: "Classic", index: 0 }];
+      }
+      const children = [...root.children];
+      let blenderIndex = -1;
+      let peacefulIndex = -1;
+      for (let i = 0; i < children.length; i++) {
+        const src = window.ModeRegistry._trophySrc(children[i]) || "";
+        if (src.includes("random.png")) blenderIndex = i;
+        if (/trophy_21(?:\.png)?/i.test(src)) peacefulIndex = i;
+      }
+      if (blenderIndex < 0 && typeof window.remixNativeBlenderMode === "number") {
+        blenderIndex = window.remixNativeBlenderMode;
+      }
+
+      const used = new Set();
+      const list = [];
+      for (let i = 0; i < children.length; i++) {
+        const src = window.ModeRegistry._trophySrc(children[i]) || "";
+        let id;
+        if (i === 0) {
+          id = "classic";
+        } else if (i === blenderIndex || src.includes("random.png")) {
+          id = "blender";
+        } else if (i === peacefulIndex || /trophy_21(?:\.png)?/i.test(src)) {
+          id = "peaceful";
+        } else if (window.CANDY_MODE != null && i === window.CANDY_MODE) {
+          id = "candy";
+        } else if (window.CHESS_MODE != null && i === window.CHESS_MODE) {
+          id = "chess";
+        } else if (window.BURGER_MODE != null && i === window.BURGER_MODE) {
+          id = "burger";
+        } else {
+          id = window.ModeRegistry._matchMiddleId(src);
+          if (!id) {
+            const middleSlot = i - 1;
+            if (
+              middleSlot >= 0 &&
+              middleSlot < window.ModeRegistry.MIDDLE.length
+            ) {
+              id = window.ModeRegistry.MIDDLE[middleSlot].id;
+            } else {
+              id = window.ModeRegistry._provisionalId(src, i);
+            }
+          }
+          if (used.has(id)) id = window.ModeRegistry._provisionalId(src, i);
+        }
+        used.add(id);
+        list.push({
+          id: id,
+          label: window.ModeRegistry.LABELS[id] || id,
+          index: i,
+        });
+      }
+      return list;
+    };
+    window.ModeRegistry.listActiveModes.__remix = true;
+
+    // Prefer live blend flags so Candy/Chess/Burger toggles stay in the key
+    // even if blender-panel DOM order drifts from trophy order.
+    if (!window.ModeRegistry.getCurrentModeKey.__remix) {
+      const origKey = window.ModeRegistry.getCurrentModeKey.bind(
+        window.ModeRegistry
+      );
+      window.ModeRegistry.getCurrentModeKey = function remixGetCurrentModeKey() {
+        const modes = window.ModeRegistry.listActiveModes();
+        let selectedIndex = 0;
+        if (
+          window.timeKeeper &&
+          typeof window.timeKeeper.getCurrentSetting === "function"
+        ) {
+          selectedIndex = window.timeKeeper.getCurrentSetting("trophy");
+        }
+        if (
+          typeof window.CurrentModeNum === "number" &&
+          window.CurrentModeNum >= 0 &&
+          window.CurrentModeNum < modes.length
+        ) {
+          selectedIndex = window.CurrentModeNum;
+        }
+        if (selectedIndex < 0 || selectedIndex >= modes.length) selectedIndex = 0;
+        const selected = modes[selectedIndex];
+        if (!selected || selected.id === "classic") return "classic";
+        if (selected.id !== "blender") return selected.id;
+
+        const ids = [];
+        // DOM-selected blender modes (vanilla + remix slots)
+        const fromDom = window.ModeRegistry._blenderSelectedIds(modes) || [];
+        for (let i = 0; i < fromDom.length; i++) {
+          if (ids.indexOf(fromDom[i]) < 0) ids.push(fromDom[i]);
+        }
+        if (window.candy_blending && ids.indexOf("candy") < 0) ids.push("candy");
+        if (window.chess_blending && ids.indexOf("chess") < 0) ids.push("chess");
+        if (window.burger_blending && ids.indexOf("burger") < 0) {
+          ids.push("burger");
+        }
+        if (!ids.length) return "blender";
+        return ids.slice().sort().join("+");
+      };
+      window.ModeRegistry.getCurrentModeKey.__remix = true;
     }
-    if (window.CHESS_MODE != null && trophyId === window.CHESS_MODE) {
-      return "Chess";
-    }
-    if (window.BURGER_MODE != null && trophyId === window.BURGER_MODE) {
-      return "Burger";
-    }
-    if (trophyId === window.remixNativeBlenderMode) return "Blender";
-    const names = window.isBridge ? VANILLA_BRIDGE : VANILLA_SKIP;
-    if (bitIndex >= 0 && bitIndex < names.length) return names[bitIndex];
-    return "Unknown";
   };
+  window.remixInstallModeRegistry();
 
-  // Build "Wall, Chess, " style label (trailing comma+space, matching Pudding).
+  // Display helper used by tests / dialogs. Accepts modeKey (preferred) or a
+  // legacy 01-bitstring from older Pudding builds.
   window.remixTimeKeeperFormatGamemode = function remixTimeKeeperFormatGamemode(
     modeStr
   ) {
-    modeStr = modeStr || "";
-    const trophyMode =
-      typeof window.CurrentModeNum === "number"
-        ? window.CurrentModeNum
-        : typeof window.timeKeeper.getCurrentSetting === "function"
-          ? window.timeKeeper.getCurrentSetting("trophy")
-          : 0;
-
-    if (trophyMode === window.remixNativeBlenderMode) {
-      let gamemode = "";
-      const vanillaLen = Math.min(modeStr.length, 21);
-      for (let i = 0; i < vanillaLen; i++) {
-        if (modeStr.charAt(i) === "1") {
-          gamemode += window.remixTimeKeeperNameForBit(i) + ", ";
-        }
+    if (window.ModeRegistry) {
+      let key = modeStr;
+      if (key == null || key === "") {
+        key = window.ModeRegistry.getCurrentModeKey();
+      } else if (/^[01]+$/.test(String(key))) {
+        key = window.ModeRegistry.bitstringV3ToModeKey(String(key));
+        // Legacy bitstrings never encoded Remix trophies; prefer live key when
+        // the selection is a Remix mode / blender mix.
+        const live = window.ModeRegistry.getCurrentModeKey();
+        if (live && live !== "classic") key = live;
       }
-      if (window.candy_blending) gamemode += "Candy, ";
-      if (window.chess_blending) gamemode += "Chess, ";
-      if (window.burger_blending) gamemode += "Burger, ";
-      if (!gamemode) gamemode = "Classic, ";
-      return gamemode;
+      const label = window.ModeRegistry.labelModeKey(key);
+      return label ? label + ", " : "Classic, ";
     }
-
-    let gamemode = "";
-    for (let i = 0; i < modeStr.length; i++) {
-      if (modeStr.charAt(i) === "1") {
-        gamemode += window.remixTimeKeeperNameForBit(i) + ", ";
-      }
-    }
-    if (!gamemode) gamemode = "Classic, ";
-    return gamemode;
+    return modeStr ? String(modeStr) + ", " : "Classic, ";
   };
 
   window.remixSpeedInfoApplyModeLabel = function remixSpeedInfoApplyModeLabel() {
     const modeLabel = document.getElementById("mode-selected");
     if (!modeLabel || typeof window.HandleCount !== "function") return;
+    if (!window.timeKeeper || typeof window.timeKeeper.getCurrentSetting !== "function") {
+      return;
+    }
     const count = window.timeKeeper.getCurrentSetting("count");
-    const modeStr = window.timeKeeper.getCurrentMode();
-    const gamemode = window.remixTimeKeeperFormatGamemode(modeStr);
+    const modeKey =
+      typeof window.timeKeeper.getCurrentMode === "function"
+        ? window.timeKeeper.getCurrentMode()
+        : window.ModeRegistry && window.ModeRegistry.getCurrentModeKey();
+    const gamemode = window.ModeRegistry
+      ? window.ModeRegistry.labelModeKey(modeKey)
+      : window.remixTimeKeeperFormatGamemode(modeKey).replace(/,\s*$/, "");
     const countTxt = window.HandleCount(count);
     modeLabel.innerHTML =
-      gamemode + countTxt.substring(0, countTxt.lastIndexOf(","));
+      gamemode + ", " + countTxt.substring(0, countTxt.lastIndexOf(","));
   };
 
   window.remixSpeedInfoShowSwitchMessage = function remixSpeedInfoShowSwitchMessage() {
@@ -149,6 +210,11 @@ window.RemixSpeedInfo.runCodeBefore = function () {
       "100src",
       "Allsrc",
       "Hsrc",
+      "25track",
+      "50track",
+      "100track",
+      "Alltrack",
+      "Htrack",
     ]) {
       set(id, "");
     }
@@ -178,71 +244,9 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     }
   };
 
-  // Fix mode bitstring: Blender is always trophy 22, not "last child".
-  if (
-    window.timeKeeper &&
-    typeof window.timeKeeper.getCurrentMode === "function" &&
-    !window.timeKeeper.getCurrentMode.__remixPatched
-  ) {
-    window.timeKeeper.getCurrentMode = function remixGetCurrentMode() {
-      const blenderId = window.remixNativeBlenderMode;
-      // CurrentModeNum is updated on trophy change (and by the harness); prefer it
-      // over the DOM trophy index so labels stay correct during play.
-      const mode =
-        typeof window.CurrentModeNum === "number"
-          ? window.CurrentModeNum
-          : window.timeKeeper.getCurrentSetting("trophy");
-      const trophyRoot = document.getElementById("trophy");
-      const trophyCount = trophyRoot ? trophyRoot.children.length : 0;
-
-      if (mode === blenderId) {
-        let element = null;
-        for (const img of document.querySelectorAll("img")) {
-          if (img.src && img.src.includes("random.png")) {
-            element = img;
-            break;
-          }
-        }
-        let modeStr = "";
-        if (
-          element &&
-          element.parentElement &&
-          element.parentElement.parentElement &&
-          element.parentElement.parentElement.parentElement
-        ) {
-          let counter = -1;
-          for (const child of element.parentElement.parentElement.parentElement
-            .children) {
-            counter++;
-            if (counter === 0) continue;
-            const inner = child.firstElementChild;
-            if (
-              inner &&
-              inner.classList.length > 1 &&
-              inner.children.length > 0
-            ) {
-              modeStr += "1";
-            } else {
-              modeStr += "0";
-            }
-          }
-        }
-        modeStr += window.candy_blending ? "1" : "0";
-        modeStr += window.chess_blending ? "1" : "0";
-        modeStr += window.burger_blending ? "1" : "0";
-        return modeStr;
-      }
-
-      // One bit per trophy after Classic (includes Blender + Remix modes).
-      let modeStr = "";
-      for (let t = 1; t < trophyCount; t++) {
-        modeStr += t === mode ? "1" : "0";
-      }
-      return modeStr;
-    };
-    window.timeKeeper.getCurrentMode.__remixPatched = true;
-  }
-
+  // Do NOT replace getCurrentMode — Pudding now returns ModeRegistry modeKeys
+  // used for PB storage. Keep a light CurrentModeNum preference on the key path
+  // (installed above). Refresh dialog labels after show.
   if (
     window.timeKeeper &&
     typeof window.timeKeeper.showDialog === "function" &&
@@ -252,10 +256,10 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     window.timeKeeper.showDialog = function remixShowDialog() {
       origShow.apply(this, arguments);
       const dialog = document.getElementById("timeKeeperDialog");
-      if (!dialog) return;
-      const nice = window
-        .remixTimeKeeperFormatGamemode(window.timeKeeper.getCurrentMode())
-        .replace(/,\s*$/, "");
+      if (!dialog || !window.ModeRegistry) return;
+      const nice = window.ModeRegistry.labelModeKey(
+        window.ModeRegistry.getCurrentModeKey()
+      );
       for (let i = 0; i < dialog.childNodes.length; i++) {
         const node = dialog.childNodes[i];
         if (
@@ -284,6 +288,7 @@ window.RemixSpeedInfo.runCodeBefore = function () {
         window.remixSpeedInfoShowSwitchMessage();
         return;
       }
+      window.remixInstallModeRegistry();
       window.remixSpeedInfoEnsureModeLabels();
       const result = await origUpdate.apply(this, arguments);
       window.remixSpeedInfoApplyModeLabel();
@@ -441,7 +446,6 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     for (let i = editMode.children.length; i <= maxId; i++) {
       ensureSlot(i);
     }
-    // Re-apply for slots that already existed from a prior open / old mirror.
     for (const m of remixModes) ensureSlot(m.id);
     if (typeof window.remixNativeBlenderMode === "number") {
       ensureSlot(window.remixNativeBlenderMode);
@@ -521,6 +525,7 @@ window.RemixSpeedInfo.alterSnakeCode = function (code) {
 ////////////////////////////////////////////////////////////////////
 
 window.RemixSpeedInfo.runCodeAfter = function () {
+  window.remixInstallModeRegistry && window.remixInstallModeRegistry();
   window.remixBindTimerSettingsButton && window.remixBindTimerSettingsButton();
   window.remixSpeedInfoEnableCheckbox && window.remixSpeedInfoEnableCheckbox();
   if (

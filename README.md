@@ -9,7 +9,7 @@ Remix Mod for Google Snake — adds **Chess Mode**, **Candy Mode** and **Burger 
 - **Burger Mode** — every fruit carries a timer; it greys out as it ages, turns into a skull poison when it runs out, and a fresh one spawns. Eating a fresh fruit clears every poison on the board; eating a poison costs you control like native Poison mode.
 - **Cat Speed** — between Normal and Fast in feel (`0.85×`), appended after MoreMenu speeds
 - **Blue / Green / Black Dice** — DiceMod-style counts (roll **1–12** / **4–9** / **custom spawn range**) when the last apple is eaten; tinted game dice icons after Nuke. **Black Dice** min/max fruits per roll (default **6–24**, clamp **1–10000**) are set in Pudding Settings.
-- **Blender** — separate Candy, Chess and Burger toggles with their own icons in the Blender panel
+- **Blender** — separate Candy, Chess and Burger toggles with their own icons in the Blender panel. In Burger+Chess, expired pieces become plain skull poisons (no chess-piece status, cannot be unlocked).
 - **Chess Pieces** hide toggle added to the Visibility panel
 
 ## Build
@@ -35,7 +35,9 @@ Output: **`RemixMod.js`** (committed for raw-GitHub / custom URL use).
 
 More Pudding already bundles Pudding Mod, Visibility Mod and More Menu Mod and runs them in that order, so Remix calls `window.MorePudding` rather than wiring those three itself. `RemixInit.js` still falls back to Pudding + Visibility directly if a build ever ships without More Pudding.
 
-**SpeedInfo:** Remix re-enables Pudding's SpeedInfo toggle (normally locked to PuddingMod). It shows TimeKeeper / SRC data only in **Chess** and **Burger**; every other mode shows `Switch to PuddingMod`.
+**ModeRegistry:** Upstream TimeKeeper / SpeedInfo now use stable mode keys (`chess`, `wall+burger`, …). Remix registers Candy/Chess/Burger, detects Blender by `random.png` (not “last trophy”), and keeps blender mix keys in sync with the Remix blend toggles.
+
+**SpeedInfo:** Remix keeps the toggle usable and shows TimeKeeper / SRC data only in **Chess** and **Burger**; every other mode shows `Switch to PuddingMod`. Chess/Burger map to Category Extensions level boards (including High Score), matching FastSnakeStats.
 
 **Timer settings:** The Custom Timer/Splits dialog's mode row adds **Candy**, **Chess**, and **Burger** so those modes can store PBs/splits like the vanilla ones.
 

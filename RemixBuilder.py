@@ -1,5 +1,6 @@
 import urllib.request
 import os
+import subprocess
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
@@ -20,6 +21,13 @@ def main():
 
     download(MOREPUDDING_URL, morepudding_path)
     download(BOOTSTRAP_URL, bootstrap_path)
+    # Chess/Burger are CE level HS modes in FastSnakeStats; upstream SpeedInfo
+    # only knows vanilla trophy ids, so teach it about Remix mode globals.
+    print("Patching CE level SRC support into MorePudding.js")
+    subprocess.check_call(
+        ["node", os.path.join("tools", "patch_pudding_ce_levels.mjs"), morepudding_path],
+        cwd=BASE,
+    )
 
     parts = [
         "MorePudding.js",

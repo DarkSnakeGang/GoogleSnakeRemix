@@ -300,6 +300,10 @@ window.BurgerMod.alterSnakeCode = function (code) {
     const life = apple.burgerTimerMax | 0;
     apple.nla = true;
     apple.burgerGrey = 0;
+    // Burger+Chess blender: expired pieces are plain poisons — not unlockable.
+    apple.isPiece = false;
+    apple.ChessPiece = undefined;
+    apple.ChessColor = undefined;
     if (life > 0) {
       apple.burgerTimer = life;
       apple.burgerTimerMax = life;
