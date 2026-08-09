@@ -20,7 +20,7 @@ Requires Python 3.
 python RemixBuilder.py
 ```
 
-This downloads `MorePudding.js` (and bootstrap CSS) from [GoogleSnakePudding](https://github.com/DarkSnakeGang/GoogleSnakePudding), then concatenates:
+This downloads `MorePudding.js` (and bootstrap CSS) from [GoogleSnakePudding](https://github.com/DarkSnakeGang/GoogleSnakePudding), applies Remix CE-level SRC patches, then concatenates:
 
 1. `MorePudding.js`
 2. `CandyInit.js`

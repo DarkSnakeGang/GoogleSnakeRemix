@@ -591,6 +591,16 @@ window.RemixSpeedInfo.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.RemixSpeedInfo.alterSnakeCode = function (code) {
+  // Pudding now injects: case "trophy":queueMicrotask(() => getAllSrc()); …
+  // and getAllSrc ends with SpeedInfoUpdate — both are Remix-gated already.
+  if (
+    code.match(
+      /case "trophy":queueMicrotask\(function\(\)\{window\.getAllSrc\(\)/
+    )
+  ) {
+    return code;
+  }
+  // Legacy Pudding builds only assigned CurrentModeNum.
   if (code.match(/case "trophy":window\.CurrentModeNum = /)) {
     code = code.assertReplace(
       /case "trophy":window\.CurrentModeNum = /,
