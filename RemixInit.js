@@ -4,9 +4,29 @@ window.RemixMod = {};
 //RUNCODEBEFORE
 ////////////////////////////////////////////////////////////////////
 
+// Remix has extra trophies / counts / speeds and its own settings (Black Dice,
+// etc.). Keep those on Remix-only localStorage keys so PuddingMod's
+// PuddingSettings + snake_timeKeeper stay untouched.
+window.REMIX_SETTINGS_KEY = "RemixSettings";
+window.REMIX_TIMEKEEPER_KEY = "snake_timeKeeper_remix";
+
+window.remixSeedIsolatedStorage = function remixSeedIsolatedStorage() {
+  try {
+    if (!localStorage.getItem(window.REMIX_SETTINGS_KEY)) {
+      const pud = localStorage.getItem("PuddingSettings");
+      if (pud) localStorage.setItem(window.REMIX_SETTINGS_KEY, pud);
+    }
+    if (!localStorage.getItem(window.REMIX_TIMEKEEPER_KEY)) {
+      const tk = localStorage.getItem("snake_timeKeeper");
+      if (tk) localStorage.setItem(window.REMIX_TIMEKEEPER_KEY, tk);
+    }
+  } catch (_e) {}
+};
+
 // MorePudding bundles Pudding + Visibility + MoreMenu and runs them in that
 // order. Fall back to the individual mods if a build ever ships without it.
 window.remixBaseRunCodeBefore = function remixBaseRunCodeBefore() {
+  window.remixSeedIsolatedStorage();
   if (window.MorePudding) {
     window.MorePudding.runCodeBefore();
     return;

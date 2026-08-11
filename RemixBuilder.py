@@ -28,6 +28,12 @@ def main():
         ["node", os.path.join("tools", "patch_pudding_ce_levels.mjs"), morepudding_path],
         cwd=BASE,
     )
+    # Keep Remix saves off PuddingMod's PuddingSettings / snake_timeKeeper.
+    print("Patching Remix-isolated storage keys into MorePudding.js")
+    subprocess.check_call(
+        ["node", os.path.join("tools", "patch_pudding_storage_keys.mjs"), morepudding_path],
+        cwd=BASE,
+    )
 
     parts = [
         "MorePudding.js",

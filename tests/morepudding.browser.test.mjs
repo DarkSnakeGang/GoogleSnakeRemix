@@ -27,6 +27,68 @@ describe("MorePudding base (browser)", { skip: !runBrowser }, () => {
     }
   });
 
+  it("saves Remix settings/TimeKeeper without touching PuddingMod keys", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 8, headless: true });
+    try {
+      await h.start({ mode: "chess", count: COUNT.ONE, size: SIZE.NORMAL });
+      const probe = await h.page.evaluate(() => {
+        const pudKey = "PuddingSettings";
+        const remixKey = window.REMIX_SETTINGS_KEY || "RemixSettings";
+        const pudTk = "snake_timeKeeper";
+        const remixTk = window.REMIX_TIMEKEEPER_KEY || "snake_timeKeeper_remix";
+
+        // Plant distinct pudding-only payloads that Remix must leave alone.
+        const pudSnap = {
+          Skull: true,
+          SokoGoals: true,
+          InputDisplay: false,
+          TopBar: true,
+          SpeedInfo: false,
+          PortalPairs: false,
+          DisableRandom: false,
+          randomizeThemeApple: false,
+          marker: "pudding-only",
+        };
+        const pudTkSnap = { version: 4, marker: "pudding-tk-only" };
+        localStorage.setItem(pudKey, JSON.stringify(pudSnap));
+        localStorage.setItem(pudTk, JSON.stringify(pudTkSnap));
+
+        window.pudding_settings.BlackDiceMin = 9;
+        window.pudding_settings.BlackDiceMax = 11;
+        window.pudding_settings.SpeedInfo = true;
+        window.pudding_settings.marker = "remix-write";
+        if (typeof window.saveSettings === "function") window.saveSettings();
+
+        const tkStorage = window.timeKeeper.getStorage();
+        tkStorage.marker = "remix-tk-write";
+        window.timeKeeper.setStorage(tkStorage);
+
+        return {
+          remixKey,
+          remixTk,
+          pudAfter: JSON.parse(localStorage.getItem(pudKey) || "null"),
+          remixAfter: JSON.parse(localStorage.getItem(remixKey) || "null"),
+          pudTkAfter: JSON.parse(localStorage.getItem(pudTk) || "null"),
+          remixTkAfter: JSON.parse(localStorage.getItem(remixTk) || "null"),
+          saveSrc: String(window.saveSettings || ""),
+          loadUsesRemix: String(window.loadSettings || "").includes(remixKey),
+        };
+      });
+
+      assert.equal(probe.pudAfter.marker, "pudding-only", JSON.stringify(probe));
+      assert.equal(probe.pudTkAfter.marker, "pudding-tk-only", JSON.stringify(probe));
+      assert.equal(probe.remixAfter.marker, "remix-write", JSON.stringify(probe));
+      assert.equal(probe.remixAfter.BlackDiceMin, 9, JSON.stringify(probe));
+      assert.equal(probe.remixTkAfter.marker, "remix-tk-write", JSON.stringify(probe));
+      assert.match(probe.saveSrc, /RemixSettings/);
+      assert.equal(probe.loadUsesRemix, true, JSON.stringify(probe));
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
+
   it("keeps Pudding's secret fruit tail addressable after chess pieces are added", async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 7, headless: true });

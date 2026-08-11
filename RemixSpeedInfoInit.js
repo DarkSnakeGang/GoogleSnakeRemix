@@ -299,7 +299,10 @@ window.RemixSpeedInfo.runCodeBefore = function () {
 
     let want = !!(window.pudding_settings && window.pudding_settings.SpeedInfo);
     try {
-      const raw = JSON.parse(localStorage.getItem("PuddingSettings") || "null");
+      const raw = JSON.parse(
+        localStorage.getItem(window.REMIX_SETTINGS_KEY || "RemixSettings") ||
+          "null"
+      );
       if (raw && raw.SpeedInfo) want = true;
     } catch (_e) {}
 

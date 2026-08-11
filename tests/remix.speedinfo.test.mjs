@@ -218,9 +218,10 @@ describe("Remix SpeedInfo gate (browser)", { skip: !runBrowser }, () => {
           const size = window.timeKeeper.getCurrentSetting("size");
           // Seed a personal HS so SpeedInfoUpdate can attach a submit link.
           const key = "H-" + modeKey + "-" + count + "-" + speed + "-" + size;
-          const storage = JSON.parse(localStorage.getItem("snake_timeKeeper") || "{}");
+          const tkKey = window.REMIX_TIMEKEEPER_KEY || "snake_timeKeeper_remix";
+          const storage = JSON.parse(localStorage.getItem(tkKey) || "{}");
           storage[key] = { high: 12, attempts: 1, average: 12 };
-          localStorage.setItem("snake_timeKeeper", JSON.stringify(storage));
+          localStorage.setItem(tkKey, JSON.stringify(storage));
 
           await window.getRecordSRC("H");
           const hsrc = (document.getElementById("Hsrc") || {}).innerHTML || "";

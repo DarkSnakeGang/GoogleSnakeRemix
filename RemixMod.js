@@ -1208,11 +1208,11 @@ window.TimeKeeper.make = function () {
     };
 
     window.timeKeeper.getStorage = function () {
-        return JSON.parse(localStorage.getItem("snake_timeKeeper") || '{"version":4}');
+        return JSON.parse(localStorage.getItem("snake_timeKeeper_remix") || '{"version":4}');
     };
 
     window.timeKeeper.setStorage = function (storage) {
-        localStorage.setItem("snake_timeKeeper", JSON.stringify(storage));
+        localStorage.setItem("snake_timeKeeper_remix", JSON.stringify(storage));
     };
 
     // Compat: callers expecting mode "string" now get stable modeKey
@@ -1538,7 +1538,7 @@ window.TimeKeeper.make = function () {
     };
 
     window.timeKeeper.makeStorage = function () {
-        let storage = localStorage.getItem("snake_timeKeeper");
+        let storage = localStorage.getItem("snake_timeKeeper_remix");
         if (storage == null) {
             storage = { version: 2 };
             const old_pbs = localStorage.getItem("snake_pbs");
@@ -1630,7 +1630,7 @@ window.TimeKeeper.make = function () {
             storage[key] = window.timeKeeper.rollAttemptSession(storage[key]);
         }
 
-        localStorage.setItem("snake_timeKeeper", JSON.stringify(storage));
+        localStorage.setItem("snake_timeKeeper_remix", JSON.stringify(storage));
     };
 
     window.timeKeeper.showDialog = function () {
@@ -2629,7 +2629,7 @@ window.SettingsSaver.make = function () {
     }
 
     window.loadSettings = function () {
-        let pudding_settings = localStorage.getItem('PuddingSettings');
+        let pudding_settings = localStorage.getItem('RemixSettings');
         if (pudding_settings === null) {
             pudding_settings = {
                 Skull: false,
@@ -2698,7 +2698,7 @@ window.SettingsSaver.make = function () {
             typeof s.DisableRandom !== 'undefined' &&
             typeof s.randomizeThemeApple !== 'undefined'
         ) {
-            localStorage.setItem('PuddingSettings', JSON.stringify(s));
+            localStorage.setItem('RemixSettings', JSON.stringify(s));
         }
     }
 
@@ -4295,7 +4295,7 @@ window.SpeedInfo.make = function () {
         let mode = window.CurrentModeNum;
         let storage = {};
         try {
-            storage = JSON.parse(localStorage["snake_timeKeeper"] || "{}");
+            storage = JSON.parse(localStorage["snake_timeKeeper_remix"] || "{}");
         } catch (e) {
             storage = {};
         }
@@ -11691,7 +11691,10 @@ window.RemixSpeedInfo.runCodeBefore = function () {
 
     let want = !!(window.pudding_settings && window.pudding_settings.SpeedInfo);
     try {
-      const raw = JSON.parse(localStorage.getItem("PuddingSettings") || "null");
+      const raw = JSON.parse(
+        localStorage.getItem(window.REMIX_SETTINGS_KEY || "RemixSettings") ||
+          "null"
+      );
       if (raw && raw.SpeedInfo) want = true;
     } catch (_e) {}
 
@@ -12027,9 +12030,29 @@ window.RemixMod = {};
 //RUNCODEBEFORE
 ////////////////////////////////////////////////////////////////////
 
+// Remix has extra trophies / counts / speeds and its own settings (Black Dice,
+// etc.). Keep those on Remix-only localStorage keys so PuddingMod's
+// PuddingSettings + snake_timeKeeper stay untouched.
+window.REMIX_SETTINGS_KEY = "RemixSettings";
+window.REMIX_TIMEKEEPER_KEY = "snake_timeKeeper_remix";
+
+window.remixSeedIsolatedStorage = function remixSeedIsolatedStorage() {
+  try {
+    if (!localStorage.getItem(window.REMIX_SETTINGS_KEY)) {
+      const pud = localStorage.getItem("PuddingSettings");
+      if (pud) localStorage.setItem(window.REMIX_SETTINGS_KEY, pud);
+    }
+    if (!localStorage.getItem(window.REMIX_TIMEKEEPER_KEY)) {
+      const tk = localStorage.getItem("snake_timeKeeper");
+      if (tk) localStorage.setItem(window.REMIX_TIMEKEEPER_KEY, tk);
+    }
+  } catch (_e) {}
+};
+
 // MorePudding bundles Pudding + Visibility + MoreMenu and runs them in that
 // order. Fall back to the individual mods if a build ever ships without it.
 window.remixBaseRunCodeBefore = function remixBaseRunCodeBefore() {
+  window.remixSeedIsolatedStorage();
   if (window.MorePudding) {
     window.MorePudding.runCodeBefore();
     return;
