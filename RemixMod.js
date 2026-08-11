@@ -1100,9 +1100,11 @@ window.TimeKeeper = {};
 window.TimeKeeper.make = function () {
     /*
     storage v4:
-    att-modeKey-count-speed-size : number of started attempts
+    att-modeKey-count-speed-size : number (legacy) OR
+      { total, lastAttempt, session, lastSession }
+      session = attempts since this page load; lastSession = previous page's session count
     25|50|100|ALL-modeKey-count-speed-size: {time, date, att, sum}
-    H-modeKey-count-speed-size: {high, time, date, sum}
+    H-modeKey-count-speed-size: {high, time, date}
     modeKey = classic | wall | ... | peaceful | wall+portal (blender)
     */
     window.timeKeeper = {};
@@ -1161,6 +1163,48 @@ window.TimeKeeper.make = function () {
     window.timeKeeper.buildKey = function (prefix, ctx) {
         const c = ctx || window.timeKeeper.resolveRunContext();
         return prefix + "-" + c.modeKey + "-" + c.count + "-" + c.speed + "-" + c.size;
+    };
+
+    // Normalize legacy number / partial objects into the attempt stats record
+    window.timeKeeper.normalizeAttemptRecord = function (raw) {
+        if (typeof raw === "number" && !isNaN(raw)) {
+            return {
+                total: raw,
+                lastAttempt: null,
+                session: 0,
+                lastSession: 0,
+            };
+        }
+        if (!raw || typeof raw !== "object") {
+            return {
+                total: 0,
+                lastAttempt: null,
+                session: 0,
+                lastSession: 0,
+            };
+        }
+        return {
+            total: typeof raw.total === "number" ? raw.total : 0,
+            lastAttempt: raw.lastAttempt != null ? raw.lastAttempt : null,
+            session: typeof raw.session === "number" ? raw.session : 0,
+            lastSession: typeof raw.lastSession === "number" ? raw.lastSession : 0,
+        };
+    };
+
+    window.timeKeeper.getAttemptTotal = function (raw) {
+        if (typeof raw === "number" && !isNaN(raw)) return raw;
+        if (raw && typeof raw === "object" && typeof raw.total === "number") return raw.total;
+        return 0;
+    };
+
+    // On page load: roll previous page's session into lastSession
+    window.timeKeeper.rollAttemptSession = function (rec) {
+        const r = window.timeKeeper.normalizeAttemptRecord(rec);
+        if (r.session > 0) {
+            r.lastSession = r.session;
+            r.session = 0;
+        }
+        return r;
     };
 
     window.timeKeeper.getStorage = function () {
@@ -1263,7 +1307,6 @@ window.TimeKeeper.make = function () {
     };
 
     // Mid-run: write Highscore PB when the current apple count beats the stored best
-    // (does not touch sum — death still accumulates run totals for average).
     window.timeKeeper.updateHighscoreLive = function (time, score) {
         const ctx = window.timeKeeper.getSaveContext();
         if (!window.timeKeeper.shouldTrack(ctx)) return;
@@ -1286,7 +1329,6 @@ window.TimeKeeper.make = function () {
                 high: score,
                 time: appleTime,
                 date: appleDate,
-                sum: 0,
             };
             window.timeKeeper.setStorage(storage);
             window.timeKeeper.refreshSpeedInfo();
@@ -1325,19 +1367,19 @@ window.TimeKeeper.make = function () {
                 high: score,
                 time: window.timeKeeper.lastAppleTime,
                 date: window.timeKeeper.lastAppleDate,
-                sum: score,
             };
-        } else {
-            if (typeof storage[name].sum !== "number") storage[name].sum = 0;
-            storage[name].sum += score;
-            if (
-                score > storage[name].high ||
-                (score == storage[name].high && time < storage[name].time)
-            ) {
-                storage[name].high = score;
-                storage[name].time = window.timeKeeper.lastAppleTime;
-                storage[name].date = window.timeKeeper.lastAppleDate;
-            }
+        } else if (
+            score > storage[name].high ||
+            (score == storage[name].high && time < storage[name].time)
+        ) {
+            storage[name].high = score;
+            storage[name].time = window.timeKeeper.lastAppleTime;
+            storage[name].date = window.timeKeeper.lastAppleDate;
+        }
+        // Drop unused average accumulators if present
+        if (storage[name]) {
+            delete storage[name].sum;
+            delete storage[name].att;
         }
         window.timeKeeper.setStorage(storage);
         window.timeKeeper.refreshSpeedInfo();
@@ -1400,11 +1442,12 @@ window.TimeKeeper.make = function () {
 
         const storage = window.timeKeeper.getStorage();
         const name = window.timeKeeper.buildKey("att", ctx);
-        if (typeof storage[name] == "undefined") {
-            storage[name] = 1;
-        } else {
-            storage[name] += 1;
-        }
+        const rec = window.timeKeeper.normalizeAttemptRecord(storage[name]);
+        const now = new Date();
+        rec.total += 1;
+        rec.lastAttempt = now;
+        rec.session += 1;
+        storage[name] = rec;
         window.timeKeeper.setStorage(storage);
         window.timeKeeper.runStarted = false;
         window.timeKeeper.playing = false;
@@ -1415,7 +1458,9 @@ window.TimeKeeper.make = function () {
         if (isNaN(attempts)) return;
         const storage = window.timeKeeper.getStorage();
         const name = window.timeKeeper.buildKey("att");
-        storage[name] = attempts;
+        const rec = window.timeKeeper.normalizeAttemptRecord(storage[name]);
+        rec.total = attempts;
+        storage[name] = rec;
         window.timeKeeper.setStorage(storage);
         window.timeKeeper.refreshSpeedInfo();
     };
@@ -1437,20 +1482,16 @@ window.TimeKeeper.make = function () {
         window.timeKeeper.refreshSpeedInfo();
     };
 
-    window.timeKeeper.setScore = function (highscore, time, average) {
+    window.timeKeeper.setScore = function (highscore, time) {
         if (isNaN(highscore)) return;
         if (isNaN(time)) return;
-        if (isNaN(average)) return;
         const storage = window.timeKeeper.getStorage();
         const ctx = window.timeKeeper.resolveRunContext();
         const name = window.timeKeeper.buildKey("H", ctx);
-        const attKey = window.timeKeeper.buildKey("att", ctx);
-        const att = typeof storage[attKey] === "number" ? storage[attKey] : 0;
         storage[name] = {
             high: highscore,
             time: time,
             date: new Date(),
-            sum: average * att,
         };
         window.timeKeeper.setStorage(storage);
         window.timeKeeper.refreshSpeedInfo();
@@ -1468,6 +1509,16 @@ window.TimeKeeper.make = function () {
         ).padStart(3, "0");
         if (hours == 0) return minutes + ":" + seconds + ":" + mseconds;
         return hours + ":" + minutes + ":" + seconds + ":" + mseconds;
+    };
+
+    // Local calendar date as YYYY-MM-DD
+    window.timeKeeper.formatAchievedOn = function (raw) {
+        const date = new Date(raw);
+        if (isNaN(date.getTime())) return "—";
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        return y + "-" + m + "-" + d;
     };
 
     // ms → SRC-like 1m2s345ms (shared with SpeedInfo personal rows)
@@ -1563,6 +1614,22 @@ window.TimeKeeper.make = function () {
             console.error("TimeKeeper storage version unexpected:", storage.version);
             storage.version = 4;
         }
+
+        // Strip unused highscore average fields (sum/att) from H-* rows
+        for (const key of Object.keys(storage)) {
+            if (key === "version" || key.slice(0, 2) !== "H-") continue;
+            const rec = storage[key];
+            if (!rec || typeof rec !== "object") continue;
+            delete rec.sum;
+            delete rec.att;
+        }
+
+        // Migrate att-* numbers → objects; roll previous page session into last/best
+        for (const key of Object.keys(storage)) {
+            if (key === "version" || key.slice(0, 4) !== "att-") continue;
+            storage[key] = window.timeKeeper.rollAttemptSession(storage[key]);
+        }
+
         localStorage.setItem("snake_timeKeeper", JSON.stringify(storage));
     };
 
@@ -1571,6 +1638,22 @@ window.TimeKeeper.make = function () {
         const btn = document.getElementById("time-keeper");
         if (btn) btn.innerHTML = "Hide";
 
+        const body = document.querySelector("body");
+        const oldBd = document.getElementById("timeKeeperBackdrop");
+        if (oldBd) oldBd.remove();
+        const oldDialog = document.getElementById("timeKeeperDialog");
+        if (oldDialog) oldDialog.remove();
+
+        const backdrop = document.createElement("div");
+        backdrop.id = "timeKeeperBackdrop";
+        backdrop.style.cssText =
+            "position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:10099;" +
+            "background:rgba(0,0,0,0.45);";
+        backdrop.addEventListener("click", function () {
+            window.timeKeeper.hideDialog();
+        });
+        body.insertBefore(backdrop, body.firstChild);
+
         const dialog = document.createElement("div");
         dialog.setAttribute("open", "");
         dialog.setAttribute("id", "timeKeeperDialog");
@@ -1578,9 +1661,9 @@ window.TimeKeeper.make = function () {
         const ctx = window.timeKeeper.resolveRunContext();
         const gamemode = window.ModeRegistry.labelModeKey(ctx.modeKey);
 
-        const bold = document.createElement("u");
+        const bold = document.createElement("div");
         bold.appendChild(document.createTextNode("TimeKeeper Details"));
-        bold.style = "color:white;font-family:Roboto,Arial;";
+        bold.style = "color:white;font-family:Roboto,Arial;font-weight:bold;text-align:center;";
         dialog.appendChild(bold);
         dialog.appendChild(document.createElement("br"));
         dialog.appendChild(document.createTextNode("Mode: " + gamemode));
@@ -1611,76 +1694,106 @@ window.TimeKeeper.make = function () {
 
         dialog.appendChild(document.createElement("br"));
         dialog.appendChild(document.createElement("br"));
+
         const storage = window.timeKeeper.getStorage();
-        let totalAttempts = 0;
+        const attKey = window.timeKeeper.buildKey("att", ctx);
+        const attemptRec = window.timeKeeper.normalizeAttemptRecord(storage[attKey]);
 
-        for (const score of ["att", "25", "50", "100", "ALL", "H"]) {
-            const name = window.timeKeeper.buildKey(score, ctx);
-            if (typeof storage[name] == "undefined") continue;
+        const cellStyle =
+            "box-sizing:border-box;padding:6px 8px;border:1px solid rgba(255,255,255,0.22);border-radius:6px;min-width:0;";
 
-            const label = document.createElement("span");
-            switch (score) {
-                case "25": label.appendChild(document.createTextNode("25 Apples:")); break;
-                case "50": label.appendChild(document.createTextNode("50 Apples:")); break;
-                case "100": label.appendChild(document.createTextNode("100 Apples:")); break;
-                case "ALL": label.appendChild(document.createTextNode("All Apples:")); break;
-                case "att": label.appendChild(document.createTextNode("Total Attempts: ")); break;
-                case "H": label.appendChild(document.createTextNode("Highscore: ")); break;
-                default: break;
-            }
-            dialog.appendChild(label);
-
-            if (score == "att") {
-                totalAttempts = storage[name];
-                dialog.appendChild(document.createTextNode(totalAttempts));
-                dialog.appendChild(document.createElement("br"));
-                dialog.appendChild(document.createElement("br"));
-                continue;
-            }
-
-            if (score == "H") {
-                dialog.appendChild(document.createTextNode(storage[name].high));
-            }
-            dialog.appendChild(document.createElement("br"));
-
-            const bestLabel = score == "H" ? "Duration: " : "Best Time: ";
-            dialog.appendChild(
-                document.createTextNode(bestLabel + window.timeKeeper.formatDuration(storage[name].time))
-            );
-            dialog.appendChild(document.createElement("br"));
-            dialog.appendChild(
-                document.createTextNode("Achieved on: " + new Date(storage[name].date).toString())
-            );
-            dialog.appendChild(document.createElement("br"));
-
-            if (score == "H" && totalAttempts > 0) {
-                dialog.appendChild(
-                    document.createTextNode(
-                        "Average score: " +
-                            (Math.round((100 * storage[name].sum) / totalAttempts) / 100).toString()
-                    )
-                );
-                dialog.appendChild(document.createElement("br"));
-            }
-
-            if (storage[name].att != undefined && storage[name].sum != undefined && storage[name].att > 0) {
-                const avg = Math.floor(storage[name].sum / storage[name].att);
-                dialog.appendChild(document.createTextNode("Attempts to this point: " + storage[name].att));
-                dialog.appendChild(document.createElement("br"));
-                dialog.appendChild(
-                    document.createTextNode("Average: " + window.timeKeeper.formatDuration(avg))
-                );
-                dialog.appendChild(document.createElement("br"));
-            }
-            dialog.appendChild(document.createElement("br"));
+        function line(parent, text) {
+            parent.appendChild(document.createTextNode(text));
+            parent.appendChild(document.createElement("br"));
         }
+
+        function titleLine(parent, text) {
+            const span = document.createElement("span");
+            span.style = "font-weight:bold;";
+            span.appendChild(document.createTextNode(text));
+            parent.appendChild(span);
+            parent.appendChild(document.createElement("br"));
+        }
+
+        function buildTimedCell(score) {
+            const cell = document.createElement("div");
+            cell.style = cellStyle;
+            const name = window.timeKeeper.buildKey(score, ctx);
+            const titles = {
+                "25": "25 Apples",
+                "50": "50 Apples",
+                "100": "100 Apples",
+                ALL: "All Apples",
+            };
+            titleLine(cell, titles[score] + ":");
+            const data = storage[name];
+            if (typeof data == "undefined") {
+                line(cell, "None");
+                return cell;
+            }
+            line(cell, "Best Time: " + window.timeKeeper.formatDuration(data.time));
+            line(cell, "Achieved on: " + window.timeKeeper.formatAchievedOn(data.date));
+            if (data.att != undefined && data.sum != undefined && data.att > 0) {
+                const avg = Math.floor(data.sum / data.att);
+                line(cell, "Attempts to this point: " + data.att);
+                line(cell, "Average: " + window.timeKeeper.formatDuration(avg));
+            }
+            return cell;
+        }
+
+        function buildHighscoreCell() {
+            const cell = document.createElement("div");
+            cell.style = cellStyle;
+            titleLine(cell, "Highscore:");
+            const name = window.timeKeeper.buildKey("H", ctx);
+            const data = storage[name];
+            if (typeof data == "undefined" || data.high == null) {
+                line(cell, "None");
+                return cell;
+            }
+            line(cell, String(data.high));
+            line(cell, "Duration: " + window.timeKeeper.formatDuration(data.time));
+            line(cell, "Achieved on: " + window.timeKeeper.formatAchievedOn(data.date));
+            return cell;
+        }
+
+        function buildAttemptsCell() {
+            const cell = document.createElement("div");
+            cell.style = cellStyle;
+            titleLine(cell, "Total Attempts:");
+            line(cell, String(attemptRec.total));
+            if (attemptRec.lastAttempt != null) {
+                line(
+                    cell,
+                    "Latest: " + window.timeKeeper.formatAchievedOn(attemptRec.lastAttempt)
+                );
+            }
+            line(cell, "This session: " + attemptRec.session);
+            line(cell, "Last session: " + attemptRec.lastSession);
+            return cell;
+        }
+
+        function buildRow(left, right) {
+            const row = document.createElement("div");
+            row.style = "display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;";
+            row.appendChild(left);
+            row.appendChild(right);
+            return row;
+        }
+
+        dialog.appendChild(buildRow(buildTimedCell("25"), buildTimedCell("50")));
+        dialog.appendChild(buildRow(buildTimedCell("100"), buildTimedCell("ALL")));
+        dialog.appendChild(buildRow(buildHighscoreCell(), buildAttemptsCell()));
 
         const buttonClose = document.createElement("button");
         buttonClose.appendChild(document.createTextNode("Close"));
         buttonClose.addEventListener("click", function () {
             window.timeKeeper.toggleDialog();
         });
-        buttonClose.style = "color:white;background-color:" + window.button_color + ";";
+        buttonClose.style =
+            "display:block;margin:12px auto 0;color:white;background-color:" +
+            window.button_color +
+            ";";
         buttonClose.className = "btn";
         dialog.appendChild(buttonClose);
 
@@ -1688,16 +1801,17 @@ window.TimeKeeper.make = function () {
             "style",
             "outline: none;border-radius: 10px;z-index:10100;background:" +
                 window.real_topbar_color +
-                ";color:white;font-family:Roboto,Arial;"
+                ";color:white;font-family:Roboto,Arial;min-width:420px;max-width:560px;"
         );
         dialog.classList.add("custom-dialog");
-        const body = document.querySelector("body");
         body.insertBefore(dialog, body.firstChild);
     };
 
     window.timeKeeper.hideDialog = function () {
         const child = document.getElementById("timeKeeperDialog");
         if (child && child.parentElement) child.parentElement.removeChild(child);
+        const backdrop = document.getElementById("timeKeeperBackdrop");
+        if (backdrop && backdrop.parentElement) backdrop.parentElement.removeChild(backdrop);
         window.timeKeeper.dialogActive = false;
         const btn = document.getElementById("time-keeper");
         if (btn) btn.innerHTML = "Details";
@@ -2466,6 +2580,17 @@ window.SettingsSaver.make = function () {
     const COUNT_KEYS = ["0", "1", "2", "3", "4", "5", "6"];
     const COUNT_MINIMA = { 0: 1, 1: 3, 2: 5, 3: 10, 4: 6, 5: 24, 6: 5 };
 
+    const GAME_SETTING_KEYS = [
+        "trophy",
+        "count",
+        "speed",
+        "size",
+        "graphics",
+        "theme",
+        "color",
+        "apple",
+    ];
+
     function defaultPoolForCount(count) {
         const min = COUNT_MINIMA[count] || 1;
         const pool = [];
@@ -2520,7 +2645,9 @@ window.SettingsSaver.make = function () {
                 SelectedPairsByCount: {},
                 DisableRandom: false,
                 randomizeThemeApple: false,
-                ScrollBar: false
+                ScrollBar: false,
+                SaveGameSettings: true,
+                SavedGameSettings: null,
             };
             for (const key of COUNT_KEYS) {
                 pudding_settings.SelectedPairsByCount[key] = defaultPoolForCount(Number(key));
@@ -2541,6 +2668,15 @@ window.SettingsSaver.make = function () {
             }
             if (typeof pudding_settings.TrackedPlayerName !== 'string') {
                 pudding_settings.TrackedPlayerName = "";
+            }
+            if (typeof pudding_settings.SaveGameSettings !== 'boolean') {
+                pudding_settings.SaveGameSettings = true;
+            }
+            if (
+                pudding_settings.SavedGameSettings !== null &&
+                typeof pudding_settings.SavedGameSettings !== 'object'
+            ) {
+                pudding_settings.SavedGameSettings = null;
             }
             pudding_settings = migrateSelectedPairsByCount(pudding_settings);
             pudding_settings.SelectedPairs = pudding_settings.SelectedPairsByCount["0"];
@@ -2565,6 +2701,189 @@ window.SettingsSaver.make = function () {
             localStorage.setItem('PuddingSettings', JSON.stringify(s));
         }
     }
+
+    // Read selected child index for a Google Snake selector row
+    window.readGameSettingIndex = function (selectorId) {
+        const root = document.getElementById(selectorId);
+        if (!root || !root.children || !root.children.length) return 0;
+
+        // Selected icon uses tuJOWd (optionally with other classes)
+        for (let i = 0; i < root.children.length; i++) {
+            const el = root.children[i];
+            const cls = el.className || "";
+            if (cls === "tuJOWd" || cls === "DqMRee tuJOWd" || cls === "DqMRee") return i;
+            if (el.classList && el.classList.contains("tuJOWd")) return i;
+        }
+
+        // Odd-class-out (trophy / count style)
+        const classNames = [];
+        let notUnique = "";
+        for (const el of root.children) {
+            if (classNames.indexOf(el.className) === -1) classNames.push(el.className);
+            else {
+                notUnique = el.className;
+                break;
+            }
+        }
+        if (notUnique) {
+            let n = 0;
+            for (const el of root.children) {
+                if (el.className !== notUnique) return n;
+                n++;
+            }
+        }
+        return 0;
+    };
+
+    window.clickGameSettingIndex = function (selectorId, index) {
+        let i = Number(index);
+        if (isNaN(i) || i < 0) i = 0;
+
+        // Google's p7 selector (scroll + settings object). Child .click() does not stick.
+        if (typeof window.puddingMenuSelect === "function") {
+            return window.puddingMenuSelect(selectorId, i);
+        }
+        return false;
+    };
+
+    window._openSnakeSettingsPanel = function () {
+        const gear =
+            document.querySelector('div[jsname="iyH4Cb"]') ||
+            document.querySelector('div[jsname^="iyH4Cb"]');
+        if (gear && typeof gear.click === "function") {
+            gear.click();
+            return true;
+        }
+        return false;
+    };
+
+    window._closeSnakeSettingsPanel = function () {
+        // Native back control uses class p17HVe
+        const back =
+            document.querySelector(".p17HVe") ||
+            document.querySelector('[class^="p17HVe"]') ||
+            document.querySelector('[class*="p17HVe"]');
+        if (back && typeof back.click === "function") {
+            back.click();
+            return true;
+        }
+        return false;
+    };
+
+    window.saveCurrentGameSettings = function () {
+        if (!window.pudding_settings) return;
+        const snap = {};
+        for (const key of GAME_SETTING_KEYS) {
+            snap[key] = window.readGameSettingIndex(key);
+        }
+        // Prefer live vars when DOM class detection is ambiguous
+        if (typeof window.graphics_selected === "number") {
+            snap.graphics = window.graphics_selected;
+        }
+        if (typeof window.fruit_selected === "number") {
+            snap.apple = window.fruit_selected;
+        }
+        window.pudding_settings.SavedGameSettings = snap;
+        if (typeof window.saveSettings === "function") window.saveSettings();
+    };
+
+    window.applySavedGameSettingsOnce = function () {
+        if (window._puddingGameSettingsApplied) return;
+
+        const s = window.pudding_settings;
+        if (!s || !s.SaveGameSettings) {
+            window._puddingGameSettingsApplied = true;
+            return;
+        }
+        const snap = s.SavedGameSettings;
+        if (!snap || typeof snap !== "object") {
+            window._puddingGameSettingsApplied = true;
+            return;
+        }
+
+        const gear =
+            document.querySelector('div[jsname="iyH4Cb"]') ||
+            document.querySelector('div[jsname^="iyH4Cb"]');
+        const trophy = document.getElementById("trophy");
+        const p7Ready = typeof window._puddingSnakeP7 === "function";
+
+        if (!gear || !trophy || !trophy.children || !trophy.children.length || !p7Ready) {
+            if (typeof window._puddingGameSettingsApplyTries !== "number") {
+                window._puddingGameSettingsApplyTries = 0;
+            }
+            window._puddingGameSettingsApplyTries++;
+            if (window._puddingGameSettingsApplyTries > 100) {
+                window._puddingGameSettingsApplied = true;
+                return;
+            }
+            setTimeout(window.applySavedGameSettingsOnce, 50);
+            return;
+        }
+
+        window._puddingGameSettingsApplied = true;
+
+        // Open settings → wait until menu is live → apply via p7 → back (p17HVe).
+        window._openSnakeSettingsPanel();
+
+        const order = [
+            "trophy",
+            "count",
+            "speed",
+            "size",
+            "graphics",
+            "theme",
+            "color",
+            "apple",
+        ];
+
+        let waitTries = 0;
+        function waitMenuThenApply() {
+            waitTries++;
+            const menu = window._puddingSnakeMenu;
+            const ready =
+                menu &&
+                menu.oa === "settings" &&
+                typeof window._puddingSnakeP7 === "function";
+
+            if (!ready) {
+                if (waitTries > 80) {
+                    // Still try back so we don't leave settings open
+                    window._closeSnakeSettingsPanel();
+                    return;
+                }
+                setTimeout(waitMenuThenApply, 50);
+                return;
+            }
+
+            for (const key of order) {
+                if (typeof snap[key] === "number") {
+                    window.puddingMenuSelect(key, snap[key]);
+                }
+            }
+
+            setTimeout(function () {
+                window._closeSnakeSettingsPanel();
+            }, 100);
+        }
+
+        setTimeout(waitMenuThenApply, 50);
+    };
+
+    // Public helper used after alterCode exposes Google's selector.
+    window.puddingMenuSelect = function (id, index) {
+        const menu = window._puddingSnakeMenu;
+        const p7 = window._puddingSnakeP7;
+        if (!menu || typeof p7 !== "function") return false;
+        const row =
+            (menu.ka && menu.ka.iW && menu.ka.iW.get(id)) ||
+            document.getElementById(id);
+        if (!row || !row.children || !row.children.length) return false;
+        let i = Number(index);
+        if (isNaN(i) || i < 0) i = 0;
+        if (i >= row.children.length) i = row.children.length - 1;
+        p7(menu, row, true, i);
+        return true;
+    };
 }
 
 window.SettingsSaver.alterCode = function (code) {
@@ -2582,6 +2901,24 @@ window.SettingsSaver.alterCode = function (code) {
     save_settings_code = `stop\(a\){saveSettings();`
 
     code = code.assertReplace(stop_regex, save_settings_code);
+
+    // Expose Google's menu selector (p7). Child element .click() does not change settings;
+    // selection is scroll-position based and writes a.settings.* inside this function.
+    const menuSelectRegex = /([a-zA-Z0-9_$]{1,8})=function\(a,b,c,d=-1\)\{d=d!==-1\?d:([a-zA-Z0-9_$]{1,8})\(a,b\);for\(var e=0;e<b\.children\.length/;
+    catchError(menuSelectRegex, code);
+    code = code.assertReplace(
+        menuSelectRegex,
+        `$1=window._puddingSnakeP7=function(a,b,c,d=-1){window._puddingSnakeMenu=a;d=d!==-1?d:$2(a,b);for(var e=0;e<b.children.length`
+    );
+
+    // Capture menu when native settings open (Ec).
+    const openSettingsRegex = /([a-zA-Z0-9_$]{1,8})\(\)\{var a=this\.menu;a\.oa="settings";/;
+    catchError(openSettingsRegex, code);
+    code = code.assertReplace(
+        openSettingsRegex,
+        `$1(){var a=this.menu;window._puddingSnakeMenu=a;a.oa="settings";`
+    );
+
     return code;
 }
 window.SpeedInfo = {};
@@ -4005,7 +4342,12 @@ window.SpeedInfo.make = function () {
             if (!bold) continue;
 
             if (score == "att") {
-                const totalAttempts = typeof storage[name] === "number" ? storage[name] : 0;
+                const totalAttempts =
+                    typeof window.timeKeeper.getAttemptTotal === "function"
+                        ? window.timeKeeper.getAttemptTotal(storage[name])
+                        : typeof storage[name] === "number"
+                          ? storage[name]
+                          : 0;
                 bold.innerHTML = "Total Attempts: " + totalAttempts;
                 continue;
             }
@@ -4380,9 +4722,16 @@ window.Timer = {
     window.editTimer = function() {
       // console.warn(window.themes)
 
+      function closeEditBox() {
+        const box = document.getElementById('edit-box')
+        const bd = document.getElementById('edit-box-backdrop')
+        if (box) box.remove()
+        if (bd) bd.remove()
+      }
+
       let editBox = document.getElementById('edit-box')
       if(editBox) {
-        editBox.remove()
+        closeEditBox()
       } else {
         const theme = window.themes[getSelected('#theme', 'DqMRee tuJOWd') || getSelected('#theme', 'tuJOWd')]
 
@@ -4418,14 +4767,6 @@ window.Timer = {
         const iconSel = 'cursor: pointer; border: 0.45vh ridge #af4490ff; border-radius: 1vh; width: 3.2vh; height: 3.2vh;'
         const halfCol = 'flex:1;min-width:0;'
         editBox.innerHTML = `
-        <span id="close-box" style="
-        position: absolute;
-        top: 8px;
-        right: 12px;
-        cursor: pointer;
-        color: #ffffff;
-        font-size: 0.9em;
-      ">&#x2715</span>
 <label class="form-check-label" style="font-size: 2.8vh; display:block; margin-top:2px; margin-bottom:2px;">
         Custom Timer/Splits Settings
       </label>
@@ -4581,9 +4922,17 @@ window.Timer = {
 </div>
 
 </div>
+<button type="button" class="btn" id="close-box" style="margin:10px auto 2px;display:block;color:white;background-color:${btnColor};font-family:Roboto,Arial,sans-serif;">Close</button>
         `
+        const backdrop = document.createElement('div')
+        backdrop.id = 'edit-box-backdrop'
+        backdrop.style.cssText =
+          'position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:999999;' +
+          'background:rgba(0,0,0,0.45);'
+        backdrop.addEventListener('click', closeEditBox)
+        document.body.appendChild(backdrop)
         document.body.appendChild(editBox)
-        document.getElementById('close-box').addEventListener('click', function() { document.getElementById('edit-box').remove() })
+        document.getElementById('close-box').addEventListener('click', closeEditBox)
 
         const wrholders_checkbox = document.getElementById('ShowWrHolders')
         const tracked_input = document.getElementById('TrackedPlayerInput')
@@ -5250,18 +5599,33 @@ window.BootstrapMenu.make = function () {
 
     // Get the button by its jsname attribute
     window.random_button = document.querySelector(`[jsname="${random_button_jsname}"]`);
+    if (window.random_button) {
+        window._randomButtonOriginalHtml = window.random_button.innerHTML;
+        window._randomButtonOriginalColor = window.random_button.style.color || "";
+    }
+
+    window.applyRandomButtonState = function (disabled) {
+        const btn = window.random_button;
+        if (!btn) return;
+        if (disabled) {
+            btn.style.pointerEvents = "none";
+            btn.textContent = "Disabled";
+            btn.style.color = "grey";
+        } else {
+            btn.style.pointerEvents = "auto";
+            if (window._randomButtonOriginalHtml != null) {
+                btn.innerHTML = window._randomButtonOriginalHtml;
+            } else {
+                btn.textContent = "Shuffle";
+            }
+            btn.style.color = window._randomButtonOriginalColor || "";
+        }
+    };
 
     // Disable the button
     window.ToggleRandom = function () {
         window.pudding_settings.DisableRandom = !window.pudding_settings.DisableRandom;
-        if (window.pudding_settings.DisableRandom) {
-            // Disable it
-            random_button.style.pointerEvents = 'none';
-        }
-        else {
-            // Enable it
-            random_button.style.pointerEvents = 'auto';
-        }
+        window.applyRandomButtonState(window.pudding_settings.DisableRandom);
     }
 
     window.ToggleScrollbar = function () {
@@ -5381,7 +5745,7 @@ window.BootstrapMenu.make = function () {
     </div>
     <div class="form-check form-check-inline">
     <input class="form-check-input" type="checkbox" role="switch" id="AlwaysOnTimeKeeper">
-    <label class="form-check-label" for="AlwaysOnTimeKeeper" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Show SpeedInfo</label>
+    <label class="form-check-label" for="AlwaysOnTimeKeeper" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Show Speed Info</label>
     </div>
     <div class="form-check form-check-inline">
     <input class="form-check-input" type="checkbox" role="switch" id="DisableRandom">
@@ -5390,6 +5754,10 @@ window.BootstrapMenu.make = function () {
     <div class="form-check form-check-inline">
     <input class="form-check-input" type="checkbox" role="switch" id="RemoveScrollbar">
     <label class="form-check-label" for="RemoveScrollbar" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Remove Scrollbar</label>
+    </div>
+    <div class="form-check form-check-inline">
+    <input class="form-check-input" type="checkbox" role="switch" id="SaveGameSettings">
+    <label class="form-check-label" for="SaveGameSettings" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Save Game Settings</label>
     </div>
     <button class="btn" style="margin:3px;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="TimerSettings">Timer settings</button><br>
     <div class="form-check form-check-inline">
@@ -5451,15 +5819,7 @@ window.BootstrapMenu.make = function () {
         randombtn_checkbox = document.getElementById("DisableRandom");
         randombtn_checkbox.addEventListener("change", window.ToggleRandom);
         randombtn_checkbox.checked = window.pudding_settings.DisableRandom;
-
-        if (window.pudding_settings.DisableRandom) {
-            // Disable it
-            random_button.style.pointerEvents = 'none';
-        }
-        else {
-            // Enable it
-            random_button.style.pointerEvents = 'auto';
-        }
+        window.applyRandomButtonState(window.pudding_settings.DisableRandom);
 
         scrollbtn_checkbox = document.getElementById("RemoveScrollbar");
         scrollbtn_checkbox.addEventListener("change", window.ToggleScrollbar);
@@ -5473,6 +5833,16 @@ window.BootstrapMenu.make = function () {
             // Enable it
             document.body.style.overflow = '';
         }
+
+        const saveGameSettingsCheckbox = document.getElementById("SaveGameSettings");
+        if (typeof window.pudding_settings.SaveGameSettings !== "boolean") {
+            window.pudding_settings.SaveGameSettings = true;
+        }
+        saveGameSettingsCheckbox.checked = !!window.pudding_settings.SaveGameSettings;
+        saveGameSettingsCheckbox.addEventListener("change", function () {
+            window.pudding_settings.SaveGameSettings = !!saveGameSettingsCheckbox.checked;
+            if (typeof window.saveSettings === "function") window.saveSettings();
+        });
 
         if (localStorage.getItem('snakeChosenMod') === "PuddingMod" || window.NepDebug) {
             EatThemeRandomizer.style.display = 'none';
@@ -5588,6 +5958,9 @@ window.BootstrapMenu.make = function () {
 
     const playButton = 'NSjDf';
     document.querySelector("[jsname^=\"" + playButton + "\"]").addEventListener("click", (e) => {
+        if (typeof window.saveCurrentGameSettings === "function") {
+            window.saveCurrentGameSettings();
+        }
         window.BootstrapHide();
         if (window.isSnakeMobileVersion) {
             if (localStorage.getItem('snakeChosenMod') === "VisibilityMod") {
@@ -5611,6 +5984,13 @@ window.BootstrapMenu.alterCode = function (code) {
     {
         window.SpeedInfoShow();
     }
+    // After patched game is live: restore saved selectors once per page load
+    // (applySavedGameSettingsOnce polls until #trophy exists)
+    setTimeout(function () {
+        if (typeof window.applySavedGameSettingsOnce === "function") {
+            window.applySavedGameSettingsOnce();
+        }
+    }, 0);
     return code;
 }
 window.ResetKey = {}
@@ -6066,7 +6446,7 @@ window.CustomBowl.make = function () {
                 </div>
                 <div id="fruit-bowl-status" style="color:#dce8c8;font-family:Roboto,Arial,sans-serif;font-size:15px;margin:0 0 12px 0;text-align:center;"></div>
                 <div id="fruit-bowl-grid" style="padding:4px 0 8px;display:flex;flex-direction:column;align-items:center;"></div>
-                <button type="button" class="btn" style="margin:8px auto 0;display:block;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;width:auto;min-width:72px;padding:4px 14px;font-size:12px;line-height:1.2;" id="fruit-bowl-close">Close</button>
+                <button type="button" class="btn" style="margin:8px auto 0;display:block;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="fruit-bowl-close">Close</button>
             `;
             host.appendChild(panel);
             applyPanelTheme(panel);
@@ -6391,6 +6771,10 @@ window.PuddingMod.runCodeAfter = function () {
   let canvasNode = document.getElementsByClassName('jNB0Ic')[0];
   document.getElementsByClassName('EjCLSb')[0].insertBefore(modIndicator, canvasNode);
 
+  // Belt-and-suspenders: menu may not exist until after alterCode's setTimeout(0)
+  if (typeof window.applySavedGameSettingsOnce === "function") {
+    setTimeout(window.applySavedGameSettingsOnce, 0);
+  }
 };
 
 window.moreMenu = {
@@ -8274,6 +8658,10 @@ window.MorePudding.runCodeAfter = function() {
   modIndicator.textContent = 'More Pudding Mod';
   let canvasNode = document.getElementsByClassName('jNB0Ic')[0];
   document.getElementsByClassName('EjCLSb')[0].insertBefore(modIndicator, canvasNode);
+
+  if (typeof window.applySavedGameSettingsOnce === "function") {
+    setTimeout(window.applySavedGameSettingsOnce, 0);
+  }
 };
 
 window.CandyMod = {};
