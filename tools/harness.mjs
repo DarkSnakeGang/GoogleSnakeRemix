@@ -10,7 +10,11 @@ import { chromium } from "playwright";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
-const MOD_PATH = path.join(ROOT, "RemixMod.js");
+const DEFAULT_MOD_FILE = "RemixMod.js";
+
+function resolveModPath(opts = {}) {
+  return path.join(ROOT, opts.modFile || DEFAULT_MOD_FILE);
+}
 
 export const MODE = {
   CLASSIC: 0,
@@ -44,16 +48,15 @@ export function mulberry32(seed) {
   };
 }
 
-function startModServer() {
-  const mod = fs.readFileSync(MOD_PATH);
+function startModServer(modPath, urlName) {
   const server = http.createServer((req, res) => {
-    if (req.url === "/RemixMod.js" || req.url === "/") {
+    if (req.url === `/${urlName}` || req.url === "/") {
       res.writeHead(200, {
         "Content-Type": "application/javascript; charset=utf-8",
         "Access-Control-Allow-Origin": "*",
         "Cache-Control": "no-store",
       });
-      res.end(mod);
+      res.end(fs.readFileSync(modPath));
       return;
     }
     res.writeHead(404);
@@ -65,24 +68,37 @@ function startModServer() {
       resolve({
         server,
         port,
-        customUrl: `http://127.0.0.1:${port}/RemixMod.js`,
+        customUrl: `http://127.0.0.1:${port}/${urlName}`,
       });
     });
   });
 }
 
+export function ultraHarnessOpts(extra = {}) {
+  return {
+    modFile: "RemixUltraMod.js",
+    customModName: "RemixUltraMod",
+    indicator: "Remix Ultra",
+    ...extra,
+  };
+}
+
 /**
- * @param {{ seed?: number, headless?: boolean }} opts
+ * @param {{ seed?: number, headless?: boolean, modFile?: string, customModName?: string, indicator?: string }} opts
  */
 export async function launchHarness(opts = {}) {
   const seed = opts.seed ?? 42;
   const headless = opts.headless !== false;
+  const modFile = opts.modFile || DEFAULT_MOD_FILE;
+  const modPath = resolveModPath(opts);
+  const customModName = opts.customModName || "RemixMod";
+  const indicator = opts.indicator || "Remix Mod";
 
-  if (!fs.existsSync(MOD_PATH)) {
-    throw new Error("RemixMod.js missing — run: python RemixBuilder.py");
+  if (!fs.existsSync(modPath)) {
+    throw new Error(`${modFile} missing — run: python RemixBuilder.py`);
   }
 
-  const { server, customUrl } = await startModServer();
+  const { server, customUrl } = await startModServer(modPath, modFile);
   const browser = await chromium.launch({ headless });
   const context = await browser.newContext();
   const page = await context.newPage();
@@ -101,7 +117,7 @@ export async function launchHarness(opts = {}) {
   });
 
   await page.route(customUrl, async (route) => {
-    const body = fs.readFileSync(MOD_PATH);
+    const body = fs.readFileSync(modPath);
     await route.fulfill({
       status: 200,
       contentType: "application/javascript",
@@ -110,14 +126,14 @@ export async function launchHarness(opts = {}) {
   });
 
   await page.addInitScript(
-    ({ url, seedVal, debug }) => {
+    ({ url, seedVal, debug, name }) => {
       if (debug) window.RemixDebug = true;
       localStorage.setItem("snakeForceDevMode", "true");
       localStorage.setItem("snakeChosenMod", "customUrl");
       localStorage.setItem(
         "snakeAdvancedSettings",
         JSON.stringify({
-          customModName: "RemixMod",
+          customModName: name,
           customUrl: url,
         })
       );
@@ -130,7 +146,12 @@ export async function launchHarness(opts = {}) {
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
       };
     },
-    { url: customUrl, seedVal: seed, debug: !!opts.debug }
+    {
+      url: customUrl,
+      seedVal: seed,
+      debug: !!opts.debug,
+      name: customModName,
+    }
   );
 
   await page.goto("https://googlesnakemods.com/v/current/", {
@@ -139,11 +160,11 @@ export async function launchHarness(opts = {}) {
   });
 
   await page.waitForFunction(
-    () =>
-      !!document.body?.innerText?.includes("Remix Mod") ||
+    ({ text, api }) =>
+      !!document.body?.innerText?.includes(text) ||
       window.CHESS_MODE != null ||
-      window.RemixMod,
-    null,
+      window[api],
+    { text: indicator, api: customModName },
     { timeout: 120000 }
   );
 
@@ -159,8 +180,12 @@ export async function launchHarness(opts = {}) {
       return consoleLog.filter(
         (e) =>
           e.type === "pageerror" ||
-          /^(CandyMod|ChessMod|BurgerMod|RemixMod):/.test(e.text) ||
-          /failed to (find|patch|expose)/i.test(e.text)
+          (e.type === "error" &&
+            (/^(CandyMod|ChessMod|BurgerMod|RemixMod|RemixUltraMod):/.test(
+              e.text
+            ) ||
+              /failed to (find|patch|expose)/i.test(e.text) ||
+              /Level Editor alterSnakeCode failed/i.test(e.text)))
       );
     },
 

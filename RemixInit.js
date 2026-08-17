@@ -106,6 +106,9 @@ window.RemixMod.runCodeBefore = function () {
   };
 
   window.remixBaseRunCodeBefore();
+  if (typeof window.remixInlineCspMenuIcons === "function") {
+    window.remixInlineCspMenuIcons();
+  }
   // Modes claim their trophy slots after MorePudding (incl. MoreMenu) has
   // finished adding its own, so their ids land at the end.
   window.CandyMod.runCodeBefore();

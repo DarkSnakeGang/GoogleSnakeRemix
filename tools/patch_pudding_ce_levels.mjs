@@ -94,7 +94,7 @@ code = code.replace(marker, ceLevelBlock);
 console.log("patched CE level constants");
 
 const buildRe =
-  /if \(score === "H"\) \{\r?\n            const hsCat = SRC_HS_CATEGORY_BY_MODE\[mode\];\r?\n[\s\S]*?return `https:\/\/www\.speedrun\.com\/\$\{SRC_GAME\}\/runs\/new\?x=\$\{x\}`;\r?\n    \}/;
+  /if \(score === "H"\) \{\r?\n(?:            if \(!canSubmitHighscore\(mode, count\)\) return null;\r?\n)?            const hsCat = SRC_HS_CATEGORY_BY_MODE\[mode\];\r?\n[\s\S]*?return `https:\/\/www\.speedrun\.com\/\$\{SRC_GAME\}\/runs\/new\?x=\$\{x\}`;\r?\n    \}/;
 
 if (!buildRe.test(code)) {
   console.error("buildSrcSubmitUrl HS/IL pattern not found");
@@ -105,6 +105,7 @@ code = code.replace(
   buildRe,
   block([
     'if (score === "H") {',
+    "            if (typeof canSubmitHighscore === \"function\" && !canSubmitHighscore(mode, count)) return null;",
     "            const hsCat = SRC_HS_CATEGORY_BY_MODE[mode];",
     "            if (hsCat) {",
     "                const x = [",

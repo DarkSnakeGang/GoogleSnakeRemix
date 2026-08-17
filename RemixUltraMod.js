@@ -1215,7 +1215,7 @@ window.TimeKeeper.make = function () {
         if (!window.timeKeeper._storageCache) {
             try {
                 window.timeKeeper._storageCache = JSON.parse(
-                    localStorage.getItem("snake_timeKeeper_remix") || '{"version":4}'
+                    localStorage.getItem("snake_timeKeeper_remix_ultra") || '{"version":4}'
                 );
             } catch (e) {
                 window.timeKeeper._storageCache = { version: 4 };
@@ -1227,7 +1227,7 @@ window.TimeKeeper.make = function () {
     // Persist immediately (settings edits, attempt count, end-of-run flush helpers)
     window.timeKeeper.setStorage = function (storage) {
         window.timeKeeper._storageCache = storage;
-        localStorage.setItem("snake_timeKeeper_remix", JSON.stringify(storage));
+        localStorage.setItem("snake_timeKeeper_remix_ultra", JSON.stringify(storage));
         window.timeKeeper._storageDirty = false;
     };
 
@@ -1239,7 +1239,7 @@ window.TimeKeeper.make = function () {
     window.timeKeeper.flushStorage = function () {
         if (!window.timeKeeper._storageDirty || !window.timeKeeper._storageCache) return;
         localStorage.setItem(
-            "snake_timeKeeper_remix",
+            "snake_timeKeeper_remix_ultra",
             JSON.stringify(window.timeKeeper._storageCache)
         );
         window.timeKeeper._storageDirty = false;
@@ -1585,7 +1585,7 @@ window.TimeKeeper.make = function () {
     };
 
     window.timeKeeper.makeStorage = function () {
-        let storage = localStorage.getItem("snake_timeKeeper_remix");
+        let storage = localStorage.getItem("snake_timeKeeper_remix_ultra");
         if (storage == null) {
             storage = { version: 2 };
             const old_pbs = localStorage.getItem("snake_pbs");
@@ -1677,7 +1677,7 @@ window.TimeKeeper.make = function () {
             storage[key] = window.timeKeeper.rollAttemptSession(storage[key]);
         }
 
-        localStorage.setItem("snake_timeKeeper_remix", JSON.stringify(storage));
+        localStorage.setItem("snake_timeKeeper_remix_ultra", JSON.stringify(storage));
         window.timeKeeper._storageCache = storage;
         window.timeKeeper._storageDirty = false;
     };
@@ -2776,7 +2776,7 @@ window.SettingsSaver.make = function () {
     }
 
     window.loadSettings = function () {
-        let pudding_settings = localStorage.getItem('RemixSettings');
+        let pudding_settings = localStorage.getItem('RemixUltraSettings');
         if (pudding_settings === null) {
             pudding_settings = {
                 Skull: false,
@@ -2849,7 +2849,7 @@ window.SettingsSaver.make = function () {
             typeof s.DisableRandom !== 'undefined' &&
             typeof s.randomizeThemeApple !== 'undefined'
         ) {
-            localStorage.setItem('RemixSettings', JSON.stringify(s));
+            localStorage.setItem('RemixUltraSettings', JSON.stringify(s));
         }
     }
 
@@ -4497,7 +4497,7 @@ window.SpeedInfo.make = function () {
             storage =
                 typeof window.timeKeeper.getStorage === "function"
                     ? window.timeKeeper.getStorage()
-                    : JSON.parse(localStorage["snake_timeKeeper_remix"] || "{}");
+                    : JSON.parse(localStorage["snake_timeKeeper_remix_ultra"] || "{}");
         } catch (e) {
             storage = {};
         }
@@ -12892,4 +12892,3689 @@ window.RemixMod.runCodeAfter = function () {
     parent.insertBefore(modIndicator, canvasNode);
   }
 };
+
+window.levelEditorMod = {};
+
+////////////////////////////////////////////////////////////////////
+//RUNCODEBEFORE
+////////////////////////////////////////////////////////////////////
+
+window.levelEditorMod.runCodeBefore = function() {
+  ///////////////////////////////////////
+  //Taken from shared.js
+  ///////////////////////////////////////
+
+  window.wholeSnakeObject;//Set to the big snake object that includes everything in snake.
+  window.megaWholeSnakeObject;//Contains wholeSnakeObject
+
+  //Allow running code at particular points in time (e.g. after board reset, after death, after eating an apple)
+  window.simpleHookManager = {
+    hooks: {
+      'afterResetBoard':[],//Format for an element {name: myHook, callback: myFunction}
+    },
+    runHook: function(hookType) {
+      if(this.hooks.hasOwnProperty(hookType) && Array.isArray(this.hooks[hookType])) {
+        for(let hook of this.hooks[hookType]) {
+          hook.callback();
+        }
+      } else {
+        throw new Error(`Hook type "${hookType}" not found`);
+      }
+    },
+    registerHook: function(hookType, hookName, hookCallback) {
+      if(!this.hooks.hasOwnProperty(hookType) || !Array.isArray(this.hooks[hookType])) throw new Error(`Hook type not found`);
+
+      if(typeof hookName !== 'string' || typeof hookCallback !== 'function') {
+        throw new Error('hookName must be a string, hookCallback must be a function.');
+      }
+
+      //Check hook not already registered
+      if(this.hooks[hookType].some(el=>el.name === hookName)) return;
+
+      this.hooks[hookType].push({name: hookName, callback: hookCallback});
+    }
+  }
+
+  ///////////////////////////////////////
+  //Taken from level-editor.js
+  ///////////////////////////////////////
+
+  //For localhost vs github version
+
+  const isProd = true;
+
+  globalThis.rootUrl;
+  globalThis.imagePresetsFolder;
+  globalThis.sharedUrl;
+  globalThis.randomHamUrl;
+  globalThis.challengeUrl;
+
+  if(isProd) {
+    //Live
+    globalThis.rootUrl = 'https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v12/';
+    globalThis.imagePresetsFolder = 'image-presets/';
+    globalThis.sharedUrl = 'https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v12/shared.js';
+    globalThis.randomHamUrl = 'https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v12/random_ham.txt';
+    globalThis.challengeUrl = 'https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v12/challenge.txt';
+  } else {
+    //Dev
+    globalThis.rootUrl = 'http://localhost:3000/';
+    globalThis.imagePresetsFolder = 'presets-windows-symlink/';
+    globalThis.sharedUrl = 'https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v12/shared.js';
+    globalThis.randomHamUrl = 'http://localhost:3000/random_ham.txt';
+    globalThis.challengeUrl = 'http://localhost:3000/challenge.txt';
+  }
+
+  //Used by make pattern
+  globalThis.roundApplePos = true;//For placing apples with mousedown
+  globalThis.mousePlaceMode = {category: 'apple', type:0};//Category could be apple, wall, drag or box, type corresponds to which apple
+  globalThis.disableWallMode = true;//Whether wall mode should place walls every 2 turns
+  globalThis.disableAppleInitialSpeed = false;
+  globalThis.customSnakeStart = {isActive:false, x:4, y:1};
+  globalThis.customPresetManager = {
+    canvasWidth:370,
+    canvasHeight:340,
+    currentMapSize:'standard',
+    currentBoardWidth:17,
+    currentBoardHeight:15,
+    brush:'apple',
+    pixelList:[{x: 11, y: 7, category: 'apple', type: 0}],
+    isDrawing:false,
+    isErasing:false,
+    lastSpotDrawnOn:{x:undefined,y:undefined},
+    changeMapSize: function(newSize) {
+      let newSizeSetting = null;
+      this.currentMapSize = newSize;
+      switch(newSize) {
+        case 'small': 
+          this.currentBoardWidth = 10;
+          this.currentBoardHeight = 9;
+          newSizeSetting = 1;
+          break;
+        case 'standard': 
+          this.currentBoardWidth = 17;
+          this.currentBoardHeight = 15;
+          newSizeSetting = 0;
+          break;
+        case 'large': 
+          this.currentBoardWidth = 24;
+          this.currentBoardHeight = 21;
+          newSizeSetting = 2;
+          break;
+        default:
+          throw new Error(`Unrecognised map size! Found ${newSize}`);
+      }
+
+      //Clear out old map (and triggers a draw afterwards)
+      this.clearAll();
+      this.placeInitialApple();
+      this.draw();//Technically we draw twice in a row since clearAll also draws, but ¯\_(ツ)_/¯
+
+      //Also change real map size
+      selectNewSizeSettingAndHardReset(newSizeSetting);
+    },
+    draw: function() {
+      const tileWidth = this.canvasWidth/this.currentBoardWidth;
+      const tileHeight = this.canvasHeight/this.currentBoardHeight;
+
+      this.ctx.fillStyle = "#a2d149";
+      this.ctx.fillRect(0,0,this.canvasWidth,this.canvasHeight);
+
+      this.ctx.fillStyle = "#aad751";
+      for(let j = 0; j < this.currentBoardHeight; j++) {
+        for(let i = 0; i < this.currentBoardWidth; i++) {
+          if((i + j) % 2 === 0) {
+            this.ctx.fillRect(i*tileWidth, j*tileHeight, tileWidth, tileHeight);
+          }
+        }
+      }
+
+      for(let k of this.pixelList) {
+        this.drawEntity(k.x * tileWidth, k.y * tileHeight, tileWidth, tileHeight, k.category, k.type);
+      }
+    },
+    drawEntity: function(xCoord, yCoord, width, height, category, type) {
+      switch(category) {
+        case 'apple':
+          this.ctx.fillStyle = "#E05826";
+          this.ctx.fillRect(xCoord, yCoord, width, height);
+          break;
+        case 'wall':
+          this.ctx.fillStyle = "#578A34";
+          this.ctx.fillRect(xCoord, yCoord, width, height);
+          break;
+        case 'box':
+          this.ctx.fillStyle = "#F0A036";
+          this.ctx.fillRect(xCoord, yCoord, width, height);
+          break;
+        case 'snakehead':
+          this.ctx.fillStyle = "#4673E8";
+          this.ctx.fillRect(xCoord, yCoord, width, height);
+          break;
+        default:
+          throw new Error(`Unexpected item to draw on custom preset canvas. Received: ${category}`);
+      }
+    },
+    clearAll: function() {
+      this.pixelList = [];
+      this.draw();
+    },
+    handleMouseDownOnBoard: function(event) {
+      event.preventDefault();
+
+      if(event.button === 0) {
+        customPresetManager.isDrawing = true;
+      } else if(event.button === 2) {
+        customPresetManager.isErasing = true;
+      } else {
+        return;
+      }
+
+      const rect = document.getElementById('custom-preset-canvas').getBoundingClientRect();
+
+      customPresetManager.attemptPlace(event.clientX - rect.left, event.clientY - rect.top, customPresetManager.isErasing);
+    },
+    handleMouseUpAnywhere: function(event) {
+      event.preventDefault();
+
+      if(event.button === 0) {
+        customPresetManager.isDrawing = false;
+      } else if(event.button === 2) {
+        customPresetManager.isErasing = false;
+      } else {
+        return;
+      }
+
+      customPresetManager.lastSpotDrawnOn = {x:undefined,y:undefined};
+    },
+    handleMouseMoveOnBoard: function(event) {
+      if(!customPresetManager.isDrawing && !customPresetManager.isErasing) return;
+
+      const rect = document.getElementById('custom-preset-canvas').getBoundingClientRect();
+      customPresetManager.attemptPlace(event.clientX - rect.left, event.clientY - rect.top, customPresetManager.isErasing);
+    },
+    attemptPlace: function(xPixelCoord, yPixelCoord, isErase=false) {
+      //Try to place entity corresponding to current brush into the pixelList.
+      
+      //Convert pixels coords into board coords
+      const tileWidth = this.canvasWidth/this.currentBoardWidth;
+      const tileHeight = this.canvasHeight/this.currentBoardHeight;
+      const boardXCoord = Math.floor(xPixelCoord/tileWidth);
+      const boardYCoord = Math.floor(yPixelCoord/tileHeight);
+
+      //Exit early if the mouse is still on the same square
+      if(this.lastSpotDrawnOn.x === boardXCoord && this.lastSpotDrawnOn.y === boardYCoord) return;
+      this.lastSpotDrawnOn = {x:boardXCoord, y:boardYCoord};
+
+      //Exit early if out of bounds
+      if(boardXCoord < 0 || boardYCoord < 0 || boardXCoord >= this.currentBoardWidth || boardYCoord >= this.currentBoardHeight) return;
+
+      this.removeAtCoord(boardXCoord, boardYCoord); 
+
+      //If we're erasing then exit just after erasing
+      if(isErase) {
+        this.draw();
+        return;
+      }
+
+      switch(this.brush) {
+        case 'apple':
+          this.pixelList.push({ x: boardXCoord, y: boardYCoord, category: 'apple', type: 0});
+          break;
+        case 'wall':
+          this.pixelList.push({ x: boardXCoord, y: boardYCoord, category: 'wall', type: -1});
+          break;
+        case 'box':
+          this.pixelList.push({ x: boardXCoord, y: boardYCoord, category: 'box', type: -1});
+          break;
+        case 'snakehead':
+          //Also remove any other snakehead instances.
+          this.removeSnakeHeads();
+          this.pixelList.push({ x: boardXCoord, y: boardYCoord, category: 'snakehead', type: -1});
+          break;
+        case 'erase':
+          //Do nothing since we remove earlier
+          break;
+        default:
+          throw new Error(`Unrecognised brush type ${this.brush}`);
+      }
+
+      //Always redraw (this might be unecessary if we're placing on an occupied spot, but there's no real harm in this)
+      this.draw();
+    },
+    removeAtCoord: function(boardX, boardY) {
+      let i = this.pixelList.length;
+      while(i--) {
+        if(this.pixelList[i].x === boardX && this.pixelList[i].y === boardY) {
+          this.pixelList.splice(i, 1);
+        }
+      }
+    },
+    removeSnakeHeads: function() {
+      let i = this.pixelList.length;
+      while(i--) {
+        if(this.pixelList[i].category === 'snakehead') {
+          this.pixelList.splice(i, 1);
+        }
+      }
+    },
+    placeInitialApple: function() {
+      //Places a single apple. This is because otherwise the game will be an instant-win
+      this.pixelList.push({x: Math.floor(this.currentBoardWidth * 3/4), y: Math.floor(this.currentBoardHeight/2), category: 'apple', type: 0});
+    },
+    getExportCode: function() {
+      let codesArray = [];
+
+      //First part gives the map size.
+      codesArray.push(`${this.currentBoardWidth}x${this.currentBoardHeight}`);
+
+      for(let entity of this.pixelList) {
+        switch(entity.category) {
+          case 'apple':
+            codesArray.push(`A${entity.x},${entity.y}`);
+            break;
+          case 'wall':
+            codesArray.push(`W${entity.x},${entity.y}`);
+            break;
+          case 'box':
+            codesArray.push(`B${entity.x},${entity.y}`);
+            break;
+          case 'snakehead':
+            codesArray.push(`S${entity.x},${entity.y}`);
+            break;
+          case 'default':
+            throw new Error('Unrecognise category when getting export code');
+        }
+      }
+
+      return codesArray.join(' ');
+    },
+    importCode: function(fullCode) {
+      fullCode = fullCode.trim();
+
+      //Process the main part of the code.
+      this.pixelList = this.getPixelListFromLevelCode(fullCode);
+
+      //First part gives map size
+      try {
+        let mapPart = fullCode.split(' ')[0]
+        let [boardWidth, boardHeight] = mapPart.split('x');
+
+        boardWidth = parseInt(boardWidth);
+        boardHeight = parseInt(boardHeight);
+
+        if(typeof boardWidth === 'number' && typeof boardHeight === 'number' && isFinite(boardWidth) && isFinite(boardHeight) && boardWidth > 0 && boardHeight > 0) {
+          this.currentBoardWidth = boardWidth;
+          this.currentBoardHeight = boardHeight;
+
+          let newSizeSetting = null;
+
+          if(boardWidth === 10 && boardHeight === 9) {
+            this.currentMapSize = 'small';
+            newSizeSetting = 1;
+          } else if(boardWidth === 17 && boardHeight === 15) {
+            this.currentMapSize = 'standard';
+            newSizeSetting = 0;
+          } else if(boardWidth === 24 && boardHeight === 21) {
+            this.currentMapSize = 'large';
+            newSizeSetting = 2;
+          } else {
+            //Maybe they are trying to do a custom board size? Just keep map size the same for now.
+            newSizeSetting = null;
+          }
+
+          document.getElementById('custom-map-size').value = this.currentMapSize;
+
+          //Also change real map size
+          selectNewSizeSettingAndHardReset(newSizeSetting);
+        }
+      } catch (err) {
+        //Just skip and keep current map size.
+      }
+
+      this.draw();
+    },
+    getPixelListFromLevelCode: function(levelCode) {
+      levelCode = levelCode.trim();
+
+      let newPixelList = [];
+
+      let codesArray = levelCode.split(' ');
+
+      //Start from 1 since 0 contains board size which we don't need for pixelList
+      for(let i = 1; i < codesArray.length; i++) {
+        try {
+          let entityLetter = codesArray[i][0]; //First letter indicates where it is apple, box...
+          let coordPart = codesArray[i].substr(1);
+          let coords = coordPart.split(',');
+
+          //Skip if coords are bad.
+          let coordX = parseInt(coords[0]);
+          let coordY = parseInt(coords[1]);
+
+          if(!isFinite(coordX) || !isFinite(coordY) || coordX < 0 || coordY < 0) continue;
+
+          switch(entityLetter) {
+            case 'A':
+              //Apple
+              newPixelList.push({x: coordX, y: coordY, category: 'apple', type: 0});
+              break;
+            case 'W':
+              //Wall
+              newPixelList.push({x: coordX, y: coordY, category: 'wall', type: -1});
+              break;
+            case 'B':
+              //Box
+              newPixelList.push({x: coordX, y: coordY, category: 'box', type: -1});
+              break;
+            case 'S':
+              //Snakehead
+              newPixelList.push({x: coordX, y: coordY, category: 'snakehead', type: -1});
+              break;
+            default:
+              throw new Error('Unrecognise entity letter');
+          }
+        } catch(err) {
+          //Just skip and process next code
+        }
+      }
+
+      return newPixelList;
+    }
+  };
+
+  window.otherPresetmanager = {
+    isHamsLoaded: false,
+    isChallengeLoaded: false,
+    hamLevelCodes: [],
+    challengeLevelCodes: [],
+    randomHamAppleCount: 5,
+    challengelevel: 1,
+    loadRandomHams: function() {
+      fetch(randomHamUrl)
+      .then(response=>response.text())
+      .then(allHamCodes=>{
+        otherPresetmanager.hamLevelCodes = allHamCodes.split('\n');
+        otherPresetmanager.isHamsLoaded = true;
+      });
+    },
+    loadChallenge: function() {
+      fetch(challengeUrl)
+      .then(response=>response.text())
+      .then(allChallengeCodes=>{
+        otherPresetmanager.challengeLevelCodes = allChallengeCodes.split('\n').filter(line => line.trim().length > 0);
+        otherPresetmanager.isChallengeLoaded = true;
+      });
+    },
+    getRandomHamPixelList: function() {
+      if(!this.isHamsLoaded) return [];
+
+      //Choose random level
+      const chosenLevelCode = this.hamLevelCodes[Math.floor(Math.random() * this.hamLevelCodes.length)];
+
+      //Get pixelList
+      let hamPixelList = customPresetManager.getPixelListFromLevelCode(chosenLevelCode);
+
+      //Add some apples
+      let appleDesiredCoords;
+      
+      switch(this.randomHamAppleCount) {
+        case 1: 
+          appleDesiredCoords = [{x:7,y:4}];
+          break;
+        case 3:
+          appleDesiredCoords = [{x:5,y:2},{x:7,y:4},{x:5,y:6}];
+          break;
+        case 5:
+          appleDesiredCoords = [{x:4,y:2},{x:8,y:2},{x:6,y:4},{x:4,y:6},{x:8,y:6}];
+          break;
+        default:
+          throw new Error('Unexpected apple count for random ham');
+      }
+
+      for(let apple of appleDesiredCoords) {
+        //Add the apples to the pixelList
+        if(hamPixelList.some(entity=>entity.x === apple.x && entity.y === apple.y)) {
+          //If the spot an apple would normally be is occupied, then move it one space up.
+          apple.y--;
+        }
+
+        hamPixelList.push({x: apple.x, y: apple.y, category: 'apple', type: 0});
+      }
+
+      return hamPixelList;
+    },
+    getChallengePixelList: function() {
+      if(!this.isChallengeLoaded) return [];
+
+      const chosenLevelCode = this.challengeLevelCodes[this.challengelevel - 1];
+
+      //Get pixelList
+      let challengePixelList = customPresetManager.getPixelListFromLevelCode(chosenLevelCode);
+
+      return challengePixelList;
+    }
+  };
+
+  window.challengeSpeedrunMode = false;
+
+  // Called from the vanilla win path. Returns true if speedrun handled the win (skip end screen).
+  window.tryChallengeSpeedrunAdvance = function(gameState) {
+    if(!window.challengeSpeedrunMode) return false;
+
+    const presetEl = document.getElementsByClassName('chosen-preset')?.[0];
+    if(!presetEl || !presetEl.classList.contains('preset-challenge')) return false;
+
+    const maxLevel = otherPresetmanager.challengeLevelCodes.length || 20;
+    const currentLevel = Number(otherPresetmanager.challengelevel) || 1;
+    if(currentLevel >= maxLevel) return false; // Final level: keep normal win celebration
+
+    const nextLevel = currentLevel + 1;
+    otherPresetmanager.challengelevel = nextLevel;
+    const levelSelect = document.getElementById('challenge-level');
+    if(levelSelect) levelSelect.value = String(nextLevel);
+
+    // Defer reset so we leave the current game tick cleanly; board ends ready to start
+    setTimeout(() => {
+      if(typeof selectNewSizeSettingAndHardReset === 'function') {
+        selectNewSizeSettingAndHardReset(0);
+      }
+    }, 0);
+
+    return true;
+  };
+
+  window.setPixelData = function(target, url, callback = null) {
+    target.complete = false;
+  
+    fetch(url)
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error('HTTP error, status = ' + response.status);
+        }
+        return response.blob();
+      })
+      .then(function (myBlob) {
+        let objectURL = URL.createObjectURL(myBlob);
+        let img = document.createElement('img');
+        img.src = objectURL;
+        if (img.complete) {
+          extractImageData(img, objectURL);
+        } else {
+          img.addEventListener('load', function () { extractImageData(img, objectURL) });
+          img.addEventListener('error', function () { alert('Error loading image') })
+        }
+      })
+      .catch(function (error) {
+        console.log(error);
+      });
+  
+    function extractImageData(img, objectURL) {
+      let canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      let ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, img.width, img.height);
+      let imageDataArray = ctx.getImageData(0, 0, img.width, img.height).data;
+      let pixelList = [];//Contains hex and coords
+      for (let i = 0; i < imageDataArray.length; i += 4) {
+        let hex = rgbToHex(imageDataArray[i], imageDataArray[i + 1], imageDataArray[i + 2]);
+        let pixelDetails = hexToPixelDetails(hex);
+        pixelList.push({ x: i / 4 % img.width, y: Math.floor((i / 4) / img.width), hex: hex, category: pixelDetails.category, type: pixelDetails.type });
+      }
+      URL.revokeObjectURL(objectURL);
+      target.pixelList = pixelList;
+      target.complete = true;
+      if (callback) {
+        callback();
+      }
+    }
+  
+  }
+  
+  window.blitPattern = function(pixelList, offsetX=0, offsetY=0) {
+    customSnakeStart.isActive = false;
+    emptyApples();
+    emptySokoboxes();
+    emptySokogoals();
+    for(let i=0;i<pixelList.length;i++) {
+      switch(pixelList[i].category) {
+        case 'apple':
+          if(pixelList[i].type != -1) {
+            let intialSpeed = undefined;//Default to using speed given by winged mode, or whatever mode is selected
+            if(disableAppleInitialSpeed) {
+              intialSpeed = {x:0, y:0};
+            }
+            window.placeApple(pixelList[i].x + offsetX,pixelList[i].y + offsetY,pixelList[i].type, intialSpeed);
+          }
+          break;
+        case 'wall':
+          window.placeWall(pixelList[i].x, pixelList[i].y, true);
+          break;
+        case 'box':
+          window.placeSokobox(pixelList[i].x, pixelList[i].y);
+          break;
+        case 'snakehead':
+          //Do nothing since we handle the snakehead stuff somewhere else
+          //setSnakeHead(pixelList[i].x, pixelList[i].y);
+          break;
+        default:
+          throw Error('Unrecognised category!');
+      }
+      
+    }
+    // Tally count needs sequence numbers on every apple for eat-order + numbering UI
+    if (typeof window.retallyAllPlacedApples === 'function') {
+      window.retallyAllPlacedApples();
+    }
+  }
+  
+  window.blitSelectedPreset = function() {
+    let presetEl = document.getElementsByClassName('chosen-preset')?.[0];
+  
+    if(!presetEl) {
+      throw new Error('No element with chosen preset class?!? Should never happen.');
+    }
+  
+    if(presetEl.classList.contains('preset-none')) return;
+  
+    let isUsingCustomPreset = presetEl.classList.contains('preset-custom');
+    let isUsingRandomHamPreset = presetEl.classList.contains('preset-random-ham');
+    let isUsingChallengePreset = presetEl.classList.contains('preset-challenge');
+    let patternPixelList;
+  
+    if(isUsingCustomPreset) {
+      patternPixelList = customPresetManager.pixelList;
+    } else if(isUsingRandomHamPreset) {
+      patternPixelList = otherPresetmanager.getRandomHamPixelList();
+    } else if(isUsingChallengePreset) {
+      patternPixelList = otherPresetmanager.getChallengePixelList();
+    } else {
+      //Blit Pattern
+      let imageUrl = presetEl.src;
+      //Remove the start of the url so we are just left with a file path which can be used as a key for the pattern.
+      let patternName = imageUrl.replace(rootUrl,'');
+  
+      patternPixelList = presetPatterns[patternName].pixelList
+    }
+  
+    //Make sure they aren't using a big preset on a small map.
+    if(!checkPatternInBounds(patternPixelList)) {
+      alert('The current board size is too small to use the currently selected pattern.');
+      return;
+    }
+  
+    let spawnOffset = getAppleSpawnPointOffset();
+  
+    blitPattern(patternPixelList, spawnOffset.x, spawnOffset.y);
+  }
+  
+  window.setSelectedSnakeHead = function() {
+    customSnakeStart.isActive = false;
+    let presetEl = document.getElementsByClassName('chosen-preset')?.[0];
+  
+    if(!presetEl) {
+      throw new Error('No element with chosen preset class?!? Should never happen.');
+    }
+  
+    if(presetEl.classList.contains('preset-none')) return;
+    if(presetEl.classList.contains('preset-random-ham')) return;
+    let isUsingCustomPreset = presetEl.classList.contains('preset-custom');
+    let isUsingChallengePreset = presetEl.classList.contains('preset-challenge');
+    let patternPixelList;
+  
+    if(isUsingCustomPreset) {
+      patternPixelList = customPresetManager.pixelList;
+    } else if(isUsingChallengePreset) {
+      patternPixelList = otherPresetmanager.getChallengePixelList();
+    } else {
+      //Blit Pattern
+      let imageUrl = presetEl.src;
+      //Remove the start of the url so we are just left with a file path which can be used as a key for the pattern.
+      let patternName = imageUrl.replace(rootUrl,'');
+  
+      patternPixelList = presetPatterns[patternName].pixelList
+    }
+  
+    //Make sure they aren't using a big preset on a small map.
+    if(!checkPatternInBounds(patternPixelList)) return;
+  
+    let pixelWithSnakeHead = patternPixelList.find(x=>x.category==='snakehead');
+  
+    if(pixelWithSnakeHead) {
+      setSnakeHead(pixelWithSnakeHead.x, pixelWithSnakeHead.y);
+    }
+  }
+  
+  window.componentToHex = function(c) {
+    var hex = c.toString(16);
+    return hex.length == 1 ? "0" + hex : hex;
+  }
+  
+  /*
+  Used to tell if a pixel corresponds to a apple or a wall or a sokoban box
+  Also gives info on what type of apple (e.g. apples or oranges)
+  */
+  window.hexToPixelDetails = function(hex) {
+    hex = hex.toUpperCase();
+  
+    //Value gives the category, if it's not found then this is assumed to be "apple"
+    const hexToCategory = {
+      '#578A34': 'wall',//Wall
+      '#F0A036': 'box',//Boxes from sokoban, color is slight off average, but good enough imo
+      '#4673E8': 'snakehead'//Start Position of the snake
+    };
+  
+    let category = 'apple';
+  
+    if(hexToCategory.hasOwnProperty(hex)) {
+      category = hexToCategory[hex];
+    } else {
+      category = 'apple'; //Defensive programming, though kinda unnecessary idk?
+    }
+  
+    //Index gives the type, if it isn't found then it would be -1 corresponding to no apple
+    const hexToTypeMapping = [
+      '#E05826',//Apple
+      '#DABC1F',//Banana
+      '#C5830E',//Pineapple
+      '#8D2DA0',//Grapes
+      '#E68A1B',//Apricot?
+      '#D4D2D1',//Onion
+      '#904FA3',//Aubergine
+      '#CD6512',//Strawberry
+      '#CE6A29',//Cherry
+      '#DE9713',//Carrot
+      '#E4A588',//Mushroom
+      '#009000',//Brocolli
+      '#C77B4A',//Watermelon
+      '#14A019',//Green pepper
+      '#6AB927',//Kiwi
+      '#EFCF1E',//Lemon
+      '#F28F13',//Orange
+      '#F38768',//Peach
+      '#C7913C',//Peanut
+      '#E74738',//Raspberry
+      '#F24311',//Tomato
+      '#01729E',//Blueberries
+      '#E8B736',//Mango
+      '#AC9F4F'//Avocado
+    ];
+  
+    //For reference - the full color list is
+    /*
+      E05826//Apple
+      DABC1F//Banana
+      C5830E//Pineapple
+      8D2DA0//Grapes
+      E68A1B//Apricot?
+      D4D2D1//Onion
+      904FA3//Aubergine
+      CD6512//Strawberry
+      CE6A29//Cherry
+      DE9713//Carrot
+      E4A588//Mushroom
+      009000//Brocolli
+      C77B4A//Watermelon
+      14A019//Green pepper
+      6AB927//Kiwi
+      EFCF1E//Lemon
+      F28F13//Orange
+      F38768//Peach
+      C7913C//Peanut
+      E74738//Raspberry
+      F24311//Tomato
+    */
+  
+    return {category: category, type: hexToTypeMapping.indexOf(hex)};
+  }
+  
+  window.rgbToHex = function(r, g, b) {
+    return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+  }
+  
+  window.placeAppleAtMouse = function(event) {
+    let canvasRect = gameCanvasElMakePattern.getBoundingClientRect();
+    if(window.wholeSnakeObject && tileWidth && window.placeApple && window.placeWall && window.placeSokobox) {
+      const calculatedTileWidth = eval(`window.wholeSnakeObject.${tileWidth}`);
+      // Canvas is CSS-stretched (width/height:100%); convert client pixels -> canvas pixels
+      const scaleX = gameCanvasElMakePattern.width / canvasRect.width;
+      const scaleY = gameCanvasElMakePattern.height / canvasRect.height;
+      // Injected each frame from snake render (board centering within the main canvas)
+      const offsetX = globalThis.leftBorderWidth ?? 0;
+      const offsetY = globalThis.topBorderWidth ?? 0;
+
+      const mouseX = (event.clientX - canvasRect.left) * scaleX - offsetX - calculatedTileWidth / 2;
+      const mouseY = (event.clientY - canvasRect.top) * scaleY - offsetY - calculatedTileWidth / 2;
+      let gameCoordX = mouseX / calculatedTileWidth;
+      let gameCoordY = mouseY / calculatedTileWidth;
+  
+      switch(mousePlaceMode.category) {
+        case 'apple':
+          //Undo offset for spawn point
+          var spawnOffset = getAppleSpawnPointOffset();
+          gameCoordX += spawnOffset.x; gameCoordY += spawnOffset.y;
+          roundApplePos ? window.placeApple(Math.round(gameCoordX), Math.round(gameCoordY), mousePlaceMode.type) : window.placeApple(gameCoordX, gameCoordY, mousePlaceMode.type);
+          break;
+        case 'wall':
+          window.placeWall(gameCoordX, gameCoordY, true);
+          break;
+        case 'box':
+          window.placeSokobox(gameCoordX, gameCoordY);
+          break;
+        default:
+          console.log('mousePlaceCategory set incorrectly. Ignoring');
+      }
+  
+    } else {
+      console.log('Mouse click happened before proper setup. Ignoring');
+    }
+  }
+  
+  window.setupMakePatternHtml = function() {
+    //Add message on canvas saying that level editor mod is being used
+    let modIndicator = document.createElement('div');
+    modIndicator.style='position:absolute;font-family:Arial;color:white;font-size:14px;padding-top:4px;padding-left:30px;user-select: none;';
+    modIndicator.textContent = 'Level Editor Mod';
+  
+    let canvasNode = document.getElementsByClassName('jNB0Ic')[0];
+    document.getElementsByClassName('EjCLSb')[0].insertBefore(modIndicator, canvasNode);
+  
+    let visiblePanel = 'place';//"place" or "preset" - indicates whether to show the panel for placing individual fruit or preset patterns
+    //Add html
+    const style = "position: absolute; left:100%;z-index:1001";
+    const presetImages = [
+      `${imagePresetsFolder}ez_loop.png`,
+      `${imagePresetsFolder}straight_line.png`,
+      `${imagePresetsFolder}rooms.png`,
+      `${imagePresetsFolder}pacman.png`,
+      `${imagePresetsFolder}maze_for_key_statue_large.png`,
+      `${imagePresetsFolder}regular_grid.png`,
+      `${imagePresetsFolder}knight_grid.png`,
+      `${imagePresetsFolder}max_rooms.png`,
+      `${imagePresetsFolder}soko2.png`,
+      `${imagePresetsFolder}soko1.png`,
+      `${imagePresetsFolder}soko3_beta.png`,
+      `${imagePresetsFolder}soko_widegrid.png`,
+      `${imagePresetsFolder}use_reversing_at_will.png`,
+      `${imagePresetsFolder}ham_path.png`,
+      `${imagePresetsFolder}maze_beta.png`,
+    ];
+  
+    const htmlToInsert = `
+    <div id="place-panel" style="height: 650px; width: 200px; background-color: #bfde80; display: grid; grid-template-columns: 60px 60px 60px; justify-content: space-evenly;box-sizing: border-box; border: 10px solid #507f30;">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v13/trophy_01.png" data-type="-1" data-category="wall">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v13/trophy_09.png" data-type="-1" data-category="box">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(0%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_00.png" data-type="0" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_01.png" data-type="1" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_02.png" data-type="2" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_03.png" data-type="3" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_04.png" data-type="4" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_05.png" data-type="5" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_06.png" data-type="6" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_07.png" data-type="7" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_08.png" data-type="8" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_09.png" data-type="9" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_10.png" data-type="10" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_11.png" data-type="11" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_12.png" data-type="12" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_13.png" data-type="13" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_14.png" data-type="14" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_15.png" data-type="15" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_16.png" data-type="16" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_17.png" data-type="17" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_18.png" data-type="18" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_19.png" data-type="19" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_20.png" data-type="20" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_21.png" data-type="21" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_22.png" data-type="22" data-category="apple">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_23.png" data-type="23" data-category="apple">
+      <div id="link-to-preset" style="height: 40px;background-color: #4a752c;grid-column: 1 / 4;font-size: 2em;font-family: Arial;text-align: center;color: white;line-height: 40px;border: 3px solid #bfde80;border-radius: 4px;cursor: pointer;">Presets &gt;</div>
+    </div>
+  
+    <div id="preset-panel" style="height: 650px; width: 200px; background-color: #bfde80; display: none; grid-template-columns: 60px 60px 60px; justify-content: space-evenly;box-sizing: border-box; border: 10px solid #507f30;">
+      <img class="chosen-preset preset-none preset-option" style="width:100%; height:auto; object-fit:cover; cursor:pointer;" draggable="false" src="${rootUrl}none.png">
+      <div class="preset-option preset-custom" style="height: 40px;background-color: #2d3f76;grid-column: 2 / 4;font-size: 1.5em;font-family: Arial;text-align: center;color: white;line-height: 40px;cursor: pointer; margin-top:9px;">CUSTOM</div>
+      ${presetImages.map(el=>'<img class="preset-option" style="width:100%; height:auto; object-fit:cover; cursor:pointer; image-rendering:pixelated;" draggable="false" src="' + rootUrl + el + '">').join('\n')}
+      <div class="preset-option preset-random-ham" style="height: 40px;background-color: #2d3f76;grid-column: 1 / 4;font-size: 1.5em;font-family: Arial;text-align: center;color: white;line-height: 40px;cursor: pointer; margin-top:9px;">RANDOM HAM</div>
+      <div class="preset-option preset-challenge" style="height: 40px;background-color: #2d3f76;grid-column: 1 / 4;font-size: 1.5em;font-family: Arial;text-align: center;color: white;line-height: 40px;cursor: pointer; margin-top:9px;">CHALLENGE</div>
+      <div id="link-to-place" style="height: 40px;background-color: #4a752c;grid-column: 1 / 4;font-size: 2em;font-family: Arial;text-align: center;color: white;line-height: 40px;border: 3px solid #bfde80;border-radius: 4px;cursor: pointer;">&lt; Place</div>
+    </div>
+    `;
+  
+    const customPresetHtmlToInsert = `
+      <div id="custom-panel" style="height: 650px; width: 390px; background-color: rgb(191, 222, 128); display: none;box-sizing: border-box; border: 10px solid rgb(80, 127, 48);">
+      <div style="padding:10px;font-family:Arial">
+        <p style="font-size: 1.17em;">Use the editor below to make your own starting pattern. Left click to place an entity, right click to erase.</p>
+        <button id="custom-import" style="font-family: Arial;background-color: #2d3f76;color: white;border: none;padding: 7px;border-radius: 2px;cursor: pointer;margin-right: 7px;margin-bottom: 10px">IMPORT</button>
+        <button id="custom-export" style="font-family: Arial;background-color: #2d3f76;color: white;border: none;padding: 7px;border-radius: 2px;cursor: pointer;margin-right: 7px;margin-bottom: 10px">EXPORT</button>
+        <button id="custom-clear" style="font-family: Arial;background-color: #b41111;color: white;border: none;padding: 7px;border-radius: 2px;cursor: pointer;margin-right: 7px;margin-bottom: 10px">CLEAR ALL</button>
+        <button id="custom-refresh" style="font-family: Arial;background-color: #027400;color: white;border: none;padding: 7px;border-radius: 2px;cursor: pointer;margin-right: 7px;margin-bottom: 10px">REFRESH</button>
+        <br><label for="custom-map-size">Map Size: </label>
+        <select name="map-size" id="custom-map-size" style="margin-bottom:4px">
+          <option value="standard">Standard</option>
+          <option value="large">Large</option>
+          <option value="small">Small</option>
+        </select><br>
+        <label for="custom-brush">Brush: </label>
+        <select name="brush" id="custom-brush">
+          <option value="apple">Apple</option>
+          <option value="wall">Wall</option>
+          <option value="box">Sokobox</option>
+          <option value="snakehead">Snake Start Position</option>
+          <option value="erase">Erase</option>
+        </select>
+      </div>
+      <canvas width="370" height="340" style="margin:3px; border:2px solid #507f30" id="custom-preset-canvas"></canvas>
+      </div>
+  
+      <div id="challenge-panel" style="height: 650px; width: 390px; background-color: rgb(191, 222, 128); display: none;box-sizing: border-box; border: 10px solid rgb(80, 127, 48);">
+      <div style="padding:10px;font-family:Arial">
+        <p style="font-size: 1.17em;">Choose level below. These get progressively harder. These should be played with the wall mode setting. Try with the fast speed for an extra challenge!</p>
+        <label for="challenge-level">Level: </label>
+        <select name="challenge-level" id="challenge-level">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10">10</option>
+          <option value="11">11</option>
+          <option value="12">12</option>
+          <option value="13">13</option>
+          <option value="14">14</option>
+          <option value="15">15</option>
+          <option value="16">16</option>
+          <option value="17">17</option>
+          <option value="18">18</option>
+          <option value="19">19</option>
+          <option value="20">20</option>
+        </select>
+        <label for="challenge-speedrun-mode" style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;user-select:none;">
+          <input type="checkbox" id="challenge-speedrun-mode" style="width:16px;height:16px;cursor:pointer;">
+          Speedrun mode
+        </label>
+        <p style="font-size:0.95em;margin:6px 0 0 0;opacity:0.85;">Finish a level to instantly load the next one, ready to start.</p>
+      </div>
+      </div>
+    `;
+  
+    const exportModal = `
+    <div id="custom-export-dialogue" style="display: block;margin:50px auto;padding:10px;border:1px solid black;height: 320px; width:316.4px; background-color:beige;border-radius:5px">
+      <p>Copy the text below and save it somewhere.</p>
+      <textarea id="custom-export-textarea" rows="15" cols="40"></textarea>
+      <button id="close-custom-export">Close</button>
+    </div>
+    `;
+  
+    //Insert main html
+    let myEl = document.createElement('div');
+    myEl.innerHTML = htmlToInsert;
+    myEl.style = style;
+  
+    document.getElementsByClassName('sEOCsb')[0].appendChild(myEl);
+
+    //Insert html for the custom preset stuff
+    let myCustomEl = document.createElement('div');
+    myCustomEl.innerHTML = customPresetHtmlToInsert;
+    myCustomEl.style = 'position: absolute; right: 100%;z-index:1001;';
+  
+    document.getElementsByClassName('sEOCsb')[0].appendChild(myCustomEl);
+  
+    //Collapse borders
+    document.getElementById('custom-panel').style.borderRight = 'none';
+    document.getElementById('challenge-panel').style.borderRight = 'none';
+  
+    //Insert html for custom preset export dialogue box.
+    let importModalContainer = document.createElement('div');
+    importModalContainer.innerHTML = exportModal;
+    importModalContainer.id = 'custom-export-dialogue-container';
+    importModalContainer.style = 'display:none; position:fixed; width:100%; height:100%; z-index: 99999; left:0; top:0';
+    document.body.appendChild(importModalContainer);
+  
+    //Adjust styling
+    document.getElementsByClassName('HIonyd')[0].style.color = '#FAFFFF';
+    document.getElementsByClassName('HIonyd')[1].style.color = '#FFFFFA';
+  
+    Array.from(document.getElementsByClassName('place-option')).forEach(
+      (element)=>{
+        element.addEventListener('click',function() {
+          //Set global setting for place type
+          mousePlaceMode.type = this.dataset.type;
+          mousePlaceMode.category = this.dataset.category;
+          
+          //Highlight chosen option and darken other options
+          Array.from(document.getElementsByClassName('place-option')).forEach(el=>{el.style.filter = 'grayscale(100%)';});
+          this.style.filter = 'grayscale(0%)';
+        });
+      }
+    );
+  
+    //Preload presets
+    window.presetPatterns = {} || window.presetPatterns;
+  
+    for(let el of presetImages) {
+      presetPatterns[el] = {};
+      setPixelData(presetPatterns[el],`${rootUrl}${el}`);
+    }
+  
+    Array.from(document.getElementsByClassName('preset-option')).forEach(
+      (element)=>{
+        element.addEventListener('click',function() {
+          let newSizeSetting = null;
+  
+          //Exit early if this option is already selected
+          if(this.classList.contains('chosen-preset')) return;
+  
+          //Change css to "select" this preset
+          Array.from(document.getElementById('preset-panel').children).forEach(c=>{c.classList.remove('chosen-preset')});
+          this.classList.add('chosen-preset');
+  
+          //Show the panel for editing the custom preset if it has been selected
+          document.getElementById('custom-panel').style.display = this.classList.contains('preset-custom') ? 'block' : 'none';
+  
+          //Likewise for challenge panel
+          document.getElementById('challenge-panel').style.display = this.classList.contains('preset-challenge') ? 'block' : 'none';
+  
+          //Change the size of the map
+          if(this.classList.contains('preset-custom')) {
+            //For the custom preset, change the map-size to whatever it's set in the custom panel.
+            switch(customPresetManager.currentMapSize) {
+              case 'standard':
+                newSizeSetting = 0;
+                break;
+              case 'small':
+                newSizeSetting = 1;
+                break;
+              case 'large':
+                newSizeSetting = 2;
+                break;
+              default:
+                throw new Error(`Illegal value for map size in customPresetManager: ${customPresetManager.currentMapSize}`);
+            }
+          } else if(this.classList.contains('preset-challenge')) {
+            //For the challenge just set the new size to normal
+            newSizeSetting = 0;
+          } else if(this.classList.contains('preset-random-ham')) {
+            //For the random ham just set the new size to small
+            newSizeSetting = 1;
+          } else if(this.classList.contains('preset-none')) {
+            //Keep map size the same
+            newSizeSetting = null;
+          } else {
+            //Figure out map size from whatever preset they selected.
+            switch(this.naturalWidth) {
+              case 17:
+                //standard
+                newSizeSetting = 0;
+                break;
+              case 10:
+                //small
+                newSizeSetting = 1;
+                break;
+              case 24:
+                //large
+                newSizeSetting = 2;
+                break;
+              default:
+                throw new Error(`Unexpected value for preset width: ${this.naturalWidth}`);
+            }
+          }
+  
+          selectNewSizeSettingAndHardReset(newSizeSetting);
+        });
+      }
+    );
+  
+    //Adjust style
+    document.querySelector('.FL0z2d[jsaction="rxqFXd"]').children[0].children[0].style.transform = 'rotate(90deg)';
+  
+    //Allow switching tabs with ] key
+    document.addEventListener('keydown',(event)=>{if(event.key == ']') {
+      //Toggle which panel is shown
+      visiblePanel = visiblePanel === 'place' ? 'preset' : 'place';
+      let placePanelEl = document.getElementById('place-panel');
+      let presetPanelEl = document.getElementById('preset-panel');
+  
+      placePanelEl.style.display = visiblePanel === 'place' ? 'grid' : 'none';
+      presetPanelEl.style.display = visiblePanel === 'preset' ? 'grid' : 'none';
+    }});
+  
+    //Also allow clicking the navigation buttons.
+    document.getElementById('link-to-preset').addEventListener('click',()=>{
+      visiblePanel = 'preset';
+      let placePanelEl = document.getElementById('place-panel');
+      let presetPanelEl = document.getElementById('preset-panel');
+  
+      placePanelEl.style.display = 'none';
+      presetPanelEl.style.display = 'grid';
+    });
+  
+    document.getElementById('link-to-place').addEventListener('click',()=>{
+      visiblePanel = 'place';
+      let placePanelEl = document.getElementById('place-panel');
+      let presetPanelEl = document.getElementById('preset-panel');
+  
+      placePanelEl.style.display = 'grid';
+      presetPanelEl.style.display = 'none';
+    });
+  
+    document.getElementById('custom-import').addEventListener('click',()=>{
+      const levelCode = prompt('Paste in the level code below')
+      if(levelCode) {
+        customPresetManager.importCode(levelCode);
+      }
+    });
+  
+    document.getElementById('custom-export').addEventListener('click',()=>{
+      const levelCode = customPresetManager.getExportCode();
+  
+      document.getElementById('custom-export-textarea').value = levelCode;
+  
+      document.getElementById('custom-export-dialogue-container').style.display = 'block';
+  
+      document.getElementById('custom-export-textarea').focus();
+      document.getElementById('custom-export-textarea').select();
+    });
+  
+    document.getElementById('close-custom-export').addEventListener('click', ()=>{
+      document.getElementById('custom-export-dialogue-container').style.display = 'none';
+    });
+  
+    document.getElementById('custom-clear').addEventListener('click',()=>{
+      if(customPresetManager.pixelList.length <= 5 || confirm('Do you want to clear everything?')) customPresetManager.clearAll();
+    });
+  
+    document.getElementById('custom-refresh').addEventListener('click',()=>{
+      selectNewSizeSettingAndHardReset(null);//Use null for the size so we just refresh the board.
+    });
+  
+    document.getElementById('custom-map-size').addEventListener('change',function() {
+      let newMapSize = this.value;
+  
+      if(newMapSize === customPresetManager.currentMapSize) return;//Probably not needed but whatever
+  
+      //Exit early if they don't confirm changing size.
+      if(customPresetManager.pixelList.length > 5 && !confirm('Do you want to change map size? This will clear the current board.')) {
+        this.value = customPresetManager.currentMapSize;
+        return;
+      }
+  
+      customPresetManager.changeMapSize(this.value);
+    });
+  
+    document.getElementById('custom-brush').addEventListener('change',function() {
+      customPresetManager.brush = this.value
+    });
+  
+    //Mouse down on custom preset canvas
+    document.getElementById('custom-preset-canvas').addEventListener('mousedown',customPresetManager.handleMouseDownOnBoard);
+  
+    //Release mouse after drawing on custom preset
+    document.addEventListener('mouseup',customPresetManager.handleMouseUpAnywhere);
+  
+    //Attempt to place tile when mouse moves
+    document.getElementById('custom-preset-canvas').addEventListener('mousemove',customPresetManager.handleMouseMoveOnBoard);
+  
+    //Prevent right click triggering context menu
+    document.getElementById('custom-preset-canvas').addEventListener('contextmenu',function(e){e.stopPropagation(); e.preventDefault(); return false;});
+  
+    //Change challenge level
+    document.getElementById('challenge-level').addEventListener('change', function(){
+      otherPresetmanager.challengelevel = this.value;
+  
+      const standardBoardSize = 0;
+      selectNewSizeSettingAndHardReset(standardBoardSize);
+    });
+
+    document.getElementById('challenge-speedrun-mode').addEventListener('change', function(){
+      window.challengeSpeedrunMode = this.checked;
+    });
+  
+    //Set up CSS
+    const css = `.chosen-preset {
+      outline: 3px solid yellow;
+      z-index: 1;
+    }
+    #place-panel, #preset-panel, #custom-panel, #challenge-panel,
+    #place-panel *, #preset-panel *, #custom-panel *, #challenge-panel *,
+    #custom-export-dialogue-container, #custom-export-dialogue-container *,
+    #custom-export-dialogue, #custom-export-dialogue * {
+      font-family: Arial, sans-serif !important;
+    }`;
+    document.getElementsByTagName('style')[0].innerHTML = document.getElementsByTagName('style')[0].innerHTML + css;
+  
+  }
+  
+  window.initialiseCanvas = function() {
+    let customCanvas = document.getElementById('custom-preset-canvas');
+    let customCtx = customCanvas.getContext('2d');
+  
+    //Save context here in-case we need to re-use
+    customPresetManager.ctx = customCtx;
+  
+    customPresetManager.draw();
+  }
+  
+  //Used so we can adjust where to spawn apples based on where the default spawn point is so that we can instead spawn stuff relative to top left
+  window.getAppleSpawnPointOffset = function() {
+    const boardWidth = eval(`window.wholeSnakeObject.${boardDimensions}.width`);
+    switch(boardWidth) {
+      case 17:
+        return {x:-12,y:-7};
+      case 10:
+        return {x:-7,y:-4};
+      case 24:
+        return {x:-18,y:-10};
+      default:
+        throw new Error('Unknown apple offset for board with width: ' + boardWidth);
+    }
+  }
+  
+  //Change where the snake starts out from
+  window.setSnakeHead = function(x, y) {
+    customSnakeStart.x = x;
+    customSnakeStart.y = y;
+    customSnakeStart.isActive = true;
+  }
+  
+  window.checkPatternInBounds = function(pixelList) {
+    const boardWidth = eval(`window.wholeSnakeObject.${boardDimensions}.width`);
+    const boardHeight = eval(`window.wholeSnakeObject.${boardDimensions}.height`);
+  
+    const hasStuffOutOfBounds = pixelList.some(p => p.x < 0 || p.y < 0 || p.x > boardWidth - 1 || p.y > boardHeight - 1);
+  
+    return !hasStuffOutOfBounds;
+  }
+
+  //Turns _.abc into _s.abc
+  window.swapInSnakeGlobal = function(text) {
+    return assertReplace(text, /^_\./, '_s.');
+  }
+}
+
+////////////////////////////////////////////////////////////////////
+//ALTERSNAKECODE
+////////////////////////////////////////////////////////////////////
+
+window.levelEditorMod.alterSnakeCode = function(code) {
+  code = code.replaceAll(/\$\$/gm, `aaaa`); //Prevent issues with $$ in variable names breaking stuff when replaced
+
+  ///////////////////////////////////////
+  //Taken from shared.js
+  ///////////////////////////////////////
+
+  //Copied from Pythag
+  globalThis.tileWidth = code.assertMatch(/[a-z]\.[$a-zA-Z0-9_]{0,8}\.fillRect\([a-z]\*[a-z]\.[$a-zA-Z0-9_]{0,8}\.([$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8}),[a-z]\*[a-z]\.[$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8},[a-z]\.[$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8},[a-z]\.[$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8}\)/)[1];//wa
+
+  //setup for being able to move apples
+  //Copied from gravity, but adjusted to be global and use code. intead of funcWithEat. and capturing groups adjusted.
+  [,globalThis.applePosProperty, globalThis.appleSpeedProperty] = code.assertMatch(/&&\([$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8}\.x&&\([$a-zA-Z0-9_]{0,8}\.([$a-zA-Z0-9_]{0,8})\.x\+=[$a-zA-Z0-9_]{0,8}\.([$a-zA-Z0-9_]{0,8})\.x\),/);
+
+  //Body array path (updated for direction==="LEFT" style comparisons in v12+)
+  globalThis.bodyArray = code.assertMatch(/([$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8})\[0\]\.clone\(\),this\.[$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8}\.direction==="LEFT"/)[1];
+
+  //Optional newline between args (v12 apple placement can break across lines)
+  globalThis.makeApple = code.assertMatch(/this\.[$a-zA-Z0-9_]{0,8}\.push\(([$a-zA-Z0-9_]{0,8})\(this,\n?-5,-4\)\)/)[1];
+  globalThis.appleArray = code.assertMatch(/this\.([$a-zA-Z0-9_]{0,8})\.push\([$a-zA-Z0-9_]{0,8}\(this,\n?-6,-3\)\)/)[1];
+
+  //whole snake object has an object which in turn has the appleArray. (It's messy I know)
+  globalThis.appleArrayHolderOfWholeSnakeObject = code.assertMatch(/this\.([$a-zA-Z0-9_]{0,8})\.reset\(\);this\.[$a-zA-Z0-9_]{0,8}=!1;/)[1];
+
+  // Tally count (count menu value 6) copies into settings.ka for gameplay; kaF assigns sequenceNumber
+  globalThis.tallyAssignSequencesFunc = code.assertMatch(
+    /([$a-zA-Z0-9_]{0,8})=function\(a\)\{a\.wa=1;if\([$a-zA-Z0-9_]{0,8}\(a\.settings\)\)/
+  )[1];
+  let [, tallyCountGameplayProperty, tallyCountMenuProperty] = code.assertMatch(
+    /[a-z]\.([$a-zA-Z0-9_]{0,8})=[a-z]\.([$a-zA-Z0-9_]{0,8});[a-z]\.yb=[a-z]\.Na;/
+  );
+
+  //globalThis.coordConstructor = swapInSnakeGlobal(code.assertMatch(/new (_\.[$a-zA-Z0-9_]{0,8})\(1,1\)/)[1]);
+  globalThis.coordConstructor = code.assertMatch(/new (_\.[$a-zA-Z0-9_]{0,8})\(1,1\)/)[1];
+
+  //Board dimensions - found in wholeSnakeObject, has width, height properties
+  globalThis.boardDimensions = code.assertMatch(/x===Math.floor\([a-z]\.[$a-zA-Z0-9_]{0,8}\.([$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8})\.width\/2\)&&/)[1];
+
+  //Checks whether we are playing a specific mode e.g. VK(this.settings,2) is true if we are playing portal
+  let [,modeCheck, settingsProperty] = code.assertMatch(/([$a-zA-Z0-9_]{0,8})\(this\.([$a-zA-Z0-9_]{0,8}),6\)/);
+
+  //Mode id property + blender sets (v12: f7 checks settings.ub / settings.ZSa / settings.Qa+Jc)
+  let [, blenderFlagProperty, blenderSetAltProperty, modeIdProperty, blenderSetProperty] = code.assertMatch(
+    /[$a-zA-Z0-9_]{0,8}=function\(a,b\)\{return a\.([$a-zA-Z0-9_]{0,8})\?a\.([$a-zA-Z0-9_]{0,8})\.has\(b\):a\.([$a-zA-Z0-9_]{0,8})===22&&a\.([$a-zA-Z0-9_]{0,8})\.has\(b\)\?!0:a\.[$a-zA-Z0-9_]{0,8}===b\}/
+  );
+
+  //Set snakeGlobalObject every reset (class method form in v12: reset(){...})
+  let funcWithReset, funcWithResetOrig;
+  funcWithReset = funcWithResetOrig = findFunctionInCode(code, /reset\(\)\{$/,
+  /case 1:a=\.66/,
+  false);
+
+  funcWithReset = assertReplace(funcWithReset,'{','{globalThis.wholeSnakeObject = this;');//This line is changed slightly from varied.js
+
+  funcWithReset = assertReplace(funcWithReset, /[$a-zA-Z0-9_]{0,8}\([a-z]\.[$a-zA-Z0-9_]{0,8}\)&&\([a-z]\.[$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8}=!0\)\)/,
+    `$&;window.simpleHookManager.runHook('afterResetBoard')`);
+
+  code = code.replace(funcWithResetOrig, funcWithReset);
+
+  //Get the object that contains the wholeSnakeObject. (class method form in v12)
+  let funcWithResetState, funcWithResetStateOrig;
+  funcWithResetState = funcWithResetStateOrig = findFunctionInCode(code, /resetState\(a=!0\)\{$/,
+  /this\.[$a-zA-Z0-9_]{0,8}\.reset\(a\);/);
+
+  funcWithResetState = assertReplace(funcWithResetState, '{', '{globalThis.megaWholeSnakeObject = this;');
+
+  code = code.replace(funcWithResetStateOrig, funcWithResetState);
+
+  // Speedrun mode: intercept level-clear win so challenge can auto-advance
+  code = assertReplace(code,
+    /if\(odF\(this\)===0\)\{([$a-zA-Z0-9_]{0,8})\.WIN\.play\(\);this\.([$a-zA-Z0-9_]{0,8})=this\.([$a-zA-Z0-9_]{0,8})=!0;([$a-zA-Z0-9_]{0,8})\(this\.menu,1400,this\.Oh\);([\s\S]*?)this\.Mb=this\.ticks\}else if/,
+    'if(odF(this)===0){if(window.tryChallengeSpeedrunAdvance&&window.tryChallengeSpeedrunAdvance(this)){this.$2=this.$3=!0;}else{$1.WIN.play();this.$2=this.$3=!0;$4(this.menu,1400,this.Oh);$5this.Mb=this.ticks}}else if'
+  );
+
+  // Track where the board is drawn inside the main canvas (for accurate mouse placing).
+  // Classic / wall: board bitmap is centered on the context canvas.
+  code = assertReplace(code,
+    /let ([$a-zA-Z0-9_]{0,8})=Math\.round\(\(this\.context\.canvas\.width-this\.[$a-zA-Z0-9_]{0,8}\.canvas\.width\)\/2\),([$a-zA-Z0-9_]{0,8})=Math\.round\(\(this\.context\.canvas\.height-this\.[$a-zA-Z0-9_]{0,8}\.canvas\.height\)\/\n?2\);/,
+    '$&globalThis.leftBorderWidth=$1;globalThis.topBorderWidth=$2;'
+  );
+  // Borderless: board is drawn at (Wd,$d) with a 2-tile content translate.
+  code = assertReplace(code,
+    /let ([$a-zA-Z0-9_]{0,8})=([$a-zA-Z0-9_]{0,8})-([$a-zA-Z0-9_]{0,8}),(\$d)=([$a-zA-Z0-9_]{0,8})-([$a-zA-Z0-9_]{0,8});this\.context\.drawImage\(this\.[$a-zA-Z0-9_]{0,8}\.canvas,\1,\4\)/,
+    '$&;globalThis.leftBorderWidth=$1+Nd+2*this.wb.ka.ka;globalThis.topBorderWidth=$4+he+2*this.wb.ka.ka;'
+  );
+
+  ///////////////////////////////////////
+  //Taken from level-editor.js
+  ///////////////////////////////////////
+
+  //Make a function that empties apples
+  (0,eval)(`
+  function emptyApples() {
+    window.wholeSnakeObject.${appleArrayHolderOfWholeSnakeObject}.${appleArray}.length = 0;
+  }
+  `);
+
+  //Make a function to place an apple
+  code = appendCodeWithinSnakeModule(code, `
+  globalThis.isTallyCountMode = function() {
+    const settings = window.wholeSnakeObject && window.wholeSnakeObject.${settingsProperty};
+    return !!(settings && (settings.${tallyCountGameplayProperty} === 6 || settings.${tallyCountMenuProperty} === 6));
+  };
+
+  // Re-run vanilla tally sequencing after bulk places (presets / import / refresh)
+  globalThis.retallyAllPlacedApples = function() {
+    if(!window.wholeSnakeObject || !isTallyCountMode()) return;
+    const appleManager = window.wholeSnakeObject.${appleArrayHolderOfWholeSnakeObject};
+    if(!appleManager || !appleManager.${appleArray} || appleManager.${appleArray}.length === 0) return;
+    ${tallyAssignSequencesFunc}(appleManager);
+    appleManager.Ca = false;
+  };
+
+  // Mouse-place: append as the next tally target without reshuffling existing apples
+  globalThis.assignTallySequenceToNewApple = function(apple) {
+    if(!window.wholeSnakeObject || !isTallyCountMode() || !apple) return;
+    const appleManager = window.wholeSnakeObject.${appleArrayHolderOfWholeSnakeObject};
+    const apples = appleManager.${appleArray};
+    let maxSeq = 0;
+    for(const other of apples) {
+      if(other !== apple && typeof other.sequenceNumber === 'number' && other.sequenceNumber > maxSeq) {
+        maxSeq = other.sequenceNumber;
+      }
+    }
+    apple.sequenceNumber = maxSeq + 1;
+    if(typeof appleManager.wa !== 'number' || appleManager.wa < 1) {
+      appleManager.wa = 1;
+    }
+    // Match kaF's yin-yang visibility rule
+    if(${modeCheck}(appleManager.settings, 11)) {
+      apple.Gh = apple.sequenceNumber % 2 === 1;
+    }
+  };
+
+  globalThis.placeApple = function(x,y,type,initialSpeed=undefined,customProperties={}) {
+    let apple = ${makeApple}(window.wholeSnakeObject.${appleArrayHolderOfWholeSnakeObject}, x, y);
+    apple.type = type;
+    if(initialSpeed) {
+      apple[window.appleSpeedProperty].x = initialSpeed.x;
+      apple[window.appleSpeedProperty].y = initialSpeed.y;
+    }
+    Object.assign(apple, customProperties);
+    window.wholeSnakeObject.${appleArrayHolderOfWholeSnakeObject}.${appleArray}.push(apple);
+    assignTallySequenceToNewApple(apple);
+  }
+  `, false);
+
+  //Enable wall (1) / sokoban (9), upgrading to blender (22) when combining modes. Mutates settings in-place (no board wipe).
+  code = appendCodeWithinSnakeModule(code, `
+  globalThis.ensureGameMode = function(modeId) {
+    const settings = window.wholeSnakeObject.${settingsProperty};
+    if(${modeCheck}(settings, modeId)) return;
+
+    if(settings.${blenderFlagProperty}) {
+      settings.${blenderSetAltProperty}.add(modeId);
+      return;
+    }
+
+    if(settings.${modeIdProperty} === 22) {
+      if(!(settings.${blenderSetProperty} instanceof Set)) {
+        settings.${blenderSetProperty} = new Set();
+      }
+      settings.${blenderSetProperty}.add(modeId);
+      return;
+    }
+
+    if(settings.${modeIdProperty} === 0 || settings.${modeIdProperty} === modeId) {
+      settings.${modeIdProperty} = modeId;
+      return;
+    }
+
+    const prev = settings.${modeIdProperty};
+    settings.${modeIdProperty} = 22;
+    if(!(settings.${blenderSetProperty} instanceof Set)) {
+      settings.${blenderSetProperty} = new Set();
+    }
+    settings.${blenderSetProperty}.clear();
+    if(prev !== 0 && prev !== 22) {
+      settings.${blenderSetProperty}.add(prev);
+    }
+    settings.${blenderSetProperty}.add(modeId);
+  }
+  `, false);
+
+  let wallDetailsContainer = code.assertMatch(/[$a-zA-Z0-9_]{0,8}&&\([$a-zA-Z0-9_]{0,8}\(this\.([$a-zA-Z0-9_]{0,8}),\n?[$a-zA-Z0-9_]{0,8}\),\n?[$a-zA-Z0-9_]{0,8}\(this\.[$a-zA-Z0-9_]{0,8},7\)/)[1];
+
+  //Real wall placer object shape (not yinyang center/fake wall)
+  let [,placeWallFunc,wallCoordProperty,wallSolidProperty,wallFakeProperty,wallAnimProperty] = code.assertMatch(
+    /([$a-zA-Z0-9_]{0,8})\([a-z],[a-z],\{([$a-zA-Z0-9_]{0,8}):[a-z],([$a-zA-Z0-9_]{0,8}):!0,([$a-zA-Z0-9_]{0,8}):!1,([$a-zA-Z0-9_]{0,8}):!/
+  );
+
+  //Make a function to place a wall
+  code = appendCodeWithinSnakeModule(code, `
+  globalThis.placeWall = function(x, y, banNeighbourSpawning = false) {
+    window.ensureGameMode(1);
+
+    x = Math.round(x);
+    y = Math.round(y);
+    let wallCoord = new ${coordConstructor}(x, y);
+    ${placeWallFunc}(window.wholeSnakeObject.${wallDetailsContainer}, wallCoord,
+      {
+        ${wallCoordProperty}: wallCoord,
+        // Cm:false => render at full size immediately (Cm:true scales with the board intro animation)
+        ${wallSolidProperty}: false,
+        ${wallFakeProperty}: false,
+        ${wallAnimProperty}: !${modeCheck}(window.wholeSnakeObject.${settingsProperty}, 11)
+      }
+    );
+  }
+  `, false);
+
+  let wallSet = code.assertMatch(/([$a-zA-Z0-9_]{0,8})\.set\([$a-zA-Z0-9_]{0,8}\([a-z]\),[a-z]\);/)[1];
+
+  //Make a function to check if a wall exists at a given coordinate
+  code = appendCodeWithinSnakeModule(code, `
+  globalThis.checkWall = function(x,y) {
+    if(x < 0 || x >= window.wholeSnakeObject.${boardDimensions}.width || y < 0 || y >= window.wholeSnakeObject.${boardDimensions}.height) {
+      return true;
+    }
+
+    let serialisedCoord = x << 16 | y;
+    let isWall = window.wholeSnakeObject.${wallDetailsContainer}.${wallSet}.has(serialisedCoord);
+    return isWall;
+  }
+  `, false);
+
+  //Probably should've used this function instead of placeWall method with manually pushing to an array, but OH WELL.
+
+  let funcWithPlaceWall, funcWithPlaceWallOrig;
+  funcWithPlaceWall = funcWithPlaceWallOrig = findFunctionInCode(code, /[$a-zA-Z0-9_]{0,8}=function\(a,\n?b\)$/,
+  /[$a-zA-Z0-9_]{0,8}\([a-z],[a-z],{[$a-zA-Z0-9_]{0,8}:[a-z],[$a-zA-Z0-9_]{0,8}:!0,[$a-zA-Z0-9_]{0,8}:!1,\n?[$a-zA-Z0-9_]{0,8}:![$a-zA-Z0-9_]{0,8}\([a-z]\.[$a-zA-Z0-9_]{0,8},\n?11\)}\);/,
+  false);
+
+  funcWithPlaceWall = assertReplace(funcWithPlaceWall, '{',
+  `{
+  if(disableWallMode) {
+    return;
+  }
+  `);
+
+  code = code.replace(funcWithPlaceWallOrig, funcWithPlaceWall);
+
+  let sokoDetailsContainer = code.assertMatch(/this\.([$a-zA-Z0-9_]{0,8})\.reset\(\);if\([$a-zA-Z0-9_]{0,8}\(this\.[$a-zA-Z0-9_]{0,8},8\)/)[1];
+
+  //Setup for placing sokoban boxes
+  let [, addSokoboxFunc, sokoPosition, sokoPrevProperty, sokoPlaySpawnAnimProperty, sokoLastProperty] = code.assertMatch(/([$a-zA-Z0-9_]{0,8})\([a-z],{([$a-zA-Z0-9_]{0,8}):[a-z],\n?([$a-zA-Z0-9_]{0,8}):null,([$a-zA-Z0-9_]{0,8}):!0,([$a-zA-Z0-9_]{0,8}):[a-z]}\)/);
+
+  let sokoboxSet = code.assertMatch(/[a-z]\.([$a-zA-Z0-9_]{0,8})\.add\([a-z]\);[$a-zA-Z0-9_]{0,8}\([a-z]\.settings,16\)/)[1];
+
+  //Make a function to place a sokobox
+  code = appendCodeWithinSnakeModule(code, `
+  globalThis.placeSokobox = function(x,y) {
+    window.ensureGameMode(9);
+
+    x = Math.round(x);
+    y = Math.round(y);
+    let sokoCoord = new ${coordConstructor}(x, y);
+    ${addSokoboxFunc}(window.wholeSnakeObject.${sokoDetailsContainer},
+      {
+        ${sokoPosition}: sokoCoord,
+        ${sokoPrevProperty}:null,
+        ${sokoPlaySpawnAnimProperty}:false,
+        ${sokoLastProperty}:true
+      });
+    }
+  `, false);
+
+  let sokogoalSet = code.assertMatch(/[$a-zA-Z0-9_]{0,8}\([a-z]\.[$a-zA-Z0-9_]{0,8},\n?7\)&&[a-z]\.([$a-zA-Z0-9_]{0,8})\.add\([$a-zA-Z0-9_]{0,8}\([a-z]\.[$a-zA-Z0-9_]{0,8},\n?[a-z]\)\),/)[1];
+
+  //Make a function that removes sokoban goals
+  code = appendCodeWithinSnakeModule(code, `
+  globalThis.emptySokogoals = function(x,y) {
+    window.wholeSnakeObject.${sokoDetailsContainer}.${sokogoalSet}.clear();
+  }
+  `, false);
+
+  //Also have a function for emptying sokoboxes
+  code = appendCodeWithinSnakeModule(code, `
+  globalThis.emptySokoboxes = function(x,y) {
+    window.wholeSnakeObject.${sokoDetailsContainer}.${sokoboxSet}.clear();
+  }
+  `, false);
+
+  //Allow customising which position the snake starts from (class method form in v12)
+
+  let funcWithSnakeStartPos, funcWithSnakeStartPosOrig;
+  funcWithSnakeStartPos = funcWithSnakeStartPosOrig = findFunctionInCode(code, /reset\(\)\{$/,
+    /this\.[$a-zA-Z0-9_]{0,8}\.push\(new _\.[$a-zA-Z0-9_]{0,8}\(Math\.floor\(this\.[$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8}\.width\/4\),Math\.floor\(this\.[$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8}\.height\/2\)\)\);/,
+    false);
+
+  funcWithSnakeStartPos = assertReplace(funcWithSnakeStartPos,
+    /this\.([$a-zA-Z0-9_]{0,8})\.push\(new [^]*3,Math\.floor\(this\.[$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8}\.height\/\n?2\)\)\);/,
+    `setSelectedSnakeHead();
+    if(customSnakeStart.isActive) {
+      this.$1.push(new ${globalThis.coordConstructor}(customSnakeStart.x, customSnakeStart.y));
+      this.$1.push(new ${globalThis.coordConstructor}(customSnakeStart.x - 1, customSnakeStart.y));
+      this.$1.push(new ${globalThis.coordConstructor}(customSnakeStart.x - 2, customSnakeStart.y));
+      this.$1.push(new ${globalThis.coordConstructor}(customSnakeStart.x - 3, customSnakeStart.y));
+    } else {$&}`);
+
+  code = code.replace(funcWithSnakeStartPosOrig, funcWithSnakeStartPos);
+
+  //Func used to change settings in the menu (v12 uses default arg d=-1)
+  let funcWithChangeSetting = findFunctionInCode(code, /[$a-zA-Z0-9_]{0,8}=function\(a,b,c,d=-1\)$/,
+  /case "apple":[a-z]\.[$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8}=[a-z];break;/,
+  false);
+
+  //Just need the name of this function so we can call it.
+  globalThis.changeSettingFuncName = /[$a-zA-Z0-9_]{0,8}/.exec(funcWithChangeSetting)[0];
+
+  //Menu property - same regex as below
+  let menuProperty = code.assertMatch(/if\(this\.([$a-zA-Z0-9_]{0,8})\.isVisible\(\)\|\|this\.[$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8}\)/)[1];
+
+  //Func used to do a full reset (class method form in v12)
+  let funcWithFullReset = findFunctionInCode(code, /[$a-zA-Z0-9_]{0,8}\(\)\{$/,
+  /isVisible\(\)\|\|this\.[$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8}\)\{if\(this\.settings\./,
+  false);
+
+  //Just need the name of this function so we can call it.
+  globalThis.fullResetFuncName = /[$a-zA-Z0-9_]{0,8}/.exec(funcWithFullReset)[0];
+
+  //Changes the size setting that is selected in the menu
+  //newSize - 0 for normal, 1 for small, 2 for large
+  code = appendCodeWithinSnakeModule(code, `
+  globalThis.selectNewSizeSettingAndHardReset = function(newSizeSetting) {
+    //Change size setting
+    if(typeof window.megaWholeSnakeObject !== 'undefined' && newSizeSetting !== null) {
+      let sizeEl = document.getElementById('size');
+      ${changeSettingFuncName}(window.megaWholeSnakeObject.${menuProperty},sizeEl,true,newSizeSetting);
+  
+      //Also need to reposition and centralise the selected size in the menu. This is quite hacky.
+      switch(newSizeSetting) {
+        case 0:
+          sizeEl.style.left = '129.25px';
+          break;
+        case 1:
+          sizeEl.style.left = '91.5px';
+          break;
+        case 2:
+          sizeEl.style.left = '51.5px';
+          break;
+        default:
+          throw new Error('Unsupported size setting.');
+      }
+    }
+  
+    //Hard reset
+    if(typeof window.megaWholeSnakeObject !== 'undefined') {
+      window.megaWholeSnakeObject.${menuProperty}.visible = true;
+      window.megaWholeSnakeObject[fullResetFuncName]();
+      window.megaWholeSnakeObject.${menuProperty}.visible = false;
+    }
+  }
+  `,false);
+
+  return code;
+}
+
+////////////////////////////////////////////////////////////////////
+//RUNCODEAFTER
+////////////////////////////////////////////////////////////////////
+
+window.levelEditorMod.runCodeAfter = function() {
+  ///////////////////////////////////////
+  //Taken from level-editor.js
+  ///////////////////////////////////////
+
+  window.setupMakePatternHtml();
+
+  window.gameCanvasElMakePattern = document.getElementsByClassName('cer0Bd')[0];
+  //Setup for being apple to place apples with the mouse
+  gameCanvasElMakePattern.addEventListener('mousedown',placeAppleAtMouse);
+
+  //styling
+  document.querySelector('[jsaction="DGXxE"]').style.filter = 'sepia(50%)';
+  document.getElementsByClassName('Jc72He rc48Qb')[0].children[0].style.textTransform = 'lowercase';
+
+  //Blit the preset pattern as soon as the board is fully reset.
+  simpleHookManager.registerHook('afterResetBoard', 'blitPresetAtStart',blitSelectedPreset);
+
+  //For the custom preset stuff
+  initialiseCanvas();
+  otherPresetmanager.loadRandomHams();
+  otherPresetmanager.loadChallenge();
+}
+window.ULTRA_PRESET_PNG = {"none.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOMAAADeCAMAAAD4tEcNAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAABgUExURf+goP+Vlf+bm/+Skv9bW/8mJv8AAP8UFP9BQf+Hh/+Zmf98fP8zM/8YGP9WVv9fX/8NDf9paf8oKP9JSf91df87O/9/f/9hYf9xcf+MjP9tbf9GRv8+Pv9PT/8eHgAAALjHXscAAAAgdFJOU/////////////////////////////////////////8AXFwb7QAAAAlwSFlzAAAOwwAADsMBx2+oZAAAC8xJREFUeF7VnWtj0zgQRdOGLu027BYohRYo//9fri1fJ7Y8dzR6jbPnE0SSpVPLtqyXD388OdxM3OL/PvR3PBw/3P3F+Hj/8Dfi9aOr4+PpE1wSnP5Bii70cny4R/HtnP5F2tb0cHzM95t5+oxjtKS14+EDSlvO6QHHakVTx8MXFLOaRxyxCQ0dv6J8bXi6wWHraeX4jKK15B7HrqWN4zeUqjVPL8igigaOf6NAffiOXCqodvyBsvTjG3IqptLxM8rRly/IrZAqRx/DkSrLCsdX5O9DRYu22PGAvP0obuaVOjZr0eRQ+BpW5vgdmXrzCfnnUeSIHPfgDUXIocDxJ7LbCZQig3xHZLUf2feeXMd/kVEZnz79uh+4M3aBMFAWK5mOyCSP0wt76z2+lL1S5713ZTneIAs7n49IqvLjhOhmsl67chzzbjanH0hm4/gb6YwgmYUMRxzcxFekyeM55zq111e7Iw5toKaz9PEJB0ljvr9aHc0N8J9IUI75jfSEBCmMjta3qEbdhsbW8DuiJ7A52vprrH9XC8bnMGLrmBxNt/bWQxYPOK4OIqtYHC015wPitsRkibgaBkccTOM3orbmBcfXSI9lph1xKIWPiNkDQ1svKZl0xIEUELEX6SslJZlyxGE4z4jYEeTEQTxGwpGPck8Yn1CVJB8kiEfQHVP1pMlwhAXkR0E0GdUx9ehHNA9SbyWIJqI5Jnrfej0wZG6RKwPRJBTHxMMpcSU3J/FWoHRLKiVFYgIiuZHsl+fVijsiqYxvPR0wDD3Qdx7qiIQyPWaY6CBjFUTdwBx/IZ2I96VoU6SSpLjqBY44fljHyMgoJXFEIhFE8SP12LggX0OyI5KIIIofdkVSONFRa1Qgih95g7lItEJ0RHwJxPAjc7xa6tiVHBFdAjH8yFQU7/nCT0pNRQw/CuY3IeUCwRFxBRDBj/xBJKkTe+uIqAKI4EfZLDUkvrBx5J1E7g24nIfGEiQ/s3FEvC3uzXBd8TsvaTwvInZ8R7wtiOCGXlGHvzh/hccRZmJHxNqCcDeOyFcmdMvTrpholDlyRKQtCHdDV8QqCfxvyxQ8s3akIww9hjM09IfGeSEI/r9h3fGxdkSULQj3Qr8WL2td6CWJ8ImV4yNibEC4F/pZXNYp/LQF4YGVI8I3OPT3LzHcbs7gxw0IDiwd2UB8z3EpAb2TMVqURTtIET6ydEToBgQ7oZ/FzTIB/L4BwSMLR/Yn8b2nZipaJBeOCNuAYB+yFWkDG8EDF0f2Nmqa8daKnNvNDAJjfiF46UjmcZVNby5En+VAluywRAheOiIkBqEu6Ir03Q7hMec78NmR9HD4DBRP6A8N/vrKWkUIvjji9xiEelCqSMs+z4WYHUk1aTk9LIGuqC6fI2/T861kdiR3HIQ6UHS7mUGsGITOjvg1onLBWgb6oHWqK4k8ctDOhiOZuzkFOqCfxfTCFUSMmQLhiN9ipsD+1Cqy14kpUHX0auIUPheXIG7EdBlPjuTlOIT1p4EiG/cOYZMjfonoulHIhbrbzQyiR4QgzTEEdUdXNK+TQ/yIsF9EcCSP3zGoO3pFta+DkZ8MoSkaHOUFONZaUkUrRa0uBkf8P2IM6U31Q+MC0kSMIfs6NroWA29ItWZ8rR4d5T9moonYAtqfG8hbk0bO1N0QMDrK2xaFdF3RFbM7dZEuYggYHfG/iJCuJ3pFze+3lt/yhwDqWL0TSIrWisRjqPHUsfe2b22vxQDSrhne8gdHuYMS6Xqh75tUpEgWMQRHecUY0nVCVywcQ2Ina3DEv9e02ktKRq+oxZuSIf0a7lj4p7TRSVE2uaGOSNWFxs/FCzjCmt+Dozxoi1Q96HItBsSbztPgKD+nkKoD+pLqqmtEfr8aHMU1Vf2GjnXFuj0Q5Yb34Ih/renWINcrau0aNRxmDXPsdVvVFat3ssRx1jBHpGlNz4o6ggOtuXV1lF9jZ+oVZZdXT0ddscV6URxqjadjf0X5GfHm56hfi21W/YotqPuDVzPH4SwSxzsvR33jlkaKcpvt/SD3kSNNM3wUSUNHdmw9KUdXbLdXtzyeLDs2HiP3UiSzWDwc3RT3c/RT3M1R30mhqeJejp6KZDKS7Nju2aErviJWK8izQ77dIk01+rXYWlF2/NS3neNaUQfEttz7QZ5+jDSVeCvKjt96vnf4XosjYo5fOzrqOzT1UPwjboh57OeoK/aZpoaDr+nXD+BfUQdw9DU3xLH6frBDRR3A4dewvsfa+Uf69n69FKmjOMu6coG1rthvyigyWDM4yp8zQqIy9lKU+4wGx/aNub0U2WD5gayzQqoSdlOUq+qXwVEOKZ+68g+OINNTUTZ5po7Fc5D3O4v0bA2OYgd66Tor/Sy2+76aBBsRHxxbTgnUFTvP3WIig2PDnoA9zyKpqnfBUQ6L1m+b2FdR9hhaM9SxoKt814rKOnNuJ0d5t9wpYQY7K9IpgcFRvt3nNpz3VpSr4+woh2Y+PfTNfNMbpVcjt9fGlwvumFdZd1ckU1THF+HgKH8XJKd67a+onKjgKA/VZ1TWK1Aka5LHoOBYW1mvQJEohJ0hNEfrELb+0eAph+4gt4gQNJWAfHw7hCW5CkUyMyaETUUg+5GEsBRXoUhO47S9AcqA3yIsE+evQ5GcpOnRgEKQL+ZMgRr67cZLUS//XAr8GJHsZr2Os8iKj+Fw3TF1IvUv0PkpaqvKL46kG0ZfZnktiokzdC4Ifo5BqIiuiEgekILMr/lnR7IpqXJF6tciIrmALGMQenGUe3WUsl6PIrmpjst0A5eLBiExbHe5q6motORntYsjm2aC4Aj1uxC+iuzDRgheOrI/h7jd0xUpsm2TL8sMFo6s9iF4CWnDA0RyApluQPDAwtEQG1zRtUjnHSweCEtHtodyvPjqms6i5cQsHY0nUv+yFyJ5gVw3LAf7V470BCE8cFWKdIYMwgMrR/pXWYxGXpUiLfCqebZ2pDcThF/ZtUgV1wVZOyYTXZcibU6ul29GjnTQYmr8XVdFZU3suCSRIz+R4wOENH7BdABHkO+WSCp2lAfxRv4/ik+IMBM78pR/6d8tRXI/7F/h2DgqkhpI7Acf7txMu9k66mOlBKT1Q1lOiRgXto4lJxIp/eC3DaEsgmO+JNI5gowFhA+VSY563/cWJHMEGUsgxhLJMfNEIpEjyFgCMVaIjlmSSOIIMpYQ9xmRHfVF4CuQwhFkLIIoa2RH2te1AfH94I3UAcSJII7W2orYfqg1jMyOZY42ScT1Q50BzOYVU0flKXsGUf0gu+FP0MW31DHRwTiCiH4gXwIibeGO+h9tANHcIGP+M4gloDgm/mzxW1pvEq0vxJLQHFP3nb6T/COQJ0PbgEt1TB2476aQS/TNWhMbfeqOKUmPqbcjehdEaglcwpF9quaMx4daUidR+JTuioRj+vgtthPTQT6c86A4IeVokOz7ENE7A0dSimlHS4On3wei9CW/gfTeImnHxPfRJvrsgm15xZM+wh5hcEw1MCYun3drhb5ZG7AsKrY4Gi77kba3WEMtHTDtvWlztEk2bPmk7zQB22xwo2PyKTzT4vs0hlv5BOKnsDomZuQsqXtgHszdLOZnltnR/tcdniWlmrf6AOcK++Vvd7TdXs98yDjyxJv1eghkfCU2qyQ4vJk3c5P92XiTOZNzd8v7a+eOEoy86fubHF/4QCIHiW3k1ijkkc3T6eH1eDmth5vX4+8SuUDmzTv7qsmtVB1AScxkO5qarz3JfwLnO2YMFPQAZcihxDHdO9CNomZUkWPhpIFqCt9TCx13qbClLf5ix/LHSCHlW2xVOJqGfVqR0XTbUOPoZ2l52+fUOSaGdRtR+05a69i/TVCyAcyaeseBjLe+XFr0njRxTO2XW0qjXrBGjsOBmj8wm33vppnjQMv7T953SnVaOg68Fr8TLmkpONDYceC2ri37rf04WHvHkYeSTpHBr7y9ptHHMfA9p8vg/b7f9iwdHQPHn/IGRAtOL51H3Hs7gsPx9eHr6X2+I328+3L//Hp02Vnnz5//ADqWOSfgYjSyAAAAAElFTkSuQmCC","image-presets/ez_loop.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAPBAMAAADwnzkiAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAMUExURVeKNP///0Zz6OBYJglbE2kAAAAJcEhZcwAADsEAAA7BAbiRa+0AAAAbSURBVBjTYyAAGAVBAMyiDiGoKGxsjN9OBgYAQo0BEWNBhV4AAAAASUVORK5CYII=","image-presets/straight_line.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAPBAMAAADwnzkiAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJUExURVeKNP///+BYJvKvNZwAAAAJcEhZcwAADsEAAA7BAbiRa+0AAAAUSURBVBjTY6ASEBRSAgGqmMXAAAA8UgDOpqbfVAAAAABJRU5ErkJggg==","image-presets/rooms.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAPBAMAAADwnzkiAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAVUExURf///1eKNOBYJkZz6Nq8H40toMWDDlVU6/4AAAAJcEhZcwAADsAAAA7AAWrWiQkAAABDSURBVBjTYwACQUEBEMXEwAyiWEAiIDFGARQWgwIQOzAwIOkQEGQUFBRkFBDAykKoY2AIAOIEBuwms0KUsMFNZmAAAFDQBJ/5ZF7tAAAAAElFTkSuQmCC","image-presets/pacman.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAPBAMAAADwnzkiAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAVUExURVeKNP///0Zz6OBYJtq8H8WDDo0toDtrXtYAAAAJcEhZcwAADsAAAA7AAWrWiQkAAABOSURBVBjTLY2BDcBACAJhAy9pB+gIP1L3X6JYTUg0h4jMgwHJXoVhu5l6EJRNKs1mzjJU7rMOtErzYNwLbiaxLEclPG28NUZif0k4lNEHB/kDvtIxQPUAAAAASUVORK5CYII=","image-presets/maze_for_key_statue_large.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAVBAMAAACuxzMVAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJUExURf///1eKNOBYJuJI1NYAAAAJcEhZcwAADsEAAA7BAbiRa+0AAABeSURBVCjPVZCBEcAgCAOTDZJu0P2XbIB6LZwiZ8yLImFQSQlKIJDEKiQzI8UrjQD6KBbaV54KWUOj22XeV3b6QEMyWWtRhz8AH9JS/p5FW/esDnZvq+v/e9ZLvz8AHpZ7BrYh8CHOAAAAAElFTkSuQmCC","image-presets/regular_grid.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAPBAMAAADwnzkiAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAMUExURf///1eKNEZz6OBYJg1drhkAAAAJcEhZcwAADsAAAA7AAWrWiQkAAAAfSURBVBjTY0AARihgIEFMgYHBwMAAQx02MeLtYGAAAG4aAXn16ItGAAAAAElFTkSuQmCC","image-presets/knight_grid.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAPBAMAAADwnzkiAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAMUExURVeKNP///0Zz6OBYJglbE2kAAAAJcEhZcwAADsAAAA7AAWrWiQkAAAA1SURBVBjTY2AUFBAUBBIMDIJwpiCUKcAgAGUCZaFMAbgOARQdTIICwsZwHcaGhHXgtEOQAQAlcwdofjKl2QAAAABJRU5ErkJggg==","image-presets/max_rooms.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAPBAMAAADwnzkiAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAVUExURf///1eKNOBYJtq8H0Zz6I0toMWDDtK+i9MAAAAJcEhZcwAADsAAAA7AAWrWiQkAAAAuSURBVBjTYwABATDJpABmGQOZLAxIQIAIlqCAIBAICAoQrQMBWAPAYmlwWQYGAJ40AmuX1bCUAAAAAElFTkSuQmCC","image-presets/soko2.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAPBAMAAADwnzkiAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAPUExURVeKNP///+BYJkZz6PCgNrEurpkAAAAJcEhZcwAADsEAAA7BAbiRa+0AAAAvSURBVBjTY0ACgggWBABZAnAZASUgUBCgjMUIMQ/EEhYUdBQUFIBZyQhnMTAwAAAC7wb9B4bsqwAAAABJRU5ErkJggg==","image-presets/soko1.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAPBAMAAADwnzkiAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAnUExURVeKNI0toOaKG9TS0eSliO/PHsd7SudHOPKPE5BPo/OHaP////CgNhP9rnwAAAAJcEhZcwAADsAAAA7AAWrWiQkAAABpSURBVBjTLcqhEYBADETRRccwVMAMDSAoAINHoXFYJBKLowRKiM8J/FEUm0BM/rwEnKIZluOCqKLqpu1kPeq4QyxlxxUiFjizUuDIkuzYsxDYsjSwhsACS+4PAbMfYSTizdJAv6rwAYoXdYIxkyorKlMAAAAASUVORK5CYII=","image-presets/soko3_beta.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAPCAMAAAA1b9QjAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAzUExURVeKNP////CgNkZz6Gq5J9TS0Y0toOBYJtq8HwCQAOSliJBPo/JDEe/PHhSgGfOHaMd7Su7SyO0AAAAJcEhZcwAADsAAAA7AAWrWiQkAAABNSURBVChTZYpJDsAgDAPtdKMr/f9rwWnFxSMlgslAMCjASRsz8hORg24WIKIraQ2wWrNZU6zZrTmsOa25rLmteaypoxEyb/rB9/7vgmyjxgE+hidplwAAAABJRU5ErkJggg==","image-presets/soko_widegrid.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAPBAMAAADwnzkiAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAMUExURf////CgNuBYJkZz6EouaFQAAAAJcEhZcwAADsAAAA7AAWrWiQkAAAAnSURBVBjTY0ACAoxgxIAdoMgyASEUKChg6oWIMRjA1JFgMhAwMAAAe5kBs9xZ8FMAAAAASUVORK5CYII=","image-presets/use_reversing_at_will.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAPBAMAAADwnzkiAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJUExUReBYJleKNP///wbRVWYAAAAJcEhZcwAADsIAAA7CARUoSoAAAAA+SURBVBjThY7BDQAwCALRDdhA3H/I0tSHv2I0kVxQBMnbgFLZ0VEQXxW8W8rtmQsNR8nD3Gh7m/vkzd35hTiCtwv5S1dwIwAAAABJRU5ErkJggg==","image-presets/ham_path.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAPBAMAAADwnzkiAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJUExURf///1eKNOBYJuJI1NYAAAAJcEhZcwAADsAAAA7AAWrWiQkAAAA9SURBVBjTVYyBDcAwCMOcD6z9f+wWWlVdBAI5BDBI2PKe5e3jziq6mf/QY0/qHiVN5CKf31ox56lMcDEDL3d1AbZT/mLAAAAAAElFTkSuQmCC","image-presets/maze_beta.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAPBAMAAADwnzkiAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJUExURVeKNP///+BYJvKvNZwAAAAJcEhZcwAADsAAAA7AAWrWiQkAAABJSURBVBjTNYzBEcMADMJgA8gI3X/IWuTijzkZWYzrRk1jV9GFGnBZXt61NvVc+AxOGNRmPL9UL2bNuLZwIMco7zNOxi6C91fNH3g9BPc1sYBhAAAAAElFTkSuQmCC"};
+
+window.ULTRA_CHALLENGE_TXT = "17x15 W1,2 W1,1 W1,4 W1,3 W2,1 W2,3 W1,9 W1,8 W1,6 W1,5 W2,4 W2,5 W2,6 W2,8 W2,11 W2,10 W2,9 W3,1 W3,3 W3,4 W3,5 W3,6 W3,8 W3,9 W3,10 W3,13 W1,10 W1,11 W1,12 W1,13 W2,13 W2,12 W3,12 W3,11 W4,13 W4,12 W5,9 W5,8 W5,6 W5,5 W5,3 W5,1 W4,1 W4,3 W4,11 W5,11 W5,12 W5,13 W6,8 W6,9 W6,11 W6,12 W6,13 W7,13 W7,12 W6,6 W6,5 W7,8 W7,9 W7,11 W6,1 W10,13 W9,1 W9,3 W9,5 W9,6 W10,12 W10,11 W10,6 W10,5 W10,3 W12,1 W12,3 W12,13 W12,12 W11,3 W11,9 W11,10 W11,13 W11,12 W11,11 W12,11 W12,10 W12,9 W12,6 W12,5 W12,4 W14,1 W14,13 W13,1 W13,3 W13,4 W13,5 W13,6 W13,9 W13,10 W13,11 W13,13 W13,12 W14,12 W14,11 W14,10 W14,9 W14,6 W14,5 W14,4 W14,3 W15,2 W15,1 W15,13 W15,12 W15,11 W15,10 W15,9 W15,6 W15,5 W15,4 W15,3 W11,1 W10,1 W2,2 W3,2 W4,2 W5,2 W9,2 W10,2 W11,2 W12,2 W13,2 W14,2 W11,6 W11,5 W11,4 W10,4 W9,4 W5,4 W4,4 W4,5 W4,6 W4,8 W4,9 W4,10 W5,10 W6,10 W7,10 W8,9 W8,10 W8,11 W8,12 W8,13 W9,7 W10,7 W11,7 W12,7 W13,7 W14,7 W15,7 W6,2 W6,3 W6,4 W8,8 W8,7 W8,6 W8,5 W8,4 W8,3 W8,2 W8,1 W7,1 W7,2 W7,3 W7,4 W7,5 W7,6 W7,7 W6,7 W5,7 W4,7 W3,7 W2,7 W1,7 W9,13 W9,12 W9,11 W10,10 W9,8 W9,9 W9,10 W10,9 W10,8 W11,8 W12,8 W13,8 W14,8 W15,8 S2,14 A1,0 A2,0 A3,0 A4,0 A15,0 A14,0 A13,0 A12,0\r\n17x15 W16,14 W13,14 W12,14 W10,14 W1,2 W1,1 W1,4 W1,3 W2,1 W2,3 W1,9 W1,8 W1,6 W1,5 W2,4 W2,5 W2,6 W2,8 W2,11 W2,10 W2,9 W3,1 W3,3 W3,4 W3,5 W3,6 W3,8 W3,9 W3,10 W3,13 W1,10 W1,11 W1,12 W1,13 W2,13 W2,12 W3,12 W3,11 W4,13 W4,12 W5,9 W5,8 W5,6 W5,5 W5,3 W5,1 W4,1 W4,3 W4,11 W5,11 W5,12 W5,13 W6,8 W6,9 W6,11 W6,12 W6,13 W7,13 W7,12 W6,6 W6,5 W7,8 W7,9 W7,11 W6,1 W10,13 W9,1 W9,3 W9,5 W9,6 W10,12 W10,11 W10,10 W10,9 W10,6 W10,5 W10,3 W12,1 W12,3 W12,13 W12,12 W11,3 W11,9 W11,10 W11,14 W11,13 W11,12 W11,11 W12,11 W12,10 W12,9 W12,6 W12,5 W12,4 W14,1 W14,14 W14,13 W13,1 W13,3 W13,4 W13,5 W13,6 W13,9 W13,10 W13,11 W13,13 W13,12 W14,12 W14,11 W14,10 W14,9 W14,6 W14,5 W14,4 W14,3 W15,2 W15,1 W16,9 W16,10 W16,11 W16,12 W16,13 W15,14 W15,13 W15,12 W15,11 W15,10 W15,9 W15,6 W15,5 W15,4 W15,3 W11,1 W10,1 W2,2 W3,2 W4,2 W5,2 W9,2 W10,2 W11,2 W12,2 W13,2 W14,2 A2,14 A3,14 A6,14 A7,14 W11,6 W11,5 W11,4 W10,4 W9,4 W5,4 W4,4 W4,5 W4,6 W4,8 W4,9 W4,10 W5,10 W6,10 W7,10 W8,9 W8,10 W8,11 W8,12 W8,13 W9,7 W10,7 W11,7 W12,7 W13,7 W14,7 W15,7 W6,0 W5,0 W4,0 W3,0 W2,0 W1,0 W0,0 W0,3 W0,4 W0,5 W0,6 W0,2 W0,1 W6,2 W6,3 W6,4 W8,8 W8,7 W8,6 W8,5 W8,4 W8,3 W8,2 W8,1 S10,0 A1,14 A8,14\r\n17x15 W1,2 W2,3 W1,9 W1,8 W2,4 W2,5 W2,6 W2,8 W2,9 W3,3 W3,4 W3,5 W3,6 W1,10 W1,11 W1,12 W1,13 W2,13 W5,9 W5,6 W5,5 W5,3 W5,1 W4,1 W4,3 W5,11 W5,13 W6,9 W6,11 W6,13 W6,6 W6,5 W6,1 W9,1 W10,11 W10,6 W10,5 W10,3 W12,3 W12,12 W11,3 W12,11 W12,10 W12,6 W12,5 W14,1 W13,1 W13,3 W13,4 W13,5 W13,6 W13,10 W13,11 W13,12 W14,12 W15,2 W15,1 W15,12 W15,11 W15,10 W15,9 W15,6 W15,5 W15,4 W15,3 W2,2 W3,2 W4,2 W5,2 W10,4 W5,4 W4,4 W4,5 W4,6 W5,10 W6,10 W8,10 W8,11 W10,7 W12,7 W13,7 W15,7 W6,2 W6,3 W6,4 W8,6 W8,5 W8,4 W8,3 W8,2 W8,1 W7,1 W7,2 W7,3 W7,4 W7,5 W7,6 W2,7 W1,7 W9,11 W10,10 W9,10 W1,3 W1,4 W1,5 W1,6 W5,14 W6,14 W10,1 W11,1 W12,1 W5,12 W6,12 W8,12 W9,12 W10,12 W11,12 W11,11 W11,10 W12,8 W13,8 W15,8 W5,8 W6,8 W7,8 W8,8 W9,8 W10,8 W11,8 W11,7 W11,6 W11,5 W11,4 W12,4 W14,11 W14,10 W8,13 W9,13 W10,13 W11,13 W12,13 W13,13 W14,13 W15,13 W3,1 W2,1 W1,1 W2,12 W2,11 W2,10 A0,0 W3,7 W3,8 W3,9 W3,10 W3,11 W3,12 W3,13 S5,7 A1,0 A2,0 A3,0 A4,0 A5,0 A6,0 A7,0 A8,0 A9,0\r\n17x15 W1,13 W1,9 W1,10 W1,12 W1,11 W1,6 W1,5 W1,4 W1,3 W1,2 W1,1 W2,1 W2,2 W2,3 W2,4 W2,5 W2,6 W2,9 W2,10 W2,11 W2,12 W2,13 W3,13 W3,12 W3,11 W3,10 W3,9 W3,6 W3,5 W3,4 W3,3 W3,2 W3,1 W4,1 W4,2 W4,3 W4,4 W4,5 W4,6 W4,9 W4,10 W4,11 W4,12 W4,13 W5,13 W5,12 W5,11 W5,10 W5,9 W5,6 W5,5 W5,4 W5,3 W5,2 W5,1 W6,1 W6,2 W6,3 W6,4 W6,5 W6,6 W6,13 W6,12 W6,11 W6,10 W6,9 W7,7 W7,8 W8,7 W9,1 W9,2 W9,3 W9,4 W9,5 W9,6 W11,2 W11,1 W10,13 W10,12 W10,11 W10,10 W10,9 W10,5 W10,4 W10,1 W10,2 W10,3 W11,3 W11,4 W11,5 W13,1 W12,1 W12,2 W11,9 W11,10 W11,11 W11,12 W11,13 W12,13 W12,12 W12,11 W12,10 W12,9 W12,5 W12,4 W12,3 W13,2 W13,3 W13,4 W13,5 W13,9 W13,10 W13,11 W13,12 W13,13 W15,9 W15,5 W15,4 W15,3 W15,2 W14,13 W14,12 W14,11 W14,10 W14,9 W14,5 W14,4 W14,3 W14,2 W14,1 W15,1 W15,10 W15,11 W15,12 W15,13 W7,9 W7,10 W7,11 W7,12 W7,13 W9,7 W10,8 W11,8 W12,8 W13,8 W14,8 W15,8 S9,0 A7,6 A8,6 A10,7 A10,6 A9,8 A8,8 A6,8 A6,7\r\n17x15 W4,13 W1,13 W2,13 W3,13 W5,13 W6,13 W8,13 W9,13 W12,12 W3,12 W1,12 W2,12 W14,12 W13,12 W11,12 W9,12 W6,12 W5,12 W4,12 W15,12 W15,11 W14,11 W2,11 W13,11 W12,11 W11,11 W7,13 W7,12 W8,12 W9,11 W10,12 W10,11 W6,10 W4,10 W2,10 W5,10 W12,8 W10,8 W0,10 W7,10 W9,10 W10,10 W11,10 W12,10 W14,10 W15,10 W13,10 W0,9 W11,9 W13,9 W14,9 W2,9 W12,9 W14,8 W13,8 W9,8 W0,8 W2,8 W6,8 W5,8 W4,9 W5,9 W6,9 W7,9 W9,9 W10,9 W11,8 W14,7 W13,7 W12,7 W11,7 W10,7 W0,7 W2,7 W3,7 W6,7 W9,7 W5,7 W6,6 W9,6 W10,6 W12,6 W14,6 W13,6 W11,6 W5,6 W3,6 W2,6 W10,5 W1,5 W2,5 W13,5 W14,5 W12,5 W11,5 W9,5 W6,5 W5,5 W3,5 W3,4 W1,4 W2,4 W10,4 W9,4 W6,4 W5,4 W5,3 W3,3 W1,3 W2,3 W11,4 W10,2 W9,2 W1,2 W2,2 W5,2 W3,2 W8,2 W6,2 W7,2 W7,1 W10,1 W13,1 W14,1 W15,1 W12,1 W11,1 W9,1 W8,1 W6,1 W5,1 W0,0 W1,0 W2,0 W3,0 W8,0 W9,0 W10,0 W11,0 W12,0 W13,0 W14,0 W15,0 W4,0 W5,0 W6,0 W7,0 S4,14 W16,1 W16,0 W16,4 W16,5 W6,3 W12,3 W13,3 W12,4 W13,4 W14,4 W15,9 W14,3 W16,3 W16,2 W11,14 W12,14 W13,14 W14,14 W15,14 W16,14 W16,6 W16,7 A8,3 A9,3 A10,3 A11,3 A11,2 A12,2 A13,2 A14,2 W7,3 W7,4 W7,5 W7,6 W7,7 W7,8\r\n17x15 W1,2 W1,3 W1,9 W1,6 W1,5 W2,5 W2,6 W2,8 W2,11 W2,10 W2,9 W3,3 W3,5 W3,9 W3,10 W3,13 W1,10 W1,11 W2,13 W2,12 W3,12 W3,11 W4,3 W6,8 W6,9 W6,11 W6,12 W7,13 W7,12 W6,6 W6,5 W7,8 W7,9 W7,11 W9,5 W9,6 W12,3 W12,11 W12,10 W12,9 W12,6 W12,5 W12,4 W13,3 W13,4 W13,5 W13,6 W13,9 W13,10 W13,11 W14,5 W14,4 W14,3 W4,2 W5,2 W10,2 W11,2 W12,2 W13,2 W14,2 W6,10 W7,10 W9,7 W13,7 W6,2 W8,8 W8,7 W8,6 W8,5 W7,5 W7,6 W7,7 W6,7 W2,7 W9,11 W9,8 W13,8 W3,2 W2,2 W2,3 W1,4 W1,1 W2,1 W3,1 W4,1 W14,1 W15,1 W15,2 W15,3 W15,4 W15,5 W15,6 W15,9 W15,10 W15,11 W15,12 W15,13 W14,10 W14,6 W14,7 W14,8 W14,9 W14,11 W14,12 W14,13 W13,13 W12,13 W8,13 W9,13 W10,13 W10,12 W9,12 W8,12 W8,11 W8,10 W8,9 W9,9 W10,9 W9,10 W10,10 W10,11 W13,12 W12,12 W10,8 W10,7 W10,6 W10,5 W9,2 W8,2 W7,2 W1,12 W1,13 W13,1 W2,4 W3,4 W3,6 W7,14 W8,14 W9,14 W10,14 W4,4 W4,5 W4,6 W3,7 W3,8 W4,9 W4,10 W4,11 W4,12 W4,13 W7,3 W7,1 W9,1 W8,1 W9,3 W8,3 W6,14 W6,13 S2,0 A12,7 A12,8 A4,7 A4,8 A1,8 A1,7 A15,7 A15,8 W12,1 A10,1 A11,1 W5,1 W6,1\r\n17x15 W3,12 W2,12 W5,12 W4,12 W2,11 W4,10 W5,10 W14,10 W13,10 W6,6 W9,6 W10,6 W12,6 W13,6 W11,6 W5,6 W1,2 W5,2 W8,2 W6,2 W7,2 W16,6 W4,6 W14,6 W15,6 W14,2 W13,2 W10,2 W9,2 W5,11 W4,11 W3,11 W9,11 W9,12 W6,12 W6,11 W6,10 W15,10 W13,12 W13,11 W10,11 W10,12 W7,12 W7,11 W7,10 W12,12 W12,11 W8,12 W8,11 W8,10 W9,10 W10,10 W11,11 W11,12 W14,12 W14,11 W15,11 W15,12 W1,3 W1,4 W1,5 W1,6 W1,7 W1,8 W1,9 W1,10 W1,11 W1,12 W3,6 W4,2 W16,14 W15,14 W14,14 W13,14 W12,14 W3,14 W9,14 W11,14 W10,14 W8,14 W7,14 W6,14 W5,14 W4,14 W2,14 W1,14 W0,14 S7,13 W6,7 W5,7 W4,7 W3,7 W9,7 W10,7 W11,7 W12,7 W13,7 W14,7 W15,7 W16,7 W15,2 W16,8 W15,8 W14,8 W13,8 W12,8 W11,8 W10,8 W9,8 W8,7 W7,7 W6,8 W5,8 W4,8 W3,8 W15,3 W14,3 W13,3 W12,2 W11,2 W10,3 W9,3 W8,3 W7,3 W6,3 W5,3 W4,3 W3,2 W2,2 W15,4 W14,4 W13,4 W12,3 W11,3 W10,4 W9,4 W8,4 W7,4 W6,4 W5,4 W4,4 W3,3 W2,3 W16,0 W15,0 W14,0 W13,0 W12,0 W11,0 W10,0 W9,0 W8,0 W7,0 W6,0 W5,0 W4,0 W3,0 W2,0 W1,0 W0,0 A6,1 A5,1 A4,1 A3,1 A2,1 A1,1 A0,1 A7,1 A8,1\r\n17x15 W2,8 W2,9 W3,11 W6,9 W6,11 W7,11 W14,5 W4,2 W5,2 W6,2 W8,5 W7,5 W2,7 W2,3 W15,5 W9,2 W8,2 W7,3 W6,1 W6,3 W6,5 W5,11 W4,9 W3,7 W3,8 W3,9 W4,11 W1,7 W1,6 W3,3 W5,3 W7,2 W10,2 W12,1 W12,9 W1,8 W1,9 W15,11 W13,9 W9,5 W9,8 W10,8 W11,8 W12,8 W13,8 W14,8 W8,8 W14,11 W13,11 W12,11 W11,11 W14,9 W15,9 W1,1 W2,1 W3,1 W4,1 W5,1 W7,1 W10,5 W11,2 W12,5 W14,3 W14,2 W14,1 W13,3 W13,2 W13,1 W12,2 W12,3 W11,5 W13,5 W15,3 W15,2 W15,1 W16,5 W15,8 W15,7 W14,7 W13,7 W12,7 W7,7 W6,8 W7,9 W7,8 W6,7 W4,3 W3,2 W2,2 W1,2 W1,3 W3,5 W1,4 W1,5 W4,8 W5,5 W4,5 W4,7 W5,7 W5,8 W5,9 W1,10 W1,13 W8,11 W5,13 W4,13 W1,11 W1,12 W2,13 W3,13 W9,11 W10,11 W16,11 W15,13 W6,13 W7,13 A2,14 A3,14 A4,14 A5,14 A6,14 A7,14 S3,0 W8,13 W9,13 W10,13 W11,13 W12,13 W14,13 W13,13 A8,14 A9,14 A10,14 A1,14\r\n17x15 W1,13 W1,12 W1,11 W1,10 W1,9 W1,8 W1,4 W1,3 W1,2 W1,1 W2,13 W2,12 W2,11 W2,10 W2,9 W2,8 W2,7 W3,13 W3,12 W3,11 W3,10 W3,9 W2,6 W2,5 W2,4 W2,3 W2,2 W2,1 W4,13 W3,5 W3,4 W3,3 W3,2 W3,1 W5,0 W5,1 W5,2 W5,3 W5,4 W5,5 W5,6 W5,7 W5,8 W5,9 W5,10 W5,11 W5,13 W6,13 W7,3 W7,4 W7,9 W7,10 W7,11 W7,12 W7,13 W8,1 W8,2 W8,3 W8,4 W8,5 W8,6 W8,7 W8,8 W8,9 W8,10 W8,11 W8,12 W8,13 W9,13 W9,12 W9,11 W9,10 W9,9 W9,4 W9,3 W9,2 W9,1 W10,13 W11,0 W11,1 W11,2 W11,3 W11,4 W11,5 W11,6 W11,7 W11,8 W11,9 W11,10 W11,11 W12,13 W13,12 W13,11 W13,10 W13,4 W13,3 W13,2 W13,1 W14,6 W14,7 W14,8 W14,9 W14,10 W14,11 W14,12 W15,4 W15,3 W15,2 W15,1 W14,1 W14,2 W14,3 W14,4 W14,5 W15,10 W15,11 W15,12 W15,13 W14,13 W13,13 W11,13 W13,9 W15,9 W7,1 W7,2 S6,14 W3,8 W1,5 A3,6 A3,7 A1,6 A1,7 A1,0 A3,0 A2,0 A4,0 A0,0 A0,1 A4,1\r\n17x15 W6,6 W9,6 W10,6 W12,6 W13,6 W11,6 W5,6 W1,2 W16,6 W4,6 W5,11 W4,11 W9,11 W6,11 W6,10 W13,11 W10,11 W7,11 W7,10 W12,11 W8,11 W8,10 W9,10 W11,11 W15,11 W15,12 W1,11 W1,12 W16,14 W15,14 W14,14 W13,14 W12,14 W3,14 W9,14 W11,14 W10,14 W8,14 W7,14 W6,14 W5,14 W4,14 W2,14 W1,14 W4,7 W11,7 W12,7 W13,7 W15,7 W16,7 W15,2 W16,8 W13,8 W12,8 W4,8 W15,3 W13,3 W10,3 W9,3 W8,3 W7,3 W6,3 W5,3 W4,3 W13,4 W12,3 W10,4 W9,4 W8,4 W7,4 W6,4 W5,4 W4,4 W3,3 W13,0 W12,0 W11,0 W10,0 W9,0 W7,0 W2,0 W1,0 W0,0 W5,0 W13,1 W14,0 W15,0 W15,1 W14,1 W3,0 W1,1 W2,1 W4,0 W6,0 W8,0 W8,1 W4,1 W3,1 W1,3 W1,7 W0,1 W0,2 W0,3 W0,4 W0,5 W0,6 W0,7 W0,8 W0,9 W0,10 W0,11 W0,12 W0,14 W0,13 W6,13 W7,13 W8,13 W9,13 W10,13 W11,13 W12,13 W13,13 W14,13 W15,13 W16,13 W16,12 W16,9 W13,9 W12,9 W16,10 W16,11 W13,10 W12,10 W11,10 W10,10 W9,8 W10,8 W11,8 W11,9 W10,9 W9,9 W8,9 W6,7 W5,7 W5,8 W3,10 W3,11 W4,10 W5,10 W7,9 W8,8 W10,7 W9,7 W8,7 W7,8 W6,8 W6,9 W5,9 W4,9 W3,9 W3,8 W3,7 W3,6 W3,5 W4,5 W5,5 W6,5 W7,5 W8,5 W7,7 W7,6 W8,6 W9,5 W10,5 W11,5 W11,4 W12,4 W12,5 W13,5 W16,5 W16,4 W16,3 W16,2 W16,1 W16,0 W1,13 W2,13 W3,13 W4,13 W5,13 W14,9 W14,5 W11,3 W12,1 W10,2 W6,2 W3,4 W2,5 W2,9 S6,12 A5,1 A6,1 A7,1 A9,1 A10,1 A11,1 A7,2 A8,2 A9,2\r\n17x15 W1,2 W1,3 W2,5 W2,6 W2,8 W2,11 W2,9 W3,5 W2,13 W2,12 W3,12 W3,11 W4,3 W6,8 W6,9 W6,11 W7,13 W7,12 W6,6 W7,11 W12,3 W12,4 W14,5 W14,4 W14,3 W4,2 W5,2 W14,2 W6,10 W6,2 W8,6 W8,5 W7,5 W7,6 W6,7 W2,7 W9,11 W3,2 W2,2 W2,3 W2,1 W3,1 W4,1 W14,1 W15,2 W15,4 W15,5 W15,6 W15,12 W14,6 W14,12 W14,13 W13,13 W12,13 W9,13 W8,11 W10,11 W12,12 W9,2 W8,2 W1,12 W4,5 W7,3 W7,1 W8,1 W5,1 W6,1 W0,0 W16,0 W16,14 W11,13 W10,3 W9,3 W8,4 W7,4 W6,4 W6,3 W8,3 W15,3 W6,5 W5,7 W5,11 W4,9 W3,6 W3,7 W3,8 W3,9 W4,11 W3,13 W0,14 W1,7 W1,6 W3,3 W5,3 W7,2 W10,2 W12,2 W12,1 W9,1 W10,1 W12,9 W1,8 W1,9 W1,11 W12,0 S5,0 A3,14 A4,14 A6,14 W0,6 W0,7 W0,8 W0,9 W11,12 W4,13 W4,12 W5,12 W6,12 W6,13 W5,13 W9,14 W13,12 W15,11 W13,9 W10,4 W9,4 W9,5 W9,6 W10,5 W10,6 W13,6 W12,6 W11,6 W9,8 W10,8 W11,8 W12,8 W13,8 W14,8 W16,8 W15,8 W8,8 W14,11 W13,11 W12,11 W11,11 W10,10 W9,10 W8,10 W7,10 W14,9 W15,9 W16,9 W1,5 W0,5 A5,14 A2,14 A7,14 A8,14 A1,14 A8,13 A8,12\r\n17x15 W1,12 W1,4 W1,3 W1,2 W2,12 W2,8 W3,12 W2,5 W2,4 W3,5 W3,2 W5,2 W7,10 W7,11 W7,12 W8,9 W8,10 W8,11 W8,12 W9,12 W9,11 W9,10 W9,1 W11,3 W11,4 W11,7 W11,8 W11,9 W12,13 W13,12 W13,11 W13,10 W13,2 W14,6 W14,7 W14,8 W14,12 W15,3 W15,10 W15,12 W15,13 W14,13 W13,13 W15,9 W0,0 W9,0 W10,0 W1,1 W1,0 W4,1 W4,2 W5,3 W5,4 W5,5 W5,6 W5,7 W4,3 W4,8 W4,12 W6,7 W6,6 W6,5 W6,4 W6,3 W6,2 W7,2 W6,9 W6,12 W6,11 W6,10 W7,9 W7,3 W6,8 W5,8 W3,6 W3,8 W2,6 W1,6 W1,5 W0,3 W0,1 W0,2 W0,4 W0,5 W0,6 W0,7 W0,8 W0,9 W0,10 W0,14 W1,14 W2,14 W5,14 W6,14 W7,14 W8,14 W9,14 W10,14 W11,14 W12,14 W13,14 W14,14 W15,14 W16,14 W16,13 W16,12 W16,0 W16,1 W16,2 W16,3 W16,4 W15,8 W15,7 W16,5 W15,4 W13,3 W12,6 W13,8 W13,7 W13,6 W13,5 W13,4 W12,7 W12,8 W12,12 W11,13 W11,10 W10,11 W10,10 W10,9 W10,8 W9,5 W9,4 W10,2 W10,1 W10,3 W10,4 W10,5 W9,6 W9,9 W9,8 S5,13 W5,12 W9,3 W9,2 W5,1 W5,11 W3,10 W1,10 W2,10 A3,0 A4,0 W8,0 W2,0 W4,14 W3,14 W8,8 W7,8 W7,7 W7,6 W7,5 W7,4 W11,0 W12,0 W13,0 W14,0 W15,0 A6,0 W6,1 A7,0 A5,9 A5,10 A7,1 A3,1\r\n17x15 W2,8 W3,12 W2,5 W3,2 W5,2 W7,11 W7,12 W8,11 W8,12 W9,12 W9,11 W11,4 W11,9 W14,7 W14,12 W0,0 W9,0 W10,0 W1,0 W4,2 W5,3 W5,4 W5,5 W4,3 W6,7 W6,6 W6,5 W6,4 W6,3 W6,2 W7,2 W6,12 W7,3 W6,8 W3,6 W3,8 W2,6 W0,3 W0,1 W0,2 W0,4 W0,5 W0,6 W0,7 W0,8 W0,9 W0,10 W0,14 W1,14 W2,14 W5,14 W6,14 W7,14 W8,14 W9,14 W10,14 W11,14 W12,14 W13,14 W14,14 W15,14 W16,14 W16,13 W16,12 W16,0 W16,1 W16,2 W16,3 W16,4 W16,5 W13,8 W13,7 W13,6 W11,10 W10,9 W10,8 W9,5 W9,4 W10,2 W10,3 W9,8 W9,3 W9,2 W8,0 W2,0 W4,14 W3,14 W7,7 W7,6 W7,5 W7,4 W15,0 W6,0 W5,0 W4,0 W3,0 W2,2 W4,4 W3,3 W3,7 W2,7 W2,9 W4,10 W4,11 W3,11 W0,11 W0,12 W0,13 W10,12 W12,10 W16,11 W16,10 W16,9 W16,8 W16,7 W16,6 W14,5 W14,2 W14,0 W11,2 W12,3 W12,4 W11,5 W10,6 W10,7 W8,4 W7,0 W8,2 W8,3 W8,5 W8,6 W8,7 W9,7 W9,6 W10,5 W10,4 W11,3 W12,2 W13,2 W14,6 W14,8 W14,9 W13,11 W13,12 W12,11 W5,10 W5,9 W11,0 W12,0 W13,0 W2,12 S7,1 W13,3 W15,10 W15,9 W15,8 W15,7 W15,6 W15,5 W15,4 W8,8 W7,8 W6,9 W5,13 W6,13 W7,13 W8,13 W9,13 W10,13 W11,13 W1,4 W1,5 W1,6 W1,7 W1,8 W1,9 W1,10 A1,1 A1,2 A1,3 W11,8 W11,7 W11,6 W9,9 W8,9 W7,9 W5,8 W5,7 W5,6 A2,1 A2,3 A2,4 A3,1 A4,1\r\n17x15 W2,8 W6,8 W6,9 W6,6 W4,2 W5,2 W6,10 W6,2 W8,5 W6,7 W14,12 W10,11 W12,12 W8,2 W10,3 W3,8 W12,9 W11,12 W4,12 W13,12 W9,6 W10,6 W10,8 W11,8 W12,8 W13,8 W14,8 W8,8 W14,11 W10,10 W9,10 W8,10 W7,10 W14,2 W13,2 W12,2 W12,4 W12,5 W11,4 W11,2 W10,2 W5,6 W4,4 W2,4 W3,4 W4,6 W4,8 W4,10 W2,10 W8,12 W14,10 W12,10 W8,9 W7,9 W7,8 W5,10 W3,6 W2,1 W3,1 W4,1 W5,1 W15,1 W6,1 W15,2 W15,3 W14,3 W13,3 W12,3 W11,3 W10,4 W8,4 W6,3 W2,3 W1,1 W2,2 W3,2 W3,3 W4,3 W5,3 W5,4 W5,5 W6,5 W6,4 W7,2 W9,3 W9,2 W8,3 W7,3 W7,4 W7,5 W7,6 W7,7 W8,7 W8,6 W9,4 W9,5 W10,5 W11,5 W11,6 W13,7 W14,7 W15,4 W14,4 W13,4 W13,5 W14,6 W14,5 W13,6 W12,6 W12,7 W11,7 W10,7 W9,7 W9,8 W9,9 W10,9 W11,9 W11,10 W11,11 W12,11 W13,11 W13,10 W13,9 W14,9 W15,13 W14,13 W13,13 W12,13 W11,13 W10,13 W10,12 W9,12 W9,11 W8,11 W7,11 W6,11 W6,12 W7,12 W5,12 W5,11 W4,11 W3,12 W3,10 W3,11 W2,11 W2,12 W1,12 W1,11 W1,10 W2,9 W3,9 W4,9 W5,9 W5,8 W5,7 W4,7 W3,7 W2,7 W2,6 W2,5 W3,5 W4,5 W1,13 A1,6 A1,7 W1,2 W2,13 W15,12 W14,1 S10,14 W15,11 W3,13 W1,3 W13,1 A1,5 A1,8 A0,8 A0,7 A0,6 A0,5\r\n17x15 W2,8 W2,11 W2,12 W6,8 W6,9 W6,11 W6,6 W4,2 W5,2 W6,10 W6,2 W8,6 W8,5 W6,7 W3,2 W14,12 W10,11 W12,12 W9,2 W8,2 W10,3 W6,3 W3,8 W0,14 W7,2 W12,9 W1,8 W0,7 W0,8 W0,9 W11,12 W4,13 W4,12 W6,12 W9,14 W13,12 W10,4 W9,6 W10,6 W13,6 W10,8 W11,8 W12,8 W13,8 W14,8 W16,8 W15,8 W8,8 W14,11 W10,10 W9,10 W8,10 W7,10 W16,9 W1,0 W2,0 W3,0 W4,0 W5,0 W6,0 W7,0 W8,0 W9,0 W10,0 W12,0 W13,0 W14,0 W15,0 W16,0 W16,1 W16,2 W16,3 W16,4 W16,7 W16,6 W16,5 W15,4 W14,2 W13,2 W14,4 W14,6 W12,2 W12,3 W12,4 W12,5 W12,6 W11,4 W11,3 W11,0 W11,2 W10,2 W8,4 W6,5 W5,6 W6,4 W4,4 W2,4 W1,4 W0,0 W0,6 W0,5 W0,4 W0,3 W0,2 W0,1 W2,2 W3,4 W4,6 W4,8 W4,10 W2,10 W0,10 W0,11 W0,12 W0,13 W1,14 W2,14 W3,14 W4,14 W5,14 W6,14 W7,14 W8,14 W8,13 W8,12 W10,12 W10,14 W11,14 W12,14 W13,14 W16,10 W16,11 W16,12 W16,13 W16,14 W14,10 W12,10 W8,9 W7,9 W7,8 W10,7 W15,14 W14,14 W5,10 W3,10 W3,6 W2,6 S8,1 A1,9 A2,9 A3,9 A4,9 A5,9 A1,5 A2,5 A3,5 A4,5 A5,5\r\n17x15 W5,2 W11,4 W11,9 W14,7 W4,2 W5,3 W5,4 W5,5 W4,3 W6,7 W6,6 W6,5 W6,4 W6,3 W6,2 W7,2 W7,3 W6,8 W13,8 W13,7 W13,6 W11,10 W10,9 W10,8 W9,5 W9,4 W10,2 W10,3 W9,8 W9,3 W9,2 W7,7 W7,6 W7,5 W7,4 W4,4 W12,10 W14,5 W14,2 W11,2 W12,3 W12,4 W11,5 W10,6 W10,7 W8,4 W8,2 W8,3 W8,5 W8,6 W8,7 W9,7 W9,6 W10,5 W10,4 W11,3 W12,2 W13,2 W14,6 W14,8 W14,9 W13,3 W8,8 W7,8 W6,9 W11,8 W11,7 W11,6 W9,9 W8,9 W7,9 W5,8 W5,7 W5,6 W14,3 W14,4 W13,4 W13,5 W12,5 W12,6 W12,7 W12,8 W12,9 W13,9 W13,10 W14,10 W10,10 W9,10 W8,10 W7,10 W4,6 W4,5 W4,7 W4,8 W4,9 W5,9 W4,10 W3,10 W6,10 W5,10 W3,2 W3,6 W3,5 W3,4 W3,3 W2,5 W2,6 W2,7 W2,8 W3,7 W3,8 W3,9 W2,9 W2,10 W2,11 W3,11 W4,11 W5,11 W6,11 W7,11 W8,11 W9,11 W10,11 W11,11 W12,11 W13,11 W14,11 W14,12 W13,12 W12,12 W11,12 W10,12 W9,12 W8,12 W7,12 W6,12 W5,12 W4,12 W3,12 W15,0 W16,0 W16,13 W16,14 W12,14 W13,14 W14,14 W15,14 W11,14 W10,14 W9,14 W8,14 W7,14 W6,14 W5,14 W4,14 W3,14 W2,14 W1,14 W0,14 W0,13 W0,12 W0,11 W0,10 W0,9 W0,8 W0,7 W0,6 W0,5 W0,4 W0,3 W0,0 W0,1 W0,2 W2,2 W2,3 W2,4 W2,12 S5,13 A1,0 A2,0 A3,0 A4,0 A1,1 A2,1 A3,1 A4,1 A5,1 A5,0 A1,3 A1,4 A1,5 A1,6 A1,2 A1,7 A1,8\r\n17x15 W5,2 W11,4 W4,2 W5,4 W6,7 W6,6 W6,5 W6,4 W6,2 W7,2 W6,8 W13,8 W10,9 W10,8 W9,4 W10,2 W9,8 W9,2 W7,6 W7,5 W7,4 W12,10 W11,2 W12,3 W12,4 W8,4 W8,2 W8,5 W8,6 W10,4 W14,6 W14,8 W13,3 W8,8 W6,9 W6,13 W8,13 W11,8 W11,7 W11,6 W5,8 W13,4 W13,5 W12,7 W12,8 W13,10 W15,13 W14,13 W13,13 W12,13 W8,10 W7,10 W4,6 W4,8 W5,9 W3,10 W6,10 W5,10 W1,5 W1,3 W3,2 W3,6 W3,5 W2,5 W2,6 W2,8 W3,8 W2,10 W5,11 W6,11 W7,11 W8,11 W9,11 W10,11 W11,11 W12,11 W14,12 W6,12 W5,12 W4,12 W3,12 W2,12 W0,0 W1,0 W14,0 W15,0 W16,0 W13,0 W12,0 W11,0 W10,0 W9,0 W8,0 W7,0 W6,0 W5,0 W4,0 W3,0 W16,2 W14,2 W13,2 W12,2 W11,3 W10,3 W9,3 W8,3 W7,3 W6,3 W5,3 W4,3 W2,2 W1,2 W0,5 W0,6 W0,7 W0,8 W0,9 W1,6 W1,10 W0,10 W0,11 W1,13 W3,14 W4,14 W8,14 W12,14 W13,14 W14,14 W15,14 W15,4 W16,14 W16,13 W16,7 W16,5 W16,3 W16,4 W16,6 W16,8 W16,9 W16,10 W16,11 W16,12 W15,12 W15,11 W15,10 W15,8 W15,9 W16,1 W2,0 A4,9 A3,9 A2,9 A1,9 A1,8 A1,7 A2,7 A3,7 A4,7 A5,7 W11,13 W11,14 S9,1\r\n17x15 W0,0 W1,0 W2,0 W14,0 W16,1 W16,0 W15,0 W12,1 W4,1 W1,1 W0,1 W3,2 W4,2 W12,2 W16,2 W16,3 W15,3 W14,3 W3,3 W2,3 W1,4 W2,4 W9,4 W10,4 W11,4 W16,4 W1,5 W2,5 W2,6 W4,6 W11,7 W2,7 W11,8 W6,8 W1,8 W2,8 W11,9 W14,9 W2,9 W3,9 W6,9 W2,10 W3,10 W4,10 W12,11 W11,11 W10,11 W9,11 W8,11 W7,11 W6,11 W6,10 W7,10 W10,10 W11,10 W12,10 W13,11 W16,11 W4,11 W3,11 W2,11 W1,11 W3,12 W14,12 W2,12 W1,13 W13,14 W12,14 W11,14 W10,14 W9,14 W8,14 W7,14 W5,13 W15,13 W12,13 W11,13 W9,13 W8,13 W6,13 W6,14 W5,14 W4,14 W3,14 W7,13 S7,12 W1,12 W10,13 W7,7 W10,7 W16,10 W15,10 W5,11 W4,9 W6,7 W6,4 W4,7 W5,10 W5,9 W12,7 W12,8 W12,9 W14,7 W13,7 W15,7 W16,5 W15,4 W14,4 W13,4 W12,4 W15,5 W9,5 W8,5 W7,5 W6,5 W5,5 W3,4 W4,3 W5,2 W6,2 W7,2 W8,2 W11,1 W10,1 W9,2 W7,1 W0,2 W14,5 A1,7 A1,6 A1,10 A1,9 A0,10 A0,9 A0,7 A0,6 A0,5 A0,11 A0,4 A0,12\r\n17x15 W16,1 W16,0 W15,0 W12,2 W16,3 W15,3 W1,4 W2,6 W14,9 W3,9 W3,10 W4,10 W12,11 W4,11 W14,12 W12,14 W10,14 W12,13 W11,13 W4,9 W5,10 W12,7 W13,4 W12,4 W14,5 W14,1 W14,0 W13,0 W10,0 W9,0 W7,0 W6,0 W8,0 W5,0 W15,1 W16,2 W15,2 W5,2 W8,2 W11,2 W10,2 W7,2 W6,2 W3,1 W2,1 W0,3 W0,4 W0,5 W0,6 W1,3 W1,1 W2,3 W0,7 W4,2 W4,3 W3,5 W2,7 W2,8 W2,12 W2,9 W1,9 W1,11 W1,12 W0,11 W0,12 W5,13 W6,13 W7,13 W7,12 W6,12 W5,12 W4,12 W5,11 W6,11 W14,13 W10,12 W10,13 W11,14 W15,11 W14,11 W14,7 W14,8 W15,8 W15,5 W14,6 W13,5 W11,6 W10,5 W8,6 W12,10 W13,11 W13,10 W11,9 W10,8 W9,7 W9,12 W9,11 W9,10 W9,8 W8,10 W7,9 W7,8 W6,8 W6,6 W6,7 W4,7 W5,7 W4,5 W4,4 W5,3 W13,3 W12,3 W11,3 W6,5 W8,4 W9,4 W9,2 W14,10 W11,10 W7,4 W4,13 A1,8 A1,7 A1,6 A1,5 W0,13 W0,14 S7,1 A2,5 A2,4 A3,4 A3,3 A3,2 A2,2 A1,2 A0,2 A0,1\r\n17x15 W2,8 W2,10 W0,0 W0,12 W1,10 W0,5 W0,13 W3,5 W3,4 W3,3 W3,6 W3,13 W3,9 W1,0 W1,3 W1,5 W1,7 W2,11 W2,9 W2,7 W2,3 W4,0 W5,0 W5,5 W8,0 W6,5 W7,11 W7,5 W8,11 W9,6 W9,11 W10,11 W10,4 W11,4 W12,6 W13,4 W14,0 W16,3 W16,4 W15,0 W15,1 W15,6 W15,13 W16,2 W16,1 W16,0 W0,14 W6,6 W7,6 W8,6 W11,7 W14,8 W10,8 W9,8 W7,7 W6,7 W6,8 W7,8 W5,10 W9,9 W13,8 W12,9 W9,10 W8,10 W3,12 W4,13 W5,13 W6,13 W12,13 W11,13 W7,12 W8,12 W9,12 W10,12 W11,12 W12,12 W14,12 W14,13 W13,13 W13,12 W13,11 W14,11 W15,9 W16,11 W16,10 W16,9 W14,5 W13,5 W10,5 W10,3 W6,4 W8,3 W12,2 W12,1 W14,1 W14,4 W13,3 W15,2 W6,9 W5,11 W10,2 W9,1 W9,0 W7,2 W6,2 W5,2 W4,3 S11,14 A2,14 A1,14 A2,13 A1,13 A2,12 A1,12 A1,11 A0,11 A0,10 A0,9 A1,9 A1,8 A0,8 A0,7";
+window.ULTRA_HAM_TXT = "10x9 W3,0 W5,1 W8,1 W0,2 W3,2 W9,3 W1,4 W4,4 W7,4 W2,6 W5,7 W8,7 W0,8 W3,8\n10x9 W0,0 W5,0 W9,0 W7,1 W2,2 W0,3 W4,3 W7,3 W2,4 W9,4 W3,6 W6,6 W8,6 W1,7 W3,8 W7,8\n10x9 W6,0 W2,1 W8,1 W0,2 W5,2 W3,3 W9,3 W6,4 W0,5 W2,5 W4,5 W8,5 W6,6 W1,7 W4,8 W7,8\n10x9 W3,0 W7,0 W5,1 W0,2 W2,2 W7,2 W9,3 W1,4 W3,4 W6,4 W0,6 W5,6 W7,6 W9,6 W3,7 W6,8\n10x9 W2,0 W6,0 W9,0 W1,2 W3,2 W5,2 W7,3 W0,4 W3,5 W6,5 W9,5 W1,6 W8,7 W0,8 W3,8 W6,8\n10x9 W0,0 W6,0 W9,0 W2,1 W5,2 W8,2 W1,4 W4,4 W7,4 W9,5 W2,7 W5,7 W8,7 W0,8\n10x9 W0,0 W3,0 W6,0 W8,1 W2,2 W5,2 W7,3 W1,4 W4,4 W6,5 W9,5 W0,6 W3,6 W8,7 W3,8 W6,8\n10x9 W0,0 W3,0 W7,0 W5,1 W7,2 W0,3 W3,3 W6,4 W3,5 W9,5 W0,6 W5,6 W7,6 W2,7 W6,8 W9,8\n10x9 W0,0 W6,0 W9,0 W2,1 W5,2 W7,2 W3,3 W1,4 W8,4 W3,5 W5,5 W7,6 W9,6 W1,7 W4,7 W6,8\n10x9 W2,0 W5,1 W8,1 W1,2 W3,2 W9,3 W4,4 W7,4 W1,5 W3,6 W5,6 W8,7 W2,8 W6,8\n10x9 W5,0 W9,0 W1,1 W4,2 W8,2 W0,3 W2,3 W6,3 W4,4 W6,5 W9,5 W0,6 W2,6 W5,7 W3,8 W7,8\n10x9 W5,0 W3,1 W0,2 W6,2 W9,2 W2,3 W4,3 W6,4 W2,5 W9,5 W0,6 W4,6 W7,6 W2,7 W4,8 W9,8\n10x9 W3,0 W7,0 W5,1 W0,2 W2,3 W5,3 W8,3 W6,5 W9,5 W0,6 W3,6 W7,7 W4,8 W9,8\n10x9 W3,0 W6,0 W9,0 W0,2 W2,2 W7,2 W4,3 W1,4 W8,4 W3,5 W5,5 W0,6 W7,6 W3,8 W6,8 W9,8\n10x9 W0,0 W3,0 W6,0 W9,0 W4,2 W2,3 W7,3 W5,4 W9,4 W0,5 W3,5 W6,6 W8,6 W1,7 W3,8 W7,8\n10x9 W4,0 W7,0 W2,1 W0,2 W4,2 W7,2 W2,3 W6,4 W8,4 W4,5 W0,6 W2,6 W7,6 W5,7 W3,8 W7,8\n10x9 W3,0 W1,1 W7,1 W5,2 W9,2 W0,3 W3,3 W7,3 W5,4 W2,6 W5,6 W8,6 W0,8 W3,8 W6,8 W9,8\n10x9 W3,0 W6,0 W9,0 W1,1 W3,2 W8,2 W5,3 W2,4 W9,4 W0,5 W7,5 W5,6 W2,7 W8,7 W0,8 W6,8\n10x9 W0,0 W3,0 W6,0 W8,1 W1,2 W5,2 W3,3 W9,3 W0,4 W7,4 W2,5 W5,5 W2,7 W5,7 W8,7 W0,8\n10x9 W0,0 W3,0 W6,0 W9,0 W1,2 W4,2 W7,2 W2,4 W5,4 W8,4 W0,5 W4,6 W6,6 W1,7 W8,7 W5,8\n10x9 W0,0 W3,0 W7,0 W5,1 W2,2 W8,2 W0,3 W4,3 W7,4 W9,4 W3,5 W5,5 W1,6 W8,6 W5,7 W0,8 W3,8 W7,8\n10x9 W0,0 W9,0 W4,1 W7,1 W2,2 W0,3 W4,3 W9,3 W2,4 W6,4 W4,5 W1,6 W7,6 W0,8 W4,8 W7,8\n10x9 W0,0 W3,0 W6,0 W9,0 W2,2 W7,2 W4,3 W9,3 W1,4 W3,5 W7,5 W0,6 W5,6 W2,7 W6,8 W9,8\n10x9 W5,0 W9,0 W2,1 W7,1 W0,2 W4,2 W6,3 W3,4 W8,4 W0,5 W5,5 W2,6 W4,7 W8,7 W0,8 W6,8\n10x9 W2,0 W6,0 W9,0 W4,1 W2,2 W6,2 W4,3 W9,3 W1,4 W7,4 W0,6 W2,6 W5,6 W7,7 W3,8 W9,8\n10x9 W4,0 W1,1 W8,1 W3,2 W5,2 W0,3 W7,3 W9,3 W2,4 W5,4 W0,6 W4,6 W7,6 W2,7 W4,8 W9,8\n10x9 W2,0 W6,0 W8,1 W5,2 W2,3 W7,3 W9,3 W0,5 W5,5 W3,6 W7,6 W2,8 W6,8 W9,8\n10x9 W3,0 W6,0 W1,1 W8,1 W5,2 W2,3 W9,3 W0,4 W4,4 W6,4 W2,5 W7,6 W4,7 W2,8 W6,8 W9,8\n10x9 W0,0 W4,0 W7,0 W1,2 W3,2 W7,2 W5,3 W0,4 W8,4 W2,5 W4,5 W6,6 W9,6 W2,7 W0,8 W4,8\n10x9 W0,0 W6,0 W4,1 W2,2 W7,2 W9,2 W0,3 W3,4 W6,4 W9,5 W2,6 W5,6 W7,6 W2,8 W6,8 W9,8\n10x9 W3,0 W6,0 W0,2 W4,2 W9,2 W2,3 W6,3 W8,4 W0,5 W5,5 W2,6 W7,6 W0,8 W3,8 W6,8 W9,8\n10x9 W2,0 W6,0 W4,1 W7,2 W9,2 W1,3 W5,3 W3,4 W8,4 W5,5 W0,6 W3,6 W7,6 W3,8 W6,8 W9,8\n10x9 W3,0 W7,0 W1,1 W4,2 W0,3 W2,3 W7,3 W9,3 W3,5 W6,5 W0,6 W9,6 W3,8 W6,8\n10x9 W4,0 W7,0 W0,2 W3,2 W6,2 W8,3 W1,4 W3,5 W6,5 W9,5 W0,6 W8,7 W3,8 W6,8\n10x9 W0,0 W3,0 W9,0 W5,1 W2,2 W8,2 W0,3 W5,3 W7,4 W2,5 W4,5 W0,6 W6,6 W9,6 W3,7 W5,8\n10x9 W3,0 W6,0 W1,1 W3,2 W6,2 W9,2 W0,3 W4,4 W1,5 W7,5 W3,6 W9,6 W6,7 W2,8\n10x9 W6,0 W9,0 W2,1 W0,2 W4,2 W7,2 W9,3 W1,4 W5,4 W3,5 W7,5 W0,6 W5,6 W2,7 W8,7 W4,8\n10x9 W2,0 W6,0 W1,2 W3,2 W5,2 W9,2 W7,3 W0,4 W2,4 W4,5 W9,5 W1,6 W7,6 W5,7 W2,8 W9,8\n10x9 W0,0 W6,0 W9,0 W2,1 W5,2 W7,3 W1,4 W4,4 W9,4 W6,5 W4,6 W8,6 W2,7 W0,8 W4,8 W7,8\n10x9 W0,0 W4,0 W7,0 W1,2 W3,2 W6,2 W8,3 W1,5 W4,5 W7,5 W9,6 W4,7 W2,8 W6,8\n10x9 W3,0 W9,0 W1,1 W5,1 W3,2 W7,2 W5,3 W9,3 W2,4 W0,5 W7,5 W3,6 W5,6 W8,7 W2,8 W6,8\n10x9 W6,0 W9,0 W3,1 W0,2 W6,3 W9,3 W1,4 W3,4 W5,5 W8,5 W2,7 W0,8 W4,8 W7,8\n10x9 W9,0 W1,1 W4,1 W7,1 W7,3 W1,4 W4,4 W9,4 W3,6 W6,6 W8,6 W1,7 W3,8 W7,8\n10x9 W2,0 W4,1 W7,1 W9,2 W1,3 W6,3 W4,4 W8,4 W1,6 W3,6 W5,6 W8,7 W0,8 W4,8\n10x9 W0,0 W3,0 W7,0 W5,1 W1,2 W8,2 W3,3 W6,4 W9,4 W0,5 W4,5 W2,6 W4,7 W7,7 W2,8 W9,8\n10x9 W2,0 W6,0 W9,0 W4,1 W2,2 W8,2 W0,3 W6,3 W3,4 W5,5 W7,5 W0,6 W2,6 W9,6 W6,7 W3,8\n10x9 W2,0 W6,0 W9,0 W4,1 W8,2 W1,3 W6,3 W3,4 W0,5 W6,5 W9,5 W2,6 W5,7 W0,8 W3,8 W7,8\n10x9 W4,0 W9,0 W2,1 W0,2 W5,2 W8,2 W2,4 W7,4 W9,4 W0,5 W5,5 W8,6 W2,7 W5,7 W0,8 W7,8\n10x9 W2,0 W6,1 W1,2 W4,2 W9,2 W7,3 W0,4 W3,4 W5,5 W9,5 W1,6 W3,6 W7,6 W5,7 W2,8 W7,8\n10x9 W0,0 W3,0 W6,0 W9,0 W1,2 W4,2 W7,2 W9,3 W0,4 W3,4 W6,4 W1,6 W4,6 W7,6 W9,6 W0,8 W3,8 W6,8\n10x9 W6,0 W9,0 W4,1 W0,2 W2,2 W7,2 W9,3 W3,4 W5,4 W0,5 W7,5 W2,6 W4,7 W8,7 W2,8 W6,8\n10x9 W0,0 W3,0 W7,0 W5,1 W2,2 W7,2 W0,3 W9,3 W3,4 W5,4 W7,5 W0,6 W4,6 W2,7 W6,8 W9,8\n10x9 W2,0 W6,0 W4,1 W2,2 W6,2 W9,2 W0,3 W5,4 W2,5 W8,5 W0,6 W6,6 W3,7 W7,8\n10x9 W0,0 W6,0 W4,1 W8,1 W1,2 W6,2 W4,3 W0,4 W7,4 W2,5 W9,5 W4,6 W7,7 W2,8 W5,8 W9,8\n10x9 W2,0 W5,0 W9,0 W7,1 W5,2 W2,3 W8,4 W0,5 W3,5 W5,5 W1,7 W5,7 W8,7 W3,8\n10x9 W0,0 W3,0 W6,1 W2,2 W4,2 W9,2 W0,3 W7,3 W3,4 W5,4 W7,5 W0,6 W2,6 W9,6 W4,7 W6,8\n10x9 W2,0 W7,0 W5,1 W1,2 W3,2 W7,3 W0,4 W4,4 W9,4 W2,5 W6,5 W8,6 W4,7 W2,8 W6,8 W9,8\n10x9 W2,0 W5,0 W7,1 W1,2 W4,2 W9,2 W6,3 W0,4 W3,4 W8,4 W1,6 W4,6 W6,6 W9,6 W0,8 W5,8\n10x9 W3,0 W1,1 W7,1 W4,2 W9,2 W2,3 W6,3 W0,4 W3,5 W6,5 W9,5 W1,6 W0,8 W3,8 W6,8 W9,8\n10x9 W2,0 W5,0 W2,2 W6,2 W9,2 W0,3 W4,3 W2,4 W8,4 W5,5 W1,6 W7,6 W4,7 W2,8 W6,8 W9,8\n10x9 W2,0 W5,0 W7,1 W3,2 W9,2 W1,3 W5,3 W3,4 W8,4 W0,5 W6,5 W4,6 W2,7 W8,7 W0,8 W6,8\n10x9 W2,0 W5,0 W9,0 W6,2 W8,2 W1,3 W4,3 W6,4 W9,4 W0,5 W2,5 W4,6 W7,7 W2,8 W5,8 W9,8\n10x9 W0,0 W3,0 W7,0 W5,1 W1,2 W8,2 W4,3 W0,4 W6,4 W9,4 W2,5 W4,6 W7,7 W2,8 W5,8 W9,8\n10x9 W0,0 W3,0 W7,1 W1,2 W5,2 W9,2 W3,3 W0,4 W8,4 W5,5 W1,6 W3,6 W9,6 W6,7 W0,8 W4,8\n10x9 W0,0 W3,0 W7,0 W2,2 W6,2 W4,3 W8,3 W1,4 W6,4 W9,5 W4,6 W2,7 W7,7 W0,8 W5,8 W9,8\n10x9 W3,0 W7,0 W1,1 W5,1 W0,3 W2,3 W6,3 W9,3 W4,4 W7,5 W0,6 W2,6 W5,6 W7,7 W5,8 W9,8\n10x9 W6,0 W3,1 W0,2 W9,2 W2,3 W4,3 W6,3 W0,5 W5,5 W9,5 W2,6 W7,6 W4,7 W2,8 W6,8 W9,8\n10x9 W2,0 W7,0 W5,1 W1,2 W3,2 W7,3 W0,4 W5,4 W9,4 W3,5 W7,5 W1,6 W4,7 W7,7 W2,8 W9,8\n10x9 W0,0 W2,1 W5,1 W7,2 W9,2 W0,4 W3,4 W6,4 W9,5 W1,6 W4,6 W7,6 W0,8 W3,8 W6,8 W9,8\n10x9 W2,0 W5,0 W9,0 W7,1 W4,2 W2,3 W7,3 W0,4 W5,4 W2,5 W9,5 W5,6 W7,6 W2,8 W6,8 W9,8\n10x9 W0,0 W4,0 W2,1 W6,1 W9,2 W0,3 W5,3 W7,3 W2,4 W4,5 W7,5 W1,6 W9,6 W7,7 W2,8 W5,8\n10x9 W2,0 W5,0 W9,0 W7,1 W5,2 W2,3 W0,4 W4,4 W7,4 W9,5 W1,6 W6,6 W4,7 W8,7 W0,8 W6,8\n10x9 W7,0 W4,1 W0,2 W2,2 W4,3 W7,3 W1,4 W6,5 W9,5 W0,6 W4,6 W2,7 W6,8 W9,8\n10x9 W0,0 W3,0 W9,0 W7,1 W2,2 W4,2 W0,3 W6,3 W3,4 W8,4 W5,5 W0,6 W7,6 W2,7 W5,7 W7,8\n10x9 W5,0 W3,1 W7,1 W0,2 W5,2 W9,2 W2,3 W7,4 W3,5 W5,5 W9,5 W1,6 W8,7 W0,8 W3,8 W6,8\n10x9 W3,0 W9,0 W1,1 W7,1 W5,2 W3,3 W7,3 W1,4 W4,5 W9,5 W0,6 W2,6 W7,6 W5,7 W3,8 W9,8\n10x9 W0,0 W6,0 W4,1 W2,2 W9,2 W6,3 W4,4 W0,5 W2,5 W9,5 W4,6 W7,6 W1,7 W3,8 W6,8 W9,8\n10x9 W0,0 W3,0 W6,0 W9,0 W2,2 W7,2 W5,3 W9,3 W1,4 W3,4 W6,5 W4,6 W9,6 W1,7 W3,8 W6,8\n10x9 W2,0 W6,0 W4,1 W7,2 W9,2 W2,3 W5,3 W0,4 W8,4 W5,5 W3,6 W7,6 W1,7 W5,7 W3,8 W9,8\n10x9 W0,0 W2,1 W5,1 W7,2 W9,2 W0,3 W2,4 W4,4 W6,4 W8,4 W1,6 W7,6 W4,7 W0,8 W6,8 W9,8\n10x9 W0,0 W6,0 W4,1 W8,1 W2,2 W6,3 W4,4 W8,4 W0,5 W2,5 W6,5 W4,6 W1,7 W7,7 W3,8 W9,8\n10x9 W3,0 W6,0 W1,1 W9,2 W4,3 W7,3 W2,4 W0,5 W6,5 W3,6 W8,6 W5,7 W2,8 W7,8\n10x9 W2,0 W7,0 W2,2 W5,2 W8,2 W0,3 W4,4 W2,5 W6,5 W9,5 W0,6 W5,7 W8,7 W3,8\n10x9 W5,0 W1,1 W7,1 W3,2 W9,2 W5,3 W7,3 W0,4 W3,4 W6,5 W1,6 W4,6 W8,6 W2,8 W5,8 W9,8\n10x9 W0,0 W4,0 W9,0 W2,1 W6,2 W8,2 W2,3 W4,3 W0,4 W7,4 W9,4 W3,5 W1,6 W6,6 W8,6 W4,7 W2,8 W7,8\n10x9 W0,0 W4,1 W7,1 W1,2 W9,2 W6,3 W0,4 W3,4 W8,4 W5,5 W1,7 W4,7 W8,7 W6,8\n10x9 W3,0 W9,0 W5,1 W0,2 W2,2 W7,2 W4,3 W1,4 W6,4 W9,5 W0,6 W4,6 W7,6 W2,7 W6,8 W9,8\n10x9 W0,0 W4,0 W6,1 W1,2 W9,2 W4,3 W0,4 W2,4 W6,4 W8,4 W1,6 W4,6 W9,6 W6,7 W0,8 W3,8\n10x9 W2,0 W6,0 W4,1 W8,1 W1,2 W6,2 W0,4 W3,4 W8,4 W6,5 W1,6 W4,6 W9,6 W7,7 W2,8 W5,8\n10x9 W0,0 W6,0 W2,1 W4,2 W9,2 W2,3 W6,3 W0,4 W4,4 W8,4 W2,5 W5,6 W9,6 W7,7 W2,8 W5,8\n10x9 W0,0 W3,0 W6,0 W8,1 W1,2 W4,2 W7,3 W0,4 W3,4 W5,4 W9,4 W1,6 W4,6 W6,6 W8,6 W0,8 W3,8 W7,8\n10x9 W0,0 W3,0 W7,0 W1,2 W6,2 W8,2 W4,3 W0,4 W2,4 W6,4 W9,4 W4,5 W1,6 W5,7 W8,7 W2,8\n10x9 W0,0 W3,0 W7,1 W2,2 W4,2 W9,2 W0,3 W5,4 W8,4 W2,5 W4,6 W7,6 W9,6 W0,8 W3,8 W6,8\n10x9 W2,0 W6,0 W9,0 W4,1 W2,2 W0,3 W4,3 W7,3 W9,3 W2,4 W4,5 W7,6 W9,6 W1,7 W5,7 W3,8\n10x9 W6,0 W1,1 W4,1 W6,2 W9,2 W2,3 W0,4 W5,4 W7,4 W3,5 W9,5 W1,6 W4,7 W7,7 W0,8 W9,8\n10x9 W5,0 W9,0 W1,1 W7,1 W3,2 W6,3 W9,3 W2,4 W0,5 W4,5 W2,6 W6,6 W9,6 W4,7 W0,8 W6,8\n10x9 W2,0 W7,0 W4,1 W0,3 W3,3 W6,3 W9,3 W3,5 W7,5 W0,6 W5,6 W8,7 W3,8 W6,8\n10x9 W0,0 W3,0 W6,0 W8,1 W2,2 W5,3 W7,4 W0,5 W2,5 W9,5 W4,6 W7,6 W2,8 W7,8\n10x9 W2,0 W5,0 W7,1 W1,2 W9,2 W4,3 W7,3 W0,4 W2,4 W1,6 W3,6 W5,6 W8,6 W0,8 W4,8 W9,8\n10x9 W3,0 W7,0 W1,1 W5,1 W8,2 W3,3 W6,3 W1,4 W5,5 W9,5 W0,6 W3,6 W7,6 W5,7 W3,8 W9,8\n10x9 W2,0 W5,0 W9,0 W7,1 W3,2 W1,3 W6,3 W9,3 W4,4 W0,5 W6,5 W3,6 W8,6 W0,8 W4,8 W7,8\n10x9 W1,1 W4,1 W7,1 W9,2 W2,3 W0,4 W5,4 W8,4 W3,5 W1,6 W6,6 W8,7 W2,8 W5,8\n10x9 W9,0 W1,1 W4,1 W7,1 W6,3 W1,4 W4,4 W8,4 W6,5 W0,6 W3,7 W7,7 W5,8 W9,8\n10x9 W0,0 W4,0 W2,1 W6,1 W4,2 W9,2 W2,3 W0,4 W6,4 W4,5 W9,5 W1,6 W4,7 W7,7 W2,8 W9,8\n10x9 W3,0 W6,0 W1,1 W3,2 W7,2 W9,2 W0,3 W5,3 W2,4 W8,4 W5,6 W9,6 W2,7 W7,7 W0,8 W4,8\n10x9 W2,0 W6,0 W4,1 W2,2 W7,2 W9,2 W0,3 W5,3 W2,4 W8,4 W4,5 W6,5 W1,7 W8,7 W3,8 W6,8\n10x9 W5,0 W2,1 W7,1 W0,2 W4,2 W9,2 W6,3 W1,4 W4,4 W7,5 W9,5 W1,7 W4,7 W7,8\n10x9 W2,0 W5,0 W8,1 W1,2 W6,2 W3,3 W9,3 W2,5 W4,5 W6,5 W0,6 W9,6 W3,7 W6,8\n10x9 W5,0 W9,0 W3,1 W7,1 W0,2 W2,3 W4,3 W9,3 W7,4 W3,5 W1,6 W6,6 W9,6 W0,8 W3,8 W6,8\n10x9 W4,0 W6,1 W0,2 W3,2 W9,2 W5,3 W7,3 W3,4 W0,5 W6,5 W2,6 W4,6 W9,6 W7,7 W0,8 W3,8\n10x9 W2,0 W4,1 W7,1 W1,2 W9,2 W3,3 W6,3 W0,5 W4,5 W9,5 W2,6 W6,6 W4,7 W8,7 W0,8 W6,8\n10x9 W6,0 W9,0 W1,1 W4,1 W7,2 W0,4 W3,4 W6,4 W8,4 W1,6 W9,6 W4,7 W7,7 W2,8\n10x9 W0,0 W3,0 W7,0 W5,1 W1,2 W3,3 W5,3 W8,3 W2,5 W4,5 W7,5 W0,6 W9,6 W3,7 W7,7 W5,8\n10x9 W3,0 W1,1 W5,1 W7,2 W9,2 W2,3 W5,3 W0,4 W3,5 W6,5 W9,5 W1,6 W4,7 W7,7 W0,8 W9,8\n10x9 W5,0 W9,0 W3,1 W7,1 W0,2 W2,3 W5,3 W7,4 W0,5 W5,5 W9,5 W3,6 W7,6 W2,8 W6,8 W9,8\n10x9 W0,0 W6,0 W9,0 W4,1 W2,2 W7,2 W0,3 W5,3 W9,3 W3,4 W1,5 W6,5 W3,6 W9,6 W2,8 W6,8\n10x9 W0,0 W3,0 W6,0 W8,1 W0,3 W3,3 W6,3 W9,3 W3,5 W7,5 W1,6 W5,6 W8,7 W0,8 W3,8 W6,8\n10x9 W0,0 W3,0 W6,0 W1,2 W4,2 W9,2 W6,3 W0,4 W3,4 W7,5 W9,5 W5,6 W2,7 W0,8 W6,8 W9,8\n10x9 W7,0 W2,1 W5,1 W0,2 W7,2 W5,3 W9,3 W2,4 W7,4 W0,5 W5,6 W8,6 W2,7 W0,8 W4,8 W9,8\n10x9 W2,0 W5,0 W9,0 W7,1 W2,2 W5,2 W0,3 W7,3 W3,4 W5,5 W9,5 W0,6 W7,6 W2,7 W4,8 W7,8\n10x9 W0,0 W3,0 W6,1 W2,2 W4,2 W9,2 W1,4 W3,4 W6,4 W9,5 W4,6 W7,6 W2,7 W0,8 W4,8 W7,8\n10x9 W0,0 W3,0 W7,0 W5,1 W1,2 W3,3 W5,3 W8,3 W0,5 W4,5 W7,5 W2,6 W9,6 W7,7 W0,8 W5,8\n10x9 W4,0 W7,0 W2,1 W0,2 W5,2 W8,2 W3,3 W7,4 W9,4 W0,5 W2,5 W5,5 W8,6 W5,7 W2,8 W7,8\n10x9 W2,0 W6,0 W9,0 W4,1 W1,3 W6,3 W9,3 W3,4 W0,5 W5,5 W2,6 W7,6 W4,7 W0,8 W6,8 W9,8\n10x9 W2,0 W5,0 W7,1 W4,2 W9,2 W0,3 W2,3 W6,3 W4,4 W8,4 W2,6 W7,6 W9,6 W5,7 W0,8 W3,8\n10x9 W0,0 W6,0 W9,0 W4,1 W1,2 W8,2 W5,3 W0,4 W3,4 W9,4 W6,5 W1,6 W4,6 W8,6 W0,8 W3,8 W6,8 W9,8\n10x9 W0,0 W3,0 W7,0 W5,1 W7,2 W0,3 W3,3 W6,4 W8,4 W2,5 W4,6 W9,6 W6,7 W2,8\n10x9 W2,0 W7,0 W5,1 W1,2 W3,2 W7,3 W0,4 W4,4 W9,4 W2,5 W6,5 W8,6 W5,7 W0,8 W3,8 W9,8\n10x9 W0,0 W3,0 W9,0 W7,1 W1,2 W4,2 W2,4 W5,4 W8,4 W0,5 W2,7 W5,7 W8,7 W0,8\n10x9 W9,0 W2,1 W5,1 W0,2 W7,2 W3,3 W9,3 W5,4 W0,5 W3,5 W7,5 W5,6 W9,6 W2,7 W0,8 W6,8\n10x9 W2,0 W5,0 W7,1 W3,2 W9,2 W1,3 W6,3 W4,4 W8,4 W2,5 W0,6 W5,6 W2,7 W7,7 W4,8 W9,8\n10x9 W2,0 W6,0 W9,0 W4,1 W2,2 W7,2 W0,3 W9,3 W3,4 W5,4 W7,5 W2,6 W4,7 W8,7 W2,8 W6,8\n10x9 W0,0 W3,0 W9,0 W5,1 W1,2 W8,2 W4,3 W0,4 W2,4 W6,4 W9,4 W1,6 W3,6 W5,6 W8,6 W0,8 W4,8 W9,8\n10x9 W2,0 W7,0 W1,2 W4,2 W7,2 W9,3 W6,4 W0,5 W3,5 W9,6 W2,7 W6,7 W0,8 W4,8\n10x9 W0,0 W9,0 W4,1 W7,1 W1,2 W7,3 W0,4 W2,4 W5,4 W9,4 W1,6 W6,6 W8,6 W4,7 W0,8 W7,8\n10x9 W6,0 W9,0 W1,1 W4,1 W8,2 W0,3 W3,3 W6,3 W9,4 W4,5 W7,5 W0,6 W2,6 W5,7 W8,7 W3,8\n10x9 W2,0 W6,0 W4,1 W2,2 W7,2 W9,2 W5,3 W1,4 W3,4 W6,5 W9,5 W0,6 W2,6 W4,6 W3,8 W7,8\n10x9 W0,0 W3,0 W7,0 W5,1 W2,2 W0,3 W4,3 W6,3 W9,3 W3,5 W1,6 W5,6 W8,6 W2,8 W6,8 W9,8\n10x9 W0,0 W3,0 W9,0 W5,1 W2,2 W8,2 W0,3 W4,3 W6,3 W3,5 W6,5 W9,5 W0,6 W5,7 W8,7 W3,8\n10x9 W2,0 W5,0 W9,0 W7,1 W3,2 W1,3 W5,3 W9,3 W7,4 W0,5 W2,5 W4,6 W1,7 W7,7 W3,8 W9,8\n10x9 W2,0 W6,0 W9,0 W4,1 W1,2 W7,2 W5,3 W9,3 W0,4 W2,4 W7,4 W4,5 W1,6 W6,6 W4,7 W8,7 W2,8 W6,8\n10x9 W2,0 W6,0 W1,2 W5,2 W7,2 W9,2 W3,3 W6,4 W0,5 W4,5 W9,5 W2,6 W4,7 W7,7 W0,8 W9,8\n10x9 W3,0 W6,0 W9,0 W0,2 W5,2 W3,3 W7,3 W9,3 W1,4 W5,4 W8,5 W3,6 W6,6 W1,7 W4,8 W7,8\n10x9 W4,0 W7,0 W1,1 W3,2 W5,2 W8,2 W0,3 W2,4 W9,4 W5,5 W7,5 W3,6 W1,7 W5,7 W3,8 W7,8\n10x9 W0,0 W6,0 W9,0 W4,1 W2,2 W4,3 W6,3 W9,3 W1,4 W3,5 W6,5 W0,6 W8,6 W2,7 W4,8 W7,8\n10x9 W2,0 W5,0 W9,0 W2,2 W6,2 W8,2 W4,3 W1,4 W6,4 W9,4 W4,5 W2,6 W5,7 W8,7 W0,8 W3,8\n10x9 W0,0 W3,0 W6,0 W9,0 W2,2 W5,2 W8,2 W0,3 W4,4 W6,4 W9,4 W2,5 W5,6 W8,6 W0,8 W3,8 W6,8 W9,8\n10x9 W3,0 W7,0 W1,1 W5,1 W3,2 W8,2 W0,3 W2,4 W4,4 W7,4 W9,5 W0,6 W7,6 W2,7 W5,7 W7,8\n10x9 W0,0 W6,0 W4,1 W8,1 W1,2 W5,3 W2,4 W8,4 W0,5 W4,5 W6,5 W9,6 W2,7 W7,7 W0,8 W4,8\n10x9 W3,0 W9,0 W7,1 W0,2 W4,2 W2,3 W6,3 W9,3 W3,5 W7,5 W1,6 W5,6 W8,7 W0,8 W3,8 W6,8\n10x9 W6,0 W9,0 W1,1 W4,1 W7,2 W0,3 W3,3 W9,3 W6,4 W2,5 W5,6 W8,6 W2,8 W7,8\n10x9 W2,0 W9,0 W4,1 W7,1 W1,3 W6,3 W9,3 W3,4 W0,5 W6,5 W2,6 W4,6 W9,6 W7,7 W0,8 W3,8\n10x9 W5,0 W7,1 W0,2 W3,2 W9,2 W5,3 W3,4 W7,4 W1,5 W9,5 W6,6 W4,7 W2,8 W7,8\n10x9 W3,0 W7,0 W1,1 W5,1 W0,3 W2,3 W5,3 W8,3 W3,5 W0,6 W6,6 W9,6 W3,8 W6,8\n10x9 W2,0 W7,0 W4,1 W6,2 W8,2 W0,3 W2,3 W4,4 W9,4 W1,5 W6,5 W8,6 W4,7 W2,8 W6,8 W9,8\n10x9 W6,0 W2,1 W8,1 W0,2 W5,2 W2,3 W6,4 W8,4 W3,5 W0,6 W6,6 W9,6 W2,7 W5,8\n10x9 W2,0 W5,0 W9,0 W7,1 W4,2 W2,3 W6,3 W4,4 W8,4 W0,5 W2,6 W5,6 W9,6 W7,7 W2,8 W5,8\n10x9 W4,0 W2,1 W7,1 W0,2 W5,2 W9,2 W3,3 W7,4 W0,5 W2,5 W5,5 W9,5 W1,7 W5,7 W8,7 W3,8\n10x9 W0,0 W9,0 W4,1 W7,1 W2,2 W4,3 W9,3 W7,4 W0,5 W3,5 W5,6 W8,6 W2,7 W0,8 W4,8 W9,8\n10x9 W3,0 W9,0 W5,1 W0,2 W8,2 W2,3 W5,3 W7,4 W9,4 W0,5 W3,5 W6,6 W8,6 W2,8 W5,8 W9,8\n10x9 W3,0 W7,0 W1,1 W5,1 W7,2 W0,3 W3,3 W5,3 W8,4 W2,5 W6,5 W4,6 W8,7 W0,8 W3,8 W6,8\n10x9 W3,0 W9,0 W1,1 W5,1 W3,2 W7,2 W0,3 W9,3 W2,4 W4,4 W6,5 W8,6 W2,7 W5,7 W0,8 W9,8\n10x9 W5,0 W3,1 W0,2 W6,2 W9,2 W1,4 W3,4 W6,4 W9,5 W0,6 W3,6 W5,6 W8,7 W4,8\n10x9 W0,0 W3,0 W6,0 W8,1 W5,2 W2,3 W0,4 W4,4 W6,4 W8,4 W1,6 W3,6 W7,6 W5,7 W2,8 W7,8\n10x9 W3,0 W6,0 W8,1 W0,2 W4,2 W2,3 W7,3 W5,4 W9,4 W0,5 W3,5 W8,6 W2,7 W5,7 W0,8 W7,8\n10x9 W0,0 W4,0 W7,0 W2,1 W4,2 W7,2 W2,3 W9,3 W0,4 W4,5 W7,5 W1,6 W9,6 W4,7 W0,8 W6,8\n10x9 W3,0 W1,1 W5,1 W8,1 W3,2 W9,3 W2,4 W4,4 W7,4 W0,5 W5,6 W8,6 W2,7 W0,8 W4,8 W7,8\n10x9 W3,0 W7,0 W1,1 W6,2 W4,3 W8,3 W2,4 W0,5 W4,5 W7,5 W9,5 W2,6 W4,7 W8,7 W2,8 W6,8\n10x9 W5,0 W9,0 W1,1 W4,2 W6,2 W8,2 W0,3 W3,4 W7,4 W9,4 W5,5 W0,6 W2,6 W8,6 W5,8 W9,8\n10x9 W3,0 W7,0 W1,1 W5,1 W3,2 W8,2 W5,3 W0,4 W3,4 W7,4 W9,4 W1,6 W4,6 W6,6 W8,6 W2,8 W5,8 W9,8\n10x9 W2,0 W5,0 W9,0 W7,1 W4,2 W0,3 W2,3 W6,3 W9,3 W3,5 W6,5 W0,6 W8,6 W2,7 W5,7 W7,8\n10x9 W0,0 W3,0 W6,1 W2,2 W4,2 W9,2 W0,3 W3,4 W6,4 W8,4 W2,6 W5,6 W7,7 W2,8 W5,8 W9,8\n10x9 W4,0 W7,0 W1,1 W7,2 W0,3 W2,3 W4,3 W9,3 W1,5 W5,5 W7,5 W3,6 W7,7 W2,8 W5,8 W9,8\n10x9 W0,0 W3,0 W7,0 W5,1 W2,2 W4,3 W6,3 W9,3 W0,5 W3,5 W7,5 W5,6 W1,7 W3,8 W6,8 W9,8\n10x9 W0,0 W4,0 W9,0 W2,1 W7,2 W2,3 W5,3 W0,4 W8,4 W3,5 W1,6 W5,6 W7,7 W2,8 W5,8 W9,8\n10x9 W0,0 W4,1 W7,1 W2,2 W9,2 W5,4 W8,4 W0,5 W2,5 W4,6 W7,7 W2,8 W5,8 W9,8\n10x9 W2,0 W5,1 W1,2 W7,2 W9,2 W3,3 W5,4 W0,5 W3,5 W7,5 W9,5 W5,6 W0,8 W3,8 W6,8 W9,8\n10x9 W2,0 W7,0 W5,1 W1,2 W3,2 W8,2 W6,3 W0,4 W3,5 W7,5 W1,6 W5,6 W9,6 W0,8 W3,8 W6,8\n10x9 W0,0 W2,1 W5,1 W7,2 W9,2 W1,4 W4,4 W7,5 W0,6 W4,6 W9,6 W2,7 W7,7 W5,8\n10x9 W6,0 W3,1 W8,1 W0,2 W6,3 W9,3 W1,4 W3,4 W6,5 W0,6 W2,6 W9,6 W4,7 W7,7\n10x9 W5,0 W3,1 W7,1 W0,2 W5,2 W9,2 W2,3 W6,4 W8,4 W3,5 W1,6 W5,6 W7,6 W9,6 W2,8 W6,8\n10x9 W3,0 W6,0 W9,0 W1,1 W4,2 W2,3 W6,3 W9,3 W0,5 W3,5 W5,5 W7,6 W5,7 W0,8 W3,8 W7,8\n10x9 W7,0 W2,1 W5,1 W0,2 W8,2 W4,3 W2,4 W7,4 W0,5 W5,5 W9,5 W7,6 W2,7 W0,8 W4,8 W7,8\n10x9 W3,0 W6,0 W1,1 W4,2 W7,2 W9,2 W2,3 W0,4 W8,4 W3,5 W6,5 W1,6 W4,7 W7,7 W2,8 W9,8\n10x9 W2,0 W6,0 W9,0 W4,1 W7,2 W0,3 W3,3 W5,3 W9,3 W6,5 W1,6 W4,6 W9,6 W7,7 W0,8 W3,8\n10x9 W5,0 W3,1 W7,1 W0,2 W9,2 W6,3 W1,4 W3,4 W8,4 W5,5 W2,7 W5,7 W8,7 W0,8\n10x9 W5,0 W9,0 W3,1 W0,2 W6,2 W8,2 W2,3 W4,3 W9,4 W3,5 W6,5 W1,6 W8,6 W0,8 W4,8 W7,8\n10x9 W3,0 W7,0 W1,1 W6,2 W0,3 W3,3 W9,3 W7,4 W4,5 W1,6 W6,6 W9,6 W0,8 W4,8\n10x9 W2,0 W9,0 W4,1 W7,1 W2,3 W6,3 W9,3 W0,4 W4,4 W6,5 W1,6 W4,6 W9,6 W0,8 W3,8 W6,8\n10x9 W0,0 W6,0 W4,1 W8,1 W2,2 W6,3 W9,3 W1,4 W3,4 W5,5 W2,6 W7,6 W9,6 W4,7 W2,8 W6,8\n10x9 W2,0 W6,1 W3,2 W9,2 W1,3 W6,4 W8,4 W0,5 W4,5 W2,6 W9,6 W7,7 W0,8 W5,8\n10x9 W3,0 W7,0 W5,1 W0,2 W8,2 W2,3 W6,3 W4,4 W0,5 W7,5 W2,6 W5,6 W9,6 W7,7 W0,8 W5,8\n10x9 W2,0 W7,0 W5,1 W1,2 W3,2 W6,3 W9,3 W0,4 W3,5 W1,6 W6,6 W9,6 W2,8 W5,8\n10x9 W0,0 W6,0 W9,0 W2,1 W5,2 W7,2 W3,3 W1,4 W4,5 W7,5 W9,5 W2,6 W4,7 W8,7 W0,8 W6,8\n10x9 W5,0 W1,1 W8,1 W4,2 W6,3 W9,3 W1,4 W3,5 W5,6 W8,6 W2,7 W0,8 W4,8 W7,8\n10x9 W4,0 W7,0 W2,1 W0,2 W5,2 W8,2 W1,4 W4,4 W7,4 W2,6 W9,6 W4,7 W7,7 W2,8\n10x9 W3,0 W7,0 W1,1 W4,2 W6,2 W8,2 W2,3 W0,4 W5,4 W7,4 W2,5 W6,6 W9,6 W4,7 W2,8 W6,8\n10x9 W2,0 W6,0 W4,1 W1,2 W7,2 W9,2 W3,3 W0,4 W6,4 W8,4 W4,5 W1,6 W9,6 W6,7 W0,8 W4,8\n10x9 W3,0 W6,0 W9,0 W0,2 W2,2 W4,3 W7,3 W9,3 W0,5 W2,5 W6,5 W4,6 W9,6 W1,7 W7,7 W3,8\n10x9 W0,0 W4,0 W7,0 W2,1 W5,2 W3,3 W7,3 W9,3 W1,4 W5,5 W3,6 W7,6 W9,6 W1,7 W5,7 W3,8\n10x9 W5,0 W3,1 W0,2 W6,2 W9,2 W4,3 W1,4 W6,4 W8,4 W3,6 W9,6 W1,7 W6,7 W4,8\n10x9 W6,0 W3,1 W0,2 W9,2 W2,3 W4,3 W6,3 W8,4 W3,5 W5,5 W1,6 W7,6 W9,6 W5,7 W0,8 W3,8\n10x9 W0,0 W3,0 W7,0 W5,1 W2,2 W8,2 W4,3 W1,4 W6,4 W9,4 W0,6 W3,6 W5,6 W8,6 W4,8 W9,8\n10x9 W3,0 W9,0 W7,1 W0,2 W2,2 W5,2 W7,3 W1,4 W4,4 W6,5 W9,5 W0,6 W3,6 W8,7 W3,8 W6,8\n10x9 W3,0 W9,0 W5,1 W0,2 W2,2 W8,2 W6,3 W1,4 W3,4 W9,4 W7,5 W4,6 W1,7 W3,8 W6,8 W9,8\n10x9 W2,0 W6,0 W1,2 W3,2 W9,2 W6,3 W4,4 W1,5 W9,5 W3,6 W6,6 W8,7 W2,8 W5,8\n10x9 W3,0 W9,0 W5,1 W0,2 W2,2 W8,2 W4,3 W1,4 W6,4 W4,5 W8,5 W6,6 W2,7 W0,8 W4,8 W7,8\n10x9 W3,0 W7,0 W5,1 W0,2 W3,2 W8,2 W2,4 W4,4 W6,4 W9,4 W0,5 W3,6 W5,6 W8,7 W2,8 W6,8\n10x9 W3,0 W7,0 W5,1 W0,2 W2,2 W7,2 W4,3 W1,4 W6,4 W9,5 W0,6 W4,6 W7,6 W2,7 W6,8 W9,8\n10x9 W0,0 W3,0 W6,0 W9,0 W1,2 W3,3 W6,3 W9,3 W0,4 W6,5 W1,6 W4,6 W8,6 W0,8 W3,8 W7,8\n10x9 W0,0 W3,0 W9,0 W7,1 W4,2 W0,3 W2,3 W9,3 W5,4 W7,4 W0,6 W2,6 W8,6 W5,7 W3,8 W7,8\n10x9 W0,0 W3,0 W9,0 W5,1 W2,2 W8,2 W6,3 W1,4 W3,4 W7,5 W4,6 W9,6 W2,7 W6,7 W0,8 W4,8\n10x9 W3,0 W9,0 W1,1 W7,1 W4,2 W9,3 W1,4 W7,4 W4,5 W2,6 W9,6 W7,7 W0,8 W5,8\n10x9 W2,0 W5,0 W9,0 W1,2 W4,2 W6,2 W8,2 W2,4 W5,4 W9,4 W0,5 W7,5 W1,7 W4,7 W7,7 W9,8\n10x9 W4,0 W1,1 W8,1 W3,2 W6,2 W1,4 W4,4 W7,4 W9,5 W0,6 W7,6 W2,7 W5,7 W9,8\n10x9 W2,0 W6,0 W9,0 W1,2 W3,2 W8,2 W6,3 W0,4 W2,4 W9,4 W4,5 W7,5 W1,6 W5,7 W2,8 W7,8\n10x9 W3,0 W1,1 W5,1 W8,1 W4,3 W7,3 W1,4 W3,5 W6,5 W9,5 W1,7 W8,7 W3,8 W6,8\n10x9 W2,0 W5,0 W7,1 W4,2 W9,2 W0,3 W2,3 W6,3 W4,5 W7,5 W9,5 W2,6 W5,7 W0,8 W3,8 W7,8\n10x9 W0,0 W3,0 W6,1 W2,2 W9,2 W0,3 W5,3 W7,3 W3,5 W6,5 W1,6 W8,6 W5,7 W0,8 W3,8 W7,8\n10x9 W2,0 W5,0 W9,0 W7,1 W0,3 W3,3 W5,3 W7,4 W2,5 W5,5 W9,5 W0,6 W7,6 W5,7 W3,8 W7,8\n10x9 W0,0 W3,0 W9,0 W5,1 W2,2 W8,2 W4,3 W6,4 W9,4 W0,5 W2,5 W4,6 W1,7 W7,7 W3,8 W9,8\n10x9 W3,0 W5,1 W8,1 W0,2 W3,3 W1,4 W5,4 W8,4 W3,5 W0,6 W7,6 W9,6 W2,7 W5,7\n10x9 W0,0 W4,0 W9,0 W2,1 W7,1 W5,2 W0,3 W3,4 W8,4 W5,5 W0,6 W2,6 W7,6 W4,7 W6,8 W9,8\n10x9 W4,0 W2,1 W8,1 W0,2 W5,2 W3,3 W9,3 W7,4 W0,5 W3,5 W5,5 W9,6 W2,7 W7,7 W0,8 W5,8\n10x9 W3,0 W7,0 W1,1 W5,1 W7,2 W2,3 W9,3 W4,4 W0,5 W7,5 W2,6 W5,6 W2,8 W7,8\n10x9 W2,0 W6,0 W9,0 W4,1 W2,2 W6,2 W0,3 W9,3 W5,4 W7,4 W2,5 W6,6 W9,6 W4,7 W2,8 W6,8\n10x9 W0,0 W3,0 W6,0 W1,2 W4,2 W7,2 W9,2 W0,4 W3,4 W6,4 W9,5 W3,6 W1,7 W5,7 W8,7 W3,8\n10x9 W2,0 W5,0 W9,0 W7,1 W2,2 W5,2 W1,4 W6,4 W8,4 W4,5 W0,6 W2,6 W7,6 W5,7 W3,8 W7,8\n10x9 W0,0 W3,0 W7,0 W5,1 W7,2 W2,3 W5,3 W8,4 W0,5 W3,5 W5,5 W7,6 W9,6 W1,7 W4,7 W6,8\n10x9 W0,0 W3,0 W7,0 W2,2 W4,2 W0,3 W7,3 W9,3 W5,4 W2,5 W8,5 W5,7 W2,8 W7,8\n10x9 W0,0 W3,0 W6,0 W1,2 W4,2 W7,2 W9,2 W2,4 W0,5 W4,5 W7,5 W2,6 W9,6 W7,7 W2,8 W5,8\n10x9 W7,0 W4,1 W0,2 W2,2 W6,2 W8,2 W4,3 W1,4 W9,4 W3,5 W7,5 W5,6 W1,7 W8,7 W3,8 W6,8\n10x9 W2,0 W5,0 W7,1 W2,2 W5,2 W9,2 W0,3 W7,3 W2,4 W5,5 W1,6 W7,6 W9,6 W4,7 W2,8 W6,8\n10x9 W4,0 W2,1 W8,1 W0,2 W5,2 W7,3 W1,4 W4,4 W9,4 W0,6 W2,6 W5,6 W8,6 W3,8 W6,8 W9,8\n10x9 W6,0 W9,0 W1,1 W4,1 W7,2 W0,3 W5,3 W9,3 W3,4 W7,4 W5,5 W2,6 W8,6 W0,8 W5,8 W9,8\n10x9 W2,0 W6,0 W4,1 W8,1 W6,2 W2,3 W9,3 W5,4 W7,4 W0,5 W2,6 W6,6 W9,6 W4,7 W2,8 W6,8\n10x9 W0,0 W4,0 W6,1 W3,2 W9,2 W0,3 W5,3 W7,3 W2,4 W6,5 W0,6 W3,6 W8,6 W5,7 W3,8 W7,8\n10x9 W3,0 W7,0 W1,1 W4,2 W6,2 W0,3 W2,3 W9,3 W4,4 W7,4 W0,6 W2,6 W5,6 W9,6 W7,7 W3,8\n10x9 W0,0 W6,0 W4,1 W2,2 W7,2 W9,2 W1,4 W3,4 W6,4 W9,5 W0,6 W2,6 W4,6 W7,6 W3,8 W7,8\n10x9 W2,0 W5,0 W9,0 W1,2 W6,2 W8,2 W3,3 W5,4 W9,4 W0,5 W3,5 W7,5 W4,7 W8,7 W2,8 W6,8\n10x9 W3,0 W6,0 W1,1 W8,1 W3,2 W6,2 W0,4 W5,4 W8,4 W3,5 W1,6 W5,6 W7,7 W2,8 W5,8 W9,8\n10x9 W6,0 W9,0 W2,1 W0,2 W4,2 W6,3 W9,3 W2,4 W0,5 W5,5 W3,6 W7,6 W1,7 W5,7 W3,8 W7,8\n10x9 W2,0 W6,0 W9,0 W4,1 W1,2 W7,2 W3,3 W6,4 W8,4 W2,5 W4,5 W0,6 W6,6 W9,6 W3,7 W5,8\n10x9 W0,0 W7,0 W2,1 W5,1 W7,2 W5,3 W1,4 W3,4 W8,4 W5,5 W0,6 W2,6 W7,6 W9,6 W4,7 W6,8\n10x9 W7,0 W2,1 W5,1 W0,2 W8,2 W3,3 W5,4 W0,5 W2,5 W7,5 W4,6 W9,6 W6,7 W2,8\n10x9 W4,0 W2,1 W6,1 W0,2 W4,2 W9,2 W3,4 W6,4 W8,4 W0,5 W2,6 W5,6 W9,6 W7,7 W2,8 W5,8\n10x9 W2,0 W7,0 W5,1 W1,2 W4,3 W7,3 W0,4 W2,4 W9,4 W7,5 W1,6 W3,6 W5,6 W0,8 W4,8 W7,8\n10x9 W3,0 W7,0 W1,1 W5,1 W3,2 W6,3 W9,3 W2,4 W0,5 W5,5 W7,5 W9,6 W2,7 W6,7 W0,8 W4,8\n10x9 W2,0 W6,0 W4,1 W1,2 W6,2 W9,2 W4,3 W0,4 W2,4 W8,4 W6,5 W1,6 W3,6 W5,7 W8,7 W2,8\n10x9 W2,0 W6,0 W4,1 W1,2 W6,2 W9,2 W3,3 W5,4 W8,4 W2,5 W0,6 W4,6 W7,6 W9,6 W2,7 W6,8\n10x9 W2,0 W6,0 W4,1 W2,2 W6,2 W9,2 W4,3 W0,5 W2,5 W6,5 W9,5 W4,6 W0,8 W3,8 W6,8 W9,8\n10x9 W5,0 W9,0 W3,1 W0,2 W8,2 W2,3 W6,3 W4,4 W0,5 W6,5 W9,5 W2,6 W4,7 W7,7 W2,8 W9,8\n10x9 W2,0 W5,0 W7,1 W2,2 W5,2 W9,2 W0,3 W7,3 W5,4 W3,5 W7,5 W1,6 W9,6 W6,7 W0,8 W4,8\n10x9 W2,0 W7,0 W1,2 W4,2 W6,2 W8,3 W0,4 W3,4 W5,4 W7,5 W9,5 W1,6 W4,7 W8,7 W0,8 W6,8\n10x9 W4,0 W7,0 W0,2 W3,2 W6,3 W9,3 W1,4 W4,4 W0,6 W5,6 W8,6 W2,7 W6,8 W9,8\n10x9 W3,0 W6,0 W9,0 W1,1 W3,2 W7,2 W5,3 W9,3 W2,4 W7,4 W0,5 W2,6 W5,6 W8,6 W0,8 W3,8 W6,8 W9,8\n10x9 W0,0 W3,0 W7,1 W2,2 W5,2 W9,2 W0,3 W7,3 W2,4 W5,4 W5,6 W8,6 W2,7 W0,8 W6,8 W9,8\n10x9 W2,0 W6,0 W4,1 W8,1 W2,2 W7,3 W5,4 W9,4 W0,5 W2,5 W4,6 W6,6 W8,6 W2,8 W5,8 W9,8\n10x9 W0,0 W2,1 W5,1 W8,1 W4,3 W7,3 W1,4 W6,5 W9,5 W4,6 W1,7 W8,7 W3,8 W6,8\n10x9 W0,0 W4,0 W7,0 W3,2 W5,2 W0,3 W7,3 W9,3 W4,4 W2,5 W0,6 W5,6 W7,6 W9,6 W3,7 W6,8\n10x9 W2,0 W6,0 W9,0 W4,1 W1,2 W7,2 W0,4 W2,4 W4,4 W6,5 W9,5 W1,6 W4,7 W8,7 W2,8 W6,8\n10x9 W2,0 W4,1 W7,1 W1,2 W9,2 W4,3 W0,4 W2,4 W6,4 W8,4 W4,5 W1,6 W7,6 W9,6 W0,8 W4,8\n10x9 W0,0 W6,0 W4,1 W2,2 W6,2 W9,2 W4,3 W1,4 W4,5 W6,5 W9,5 W2,7 W7,7 W0,8 W4,8 W9,8\n10x9 W3,0 W1,1 W5,1 W8,1 W3,2 W5,3 W2,4 W7,4 W0,5 W9,5 W4,6 W7,6 W1,7 W3,8 W6,8 W9,8\n10x9 W4,0 W9,0 W2,1 W0,2 W5,2 W8,2 W2,4 W4,4 W0,5 W6,5 W9,5 W3,6 W0,8 W3,8 W6,8 W9,8\n10x9 W5,0 W1,1 W4,2 W6,2 W9,2 W1,4 W3,4 W5,4 W8,4 W2,6 W9,6 W4,7 W7,7 W2,8\n10x9 W0,0 W3,0 W7,0 W5,1 W2,2 W8,2 W0,3 W4,3 W7,4 W2,5 W9,5 W4,6 W7,7 W2,8 W5,8 W9,8\n10x9 W2,0 W6,0 W8,1 W2,2 W5,2 W0,3 W6,4 W9,4 W2,5 W4,5 W0,6 W6,6 W8,6 W3,7 W5,8 W9,8\n10x9 W3,0 W7,0 W0,2 W4,2 W8,2 W2,3 W6,3 W0,5 W3,5 W5,5 W9,5 W7,6 W1,7 W3,8 W6,8 W9,8\n10x9 W2,0 W6,0 W9,0 W2,2 W5,2 W8,2 W3,4 W9,4 W0,5 W6,5 W2,6 W8,6 W4,7 W2,8 W6,8 W9,8\n10x9 W3,0 W9,0 W5,1 W0,2 W3,2 W8,2 W1,4 W6,4 W9,4 W3,5 W1,7 W5,7 W8,7 W3,8\n10x9 W0,0 W3,0 W9,0 W5,1 W1,2 W8,2 W4,3 W6,3 W0,4 W2,4 W5,5 W7,5 W1,6 W3,6 W9,6 W7,7 W0,8 W5,8\n10x9 W6,0 W9,0 W2,1 W0,2 W4,2 W8,2 W6,3 W1,4 W4,4 W6,5 W9,5 W3,6 W1,7 W5,7 W8,7 W3,8\n10x9 W5,0 W9,0 W2,1 W7,1 W0,2 W4,2 W9,3 W2,4 W7,4 W0,5 W4,5 W6,6 W9,6 W1,7 W4,7 W6,8\n10x9 W2,0 W5,0 W9,0 W7,1 W2,2 W0,3 W4,3 W9,3 W7,4 W3,5 W5,5 W1,6 W4,7 W8,7 W2,8 W6,8\n10x9 W2,0 W6,0 W9,0 W1,2 W3,2 W8,2 W6,3 W0,4 W2,4 W9,4 W5,5 W1,6 W8,6 W4,7 W2,8 W7,8\n10x9 W5,0 W3,1 W7,1 W0,2 W5,2 W9,2 W1,4 W3,4 W6,4 W8,4 W0,6 W5,6 W7,6 W9,6 W3,7 W6,8\n10x9 W0,0 W3,0 W7,0 W1,2 W4,2 W7,3 W0,4 W3,4 W6,5 W9,5 W1,6 W4,6 W7,7 W0,8 W5,8 W9,8\n10x9 W0,0 W3,0 W7,0 W1,2 W4,2 W7,2 W9,3 W4,4 W1,5 W7,5 W3,6 W5,6 W2,8 W7,8\n10x9 W6,0 W9,0 W2,1 W0,2 W4,2 W8,2 W6,3 W2,4 W9,4 W4,5 W1,6 W6,6 W8,6 W0,8 W3,8 W7,8\n10x9 W0,0 W3,0 W5,1 W2,2 W7,2 W9,2 W0,3 W4,3 W8,4 W3,5 W5,5 W1,6 W9,6 W4,7 W7,7 W0,8\n10x9 W4,0 W9,0 W2,1 W0,2 W5,2 W8,2 W3,3 W1,4 W9,4 W4,5 W7,5 W2,6 W4,7 W8,7 W2,8 W6,8\n10x9 W0,0 W4,0 W1,2 W7,2 W9,2 W4,3 W0,4 W2,4 W6,4 W8,4 W4,5 W1,6 W4,7 W7,7 W2,8 W9,8\n10x9 W2,0 W5,0 W8,1 W1,2 W3,3 W5,3 W8,4 W2,5 W0,6 W5,6 W7,6 W3,7 W6,8 W9,8\n10x9 W2,0 W5,0 W7,1 W4,2 W9,2 W0,3 W2,3 W6,3 W4,4 W1,5 W6,5 W9,5 W3,6 W2,8 W6,8 W9,8\n10x9 W7,0 W2,1 W5,1 W0,2 W4,3 W7,3 W2,4 W9,4 W4,5 W7,5 W1,6 W5,7 W2,8 W7,8\n10x9 W0,0 W4,0 W2,1 W7,2 W9,2 W0,3 W5,3 W2,4 W8,4 W4,5 W6,5 W2,7 W7,7 W0,8 W4,8 W9,8\n10x9 W4,0 W2,1 W6,1 W0,2 W4,2 W9,2 W2,3 W7,3 W4,4 W6,5 W0,6 W3,6 W8,6 W5,7 W3,8 W9,8\n10x9 W2,0 W6,0 W4,1 W1,2 W9,2 W3,3 W6,3 W0,4 W4,5 W7,5 W9,5 W1,6 W5,7 W0,8 W3,8 W7,8\n10x9 W3,0 W6,0 W8,1 W0,2 W2,2 W5,2 W7,3 W4,4 W9,4 W0,5 W2,5 W6,5 W4,6 W8,6 W1,7 W3,8 W6,8 W9,8\n10x9 W4,0 W7,0 W2,1 W0,2 W5,2 W3,3 W7,3 W1,4 W9,4 W4,5 W7,5 W0,6 W2,6 W5,7 W3,8 W7,8\n10x9 W0,0 W9,0 W2,1 W5,1 W8,2 W3,3 W6,3 W1,4 W9,4 W4,5 W7,5 W0,6 W3,7 W7,7 W5,8 W9,8\n10x9 W3,0 W1,1 W7,1 W4,2 W9,2 W0,3 W2,3 W6,3 W8,4 W1,5 W5,5 W3,6 W9,6 W7,7 W2,8 W5,8\n10x9 W3,0 W6,0 W9,0 W0,2 W3,2 W8,2 W6,3 W1,4 W4,4 W9,5 W0,6 W2,6 W7,6 W4,7 W6,8 W9,8\n10x9 W2,0 W5,0 W9,0 W7,1 W1,2 W3,3 W6,3 W9,3 W0,5 W4,5 W7,5 W2,6 W9,6 W0,8 W3,8 W6,8\n10x9 W0,0 W6,0 W9,0 W2,1 W4,2 W7,2 W0,3 W3,4 W6,4 W8,4 W2,6 W5,6 W7,6 W9,6 W2,8 W6,8\n10x9 W4,0 W7,0 W2,1 W0,2 W4,2 W8,2 W2,3 W6,3 W3,5 W9,5 W0,6 W5,6 W7,6 W2,7 W6,8 W9,8\n10x9 W0,0 W4,1 W7,1 W1,2 W9,2 W3,3 W6,3 W0,4 W8,4 W5,5 W1,6 W3,6 W7,7 W0,8 W5,8 W9,8\n10x9 W3,0 W7,0 W1,1 W5,1 W3,2 W7,3 W0,4 W5,4 W9,4 W3,5 W1,6 W6,6 W8,6 W4,7 W0,8 W7,8\n10x9 W2,0 W5,0 W9,0 W4,2 W6,2 W0,3 W2,3 W9,3 W5,4 W8,5 W0,6 W2,6 W4,6 W6,6 W3,8 W7,8\n10x9 W3,0 W6,0 W9,0 W1,1 W4,2 W7,2 W2,3 W0,4 W8,4 W3,5 W6,5 W1,6 W4,7 W7,7 W2,8 W9,8\n10x9 W3,0 W6,0 W9,0 W0,2 W8,2 W3,3 W6,3 W1,4 W9,4 W5,5 W7,5 W3,6 W1,7 W7,7 W5,8 W9,8\n10x9 W6,0 W9,0 W4,1 W0,2 W2,2 W7,2 W5,3 W9,3 W1,4 W3,4 W7,4 W0,6 W2,6 W5,6 W8,6 W3,8 W6,8 W9,8\n10x9 W0,0 W3,0 W7,0 W5,1 W1,2 W3,3 W7,3 W0,4 W5,4 W9,4 W1,6 W3,6 W6,6 W8,7 W2,8 W6,8\n10x9 W3,0 W7,0 W5,1 W0,2 W3,2 W7,2 W5,3 W9,3 W0,5 W3,5 W6,5 W8,6 W2,7 W5,7 W0,8 W9,8\n10x9 W5,0 W3,1 W0,2 W6,2 W9,2 W4,3 W1,4 W3,5 W6,5 W9,5 W0,6 W3,8 W6,8 W9,8\n10x9 W3,0 W6,0 W1,1 W8,1 W5,2 W3,3 W1,4 W6,4 W8,4 W4,5 W0,6 W2,6 W7,6 W5,7 W3,8 W9,8\n10x9 W2,0 W7,0 W4,1 W6,2 W8,2 W2,3 W0,4 W5,4 W9,4 W7,5 W1,6 W4,6 W7,7 W0,8 W3,8 W9,8\n10x9 W0,0 W3,0 W6,0 W9,0 W1,2 W7,2 W4,3 W9,3 W0,4 W2,4 W5,5 W7,5 W1,6 W3,6 W9,6 W6,7 W0,8 W4,8\n10x9 W5,0 W9,0 W2,1 W7,1 W0,2 W4,2 W3,4 W7,4 W0,5 W5,5 W9,5 W2,6 W4,7 W7,7 W2,8 W9,8\n10x9 W2,0 W7,0 W4,1 W6,2 W8,2 W2,3 W0,4 W5,4 W9,4 W3,5 W7,5 W1,6 W4,7 W0,8 W6,8 W9,8\n10x9 W2,0 W6,0 W9,0 W4,1 W1,2 W8,2 W3,3 W6,3 W0,4 W6,5 W9,5 W3,6 W1,7 W7,7 W5,8 W9,8\n10x9 W0,0 W6,0 W2,1 W8,1 W5,2 W2,3 W7,3 W9,3 W0,4 W4,4 W2,5 W7,6 W4,7 W2,8 W6,8 W9,8\n10x9 W4,0 W7,1 W0,2 W3,2 W9,2 W6,3 W1,4 W3,4 W8,4 W5,5 W0,6 W2,6 W7,6 W9,6 W4,7 W6,8\n10x9 W4,0 W7,0 W2,1 W0,2 W8,2 W3,3 W6,3 W0,5 W2,5 W5,5 W9,5 W7,6 W1,7 W3,8 W6,8 W9,8\n10x9 W0,0 W4,0 W9,0 W2,1 W6,2 W4,3 W9,3 W2,4 W0,5 W5,5 W8,5 W3,6 W5,7 W0,8 W3,8 W7,8\n10x9 W3,0 W7,0 W0,2 W2,2 W4,2 W7,2 W9,3 W1,4 W3,4 W6,4 W2,6 W7,6 W5,7 W0,8 W3,8 W7,8\n10x9 W0,0 W5,0 W7,1 W2,2 W9,2 W0,3 W5,3 W3,4 W8,4 W6,5 W1,6 W4,6 W7,7 W0,8 W5,8 W9,8\n10x9 W0,0 W3,0 W6,0 W9,0 W2,2 W5,2 W7,3 W1,4 W4,4 W6,5 W9,5 W3,6 W1,7 W5,7 W3,8 W7,8\n10x9 W2,0 W5,0 W9,0 W7,1 W1,2 W4,2 W6,3 W9,3 W0,4 W2,4 W4,5 W6,5 W1,6 W8,6 W5,7 W0,8 W3,8 W7,8\n10x9 W6,0 W9,0 W2,1 W0,2 W5,2 W3,3 W7,3 W9,3 W0,5 W5,5 W3,6 W7,6 W9,6 W1,7 W5,7 W3,8\n10x9 W4,0 W9,0 W2,1 W0,2 W5,2 W8,2 W3,3 W1,4 W9,4 W3,5 W6,5 W8,6 W1,7 W5,7 W3,8 W7,8\n10x9 W0,0 W5,0 W7,1 W1,2 W4,2 W9,2 W0,4 W3,4 W5,4 W7,4 W9,5 W4,6 W1,7 W7,7 W3,8 W9,8\n10x9 W6,0 W9,0 W4,1 W0,2 W2,2 W7,2 W9,3 W1,4 W3,4 W6,4 W5,6 W9,6 W2,7 W7,7 W0,8 W4,8\n10x9 W2,0 W6,0 W9,0 W1,2 W5,2 W7,2 W3,3 W9,3 W6,4 W2,5 W0,6 W4,6 W7,6 W2,7 W4,8 W7,8\n10x9 W4,0 W1,1 W8,1 W3,2 W5,2 W1,4 W6,4 W8,4 W3,5 W0,6 W7,6 W2,7 W5,7 W9,8\n10x9 W3,0 W9,0 W5,1 W0,2 W8,2 W3,3 W1,4 W5,4 W9,4 W3,5 W7,5 W5,6 W1,7 W8,7 W3,8 W6,8\n10x9 W3,0 W6,0 W0,2 W2,2 W7,2 W9,2 W4,3 W6,4 W8,4 W0,5 W3,5 W5,6 W9,6 W7,7 W2,8 W5,8\n10x9 W0,0 W3,0 W6,0 W9,0 W2,2 W8,2 W4,3 W6,3 W1,4 W9,4 W3,5 W5,5 W8,6 W1,7 W4,7 W7,8\n10x9 W3,0 W9,0 W7,1 W0,2 W2,2 W4,2 W6,3 W1,4 W8,4 W4,5 W6,5 W0,6 W2,6 W8,7 W3,8 W6,8\n10x9 W4,0 W7,1 W0,2 W3,2 W9,2 W6,3 W1,4 W4,4 W8,4 W7,6 W9,6 W1,7 W4,7 W6,8\n10x9 W3,0 W6,0 W9,0 W0,2 W2,2 W4,3 W7,3 W9,4 W2,5 W6,5 W0,6 W4,6 W8,6 W2,7 W4,8 W7,8\n10x9 W0,0 W3,0 W6,0 W1,2 W4,2 W7,2 W9,2 W3,4 W8,4 W1,5 W5,5 W3,6 W7,7 W2,8 W5,8 W9,8\n10x9 W9,0 W1,1 W4,1 W7,1 W3,3 W1,4 W6,4 W9,4 W4,5 W8,6 W2,7 W5,7 W0,8 W9,8\n10x9 W2,0 W7,0 W4,1 W6,2 W8,2 W2,3 W4,3 W0,4 W9,4 W3,5 W6,5 W1,6 W8,6 W5,7 W2,8 W7,8\n10x9 W3,0 W6,0 W8,1 W0,2 W5,2 W3,3 W9,3 W6,4 W0,5 W4,5 W2,6 W7,6 W5,7 W0,8 W3,8 W7,8\n10x9 W2,0 W5,0 W1,2 W6,2 W9,2 W4,3 W0,4 W3,5 W6,5 W9,5 W1,7 W8,7 W3,8 W6,8\n10x9 W0,0 W6,0 W9,0 W2,1 W5,2 W8,2 W2,4 W6,4 W9,4 W0,5 W4,5 W2,6 W5,7 W8,7 W0,8 W3,8\n10x9 W2,0 W7,0 W4,2 W2,3 W7,3 W5,4 W9,4 W0,5 W3,5 W6,6 W8,6 W4,7 W2,8 W7,8\n10x9 W2,0 W6,0 W1,2 W5,2 W7,2 W9,2 W3,3 W0,4 W6,4 W4,5 W9,5 W1,6 W7,6 W5,7 W2,8 W7,8\n10x9 W2,0 W5,0 W7,1 W3,2 W9,2 W0,3 W5,3 W7,3 W2,4 W4,5 W7,5 W9,6 W2,7 W6,7 W0,8 W4,8\n10x9 W2,0 W5,0 W8,1 W1,2 W4,2 W6,2 W0,4 W5,4 W8,4 W2,5 W9,6 W1,7 W4,7 W7,7\n10x9 W0,0 W3,0 W6,0 W9,0 W1,2 W5,2 W8,2 W3,3 W7,4 W0,5 W3,5 W5,5 W9,6 W1,7 W4,7 W7,7\n10x9 W4,0 W7,0 W1,1 W5,2 W8,2 W0,3 W2,3 W4,4 W9,4 W7,5 W0,6 W2,6 W5,6 W7,7 W5,8 W9,8\n10x9 W0,0 W4,0 W9,0 W2,1 W7,1 W2,3 W4,3 W6,3 W9,3 W0,4 W3,5 W5,5 W1,6 W7,6 W4,7 W2,8 W6,8 W9,8\n10x9 W6,0 W1,1 W4,1 W8,1 W6,2 W3,3 W1,4 W5,4 W7,4 W9,5 W0,6 W4,6 W2,7 W7,7 W5,8 W9,8\n10x9 W2,1 W5,1 W8,1 W0,2 W7,3 W1,4 W4,4 W9,4 W3,6 W6,6 W8,6 W1,7 W3,8 W7,8\n10x9 W5,0 W9,0 W2,1 W7,1 W0,2 W4,2 W6,3 W9,3 W1,4 W4,4 W7,5 W0,6 W5,6 W9,6 W2,7 W6,8\n10x9 W3,0 W6,0 W9,0 W1,1 W7,2 W4,3 W9,3 W2,4 W0,5 W6,5 W4,6 W8,6 W1,7 W3,8 W6,8 W9,8\n10x9 W0,0 W3,0 W9,0 W7,1 W1,2 W4,2 W6,3 W2,4 W8,4 W5,5 W0,6 W3,6 W7,6 W9,6 W3,8 W6,8\n10x9 W0,0 W3,0 W7,0 W1,2 W4,2 W6,3 W9,3 W4,4 W2,5 W7,5 W0,6 W5,7 W3,8 W7,8\n10x9 W4,0 W7,0 W2,1 W0,2 W8,2 W5,3 W1,4 W3,4 W9,4 W6,5 W0,6 W2,6 W8,6 W5,7 W3,8 W9,8\n10x9 W2,0 W7,0 W5,1 W1,2 W3,2 W6,3 W9,3 W0,4 W2,4 W4,5 W7,5 W1,6 W4,7 W2,8 W6,8 W9,8\n10x9 W2,0 W5,0 W9,0 W7,1 W2,3 W5,3 W0,4 W7,4 W5,5 W9,5 W3,6 W7,6 W1,7 W5,7 W3,8 W9,8\n10x9 W4,0 W2,1 W8,1 W0,2 W5,2 W3,3 W7,3 W9,3 W1,4 W6,5 W0,6 W4,6 W9,6 W2,7 W7,7 W5,8\n10x9 W0,0 W3,0 W6,0 W9,0 W2,2 W7,2 W0,3 W4,3 W9,3 W6,4 W3,5 W1,6 W9,6 W6,7 W0,8 W4,8\n10x9 W4,0 W1,1 W6,1 W3,2 W9,2 W7,3 W2,4 W5,4 W0,5 W9,5 W4,6 W7,6 W2,7 W0,8 W6,8 W9,8\n10x9 W2,0 W5,0 W9,0 W7,1 W5,2 W2,3 W8,4 W0,5 W5,5 W2,6 W9,6 W7,7 W2,8 W5,8\n10x9 W7,0 W1,1 W4,1 W6,2 W8,2 W0,3 W3,3 W7,4 W9,4 W4,5 W0,6 W2,6 W6,6 W8,6 W3,8 W7,8\n10x9 W0,0 W5,0 W2,2 W6,2 W9,2 W0,3 W4,3 W6,4 W8,4 W2,5 W4,6 W7,6 W0,8 W3,8 W6,8 W9,8\n10x9 W3,0 W6,0 W8,1 W0,2 W4,2 W2,3 W7,3 W4,5 W9,5 W1,6 W7,6 W5,7 W2,8 W9,8\n10x9 W2,0 W5,1 W1,2 W3,2 W7,2 W9,2 W0,4 W4,4 W6,4 W8,4 W2,5 W5,6 W1,7 W7,7 W3,8 W9,8\n10x9 W0,0 W6,0 W4,1 W1,2 W7,2 W9,2 W3,3 W5,3 W8,4 W2,5 W0,6 W5,6 W9,6 W3,7 W7,7 W5,8\n10x9 W3,0 W7,0 W0,2 W2,2 W4,2 W6,2 W8,3 W1,4 W3,4 W6,5 W2,6 W8,6 W4,7 W2,8 W6,8 W9,8\n10x9 W2,0 W6,0 W9,0 W4,1 W8,2 W1,3 W4,3 W6,3 W5,5 W9,5 W1,6 W3,6 W7,6 W5,7 W2,8 W7,8\n10x9 W0,0 W3,0 W6,0 W9,0 W1,2 W4,2 W7,2 W9,3 W2,4 W7,4 W0,5 W4,5 W2,6 W6,6 W4,7 W8,7 W0,8 W6,8\n10x9 W7,0 W2,1 W5,1 W0,2 W8,2 W5,3 W2,4 W7,4 W9,4 W4,5 W1,6 W6,6 W8,6 W4,7 W2,8 W7,8\n10x9 W6,0 W9,0 W1,1 W4,1 W7,2 W3,3 W9,3 W1,4 W5,4 W3,5 W7,5 W5,6 W2,7 W8,7 W0,8 W4,8\n10x9 W0,0 W4,0 W2,1 W6,2 W9,2 W2,3 W4,3 W0,4 W7,4 W3,5 W9,5 W1,6 W6,6 W2,8 W5,8 W9,8\n10x9 W2,0 W5,0 W7,1 W3,2 W9,2 W1,3 W5,3 W7,3 W0,5 W2,5 W6,5 W4,6 W9,6 W1,7 W7,7 W3,8\n10x9 W3,0 W7,0 W1,1 W5,1 W8,2 W0,3 W3,3 W5,3 W7,4 W9,4 W0,6 W3,6 W5,6 W8,6 W4,8 W9,8\n10x9 W2,0 W7,0 W3,2 W6,2 W1,3 W8,3 W3,4 W6,4 W9,5 W1,6 W4,6 W7,6 W0,8 W3,8 W6,8 W9,8\n10x9 W2,0 W5,1 W8,1 W0,3 W3,3 W5,4 W7,4 W2,5 W9,5 W4,6 W6,6 W8,7 W2,8 W5,8\n10x9 W0,0 W6,0 W4,1 W8,1 W2,2 W6,2 W0,3 W4,3 W2,4 W7,4 W9,5 W3,6 W6,6 W1,7 W8,7 W5,8\n10x9 W2,0 W6,0 W3,2 W5,2 W7,2 W9,2 W1,3 W4,4 W6,4 W8,4 W2,5 W0,6 W7,6 W5,7 W3,8 W7,8\n10x9 W2,0 W5,0 W4,2 W6,2 W9,2 W0,3 W2,3 W4,4 W7,4 W9,5 W0,6 W2,6 W5,6 W7,7 W3,8 W9,8\n10x9 W2,0 W5,0 W9,0 W7,1 W1,2 W4,2 W0,4 W5,4 W7,4 W3,5 W9,5 W1,6 W6,6 W8,7 W2,8 W5,8\n10x9 W4,0 W7,0 W1,1 W3,2 W5,2 W0,3 W7,3 W2,4 W9,4 W5,5 W7,5 W3,6 W1,7 W5,7 W3,8 W7,8\n10x9 W2,0 W4,1 W7,1 W1,2 W9,2 W4,3 W0,4 W2,4 W6,4 W9,5 W1,6 W3,6 W5,6 W8,7 W2,8 W6,8\n10x9 W6,0 W9,0 W2,1 W0,2 W4,2 W7,2 W1,4 W4,4 W8,4 W6,5 W0,6 W2,7 W5,7 W8,7\n10x9 W2,0 W5,0 W9,0 W1,2 W4,2 W8,2 W6,3 W0,4 W9,4 W3,5 W1,6 W6,6 W8,6 W2,8 W5,8 W9,8\n10x9 W4,0 W7,0 W0,2 W3,2 W8,2 W5,3 W1,4 W3,4 W7,4 W9,5 W4,6 W7,6 W2,7 W0,8 W4,8 W9,8\n10x9 W4,0 W9,0 W1,1 W3,2 W5,2 W8,2 W0,3 W2,4 W4,4 W7,4 W3,6 W6,6 W9,6 W1,7 W3,8 W6,8\n10x9 W7,0 W2,1 W5,1 W0,2 W7,2 W5,3 W3,4 W8,4 W0,5 W5,5 W2,6 W7,6 W0,8 W3,8 W6,8 W9,8\n10x9 W4,0 W9,0 W1,1 W3,2 W5,2 W8,2 W0,3 W2,4 W4,4 W7,4 W9,4 W0,6 W8,6 W2,7 W5,7 W7,8\n10x9 W2,0 W6,0 W9,0 W3,2 W5,2 W7,2 W1,3 W9,3 W4,4 W6,5 W0,6 W3,6 W8,6 W5,7 W3,8 W7,8\n10x9 W5,0 W1,1 W3,2 W6,2 W9,2 W0,3 W2,4 W4,4 W7,4 W0,6 W8,6 W2,7 W5,7 W9,8\n10x9 W0,0 W7,0 W4,1 W2,2 W8,2 W5,3 W1,4 W3,4 W7,4 W9,5 W0,6 W5,6 W3,7 W7,7 W5,8 W9,8\n10x9 W2,0 W6,0 W4,1 W1,2 W6,2 W9,2 W4,3 W0,4 W2,4 W4,5 W6,5 W9,5 W1,6 W0,8 W4,8 W7,8\n10x9 W6,0 W4,1 W8,1 W0,2 W2,2 W6,2 W4,3 W1,4 W9,4 W3,5 W6,5 W0,6 W8,6 W5,7 W3,8 W9,8\n10x9 W3,0 W1,1 W5,1 W7,2 W9,2 W0,3 W2,3 W5,3 W3,5 W7,5 W9,5 W0,6 W5,6 W2,7 W8,7 W4,8\n10x9 W2,0 W6,0 W4,1 W8,1 W2,3 W4,3 W7,3 W0,4 W2,5 W6,5 W9,5 W4,6 W2,7 W0,8 W4,8 W7,8\n10x9 W0,0 W3,0 W5,1 W1,2 W7,2 W9,2 W3,3 W0,4 W6,4 W8,4 W2,5 W5,6 W1,7 W8,7 W3,8 W6,8\n10x9 W3,0 W7,0 W5,1 W0,2 W2,2 W7,2 W4,3 W9,3 W1,4 W3,5 W7,5 W5,6 W2,7 W0,8 W4,8 W7,8\n10x9 W3,0 W7,0 W1,1 W5,1 W8,2 W4,3 W6,3 W2,4 W0,5 W5,5 W7,5 W3,6 W9,6 W1,7 W6,7 W4,8\n10x9 W3,0 W6,0 W1,1 W5,2 W9,2 W0,3 W3,3 W7,3 W5,4 W7,5 W0,6 W2,6 W5,6 W9,6 W7,7 W5,8\n10x9 W0,0 W6,0 W4,1 W2,2 W6,2 W9,2 W0,3 W5,4 W7,4 W2,5 W0,6 W4,6 W6,6 W8,6 W3,8 W7,8\n10x9 W0,0 W4,0 W7,0 W2,1 W5,2 W8,2 W2,4 W7,4 W9,4 W0,5 W5,5 W8,6 W2,7 W5,7 W0,8 W9,8\n10x9 W2,0 W5,0 W9,0 W4,2 W6,2 W0,3 W2,3 W9,3 W4,4 W7,4 W0,6 W2,6 W5,6 W8,7 W3,8 W6,8\n10x9 W0,0 W3,0 W7,0 W5,1 W1,2 W4,3 W7,3 W9,3 W0,4 W2,4 W4,5 W1,6 W7,6 W9,6 W0,8 W4,8\n10x9 W3,0 W9,0 W5,1 W0,2 W2,2 W8,2 W4,3 W6,3 W1,4 W3,5 W6,5 W9,5 W0,6 W2,7 W5,7 W8,7\n10x9 W6,0 W9,0 W4,1 W0,2 W2,2 W7,2 W9,3 W1,4 W3,4 W6,4 W2,6 W7,6 W9,6 W4,7 W2,8 W6,8\n10x9 W0,0 W3,0 W6,0 W9,0 W2,2 W7,2 W4,3 W9,3 W1,4 W5,5 W7,5 W3,6 W9,6 W1,7 W6,7 W4,8\n10x9 W7,0 W2,1 W5,1 W0,2 W7,2 W2,3 W5,3 W9,3 W7,4 W3,5 W0,6 W5,6 W8,6 W3,8 W6,8 W9,8\n10x9 W2,0 W6,0 W9,0 W4,1 W2,2 W7,2 W0,3 W3,4 W6,4 W8,4 W0,6 W2,6 W7,6 W5,7 W3,8 W7,8\n10x9 W1,1 W4,1 W7,1 W9,2 W0,3 W5,3 W3,4 W7,4 W2,6 W6,6 W8,6 W4,7 W0,8 W7,8\n10x9 W6,0 W9,0 W1,1 W4,1 W7,2 W0,3 W3,3 W9,3 W5,4 W7,5 W2,6 W5,6 W9,6 W0,8 W3,8 W6,8\n10x9 W0,0 W3,0 W9,0 W5,1 W2,2 W7,2 W4,3 W1,4 W6,4 W8,4 W4,5 W2,6 W7,7 W2,8 W5,8 W9,8\n10x9 W4,0 W7,0 W1,1 W3,2 W6,2 W8,3 W2,4 W5,4 W0,5 W9,5 W4,6 W7,6 W2,7 W0,8 W6,8 W9,8\n10x9 W3,0 W1,1 W7,1 W4,2 W9,2 W1,4 W5,4 W8,4 W3,5 W7,6 W2,7 W5,7 W0,8 W9,8\n10x9 W0,0 W3,0 W9,0 W5,1 W7,2 W0,3 W3,3 W5,3 W9,3 W2,5 W6,5 W4,6 W9,6 W7,7 W0,8 W3,8\n10x9 W2,0 W6,0 W4,1 W8,1 W6,2 W1,3 W4,3 W9,3 W7,4 W0,5 W2,6 W5,6 W8,7 W0,8 W3,8 W6,8\n10x9 W3,0 W9,0 W1,1 W5,1 W3,2 W7,2 W5,3 W9,3 W1,4 W7,4 W3,5 W0,6 W6,6 W8,7 W3,8 W6,8\n10x9 W5,0 W8,1 W0,2 W2,2 W5,3 W7,4 W0,5 W2,5 W9,5 W4,6 W6,6 W8,7 W2,8 W5,8\n10x9 W3,0 W9,0 W1,1 W7,1 W4,2 W6,3 W1,4 W4,4 W8,4 W6,5 W4,6 W9,6 W2,7 W7,7 W0,8 W5,8\n10x9 W4,0 W7,0 W2,1 W0,2 W4,2 W7,3 W1,4 W3,4 W5,4 W9,4 W4,6 W6,6 W8,6 W1,7 W3,8 W7,8\n10x9 W6,0 W9,0 W4,1 W0,2 W2,2 W7,2 W9,3 W1,4 W3,4 W5,4 W7,5 W0,6 W2,6 W5,7 W8,7 W3,8\n10x9 W2,0 W6,0 W4,1 W1,2 W7,2 W9,2 W3,3 W5,3 W8,4 W0,5 W3,5 W6,5 W9,6 W4,7 W2,8 W6,8\n10x9 W2,0 W4,1 W7,1 W1,2 W9,2 W4,3 W0,4 W2,4 W6,4 W8,4 W4,5 W1,6 W7,6 W0,8 W4,8 W9,8\n10x9 W0,0 W3,0 W6,0 W8,1 W1,2 W5,2 W3,3 W7,3 W9,4 W0,5 W5,5 W2,6 W8,6 W0,8 W5,8 W9,8\n10x9 W0,0 W4,0 W9,0 W2,1 W5,2 W8,2 W3,3 W1,4 W9,4 W3,5 W6,5 W8,6 W2,7 W5,7 W0,8 W7,8\n10x9 W3,0 W7,0 W5,1 W0,2 W2,2 W8,2 W1,4 W4,4 W7,4 W9,4 W3,6 W5,6 W8,6 W1,7 W4,8 W9,8\n10x9 W2,0 W6,0 W4,1 W8,1 W0,3 W3,3 W6,3 W9,3 W3,5 W5,5 W1,6 W7,6 W4,7 W0,8 W6,8 W9,8\n10x9 W7,0 W2,1 W5,1 W0,2 W3,3 W8,3 W1,4 W6,4 W4,5 W6,6 W9,6 W1,7 W3,8 W6,8\n10x9 W3,0 W7,1 W0,2 W2,2 W4,2 W9,2 W6,3 W1,4 W3,4 W7,5 W0,6 W4,6 W9,6 W2,7 W6,7 W4,8\n10x9 W3,0 W5,1 W8,1 W0,2 W3,2 W5,3 W2,4 W7,4 W9,5 W1,6 W3,6 W6,6 W2,8 W7,8\n10x9 W0,0 W3,0 W9,0 W5,1 W1,2 W8,2 W3,3 W6,4 W0,5 W4,5 W8,5 W2,6 W6,6 W0,8 W3,8 W7,8\n10x9 W0,0 W3,0 W6,0 W8,1 W1,2 W4,2 W7,3 W5,4 W2,5 W9,5 W0,6 W4,6 W7,6 W3,8 W6,8 W9,8\n10x9 W0,0 W4,0 W7,0 W2,1 W5,2 W8,2 W0,3 W2,4 W4,4 W7,4 W1,6 W6,6 W9,6 W4,7 W0,8 W6,8\n10x9 W6,0 W2,1 W0,2 W5,2 W9,2 W7,3 W2,4 W0,5 W5,5 W9,5 W3,6 W7,6 W1,7 W3,8 W6,8 W9,8\n10x9 W0,0 W3,0 W7,0 W5,1 W8,2 W2,3 W5,3 W9,4 W0,5 W3,5 W6,5 W8,6 W1,7 W4,7 W6,8 W9,8\n10x9 W4,0 W7,0 W2,1 W0,2 W6,2 W3,3 W8,3 W5,4 W0,5 W2,5 W7,5 W4,6 W9,6 W1,7 W7,7 W3,8\n10x9 W9,0 W2,1 W5,1 W0,2 W8,2 W3,3 W6,3 W0,5 W4,5 W6,5 W9,5 W2,6 W4,7 W8,7 W2,8 W6,8\n10x9 W0,0 W6,0 W9,0 W4,1 W1,2 W7,2 W3,3 W5,3 W9,3 W0,4 W7,4 W2,5 W5,6 W8,6 W2,7 W0,8 W4,8 W9,8\n10x9 W2,0 W6,0 W4,1 W6,2 W9,2 W2,3 W4,3 W0,4 W7,4 W9,5 W1,6 W4,6 W6,6 W8,7 W2,8 W5,8\n10x9 W0,0 W3,0 W6,0 W5,2 W9,2 W2,3 W7,3 W4,4 W0,5 W9,5 W2,6 W7,6 W4,7 W2,8 W6,8 W9,8\n10x9 W2,0 W6,0 W4,1 W8,1 W1,2 W3,3 W5,3 W9,3 W7,4 W2,5 W4,5 W0,6 W6,6 W9,6 W2,7 W4,8\n10x9 W0,0 W2,1 W5,1 W7,2 W9,2 W5,3 W1,4 W3,4 W8,4 W5,5 W0,6 W2,6 W8,7 W5,8\n10x9 W0,0 W3,0 W6,0 W9,0 W5,2 W8,2 W2,3 W6,4 W9,4 W0,5 W3,5 W8,6 W1,7 W5,7 W3,8 W7,8\n10x9 W2,0 W6,0 W2,2 W5,2 W7,2 W9,2 W0,3 W3,4 W6,4 W9,5 W0,6 W5,6 W3,7 W7,7 W5,8 W9,8\n10x9 W3,0 W7,0 W1,1 W5,1 W3,2 W8,2 W0,3 W2,4 W5,4 W9,4 W7,5 W4,6 W2,7 W0,8 W4,8 W7,8\n10x9 W0,0 W6,0 W9,0 W2,1 W5,2 W0,3 W7,3 W9,3 W2,4 W5,5 W0,6 W3,6 W7,6 W9,6 W3,8 W6,8\n10x9 W0,0 W3,0 W7,1 W1,2 W4,2 W9,2 W0,4 W3,4 W7,4 W5,5 W3,6 W8,6 W1,7 W5,7 W3,8 W7,8\n10x9 W2,0 W6,0 W4,1 W8,1 W2,2 W6,2 W4,3 W9,3 W7,4 W0,5 W2,5 W4,6 W9,6 W7,7 W0,8 W3,8\n10x9 W4,1 W7,1 W0,2 W2,2 W9,2 W6,3 W1,4 W3,4 W5,5 W9,5 W2,6 W7,6 W4,7 W0,8 W6,8 W9,8\n10x9 W4,0 W7,0 W2,1 W0,2 W5,2 W7,3 W3,4 W1,5 W6,5 W9,5 W3,6 W8,7 W2,8 W6,8\n10x9 W0,0 W4,0 W8,1 W1,2 W3,2 W5,2 W0,4 W4,4 W6,4 W8,4 W2,5 W5,6 W7,6 W2,8 W6,8 W9,8\n10x9 W2,0 W6,0 W9,0 W4,1 W7,2 W1,3 W9,3 W3,4 W6,4 W0,5 W4,6 W7,6 W2,7 W0,8 W6,8 W9,8\n10x9 W3,0 W6,0 W0,2 W9,2 W3,3 W6,3 W0,5 W2,5 W5,5 W9,5 W7,6 W5,7 W2,8 W7,8\n10x9 W0,0 W6,0 W9,0 W2,1 W4,2 W0,3 W6,3 W9,3 W2,4 W5,5 W1,6 W7,6 W4,7 W2,8 W6,8 W9,8\n10x9 W4,0 W7,0 W2,1 W0,2 W4,2 W8,2 W6,3 W1,4 W4,4 W6,5 W9,5 W3,6 W1,7 W3,8 W6,8 W9,8\n10x9 W4,0 W7,0 W0,2 W3,2 W8,2 W5,3 W0,5 W2,5 W4,5 W6,5 W9,5 W5,7 W8,7 W2,8\n10x9 W2,0 W7,0 W5,1 W1,2 W4,3 W8,3 W0,4 W2,4 W6,4 W1,6 W3,6 W5,6 W8,6 W0,8 W4,8 W9,8\n10x9 W3,0 W7,0 W1,1 W4,2 W7,3 W9,3 W0,4 W3,4 W5,4 W8,5 W1,6 W4,6 W6,6 W0,8 W3,8 W7,8\n10x9 W1,1 W4,1 W7,1 W9,2 W2,3 W0,4 W4,4 W7,4 W1,6 W3,6 W6,6 W8,6 W2,8 W7,8\n10x9 W0,0 W3,0 W6,0 W9,0 W2,2 W5,2 W8,2 W3,4 W6,4 W9,4 W0,5 W2,6 W4,7 W7,7 W2,8 W9,8\n10x9 W2,0 W6,0 W9,0 W4,1 W1,2 W7,2 W3,3 W5,3 W0,4 W8,4 W4,5 W6,5 W1,6 W5,7 W8,7 W2,8\n10x9 W5,0 W9,0 W3,1 W7,1 W0,2 W4,3 W9,3 W1,4 W6,4 W3,6 W9,6 W1,7 W6,7 W4,8\n10x9 W2,0 W6,0 W9,0 W4,1 W1,3 W6,3 W9,3 W4,4 W0,5 W2,5 W7,5 W1,7 W4,7 W7,8\n10x9 W3,0 W7,0 W1,1 W4,2 W7,2 W0,3 W2,4 W8,4 W5,5 W7,6 W1,7 W4,7 W6,8 W9,8\n10x9 W0,0 W3,0 W6,0 W1,2 W7,2 W9,2 W3,3 W5,3 W0,4 W8,4 W6,5 W3,6 W9,6 W1,7 W7,7 W5,8\n10x9 W2,0 W6,0 W4,1 W2,2 W7,2 W9,2 W5,3 W8,4 W0,5 W2,5 W6,5 W4,6 W9,6 W7,7 W2,8 W5,8\n10x9 W4,0 W7,0 W0,2 W3,2 W8,2 W5,3 W2,4 W9,4 W4,5 W6,5 W1,6 W8,6 W4,7 W2,8 W6,8 W9,8\n10x9 W5,0 W9,0 W0,2 W3,2 W6,2 W8,2 W2,4 W4,4 W7,4 W0,5 W3,6 W6,6 W9,6 W0,8 W3,8 W6,8\n10x9 W3,0 W6,0 W1,1 W5,2 W9,2 W0,3 W3,3 W7,3 W3,5 W6,5 W9,5 W1,6 W8,7 W0,8 W3,8 W6,8\n10x9 W2,0 W7,0 W2,2 W5,2 W7,3 W1,4 W5,4 W3,5 W9,5 W7,6 W1,7 W5,7 W3,8 W9,8\n10x9 W0,0 W4,0 W7,0 W2,1 W4,2 W2,3 W7,3 W0,4 W4,5 W9,5 W1,6 W7,6 W4,7 W0,8 W6,8 W9,8\n10x9 W2,0 W6,0 W4,1 W1,2 W9,2 W6,3 W2,4 W4,4 W0,5 W7,5 W9,5 W5,6 W2,7 W8,7 W0,8 W4,8\n10x9 W2,0 W6,0 W4,1 W9,2 W0,3 W3,3 W6,3 W4,5 W7,5 W9,5 W1,6 W5,7 W8,7 W2,8\n10x9 W3,0 W6,0 W1,1 W8,1 W3,2 W6,2 W0,4 W3,4 W8,4 W6,5 W1,6 W4,6 W8,7 W0,8 W3,8 W6,8\n10x9 W0,0 W3,0 W7,0 W5,1 W2,2 W0,3 W8,3 W2,4 W5,4 W9,5 W1,6 W4,6 W6,6 W8,7 W2,8 W5,8\n10x9 W0,0 W6,0 W4,1 W8,1 W2,2 W4,3 W7,3 W9,3 W1,4 W3,5 W5,6 W7,6 W9,6 W2,7 W0,8 W6,8\n10x9 W0,0 W2,1 W5,1 W7,2 W9,2 W0,3 W3,3 W6,4 W2,5 W9,5 W0,6 W5,6 W7,6 W3,7 W6,8 W9,8\n10x9 W3,0 W7,0 W5,1 W0,2 W7,2 W2,3 W9,3 W4,4 W1,5 W6,5 W3,6 W9,6 W2,8 W6,8\n10x9 W3,0 W1,1 W5,1 W7,2 W9,2 W0,3 W3,3 W5,4 W8,4 W3,5 W1,6 W6,6 W8,7 W0,8 W3,8 W6,8\n10x9 W0,0 W6,0 W4,1 W2,2 W7,2 W9,2 W0,3 W5,3 W2,5 W4,5 W6,5 W9,5 W0,6 W3,7 W6,8 W9,8\n10x9 W0,0 W4,0 W2,1 W7,1 W9,2 W2,3 W4,3 W6,3 W0,4 W8,4 W3,5 W5,5 W1,6 W7,6 W9,6 W0,8 W3,8 W6,8\n10x9 W0,0 W3,0 W6,0 W8,1 W1,2 W5,2 W3,3 W9,3 W0,4 W6,4 W3,6 W7,6 W1,7 W5,7 W3,8 W9,8\n10x9 W2,0 W6,0 W4,1 W1,2 W7,2 W9,2 W3,3 W5,3 W8,4 W2,5 W0,6 W5,6 W7,6 W3,7 W6,8 W9,8\n10x9 W2,0 W7,0 W5,1 W8,2 W0,3 W3,3 W6,3 W9,4 W2,5 W5,6 W8,6 W1,7 W4,8 W9,8\n10x9 W0,0 W7,0 W4,1 W1,2 W3,3 W7,3 W9,3 W0,4 W5,4 W2,5 W4,6 W7,6 W2,7 W0,8 W4,8 W9,8\n10x9 W6,0 W9,0 W4,1 W0,2 W2,2 W8,2 W6,3 W1,4 W3,4 W9,4 W2,6 W5,6 W8,6 W2,8 W6,8 W9,8\n10x9 W5,0 W9,0 W3,1 W7,1 W0,2 W2,3 W4,3 W6,4 W9,4 W0,5 W3,5 W8,6 W2,7 W5,7 W0,8 W7,8\n10x9 W0,0 W3,0 W9,0 W5,1 W8,2 W0,3 W3,3 W5,3 W9,4 W2,5 W6,5 W4,6 W8,6 W2,8 W5,8 W9,8\n10x9 W0,0 W7,0 W2,1 W5,1 W7,3 W2,4 W5,4 W9,4 W0,5 W7,5 W4,6 W2,7 W7,7 W0,8 W5,8 W9,8\n10x9 W0,0 W3,0 W6,0 W1,2 W4,2 W9,2 W6,3 W4,4 W2,5 W7,5 W0,6 W4,6 W9,6 W2,7 W6,7 W4,8\n10x9 W6,0 W9,0 W2,1 W0,2 W5,2 W8,2 W2,4 W6,4 W9,4 W4,5 W1,6 W6,6 W8,7 W0,8 W3,8 W6,8\n10x9 W2,0 W6,0 W9,0 W4,1 W2,2 W7,2 W0,3 W9,3 W3,4 W6,4 W1,5 W8,5 W3,6 W6,6 W2,8 W7,8\n10x9 W3,0 W9,0 W5,1 W0,2 W3,2 W7,2 W2,4 W4,4 W6,4 W9,5 W1,6 W7,6 W4,7 W2,8 W6,8 W9,8\n10x9 W0,0 W6,0 W9,0 W2,1 W4,2 W7,2 W2,3 W0,4 W5,4 W8,4 W1,6 W4,6 W9,6 W7,7 W2,8 W5,8\n10x9 W0,0 W4,0 W8,1 W1,2 W5,2 W3,3 W9,3 W6,4 W2,5 W4,5 W8,5 W0,6 W6,6 W2,7 W4,8 W7,8\n10x9 W3,0 W7,0 W1,1 W5,1 W7,2 W0,3 W2,3 W5,3 W9,3 W7,5 W2,6 W5,6 W9,6 W0,8 W3,8 W6,8\n10x9 W2,0 W5,0 W9,0 W7,1 W1,2 W4,2 W5,4 W7,4 W0,5 W3,5 W9,5 W6,6 W8,7 W0,8 W3,8 W6,8\n10x9 W4,0 W7,0 W1,1 W3,2 W5,2 W8,2 W0,3 W4,4 W1,5 W7,5 W3,6 W9,6 W6,7 W2,8\n10x9 W2,0 W6,0 W9,0 W4,1 W2,2 W6,3 W9,3 W1,4 W3,4 W5,5 W0,6 W2,6 W7,6 W3,8 W6,8 W9,8\n10x9 W2,0 W7,0 W4,1 W1,2 W4,3 W7,3 W9,3 W0,4 W2,4 W6,5 W1,6 W4,6 W9,6 W7,7 W0,8 W5,8\n10x9 W6,0 W4,1 W0,2 W2,2 W6,2 W9,2 W1,4 W3,4 W5,4 W8,5 W0,6 W2,6 W4,6 W6,6 W3,8 W7,8\n10x9 W2,0 W6,0 W4,1 W1,2 W7,2 W9,2 W3,3 W0,4 W6,4 W2,5 W9,5 W5,6 W7,7 W2,8 W5,8 W9,8\n10x9 W0,0 W4,0 W7,0 W2,1 W8,2 W0,3 W3,3 W6,3 W9,4 W7,5 W0,6 W2,6 W5,6 W7,7 W5,8 W9,8\n10x9 W2,0 W5,0 W8,1 W1,2 W3,3 W5,3 W7,3 W0,5 W4,5 W9,5 W2,6 W7,6 W5,7 W0,8 W3,8 W7,8\n10x9 W2,0 W7,0 W2,2 W5,2 W7,3 W9,3 W1,4 W3,4 W6,5 W4,6 W9,6 W2,7 W0,8 W6,8\n10x9 W0,0 W3,0 W6,1 W1,2 W4,2 W9,2 W6,4 W8,4 W1,5 W4,5 W9,6 W7,7 W2,8 W5,8\n10x9 W2,0 W5,0 W9,0 W7,1 W2,2 W5,2 W0,3 W7,3 W9,4 W3,5 W5,5 W1,6 W8,6 W2,8 W5,8 W9,8\n10x9 W0,0 W3,0 W7,0 W5,1 W1,2 W3,3 W8,3 W5,4 W0,5 W3,5 W7,5 W9,5 W1,7 W5,7 W3,8 W7,8\n10x9 W3,0 W9,0 W1,1 W5,1 W7,2 W2,3 W5,3 W9,3 W7,4 W0,5 W3,5 W5,6 W8,6 W2,8 W6,8 W9,8\n10x9 W2,0 W6,0 W4,1 W8,1 W1,3 W4,3 W6,3 W9,3 W0,5 W3,5 W6,5 W8,6 W2,7 W0,8 W4,8 W7,8\n10x9 W7,0 W2,1 W5,1 W0,2 W8,2 W4,3 W6,3 W2,4 W0,5 W9,5 W4,6 W7,6 W1,7 W3,8 W6,8 W9,8\n10x9 W2,0 W5,0 W7,1 W2,2 W5,2 W9,2 W3,4 W6,4 W8,4 W0,5 W2,6 W7,6 W9,6 W5,7 W0,8 W3,8\n10x9 W2,0 W5,0 W9,0 W1,2 W4,2 W6,2 W8,2 W0,4 W2,4 W9,4 W4,5 W6,5 W1,6 W8,6 W5,7 W0,8 W3,8 W9,8\n10x9 W2,0 W7,0 W4,2 W7,2 W2,3 W0,4 W8,4 W5,5 W1,6 W3,6 W7,6 W9,6 W2,8 W6,8\n10x9 W2,0 W5,0 W7,1 W5,2 W9,2 W2,3 W0,4 W4,4 W8,4 W6,5 W1,6 W4,6 W8,7 W0,8 W3,8 W6,8\n10x9 W0,0 W7,0 W4,1 W1,2 W7,3 W9,3 W2,4 W5,4 W0,6 W4,6 W7,6 W9,6 W2,7 W4,8\n10x9 W0,0 W4,0 W9,0 W1,2 W3,2 W5,2 W8,2 W0,4 W7,4 W3,5 W5,5 W1,6 W9,6 W4,7 W7,7 W2,8\n10x9 W2,0 W6,0 W4,1 W2,2 W6,2 W9,2 W0,3 W4,3 W2,4 W7,4 W4,5 W8,6 W2,7 W5,7 W0,8 W7,8\n10x9 W0,0 W3,0 W7,0 W2,2 W4,2 W6,2 W8,3 W1,4 W3,4 W5,4 W9,5 W0,6 W6,6 W3,7 W8,7 W5,8\n10x9 W3,0 W7,0 W0,2 W2,2 W6,2 W4,3 W8,3 W1,4 W6,4 W9,5 W2,6 W4,6 W7,6 W0,8 W3,8 W7,8\n10x9 W9,0 W4,1 W7,1 W0,2 W2,2 W7,3 W5,4 W9,4 W0,5 W2,5 W4,6 W6,6 W8,6 W2,8 W5,8 W9,8\n10x9 W4,0 W7,0 W0,2 W3,2 W6,2 W8,3 W1,4 W5,4 W3,5 W7,5 W9,5 W0,6 W5,6 W2,7 W8,7 W6,8\n10x9 W3,0 W6,0 W8,1 W0,2 W4,2 W2,3 W6,3 W4,4 W8,4 W0,5 W2,6 W7,6 W4,7 W2,8 W6,8 W9,8\n10x9 W3,1 W6,1 W0,2 W9,2 W7,3 W1,4 W3,4 W5,4 W2,6 W6,6 W9,6 W4,7 W0,8 W6,8\n10x9 W2,0 W6,0 W4,1 W8,1 W1,2 W6,2 W3,3 W7,4 W0,5 W4,5 W9,5 W2,6 W6,6 W8,7 W2,8 W5,8\n10x9 W3,0 W7,0 W1,1 W5,1 W7,2 W0,3 W3,3 W5,3 W9,3 W3,5 W6,5 W1,6 W9,6 W4,7 W7,7 W0,8\n10x9 W3,0 W5,1 W8,1 W0,2 W2,2 W4,3 W6,3 W8,4 W0,5 W3,5 W6,5 W9,6 W2,7 W7,7 W0,8 W4,8\n10x9 W4,0 W7,0 W2,1 W0,2 W3,3 W6,3 W9,3 W0,5 W2,5 W6,5 W4,6 W8,6 W2,8 W7,8\n10x9 W0,0 W3,0 W6,0 W9,0 W1,2 W4,2 W7,3 W5,4 W2,5 W9,5 W0,6 W5,6 W7,6 W3,7 W6,8 W9,8\n10x9 W0,0 W3,0 W6,0 W2,2 W5,2 W9,2 W7,3 W1,4 W3,4 W6,5 W9,5 W2,6 W5,7 W8,7 W0,8 W3,8\n10x9 W2,0 W6,0 W4,1 W8,1 W6,2 W2,3 W4,3 W9,3 W0,4 W3,5 W6,5 W1,6 W9,6 W4,7 W2,8 W6,8\n10x9 W2,0 W5,1 W1,2 W3,2 W7,2 W9,2 W0,4 W5,4 W8,4 W3,5 W1,6 W6,6 W9,6 W4,7 W2,8 W6,8\n10x9 W2,0 W5,0 W6,2 W9,2 W0,3 W3,3 W4,5 W6,5 W9,5 W0,6 W2,6 W5,7 W8,7 W3,8\n10x9 W4,0 W7,0 W2,1 W0,2 W4,2 W8,2 W6,3 W1,4 W3,4 W9,4 W5,5 W2,6 W8,6 W2,8 W5,8 W9,8\n10x9 W2,0 W6,0 W4,1 W2,2 W6,2 W9,2 W4,3 W7,4 W0,5 W2,5 W9,5 W4,6 W6,6 W8,7 W2,8 W5,8\n10x9 W0,0 W6,0 W9,0 W2,1 W5,2 W7,2 W3,3 W9,3 W1,4 W4,5 W7,5 W2,6 W8,7 W0,8 W3,8 W6,8\n10x9 W3,0 W5,1 W0,2 W2,2 W7,2 W9,2 W4,3 W1,4 W7,5 W4,6 W9,6 W1,7 W7,7 W5,8\n10x9 W2,0 W5,0 W3,2 W6,2 W9,2 W1,3 W5,4 W0,5 W3,5 W7,5 W9,5 W5,6 W8,7 W0,8 W3,8 W6,8\n10x9 W2,0 W6,0 W4,1 W1,2 W9,2 W3,3 W6,3 W0,4 W8,4 W2,5 W6,5 W4,6 W9,6 W1,7 W7,7 W5,8\n10x9 W2,0 W7,0 W4,1 W6,2 W8,2 W2,3 W0,4 W5,4 W7,4 W3,5 W1,6 W6,6 W9,6 W4,7 W2,8 W6,8\n10x9 W3,0 W7,0 W5,1 W0,2 W2,3 W5,3 W7,3 W9,4 W0,5 W3,5 W6,5 W8,6 W2,7 W5,7 W0,8 W9,8\n10x9 W6,0 W9,0 W3,1 W0,2 W5,2 W7,2 W2,3 W4,4 W6,4 W8,4 W1,6 W3,6 W5,6 W8,7 W2,8 W6,8\n10x9 W2,0 W5,0 W7,1 W3,2 W9,2 W1,3 W6,3 W8,4 W2,5 W5,5 W0,6 W2,7 W5,7 W8,7\n10x9 W5,0 W1,1 W4,2 W6,2 W9,2 W1,4 W4,4 W7,4 W3,6 W8,6 W1,7 W5,7 W3,8 W9,8\n10x9 W3,0 W6,0 W9,0 W1,1 W8,2 W0,3 W3,3 W6,3 W2,5 W6,5 W9,5 W0,6 W4,6 W8,7 W3,8 W6,8\n10x9 W9,0 W1,1 W4,1 W7,1 W0,3 W2,3 W5,3 W8,4 W0,6 W2,6 W5,6 W8,7 W3,8 W6,8\n10x9 W0,0 W5,0 W9,0 W7,1 W2,2 W0,3 W5,3 W9,3 W7,4 W3,5 W1,6 W5,6 W7,7 W0,8 W3,8 W9,8\n10x9 W2,0 W5,0 W9,0 W7,1 W1,3 W4,3 W6,4 W8,4 W2,5 W0,6 W5,6 W2,7 W8,7 W4,8\n10x9 W0,0 W4,0 W7,0 W2,1 W7,2 W0,3 W5,3 W9,3 W2,4 W6,5 W0,6 W3,6 W8,6 W3,8 W6,8 W9,8\n10x9 W4,0 W7,0 W0,2 W3,2 W5,3 W8,3 W1,4 W4,5 W9,5 W2,6 W6,6 W8,7 W0,8 W5,8\n10x9 W4,0 W9,0 W2,1 W7,1 W0,2 W2,3 W4,3 W6,3 W9,3 W3,5 W5,5 W0,6 W7,6 W3,8 W6,8 W9,8\n10x9 W2,0 W5,0 W9,0 W7,1 W4,2 W2,3 W0,4 W5,4 W8,4 W3,5 W1,6 W5,6 W8,7 W0,8 W3,8 W6,8\n10x9 W5,0 W1,1 W7,1 W3,2 W9,2 W0,3 W5,3 W7,4 W2,5 W5,5 W9,5 W0,6 W3,7 W7,7 W5,8 W9,8\n10x9 W4,0 W9,0 W2,1 W0,2 W4,2 W7,2 W2,3 W9,3 W5,4 W3,5 W7,5 W0,6 W5,6 W2,7 W6,8 W9,8\n10x9 W0,0 W5,0 W9,0 W7,1 W1,2 W4,2 W6,3 W9,3 W0,4 W2,5 W5,5 W7,6 W2,7 W0,8 W4,8 W7,8\n10x9 W2,0 W7,0 W5,1 W8,2 W0,3 W2,3 W6,3 W4,4 W9,4 W7,5 W2,6 W5,6 W7,7 W2,8 W5,8 W9,8\n10x9 W2,0 W7,0 W4,1 W6,2 W8,2 W1,3 W4,4 W9,4 W0,5 W2,5 W6,5 W4,6 W8,6 W2,8 W5,8 W9,8\n10x9 W2,0 W9,0 W5,1 W1,2 W3,2 W7,2 W9,3 W0,4 W2,4 W5,4 W7,5 W1,6 W3,6 W5,7 W2,8 W7,8\n10x9 W2,0 W5,0 W9,0 W7,1 W1,2 W4,3 W7,3 W0,4 W9,4 W3,5 W1,6 W6,6 W8,6 W4,7 W2,8 W7,8\n10x9 W0,0 W5,0 W8,1 W3,2 W6,2 W0,3 W9,3 W2,4 W4,4 W7,4 W0,6 W3,6 W6,6 W8,7 W3,8 W6,8\n10x9 W3,0 W6,0 W1,1 W8,1 W4,2 W0,3 W7,3 W2,4 W5,4 W9,4 W5,6 W8,6 W2,7 W0,8 W6,8 W9,8\n10x9 W5,0 W1,1 W8,1 W3,2 W5,3 W7,3 W2,4 W0,5 W4,5 W9,5 W2,6 W7,6 W5,7 W0,8 W3,8 W9,8\n10x9 W3,0 W7,0 W5,1 W0,2 W3,2 W5,3 W8,3 W2,4 W0,5 W7,5 W9,5 W5,6 W2,7 W8,7 W0,8 W6,8\n10x9 W5,0 W2,1 W7,1 W0,2 W9,2 W3,3 W5,3 W1,4 W7,4 W9,5 W3,6 W6,6 W1,7 W3,8 W6,8 W9,8\n10x9 W0,0 W3,0 W6,0 W1,2 W4,2 W7,2 W9,2 W0,4 W8,4 W3,5 W6,5 W1,6 W4,7 W8,7 W2,8 W6,8\n10x9 W2,0 W5,1 W7,2 W9,2 W2,3 W4,4 W0,5 W6,5 W9,5 W2,6 W4,7 W2,8 W6,8 W9,8\n10x9 W0,0 W2,1 W5,1 W7,2 W9,2 W2,3 W0,4 W4,4 W7,5 W9,5 W1,6 W3,6 W5,6 W0,8 W4,8 W7,8\n10x9 W0,0 W4,0 W7,0 W2,1 W4,2 W8,2 W6,3 W1,4 W3,4 W9,4 W5,5 W0,6 W8,6 W2,7 W4,8 W7,8\n10x9 W2,0 W5,0 W7,1 W3,2 W9,2 W1,3 W5,3 W7,3 W3,4 W6,5 W1,6 W4,6 W8,6 W2,8 W5,8 W9,8\n10x9 W2,0 W6,0 W9,0 W4,1 W8,2 W0,3 W2,3 W5,3 W9,4 W3,5 W7,5 W0,6 W5,6 W2,7 W8,7 W4,8\n10x9 W5,0 W7,1 W0,2 W3,2 W9,2 W5,3 W7,3 W2,4 W0,5 W4,5 W6,5 W8,6 W1,7 W4,7 W6,8 W9,8\n10x9 W2,0 W9,0 W5,1 W3,2 W7,2 W0,3 W5,3 W9,3 W2,4 W4,5 W6,5 W8,6 W1,7 W5,7 W3,8 W7,8\n10x9 W2,0 W6,0 W4,1 W1,2 W7,2 W9,2 W3,3 W0,4 W5,4 W2,5 W7,5 W9,5 W2,7 W5,7 W0,8 W7,8\n10x9 W2,0 W6,0 W8,1 W3,2 W5,2 W1,3 W4,4 W7,4 W2,5 W9,5 W0,6 W5,6 W2,7 W7,7 W4,8 W9,8\n10x9 W0,0 W3,0 W7,0 W5,1 W2,2 W8,2 W0,3 W4,3 W2,4 W7,4 W9,4 W1,6 W4,6 W6,6 W8,6 W0,8 W3,8 W7,8\n10x9 W2,0 W7,0 W5,1 W1,2 W4,3 W7,3 W9,4 W1,5 W4,5 W6,6 W8,6 W2,8 W5,8 W9,8\n10x9 W0,0 W4,0 W6,1 W1,2 W3,2 W9,2 W5,3 W0,4 W8,4 W3,5 W1,6 W5,6 W7,7 W0,8 W3,8 W9,8\n10x9 W0,0 W3,0 W6,0 W4,2 W9,2 W2,3 W7,3 W0,4 W4,5 W6,5 W1,6 W8,6 W4,7 W0,8 W6,8 W9,8\n10x9 W0,0 W3,0 W7,0 W5,1 W2,2 W8,2 W4,3 W6,3 W1,4 W7,5 W2,6 W4,6 W9,6 W6,7 W0,8 W3,8\n10x9 W3,0 W5,1 W8,1 W0,2 W2,2 W7,3 W5,4 W9,4 W0,5 W2,5 W4,6 W6,6 W8,6 W1,7 W5,8 W9,8\n10x9 W3,0 W6,0 W9,0 W1,1 W4,2 W7,2 W0,3 W2,3 W6,4 W8,4 W3,5 W0,6 W5,6 W7,7 W3,8 W9,8\n10x9 W4,0 W7,0 W2,1 W0,2 W8,2 W4,3 W6,3 W2,4 W5,5 W9,5 W1,6 W3,6 W7,6 W5,7 W2,8 W7,8\n10x9 W3,0 W7,0 W0,2 W6,2 W3,3 W8,3 W6,4 W0,5 W4,5 W9,5 W2,6 W7,6 W5,7 W0,8 W3,8 W7,8\n10x9 W3,0 W7,0 W1,1 W5,1 W4,3 W6,3 W9,3 W2,4 W0,5 W4,6 W6,6 W9,6 W1,7 W5,8\n10x9 W0,0 W3,0 W5,1 W2,2 W7,2 W9,2 W4,3 W6,4 W8,4 W0,5 W3,5 W7,6 W9,6 W2,7 W5,7 W0,8\n10x9 W0,0 W3,0 W6,0 W8,1 W1,2 W5,2 W3,3 W0,4 W6,4 W9,4 W3,6 W8,6 W1,7 W5,7 W3,8 W7,8\n10x9 W4,0 W7,0 W2,1 W0,2 W4,2 W6,3 W9,3 W1,4 W3,4 W6,5 W2,6 W8,6 W4,7 W2,8 W6,8 W9,8\n10x9 W2,0 W6,0 W4,1 W2,2 W6,2 W9,2 W0,3 W4,3 W2,4 W7,4 W5,5 W1,6 W8,6 W4,7 W2,8 W7,8\n10x9 W2,0 W5,0 W7,1 W3,2 W9,2 W1,3 W5,3 W3,4 W7,4 W9,5 W1,6 W4,6 W6,6 W0,8 W5,8 W9,8\n10x9 W2,0 W5,1 W1,2 W3,2 W7,2 W9,2 W5,3 W0,4 W2,5 W7,5 W9,5 W5,6 W2,7 W8,7 W0,8 W6,8\n10x9 W0,0 W4,0 W7,0 W1,2 W3,2 W5,2 W7,3 W0,4 W4,4 W2,5 W6,5 W9,5 W1,7 W5,7 W3,8 W7,8\n10x9 W2,0 W5,0 W9,0 W7,1 W1,2 W4,2 W6,3 W0,4 W3,4 W8,4 W4,6 W7,6 W1,7 W3,8 W6,8 W9,8\n10x9 W2,0 W6,0 W4,1 W8,1 W1,2 W3,3 W6,3 W9,3 W0,5 W3,5 W5,5 W7,6 W9,6 W1,7 W5,7 W3,8\n10x9 W0,0 W5,0 W9,0 W7,1 W2,2 W5,2 W0,3 W6,4 W9,4 W3,5 W1,6 W6,6 W8,6 W4,7 W2,8 W7,8\n10x9 W3,0 W6,0 W1,1 W8,1 W5,2 W0,3 W3,3 W7,3 W9,3 W5,4 W0,6 W2,6 W7,6 W4,7 W6,8 W9,8\n10x9 W7,0 W1,1 W4,1 W8,2 W3,3 W6,3 W1,4 W4,5 W7,5 W0,6 W2,6 W9,6 W3,8 W6,8\n10x9 W2,0 W6,0 W4,1 W7,2 W9,2 W0,3 W2,3 W5,3 W8,4 W5,5 W0,6 W2,6 W7,6 W4,7 W6,8 W9,8\n10x9 W5,0 W9,0 W3,1 W7,1 W0,2 W2,3 W4,3 W6,4 W9,4 W0,5 W3,5 W6,6 W8,6 W4,7 W2,8 W7,8\n10x9 W4,0 W7,0 W2,1 W0,2 W4,3 W7,3 W2,4 W0,5 W6,5 W9,5 W3,6 W5,7 W8,7 W2,8\n10x9 W2,0 W6,0 W9,0 W4,1 W1,2 W7,2 W5,3 W2,4 W8,4 W0,5 W5,5 W7,6 W9,6 W2,7 W5,7 W0,8\n10x9 W4,0 W7,0 W2,1 W0,2 W5,2 W2,3 W7,3 W3,5 W5,5 W9,5 W1,6 W7,6 W0,8 W3,8 W6,8 W9,8\n10x9 W2,0 W5,0 W9,0 W7,1 W3,2 W1,3 W6,3 W9,3 W4,4 W7,5 W1,6 W4,7 W2,8 W7,8\n10x9 W0,0 W3,0 W6,0 W8,1 W4,2 W2,3 W6,3 W4,4 W8,4 W0,5 W6,5 W2,6 W9,6 W4,7 W7,7 W2,8\n10x9 W4,0 W7,0 W2,1 W0,2 W8,2 W3,3 W6,3 W9,4 W0,5 W5,5 W7,5 W3,6 W1,7 W7,7 W5,8 W9,8\n10x9 W4,0 W2,1 W7,1 W0,2 W5,2 W9,2 W2,4 W8,4 W0,5 W5,5 W3,6 W7,6 W9,6 W1,7 W3,8 W6,8\n10x9 W0,0 W3,0 W7,0 W5,1 W8,2 W2,3 W5,3 W0,4 W7,4 W3,5 W1,6 W5,6 W9,6 W7,7 W2,8 W5,8\n10x9 W0,0 W4,0 W9,0 W2,1 W4,2 W7,2 W0,3 W2,4 W5,4 W7,5 W9,5 W0,6 W5,6 W2,7 W8,7 W6,8\n10x9 W2,0 W7,0 W4,2 W2,3 W7,3 W5,4 W0,5 W3,5 W9,5 W7,6 W2,7 W5,7 W0,8 W9,8\n10x9 W3,0 W6,0 W8,1 W0,2 W2,2 W5,2 W7,3 W0,5 W2,5 W5,5 W9,5 W7,6 W4,7 W2,8 W6,8 W9,8\n10x9 W0,0 W3,0 W6,0 W8,1 W2,2 W5,2 W1,4 W3,4 W6,4 W8,4 W2,6 W5,6 W9,6 W7,7 W2,8 W5,8\n10x9 W2,0 W5,0 W7,1 W1,2 W4,2 W9,2 W6,3 W0,4 W8,4 W2,5 W4,5 W6,6 W9,6 W2,7 W0,8 W4,8\n10x9 W4,0 W1,1 W6,1 W9,2 W2,3 W5,3 W8,4 W0,5 W3,5 W5,6 W1,7 W8,7 W3,8 W6,8\n10x9 W4,0 W7,1 W0,2 W3,2 W9,2 W6,3 W1,4 W3,4 W5,5 W9,5 W0,6 W2,6 W7,6 W4,7 W6,8 W9,8\n10x9 W0,0 W3,0 W6,0 W2,2 W7,2 W9,2 W0,3 W4,3 W6,4 W8,4 W1,5 W4,5 W9,6 W7,7 W2,8 W5,8\n10x9 W3,0 W7,0 W5,1 W0,2 W8,2 W2,3 W5,4 W7,4 W9,5 W0,6 W2,6 W5,7 W8,7 W3,8\n10x9 W2,0 W7,0 W2,2 W5,2 W8,2 W0,3 W3,4 W1,5 W6,5 W9,5 W4,7 W8,7 W2,8 W6,8\n10x9 W3,0 W6,1 W0,2 W2,2 W4,2 W9,2 W1,4 W3,4 W6,4 W8,4 W0,6 W5,6 W9,6 W3,7 W7,7 W5,8\n10x9 W4,0 W7,0 W1,1 W5,2 W8,2 W2,3 W7,4 W0,5 W3,5 W5,5 W9,5 W8,7 W2,8 W5,8\n10x9 W2,0 W5,0 W3,2 W6,2 W9,2 W1,3 W4,4 W0,5 W2,5 W6,5 W9,5 W4,6 W2,8 W7,8\n10x9 W3,0 W6,0 W9,0 W1,1 W4,2 W7,2 W0,3 W2,3 W4,4 W8,4 W1,5 W6,5 W3,6 W8,7 W2,8 W6,8\n10x9 W3,0 W7,1 W0,2 W2,2 W5,2 W9,2 W8,4 W0,5 W2,5 W5,5 W7,6 W1,7 W4,8 W9,8\n10x9 W3,0 W6,0 W9,0 W1,1 W4,2 W7,2 W0,3 W2,3 W6,4 W4,5 W9,5 W2,6 W4,7 W7,7 W2,8 W9,8\n10x9 W0,0 W5,0 W9,0 W2,1 W7,1 W4,2 W6,3 W9,3 W1,4 W3,5 W7,5 W0,6 W5,6 W2,7 W4,8 W7,8\n10x9 W4,0 W7,0 W2,1 W0,2 W7,2 W5,3 W9,3 W2,4 W0,5 W6,5 W3,6 W8,6 W1,7 W5,7 W3,8 W9,8\n10x9 W2,0 W9,0 W5,1 W1,2 W3,2 W8,2 W5,3 W0,4 W2,4 W9,4 W4,5 W6,5 W1,6 W8,6 W5,7 W0,8 W3,8 W7,8\n10x9 W3,0 W9,0 W1,1 W5,1 W3,2 W7,2 W0,3 W5,3 W9,3 W2,4 W7,5 W5,6 W9,6 W2,7 W0,8 W6,8\n10x9 W0,0 W4,0 W2,1 W6,1 W9,2 W2,3 W5,3 W7,3 W0,4 W7,5 W1,6 W3,6 W5,6 W9,6 W2,8 W6,8\n10x9 W0,0 W4,0 W2,1 W8,1 W5,2 W3,3 W1,4 W6,4 W8,4 W4,5 W0,6 W2,6 W7,6 W5,7 W3,8 W9,8\n10x9 W0,0 W3,0 W7,0 W5,1 W2,2 W7,3 W1,4 W5,4 W9,4 W3,5 W0,6 W5,6 W8,6 W2,7 W4,8 W7,8\n10x9 W2,0 W6,0 W4,1 W1,2 W9,2 W6,3 W0,4 W2,4 W4,4 W8,4 W6,5 W1,6 W9,6 W4,7 W7,7 W0,8\n10x9 W2,0 W7,0 W4,1 W2,2 W7,3 W9,3 W5,4 W0,5 W2,5 W8,5 W4,6 W6,6 W2,8 W7,8\n10x9 W2,0 W7,0 W5,1 W3,2 W0,3 W6,3 W9,3 W2,5 W5,5 W7,5 W0,6 W9,6 W3,7 W6,7\n10x9 W5,0 W7,1 W0,2 W3,2 W9,2 W5,3 W3,4 W7,4 W0,5 W9,5 W2,6 W4,6 W7,7 W0,8 W3,8 W9,8\n10x9 W0,0 W4,1 W7,1 W1,2 W9,2 W0,4 W2,4 W4,4 W7,4 W1,6 W3,6 W5,6 W8,6 W0,8 W4,8 W7,8\n10x9 W2,0 W5,0 W9,0 W7,1 W5,2 W2,3 W0,4 W4,4 W7,4 W9,5 W1,6 W4,6 W6,6 W0,8 W5,8 W9,8\n10x9 W0,0 W4,0 W2,1 W6,1 W4,2 W9,2 W0,3 W2,4 W5,4 W8,4 W1,6 W6,6 W9,6 W4,7 W0,8 W6,8\n10x9 W2,0 W6,0 W9,0 W4,1 W1,2 W7,2 W3,3 W6,4 W2,5 W4,5 W9,5 W0,6 W7,6 W3,7 W6,8 W9,8\n10x9 W4,0 W7,0 W2,1 W0,2 W4,2 W7,3 W3,4 W5,4 W9,4 W0,5 W2,6 W5,6 W8,6 W2,8 W6,8 W9,8\n10x9 W4,0 W9,0 W0,2 W3,2 W7,2 W5,3 W0,5 W3,5 W6,5 W9,5 W1,7 W4,7 W6,8 W9,8\n10x9 W2,0 W7,0 W5,1 W1,2 W3,2 W7,2 W5,3 W0,4 W3,4 W8,4 W4,6 W7,6 W2,7 W0,8 W6,8 W9,8\n10x9 W0,0 W3,0 W7,0 W2,2 W4,2 W7,2 W0,3 W3,4 W6,4 W8,4 W1,5 W7,6 W9,6 W4,7 W2,8 W6,8\n10x9 W0,0 W6,0 W9,0 W2,1 W5,2 W7,2 W3,3 W1,4 W6,4 W8,4 W0,6 W4,6 W7,6 W2,7 W6,8 W9,8\n10x9 W2,0 W6,0 W4,1 W2,2 W6,2 W9,2 W0,3 W4,3 W2,4 W4,5 W6,5 W9,5 W1,7 W3,8 W6,8 W9,8\n10x9 W0,0 W4,0 W9,0 W2,1 W6,2 W8,2 W4,3 W2,4 W6,4 W9,4 W0,5 W3,6 W5,7 W8,7 W0,8 W3,8\n10x9 W2,0 W6,0 W1,2 W3,2 W5,2 W9,2 W7,3 W0,4 W3,5 W6,5 W9,5 W2,7 W7,7 W0,8 W5,8 W9,8\n10x9 W2,0 W5,1 W8,1 W0,3 W2,3 W7,3 W9,3 W5,4 W0,6 W2,6 W7,6 W5,7 W3,8 W7,8\n10x9 W0,0 W6,0 W2,1 W8,1 W5,2 W3,3 W9,3 W1,4 W7,4 W3,5 W5,5 W2,7 W7,7 W0,8 W5,8 W9,8\n10x9 W4,0 W1,1 W7,2 W9,2 W2,3 W5,3 W0,5 W3,5 W6,5 W9,5 W1,7 W3,8 W6,8 W9,8\n10x9 W0,0 W5,0 W7,1 W2,2 W5,2 W9,2 W0,3 W8,4 W3,5 W5,5 W1,6 W7,6 W4,7 W2,8 W6,8 W9,8\n10x9 W0,0 W4,0 W7,0 W2,1 W4,2 W0,3 W6,3 W9,3 W2,4 W4,5 W6,5 W0,6 W9,6 W2,7 W7,7 W4,8\n10x9 W0,0 W3,0 W7,0 W2,2 W4,2 W6,2 W8,3 W5,4 W0,5 W3,5 W5,6 W8,6 W2,7 W0,8 W6,8 W9,8\n10x9 W9,0 W1,1 W4,1 W7,1 W0,3 W3,3 W7,3 W5,4 W9,4 W1,5 W3,6 W5,6 W8,6 W2,8 W6,8 W9,8\n10x9 W0,0 W3,0 W6,0 W9,0 W1,2 W7,2 W3,3 W5,3 W8,4 W2,5 W0,6 W5,6 W2,7 W7,7 W4,8 W9,8\n10x9 W0,0 W4,0 W7,0 W2,1 W5,2 W8,2 W2,3 W0,4 W4,4 W6,5 W9,5 W1,6 W3,6 W5,7 W8,7 W2,8\n10x9 W3,0 W6,0 W1,1 W4,2 W9,2 W2,3 W6,3 W4,4 W8,4 W0,5 W2,6 W5,6 W7,7 W0,8 W3,8 W9,8\n10x9 W0,0 W3,0 W6,1 W2,2 W4,2 W9,2 W1,4 W3,4 W6,4 W8,4 W2,6 W5,6 W9,6 W7,7 W0,8 W3,8\n10x9 W3,0 W1,1 W5,1 W8,1 W3,2 W0,3 W2,4 W4,4 W6,4 W9,4 W0,6 W3,6 W6,6 W8,6 W3,8 W7,8\n10x9 W3,0 W5,1 W8,1 W0,2 W2,2 W4,3 W7,3 W1,4 W4,5 W9,5 W0,6 W2,6 W7,6 W4,7 W6,8 W9,8\n10x9 W3,0 W6,0 W0,2 W2,2 W6,2 W9,2 W4,3 W7,4 W0,5 W2,5 W4,6 W6,6 W8,6 W2,8 W5,8 W9,8\n10x9 W3,0 W7,0 W1,1 W5,1 W3,2 W8,2 W5,3 W1,4 W9,4 W3,5 W7,5 W0,6 W5,6 W3,8 W6,8 W9,8\n10x9 W9,0 W4,1 W7,1 W0,2 W2,2 W3,4 W6,4 W9,4 W0,5 W8,6 W2,7 W5,7 W0,8 W7,8\n10x9 W2,0 W6,0 W4,1 W7,2 W9,2 W0,3 W2,3 W5,3 W3,5 W7,5 W9,5 W0,6 W5,6 W2,7 W8,7 W6,8\n10x9 W0,0 W3,0 W5,1 W8,1 W2,2 W6,3 W9,3 W3,4 W0,5 W5,5 W2,6 W7,6 W4,7 W0,8 W6,8 W9,8\n10x9 W0,0 W3,0 W7,0 W1,2 W4,2 W8,2 W6,3 W2,4 W0,5 W4,5 W7,5 W2,6 W9,6 W7,7 W2,8 W5,8\n10x9 W3,0 W6,0 W1,1 W8,1 W4,3 W6,3 W9,3 W1,4 W7,5 W4,6 W1,7 W7,7 W5,8 W9,8\n10x9 W0,0 W6,0 W4,1 W8,1 W1,2 W5,3 W0,4 W2,4 W7,4 W9,5 W1,6 W3,6 W5,6 W8,7 W2,8 W6,8\n10x9 W2,0 W6,0 W4,1 W2,2 W7,2 W9,2 W0,3 W4,4 W2,5 W7,5 W9,6 W4,7 W7,7 W2,8\n10x9 W4,0 W7,0 W1,1 W3,2 W8,2 W0,3 W6,3 W2,4 W5,5 W9,5 W3,6 W7,6 W1,7 W3,8 W6,8 W9,8\n10x9 W2,0 W7,0 W2,2 W5,2 W0,3 W7,3 W9,3 W3,5 W6,5 W1,6 W9,6 W4,7 W7,7 W2,8\n10x9 W0,0 W3,0 W6,0 W2,2 W6,2 W9,2 W0,3 W4,3 W2,4 W7,4 W5,5 W1,6 W8,6 W4,7 W0,8 W7,8\n10x9 W3,0 W6,0 W9,0 W0,2 W2,2 W8,2 W4,3 W6,3 W1,4 W9,4 W7,5 W4,6 W2,7 W8,7 W0,8 W6,8\n10x9 W2,0 W5,0 W9,0 W7,1 W1,2 W5,2 W3,3 W0,4 W8,4 W2,5 W6,5 W4,6 W9,6 W2,7 W0,8 W6,8\n10x9 W0,0 W2,1 W5,1 W8,1 W3,3 W1,4 W5,4 W8,4 W2,6 W5,6 W9,6 W7,7 W2,8 W5,8\n10x9 W2,1 W5,1 W8,1 W0,2 W9,3 W3,4 W6,4 W0,5 W2,6 W7,6 W4,7 W2,8 W6,8 W9,8\n10x9 W0,0 W3,0 W6,0 W9,0 W5,2 W8,2 W2,3 W9,4 W0,5 W5,5 W7,5 W2,6 W5,7 W0,8 W3,8 W7,8\n10x9 W3,0 W7,0 W5,1 W0,2 W8,2 W3,3 W6,3 W0,5 W2,5 W6,5 W9,5 W4,6 W7,7 W2,8 W5,8 W9,8\n10x9 W0,0 W6,0 W2,1 W5,2 W9,2 W0,3 W3,3 W7,3 W3,5 W6,5 W1,6 W8,6 W5,7 W0,8 W3,8 W7,8\n10x9 W3,0 W7,0 W1,1 W3,2 W6,2 W8,2 W1,4 W4,4 W9,4 W7,5 W2,7 W5,7 W8,7 W0,8\n10x9 W3,0 W9,0 W5,1 W0,2 W3,2 W7,2 W5,3 W9,3 W2,4 W7,4 W5,5 W1,6 W4,7 W8,7 W2,8 W6,8\n10x9 W3,0 W7,0 W5,1 W0,2 W2,2 W7,2 W4,3 W9,3 W6,4 W0,5 W3,5 W5,6 W7,6 W2,8 W6,8 W9,8\n10x9 W3,0 W7,0 W1,1 W5,1 W3,2 W8,2 W6,3 W2,4 W9,4 W0,5 W5,5 W7,5 W2,7 W5,7 W0,8 W7,8\n10x9 W0,0 W3,0 W9,0 W7,1 W2,2 W4,2 W6,3 W9,3 W0,5 W2,5 W5,5 W7,6 W5,7 W0,8 W3,8 W7,8\n10x9 W6,0 W9,0 W4,1 W0,2 W2,2 W7,2 W5,3 W9,3 W1,4 W3,4 W6,5 W0,6 W9,6 W3,7 W7,7 W5,8\n10x9 W3,0 W6,0 W1,1 W4,2 W7,2 W9,2 W0,3 W3,4 W6,4 W9,5 W0,6 W2,6 W5,6 W8,7 W3,8 W6,8\n10x9 W3,0 W6,0 W9,0 W0,2 W2,2 W5,2 W8,2 W1,4 W5,4 W3,5 W7,5 W5,6 W9,6 W1,7 W3,8 W6,8\n10x9 W5,0 W9,0 W0,2 W2,2 W6,2 W8,2 W4,3 W6,4 W9,4 W0,5 W3,5 W5,6 W8,7 W0,8 W3,8 W6,8\n10x9 W2,1 W5,1 W8,1 W0,2 W2,3 W4,4 W6,4 W9,4 W0,6 W3,6 W8,6 W5,7 W3,8 W9,8\n10x9 W4,0 W7,1 W0,2 W3,2 W5,2 W9,2 W1,4 W6,4 W3,5 W9,5 W5,6 W7,6 W2,7 W0,8 W6,8 W9,8\n10x9 W3,0 W7,0 W0,2 W2,2 W6,2 W4,3 W8,3 W1,4 W6,4 W9,5 W2,6 W5,6 W7,6 W2,8 W6,8 W9,8\n10x9 W3,0 W7,0 W0,2 W2,2 W4,2 W7,3 W3,4 W5,4 W0,5 W9,5 W2,6 W7,6 W5,7 W0,8 W3,8 W7,8\n10x9 W0,0 W6,0 W9,0 W4,1 W2,2 W7,2 W0,3 W9,3 W5,4 W3,5 W7,5 W0,6 W5,6 W2,7 W4,8 W7,8\n10x9 W7,0 W2,1 W5,1 W0,2 W3,3 W8,3 W1,4 W5,4 W7,5 W9,5 W0,6 W2,6 W5,6 W8,7 W3,8 W6,8\n10x9 W0,0 W3,0 W6,0 W4,2 W9,2 W0,3 W2,3 W6,3 W4,4 W6,5 W9,5 W0,6 W3,6 W7,7 W4,8 W9,8\n10x9 W3,0 W6,0 W9,0 W0,2 W4,2 W7,2 W2,3 W9,3 W4,4 W7,4 W0,5 W2,6 W4,7 W7,7 W2,8 W9,8\n10x9 W4,0 W7,0 W0,2 W3,2 W8,2 W6,3 W2,4 W4,4 W9,4 W0,5 W5,6 W8,6 W2,7 W0,8 W4,8 W7,8\n10x9 W0,0 W3,0 W6,0 W5,2 W9,2 W2,3 W7,3 W0,4 W3,5 W5,5 W1,6 W7,6 W9,6 W4,7 W0,8 W6,8\n10x9 W3,0 W9,0 W5,1 W0,2 W2,2 W7,2 W4,3 W1,4 W6,4 W8,4 W2,6 W5,6 W9,6 W7,7 W2,8 W5,8\n10x9 W6,0 W1,1 W4,1 W8,1 W5,3 W9,3 W1,4 W3,4 W7,4 W4,6 W6,6 W1,7 W8,7 W5,8\n10x9 W3,0 W6,0 W1,1 W8,1 W4,2 W0,3 W2,3 W7,3 W5,4 W3,5 W9,5 W0,6 W7,6 W5,7 W3,8 W9,8\n10x9 W0,0 W3,0 W6,0 W9,0 W1,2 W4,3 W7,3 W0,4 W2,4 W9,4 W5,5 W1,6 W8,6 W4,7 W2,8 W7,8\n10x9 W0,0 W4,0 W1,2 W3,2 W7,2 W9,2 W5,3 W0,4 W2,5 W4,5 W7,5 W9,5 W2,7 W0,8 W4,8 W7,8\n10x9 W0,0 W7,0 W4,1 W1,2 W8,2 W5,3 W2,4 W7,4 W0,6 W5,6 W9,6 W2,7 W7,7 W4,8\n10x9 W2,0 W6,0 W9,0 W4,1 W7,2 W2,3 W9,3 W4,4 W0,5 W6,5 W2,6 W4,6 W8,6 W0,8 W3,8 W7,8\n10x9 W0,0 W5,0 W2,1 W6,2 W9,2 W3,3 W1,4 W4,5 W7,5 W2,6 W9,6 W4,7 W7,7 W2,8\n10x9 W3,0 W7,0 W5,1 W0,2 W2,2 W4,3 W8,3 W6,4 W0,5 W3,5 W9,5 W5,6 W7,7 W2,8 W5,8 W9,8\n10x9 W3,0 W5,1 W8,1 W0,2 W2,2 W4,3 W7,3 W1,4 W9,4 W4,5 W2,6 W6,6 W8,6 W0,8 W5,8 W9,8\n10x9 W3,0 W7,0 W0,2 W2,2 W4,2 W8,2 W6,3 W1,4 W9,4 W4,5 W7,5 W2,6 W5,7 W0,8 W3,8 W7,8\n10x9 W6,0 W1,1 W4,1 W6,2 W9,2 W0,4 W3,4 W5,4 W7,4 W9,5 W1,6 W6,6 W4,7 W8,7 W2,8 W6,8\n10x9 W0,0 W4,0 W9,0 W1,2 W3,2 W7,2 W5,3 W9,3 W0,4 W3,4 W7,5 W5,6 W2,7 W0,8 W6,8 W9,8\n10x9 W2,0 W5,0 W9,0 W7,1 W1,2 W4,2 W2,4 W7,4 W0,5 W5,5 W9,5 W7,6 W2,7 W0,8 W4,8 W9,8\n10x9 W2,0 W6,0 W9,0 W4,1 W8,2 W1,3 W6,3 W4,4 W0,5 W6,5 W9,5 W3,6 W1,7 W5,7 W8,7 W3,8\n10x9 W0,0 W4,0 W7,0 W2,1 W4,2 W7,2 W9,3 W1,4 W4,5 W6,5 W0,6 W2,6 W8,6 W5,7 W3,8 W7,8\n10x9 W2,0 W7,0 W4,1 W2,2 W6,2 W8,2 W0,3 W4,3 W6,4 W9,4 W3,5 W1,6 W5,7 W8,7 W0,8 W3,8\n10x9 W0,0 W3,0 W6,0 W9,0 W2,2 W8,2 W0,3 W4,3 W6,3 W9,4 W1,5 W5,5 W7,5 W3,6 W7,7 W2,8 W5,8 W9,8\n10x9 W0,0 W6,0 W9,0 W4,1 W2,2 W7,2 W0,3 W4,3 W9,3 W6,4 W3,5 W1,6 W6,6 W9,6 W2,8 W5,8\n10x9 W3,0 W6,0 W9,0 W0,2 W2,2 W4,3 W6,3 W9,3 W1,4 W3,5 W7,5 W0,6 W5,6 W2,7 W6,8 W9,8\n10x9 W2,0 W6,0 W9,0 W4,1 W0,3 W2,3 W6,3 W9,3 W4,4 W7,5 W0,6 W2,6 W4,7 W7,8\n10x9 W3,0 W5,1 W8,1 W0,2 W3,3 W5,4 W8,4 W0,5 W3,5 W7,6 W1,7 W4,7 W6,8 W9,8\n10x9 W2,0 W6,0 W4,1 W8,1 W2,2 W0,3 W6,3 W9,3 W4,4 W2,5 W6,5 W8,6 W1,7 W5,7 W3,8 W9,8\n10x9 W4,0 W7,0 W2,1 W0,2 W4,2 W7,2 W1,4 W6,4 W8,4 W3,5 W0,6 W5,6 W7,6 W2,7 W6,8 W9,8\n10x9 W4,0 W7,0 W2,1 W0,2 W6,2 W2,3 W4,3 W8,3 W6,4 W3,5 W9,5 W0,6 W5,6 W2,7 W8,7 W4,8\n10x9 W0,0 W5,0 W9,0 W7,1 W3,2 W0,3 W5,3 W9,3 W2,4 W7,4 W5,5 W9,6 W2,7 W7,7 W0,8 W5,8\n10x9 W2,0 W5,0 W6,2 W9,2 W0,3 W3,3 W5,4 W7,5 W1,6 W4,6 W9,6 W7,7 W0,8 W3,8\n10x9 W2,0 W7,0 W4,1 W2,2 W8,2 W5,3 W1,4 W7,4 W9,4 W4,5 W0,6 W6,6 W8,6 W2,7 W4,8 W9,8\n10x9 W6,0 W3,1 W0,2 W9,2 W4,3 W6,3 W1,4 W3,5 W6,5 W9,5 W1,7 W3,8 W6,8 W9,8\n10x9 W3,0 W6,0 W8,1 W0,2 W5,2 W3,3 W9,3 W6,4 W0,5 W4,5 W2,6 W7,6 W5,7 W0,8 W3,8 W9,8\n10x9 W3,0 W9,0 W5,1 W0,2 W3,2 W8,2 W6,3 W4,4 W2,5 W7,5 W0,6 W5,6 W9,6 W3,7 W7,7 W5,8\n10x9 W0,0 W6,0 W9,0 W4,1 W1,2 W7,2 W0,4 W4,4 W6,4 W2,5 W9,5 W5,6 W7,6 W2,8 W6,8 W9,8\n10x9 W3,0 W6,0 W1,1 W8,1 W0,3 W3,3 W6,3 W9,3 W4,5 W6,5 W0,6 W2,6 W8,6 W4,7 W6,8 W9,8\n10x9 W5,0 W8,1 W0,2 W2,2 W4,3 W7,3 W9,3 W1,4 W6,5 W4,6 W9,6 W1,7 W7,7 W5,8\n10x9 W3,0 W6,0 W9,0 W0,2 W2,2 W5,2 W8,2 W1,4 W3,4 W7,4 W5,5 W2,6 W9,6 W7,7 W2,8 W5,8\n10x9 W5,0 W9,0 W1,1 W7,1 W4,2 W0,3 W2,3 W9,3 W4,4 W7,4 W2,6 W5,6 W8,7 W0,8 W3,8 W6,8\n10x9 W3,0 W7,0 W0,2 W2,2 W6,2 W8,2 W4,3 W7,4 W9,4 W0,5 W3,5 W5,5 W8,6 W1,7 W4,7 W7,8\n10x9 W3,0 W9,0 W5,1 W0,2 W3,2 W8,2 W1,4 W4,4 W7,4 W9,5 W0,6 W2,6 W7,6 W4,7 W6,8 W9,8\n10x9 W1,1 W4,1 W7,1 W9,2 W3,3 W1,4 W5,4 W8,4 W3,5 W0,6 W7,6 W5,7 W3,8 W9,8\n10x9 W0,0 W5,0 W2,1 W7,1 W4,2 W9,2 W2,4 W6,4 W0,5 W4,5 W9,5 W7,6 W1,7 W5,7 W3,8 W7,8\n10x9 W2,0 W6,0 W4,1 W8,1 W6,2 W1,3 W4,3 W7,4 W9,5 W0,6 W3,6 W6,6 W8,7 W5,8\n10x9 W0,0 W3,0 W5,1 W8,1 W1,2 W3,3 W0,4 W5,4 W8,4 W2,5 W4,6 W7,6 W9,6 W1,7 W3,8 W6,8\n10x9 W0,0 W3,0 W9,0 W5,1 W2,2 W7,2 W9,3 W3,4 W6,4 W0,5 W9,6 W1,7 W4,7 W7,7\n10x9 W3,0 W7,0 W1,1 W5,1 W3,2 W7,2 W5,3 W2,4 W8,4 W0,5 W5,5 W9,6 W2,7 W7,7 W0,8 W5,8\n10x9 W3,0 W7,0 W0,2 W4,2 W2,3 W7,3 W5,4 W9,5 W0,6 W2,6 W7,6 W4,7 W6,8 W9,8\n10x9 W0,0 W4,0 W2,1 W8,1 W6,2 W2,3 W4,3 W7,4 W0,5 W3,5 W5,5 W9,5 W1,7 W5,7 W8,7 W3,8\n10x9 W0,0 W6,0 W2,1 W8,1 W5,2 W0,3 W3,3 W7,3 W9,4 W1,5 W4,5 W6,6 W8,6 W2,8 W5,8 W9,8\n10x9 W2,0 W6,0 W4,1 W1,2 W7,2 W9,2 W0,4 W4,4 W6,4 W8,4 W2,5 W5,6 W7,7 W2,8 W5,8 W9,8\n10x9 W0,0 W5,0 W2,1 W4,2 W6,2 W9,2 W0,3 W2,4 W5,4 W7,5 W9,5 W0,6 W3,6 W5,7 W3,8 W7,8\n10x9 W3,0 W6,0 W9,0 W1,1 W3,2 W8,2 W5,3 W2,4 W7,4 W9,4 W0,5 W4,5 W2,6 W8,6 W5,7 W0,8 W3,8 W7,8\n10x9 W4,0 W7,0 W2,1 W0,2 W4,2 W7,2 W2,3 W9,3 W5,4 W3,5 W7,5 W0,6 W5,6 W2,7 W8,7 W4,8\n10x9 W0,0 W7,0 W2,1 W5,1 W8,2 W6,3 W1,4 W4,4 W9,4 W7,5 W0,6 W2,7 W5,7 W8,7\n10x9 W0,0 W6,0 W9,0 W4,1 W1,2 W4,3 W7,3 W0,4 W2,4 W4,5 W9,5 W1,6 W7,6 W0,8 W4,8 W9,8\n10x9 W3,0 W5,1 W8,1 W0,2 W2,2 W4,3 W6,3 W9,3 W1,4 W6,5 W0,6 W4,6 W8,6 W2,7 W6,8 W9,8\n10x9 W0,0 W5,0 W9,0 W2,1 W7,1 W4,2 W7,3 W1,4 W4,4 W9,4 W0,6 W3,6 W5,6 W8,6 W4,8 W9,8\n10x9 W2,0 W9,0 W4,1 W7,1 W1,2 W3,3 W5,3 W0,4 W7,4 W2,5 W9,5 W5,6 W8,7 W0,8 W3,8 W6,8\n10x9 W7,0 W4,1 W0,2 W2,2 W6,2 W8,2 W4,3 W9,4 W0,5 W3,5 W6,5 W8,6 W1,7 W5,7 W3,8 W7,8\n10x9 W0,0 W4,0 W7,0 W2,1 W4,2 W2,3 W6,3 W9,3 W0,5 W3,5 W6,5 W8,6 W1,7 W5,7 W3,8 W7,8\n10x9 W2,0 W5,0 W9,0 W4,2 W6,2 W8,2 W2,3 W0,4 W7,4 W4,5 W1,6 W6,6 W9,6 W0,8 W3,8 W6,8\n10x9 W4,0 W7,0 W2,1 W0,2 W4,3 W7,3 W9,3 W1,4 W3,5 W6,6 W9,6 W2,7 W0,8 W5,8\n10x9 W6,0 W4,1 W8,1 W0,2 W2,2 W6,3 W9,3 W1,4 W3,4 W5,5 W0,6 W2,6 W7,6 W9,6 W3,8 W6,8\n10x9 W5,0 W1,1 W3,2 W6,2 W9,2 W0,4 W3,4 W6,4 W8,4 W1,6 W4,6 W7,6 W9,6 W0,8 W3,8 W6,8\n10x9 W0,0 W6,0 W9,0 W4,1 W1,2 W7,2 W3,3 W6,4 W8,4 W0,5 W2,6 W5,6 W7,7 W2,8 W5,8 W9,8\n10x9 W2,0 W5,0 W9,0 W7,1 W1,3 W4,3 W6,4 W8,4 W0,5 W2,5 W4,6 W7,6 W1,7 W3,8 W6,8 W9,8\n10x9 W3,0 W6,0 W9,0 W0,2 W2,2 W7,2 W5,3 W1,4 W3,4 W6,5 W9,5 W4,6 W1,7 W7,7 W5,8 W9,8\n10x9 W0,0 W4,0 W7,0 W2,1 W5,2 W0,3 W3,3 W7,3 W4,5 W6,5 W9,5 W0,6 W2,6 W5,7 W8,7 W3,8\n10x9 W5,0 W3,1 W0,2 W6,2 W9,2 W2,3 W4,4 W8,4 W0,5 W6,5 W3,6 W5,7 W8,7 W2,8\n10x9 W3,0 W6,0 W9,0 W1,1 W3,2 W7,2 W5,3 W9,3 W2,4 W7,4 W0,5 W4,5 W2,6 W8,6 W5,7 W0,8 W3,8 W7,8\n10x9 W0,0 W7,0 W4,1 W2,2 W6,2 W8,2 W4,3 W1,4 W9,4 W7,5 W0,6 W4,6 W2,7 W7,7 W5,8 W9,8\n10x9 W0,0 W4,0 W7,0 W2,1 W5,2 W8,2 W3,3 W1,4 W6,4 W4,5 W8,5 W6,6 W2,7 W0,8 W4,8 W7,8\n10x9 W2,0 W6,0 W9,0 W4,1 W7,2 W0,3 W3,3 W5,3 W2,5 W6,5 W9,5 W4,6 W8,7 W0,8 W3,8 W6,8\n10x9 W2,0 W5,0 W8,1 W1,2 W4,2 W7,3 W9,3 W2,4 W5,4 W0,5 W4,6 W7,6 W9,6 W1,7 W3,8 W6,8\n10x9 W2,0 W6,0 W4,1 W6,2 W9,2 W2,3 W0,4 W5,4 W7,4 W9,5 W1,6 W3,6 W6,6 W0,8 W4,8 W7,8\n10x9 W5,0 W9,0 W1,1 W7,1 W4,2 W2,3 W7,3 W5,4 W9,4 W0,5 W7,5 W2,6 W4,6 W0,8 W3,8 W7,8\n10x9 W3,0 W6,0 W9,0 W1,1 W4,2 W7,2 W0,3 W2,4 W5,4 W8,4 W0,6 W3,6 W6,6 W8,7 W3,8 W6,8\n10x9 W2,0 W6,0 W9,0 W4,1 W2,2 W6,3 W9,3 W1,4 W3,4 W0,6 W5,6 W8,6 W3,7 W7,8\n10x9 W0,0 W7,0 W2,1 W5,1 W7,2 W0,3 W5,3 W3,4 W8,4 W5,5 W0,6 W2,6 W8,7 W5,8\n10x9 W0,0 W4,0 W2,1 W8,1 W5,2 W3,3 W7,3 W1,4 W9,4 W6,5 W0,6 W4,6 W8,6 W2,7 W4,8 W7,8\n10x9 W0,0 W6,0 W4,1 W1,2 W9,2 W6,3 W0,4 W2,4 W4,4 W8,4 W1,6 W7,6 W9,6 W4,7 W2,8 W6,8\n10x9 W0,0 W7,0 W4,1 W1,2 W6,2 W8,2 W3,3 W0,4 W7,4 W9,4 W2,5 W4,5 W6,6 W8,6 W2,7 W0,8 W4,8 W9,8\n10x9 W7,0 W2,1 W5,1 W0,2 W2,3 W7,3 W4,4 W9,4 W2,5 W7,5 W0,6 W5,6 W3,7 W7,8\n10x9 W6,0 W9,0 W3,1 W0,2 W7,2 W2,3 W4,3 W9,3 W6,4 W0,5 W3,5 W7,6 W5,7 W0,8 W3,8 W9,8\n10x9 W3,0 W7,0 W1,1 W5,1 W3,2 W7,2 W5,3 W1,4 W8,4 W3,5 W5,6 W9,6 W2,7 W7,7 W0,8 W4,8\n10x9 W2,0 W6,0 W4,1 W8,1 W0,3 W3,3 W6,3 W8,4 W0,6 W2,6 W5,6 W8,7 W3,8 W6,8\n10x9 W5,0 W9,0 W3,1 W0,2 W6,2 W8,2 W1,4 W3,4 W5,4 W9,4 W7,5 W2,6 W4,7 W8,7 W0,8 W6,8\n10x9 W6,0 W9,0 W3,1 W0,2 W5,2 W7,2 W2,3 W9,3 W6,4 W3,5 W8,5 W1,6 W5,7 W0,8 W3,8 W7,8\n10x9 W3,0 W9,0 W5,1 W0,2 W2,2 W7,2 W4,3 W9,3 W1,4 W4,5 W7,5 W0,6 W2,6 W9,6 W3,8 W6,8\n10x9 W2,1 W5,1 W8,1 W0,2 W3,3 W7,3 W5,4 W9,4 W0,5 W3,5 W5,6 W8,6 W2,7 W0,8 W6,8 W9,8\n10x9 W0,0 W3,0 W7,1 W4,2 W9,2 W0,3 W2,3 W6,3 W1,5 W5,5 W9,5 W3,6 W7,6 W2,8 W6,8 W9,8\n10x9 W2,0 W7,0 W4,1 W6,2 W8,2 W1,3 W4,3 W7,4 W1,6 W4,6 W9,6 W7,7 W2,8 W5,8\n10x9 W0,0 W6,0 W4,1 W1,2 W7,2 W9,2 W5,3 W2,4 W8,4 W0,5 W2,6 W5,6 W7,7 W2,8 W5,8 W9,8\n10x9 W5,0 W9,0 W1,1 W4,2 W8,2 W0,3 W2,3 W6,3 W4,4 W7,5 W2,6 W5,6 W9,6 W7,7 W2,8 W5,8\n10x9 W7,0 W4,1 W0,2 W2,2 W6,2 W8,2 W4,3 W1,4 W9,4 W3,5 W7,5 W0,6 W5,6 W7,7 W3,8 W9,8\n10x9 W0,0 W5,0 W2,1 W7,1 W9,2 W0,3 W5,3 W7,3 W2,4 W0,6 W3,6 W6,6 W9,6 W5,8\n10x9 W3,0 W9,0 W1,1 W5,1 W7,2 W0,3 W2,3 W5,3 W9,3 W3,5 W7,5 W0,6 W5,6 W2,7 W8,7 W6,8\n10x9 W0,0 W3,0 W6,0 W9,0 W2,2 W7,2 W0,3 W4,3 W9,3 W3,5 W7,5 W0,6 W5,6 W9,6 W3,8 W6,8\n10x9 W0,0 W6,0 W9,0 W2,1 W5,2 W7,2 W3,3 W9,3 W1,4 W3,5 W6,5 W0,6 W8,6 W3,8 W6,8 W9,8\n10x9 W0,0 W3,0 W7,0 W5,1 W2,2 W0,3 W7,3 W5,4 W9,4 W2,5 W7,5 W4,6 W2,7 W0,8 W6,8 W9,8\n10x9 W9,0 W1,1 W4,1 W7,1 W3,3 W6,3 W9,3 W1,4 W4,5 W7,5 W1,7 W3,8 W6,8 W9,8\n10x9 W3,0 W7,0 W0,2 W2,2 W4,2 W7,2 W9,3 W3,4 W0,5 W6,5 W2,6 W8,6 W5,7 W0,8 W3,8 W7,8\n10x9 W2,0 W5,1 W1,2 W3,2 W7,2 W9,2 W5,3 W0,4 W8,4 W2,5 W6,5 W4,6 W7,7 W2,8 W5,8 W9,8\n10x9 W0,0 W4,0 W9,0 W2,1 W4,2 W7,2 W0,3 W2,4 W5,4 W7,5 W9,5 W3,6 W5,6 W1,7 W8,7 W4,8\n10x9 W0,0 W3,0 W7,0 W5,1 W2,2 W0,3 W4,3 W8,3 W6,4 W3,5 W9,5 W0,6 W5,6 W7,7 W3,8 W9,8\n10x9 W0,0 W3,0 W6,0 W8,1 W0,3 W3,3 W6,3 W8,4 W1,5 W6,5 W3,6 W8,7 W2,8 W6,8\n10x9 W2,0 W6,0 W4,1 W9,2 W0,3 W3,3 W6,3 W8,4 W0,6 W3,6 W5,6 W7,7 W4,8 W9,8\n10x9 W0,0 W4,0 W7,0 W2,1 W4,2 W2,3 W7,3 W0,4 W5,4 W9,4 W2,5 W6,6 W4,7 W8,7 W2,8 W6,8\n10x9 W0,0 W3,0 W5,1 W8,1 W2,2 W4,3 W9,3 W1,4 W7,4 W3,5 W5,5 W0,6 W9,6 W2,7 W7,7 W5,8\n10x9 W2,0 W6,0 W9,0 W2,2 W5,2 W7,2 W1,4 W3,4 W6,4 W8,4 W0,6 W2,6 W5,6 W9,6 W7,7 W3,8\n10x9 W2,0 W6,0 W9,0 W1,2 W3,2 W5,2 W7,3 W9,3 W0,4 W5,4 W3,5 W7,6 W9,6 W2,7 W5,7 W0,8\n10x9 W2,0 W6,0 W4,1 W8,1 W2,2 W0,3 W7,3 W5,4 W9,4 W2,5 W4,6 W6,6 W8,6 W1,7 W5,8 W9,8\n10x9 W0,0 W6,0 W2,1 W5,2 W7,2 W9,2 W0,3 W3,3 W6,4 W8,4 W4,5 W0,6 W2,6 W9,6 W4,7 W7,7\n10x9 W3,0 W6,0 W9,0 W1,1 W5,2 W0,3 W3,3 W7,3 W9,3 W2,5 W4,5 W8,5 W0,6 W6,6 W3,7 W7,8\n10x9 W0,0 W4,0 W2,1 W8,1 W5,2 W0,3 W3,3 W7,3 W2,5 W6,5 W9,5 W4,6 W1,7 W3,8 W6,8 W9,8\n10x9 W2,0 W6,0 W4,1 W2,2 W6,2 W9,2 W0,3 W4,3 W2,4 W7,4 W4,5 W9,5 W1,7 W5,7 W8,7 W3,8\n10x9 W2,0 W5,0 W9,0 W7,1 W4,2 W0,3 W2,3 W6,3 W9,3 W4,4 W6,5 W0,6 W2,6 W9,6 W4,7 W7,7\n10x9 W3,0 W9,0 W5,1 W0,2 W8,2 W3,3 W6,3 W9,4 W0,5 W4,5 W7,5 W2,6 W4,7 W7,7 W2,8 W9,8\n10x9 W2,0 W5,1 W1,2 W7,2 W9,2 W4,3 W2,4 W0,5 W4,5 W7,5 W9,5 W2,6 W4,7 W2,8 W6,8 W9,8\n10x9 W2,0 W7,0 W4,1 W1,2 W6,2 W8,2 W4,3 W0,4 W9,4 W3,5 W7,5 W1,6 W5,6 W0,8 W4,8 W7,8\n10x9 W2,0 W5,0 W9,0 W7,1 W1,2 W4,2 W6,3 W0,4 W8,4 W3,5 W6,5 W1,6 W7,7 W2,8 W5,8 W9,8\n10x9 W2,0 W6,0 W4,1 W8,1 W2,2 W0,3 W7,3 W2,4 W5,4 W9,4 W3,6 W8,6 W1,7 W5,7 W3,8 W7,8\n10x9 W0,0 W9,0 W4,1 W7,1 W2,2 W0,3 W4,3 W6,4 W9,4 W3,5 W1,6 W6,6 W8,6 W4,7 W0,8 W7,8\n10x9 W5,0 W1,1 W7,1 W4,2 W9,2 W2,3 W6,3 W0,4 W8,4 W3,5 W6,5 W1,6 W9,6 W4,7 W7,7 W2,8\n10x9 W0,0 W6,0 W2,1 W8,1 W5,2 W7,3 W1,4 W4,4 W9,4 W6,5 W0,6 W2,6 W8,6 W4,7 W6,8 W9,8\n10x9 W5,0 W7,1 W0,2 W3,2 W9,2 W6,3 W4,4 W2,5 W9,5 W0,6 W6,6 W3,7 W5,8 W9,8\n10x9 W0,0 W3,0 W5,1 W8,1 W2,2 W0,3 W4,3 W2,4 W7,4 W9,5 W1,6 W4,6 W6,6 W8,7 W2,8 W5,8\n10x9 W2,0 W5,1 W8,1 W1,2 W4,3 W7,3 W0,4 W2,4 W4,5 W9,5 W1,6 W7,6 W4,7 W2,8 W6,8 W9,8\n10x9 W4,0 W7,0 W2,1 W0,2 W5,2 W8,2 W3,3 W0,5 W4,5 W6,5 W9,5 W2,6 W4,7 W8,7 W2,8 W6,8\n10x9 W5,0 W2,1 W7,1 W0,2 W9,2 W3,3 W5,3 W7,4 W0,5 W2,5 W5,5 W9,5 W1,7 W4,7 W7,7 W9,8\n10x9 W0,0 W3,0 W6,0 W8,1 W2,2 W5,2 W0,3 W7,3 W9,3 W2,5 W5,5 W0,6 W7,6 W9,6 W3,8 W6,8\n10x9 W2,0 W5,0 W9,0 W3,2 W6,2 W8,2 W0,3 W2,4 W4,4 W9,4 W6,5 W8,6 W2,7 W5,7 W0,8 W7,8\n10x9 W9,0 W1,1 W4,1 W7,1 W3,3 W1,4 W5,4 W8,4 W0,6 W2,6 W7,6 W9,6 W5,7 W3,8\n10x9 W2,0 W6,0 W4,1 W2,2 W9,2 W6,3 W1,4 W3,4 W8,4 W6,5 W0,6 W3,7 W8,7 W6,8\n10x9 W7,0 W1,1 W4,1 W8,2 W0,3 W3,3 W5,3 W7,4 W1,6 W4,6 W9,6 W7,7 W2,8 W5,8\n10x9 W3,0 W6,0 W9,0 W1,1 W3,2 W7,2 W0,3 W5,3 W9,3 W2,4 W4,5 W7,5 W9,6 W1,7 W6,7 W4,8\n10x9 W2,0 W6,0 W9,0 W4,1 W1,2 W7,2 W0,4 W3,4 W6,4 W8,4 W4,6 W7,6 W2,7 W0,8 W4,8 W7,8\n10x9 W0,0 W6,0 W9,0 W4,1 W1,2 W3,3 W7,3 W9,3 W5,4 W0,5 W3,5 W7,6 W1,7 W5,7 W3,8 W7,8\n10x9 W4,0 W1,1 W7,2 W9,2 W4,3 W1,4 W6,4 W9,5 W0,6 W4,6 W7,6 W2,7 W4,8 W7,8\n10x9 W6,0 W9,0 W4,1 W0,2 W2,2 W6,3 W9,3 W1,4 W3,4 W6,5 W0,6 W4,6 W8,6 W2,7 W6,8 W9,8\n10x9 W0,0 W3,0 W6,0 W2,2 W5,2 W9,2 W7,3 W4,4 W0,5 W2,5 W6,5 W9,5 W4,6 W1,7 W3,8 W7,8\n10x9 W0,0 W3,0 W6,0 W8,1 W1,2 W4,2 W6,3 W9,3 W0,4 W3,4 W1,6 W6,6 W9,6 W4,7 W2,8 W6,8\n10x9 W2,0 W7,0 W5,2 W2,3 W7,3 W9,3 W4,4 W0,5 W2,6 W5,6 W7,6 W2,8 W6,8 W9,8\n10x9 W2,0 W6,0 W9,0 W4,1 W7,2 W0,3 W3,3 W5,3 W3,5 W6,5 W9,5 W0,6 W2,7 W7,7 W5,8 W9,8\n10x9 W2,0 W5,0 W7,1 W1,2 W4,2 W9,2 W6,3 W0,4 W8,4 W2,5 W5,5 W7,6 W2,7 W5,7 W0,8 W9,8\n10x9 W6,0 W9,0 W1,1 W4,1 W8,2 W0,3 W3,3 W5,3 W7,4 W2,5 W4,5 W0,6 W9,6 W3,7 W7,7 W5,8\n10x9 W2,0 W6,0 W1,2 W5,2 W9,2 W3,3 W7,3 W0,4 W4,5 W9,5 W1,6 W7,6 W0,8 W3,8 W6,8 W9,8\n10x9 W5,0 W2,1 W7,1 W0,2 W4,2 W9,2 W7,3 W1,4 W5,4 W3,5 W7,5 W0,6 W9,6 W2,7 W6,7 W4,8\n10x9 W2,0 W6,0 W4,1 W8,1 W6,2 W1,3 W4,3 W8,4 W0,5 W2,5 W6,5 W4,6 W9,6 W1,7 W7,7 W3,8\n10x9 W2,0 W6,0 W9,0 W4,1 W8,2 W1,3 W6,3 W4,4 W0,5 W6,5 W9,5 W3,6 W1,7 W5,7 W3,8 W7,8\n10x9 W0,0 W4,0 W7,0 W1,2 W3,2 W7,2 W5,3 W9,3 W0,4 W3,4 W6,5 W4,6 W9,6 W1,7 W3,8 W6,8\n10x9 W0,0 W6,0 W9,0 W4,1 W1,2 W8,2 W4,3 W6,3 W0,4 W2,4 W9,4 W1,6 W4,6 W6,6 W8,6 W0,8 W3,8 W7,8\n10x9 W2,0 W6,0 W9,0 W4,1 W1,2 W7,2 W0,4 W4,4 W2,5 W7,5 W9,5 W5,6 W0,8 W3,8 W6,8 W9,8\n10x9 W2,0 W7,0 W4,1 W6,2 W8,2 W0,3 W3,3 W7,4 W9,4 W4,5 W0,6 W2,6 W8,6 W5,7 W3,8 W7,8\n10x9 W0,0 W3,0 W7,1 W2,2 W5,2 W9,2 W0,3 W4,4 W7,4 W2,5 W0,6 W4,6 W6,6 W8,6 W3,8 W7,8\n10x9 W6,0 W9,0 W2,1 W0,2 W5,2 W7,2 W2,4 W4,4 W6,4 W9,5 W1,6 W7,6 W4,7 W0,8 W6,8 W9,8\n10x9 W6,0 W9,0 W1,1 W4,1 W2,3 W6,3 W9,3 W0,4 W4,4 W6,5 W1,6 W4,6 W9,6 W7,7 W0,8 W3,8\n10x9 W2,0 W5,0 W9,0 W7,1 W4,2 W2,3 W9,3 W4,4 W7,4 W0,5 W2,6 W5,6 W9,6 W7,7 W2,8 W5,8\n10x9 W3,0 W6,0 W0,2 W2,2 W7,2 W9,2 W5,3 W1,4 W8,4 W4,5 W6,5 W2,6 W5,7 W8,7 W0,8 W3,8\n10x9 W4,0 W9,0 W2,1 W0,2 W4,2 W7,2 W3,4 W6,4 W8,4 W0,5 W2,6 W5,6 W9,6 W7,7 W0,8 W5,8\n10x9 W0,0 W6,0 W9,0 W4,1 W1,2 W8,2 W4,3 W6,3 W0,4 W2,4 W6,5 W9,5 W1,6 W4,6 W7,7 W0,8 W5,8 W9,8\n10x9 W0,0 W3,0 W6,0 W8,1 W2,2 W5,2 W0,3 W7,3 W9,4 W3,5 W5,5 W1,6 W8,6 W4,7 W2,8 W7,8\n10x9 W0,0 W4,0 W2,1 W6,1 W4,2 W9,2 W2,3 W7,3 W4,4 W0,5 W6,5 W2,6 W9,6 W4,7 W0,8 W6,8\n10x9 W0,0 W3,0 W7,0 W5,1 W2,2 W7,2 W0,3 W5,3 W9,3 W2,5 W7,5 W5,6 W2,8 W7,8\n10x9 W0,0 W3,0 W5,1 W1,2 W7,2 W9,2 W3,3 W6,4 W0,5 W9,5 W2,6 W5,6 W7,7 W2,8 W5,8 W9,8\n10x9 W0,0 W3,0 W6,0 W1,2 W9,2 W3,3 W6,3 W0,4 W8,4 W2,5 W6,5 W4,6 W9,6 W0,8 W3,8 W6,8\n10x9 W3,0 W9,0 W1,1 W7,1 W4,2 W0,3 W2,3 W6,3 W4,4 W9,4 W2,6 W6,6 W8,6 W4,7 W2,8 W7,8\n10x9 W0,0 W3,0 W7,0 W1,2 W4,2 W6,2 W8,2 W9,4 W0,5 W3,5 W6,5 W8,6 W5,7 W0,8 W3,8 W7,8\n10x9 W0,0 W3,0 W7,0 W5,1 W2,2 W8,2 W4,3 W1,4 W7,4 W5,5 W9,5 W0,6 W3,6 W7,6 W4,8 W7,8\n10x9 W4,0 W9,0 W2,1 W7,1 W0,2 W4,3 W9,3 W1,4 W7,4 W4,5 W6,6 W1,7 W8,7 W4,8\n10x9 W2,0 W5,1 W8,1 W2,3 W4,3 W7,4 W0,5 W5,5 W9,5 W2,6 W5,7 W8,7 W0,8 W3,8\n10x9 W0,0 W3,0 W6,0 W4,2 W7,2 W9,2 W0,3 W2,3 W6,4 W4,5 W9,5 W0,6 W2,6 W7,7 W5,8 W9,8\n10x9 W0,0 W3,0 W9,0 W5,1 W2,2 W7,2 W0,3 W5,3 W9,3 W3,4 W7,5 W0,6 W5,6 W2,7 W4,8 W7,8\n10x9 W2,0 W6,0 W1,2 W5,2 W7,2 W9,2 W3,3 W0,4 W6,4 W8,4 W2,5 W4,5 W9,6 W4,7 W7,7 W2,8\n10x9 W3,0 W6,0 W1,1 W8,1 W5,2 W0,3 W3,3 W7,3 W9,3 W2,5 W6,5 W4,6 W9,6 W1,7 W3,8 W6,8\n10x9 W6,0 W9,0 W2,1 W0,2 W5,2 W8,2 W3,3 W9,4 W0,5 W3,5 W6,5 W8,6 W5,7 W0,8 W3,8 W9,8\n10x9 W0,0 W3,0 W5,1 W8,1 W2,2 W0,3 W4,3 W7,3 W1,5 W4,5 W6,5 W9,5 W4,7 W8,7 W2,8 W6,8\n10x9 W2,0 W5,0 W7,1 W4,2 W9,2 W2,3 W6,3 W0,5 W5,5 W9,5 W2,6 W7,6 W0,8 W3,8 W6,8 W9,8\n10x9 W3,0 W6,0 W0,2 W2,2 W7,2 W9,2 W5,3 W1,4 W3,4 W8,4 W0,6 W2,6 W5,6 W8,7 W3,8 W6,8\n10x9 W0,0 W3,0 W6,0 W8,1 W1,2 W4,2 W6,3 W0,4 W8,4 W2,5 W5,5 W7,6 W2,7 W0,8 W4,8 W7,8\n10x9 W0,0 W4,0 W7,0 W2,1 W6,2 W4,3 W8,3 W2,4 W0,5 W7,5 W2,6 W5,6 W9,6 W0,8 W3,8 W6,8\n10x9 W0,0 W3,0 W6,0 W1,2 W6,2 W9,2 W4,3 W0,4 W2,4 W6,5 W9,5 W1,6 W3,6 W5,7 W8,7 W2,8\n10x9 W0,0 W4,0 W7,0 W2,1 W2,3 W5,3 W7,3 W0,4 W2,5 W4,5 W9,5 W7,6 W4,7 W2,8 W6,8 W9,8\n10x9 W0,0 W6,0 W9,0 W4,1 W1,2 W8,2 W3,3 W5,3 W0,4 W7,4 W9,4 W1,6 W3,6 W5,6 W8,6 W2,8 W6,8 W9,8\n10x9 W0,0 W6,0 W9,0 W4,1 W1,2 W3,3 W6,3 W9,3 W0,4 W2,5 W4,6 W7,6 W2,7 W0,8 W4,8 W7,8\n10x9 W3,0 W6,0 W9,0 W0,2 W8,2 W3,3 W6,3 W9,4 W0,5 W5,5 W3,6 W8,6 W0,8 W3,8 W6,8 W9,8\n10x9 W0,0 W3,0 W9,0 W5,1 W8,2 W2,3 W5,3 W9,4 W0,5 W7,5 W2,6 W5,6 W2,8 W7,8\n10x9 W0,0 W3,0 W9,0 W7,1 W5,2 W0,3 W3,3 W9,3 W6,4 W2,5 W4,5 W0,6 W6,6 W9,6 W3,7 W5,8\n10x9 W3,0 W9,0 W1,1 W5,1 W8,2 W0,3 W3,3 W5,3 W7,4 W3,5 W1,6 W5,6 W9,6 W7,7 W2,8 W5,8\n10x9 W4,0 W2,1 W8,1 W0,2 W6,2 W4,3 W2,4 W8,4 W0,5 W4,5 W6,5 W9,6 W2,7 W7,7 W0,8 W4,8\n10x9 W4,0 W2,1 W6,1 W0,2 W4,2 W9,2 W2,3 W7,3 W4,4 W6,5 W0,6 W3,6 W8,6 W3,8 W6,8 W9,8\n10x9 W0,0 W3,0 W9,0 W5,1 W7,2 W2,3 W5,3 W9,3 W7,4 W0,5 W3,5 W5,5 W8,6 W2,8 W5,8 W9,8\n10x9 W2,0 W7,0 W4,1 W2,2 W6,2 W8,2 W1,4 W4,4 W9,4 W6,5 W0,6 W3,6 W8,6 W3,8 W6,8 W9,8\n10x9 W0,0 W4,0 W7,0 W1,2 W3,2 W5,3 W7,3 W0,4 W2,4 W9,4 W4,5 W6,5 W1,6 W8,6 W4,7 W2,8 W6,8 W9,8\n10x9 W0,0 W7,0 W2,1 W5,1 W8,2 W0,3 W3,3 W6,3 W4,5 W6,5 W9,5 W2,6 W5,7 W0,8 W3,8 W7,8\n10x9 W3,0 W5,1 W8,1 W0,2 W3,2 W5,3 W2,4 W8,4 W6,5 W1,6 W3,6 W9,6 W2,8 W6,8\n10x9 W3,0 W5,1 W0,2 W2,2 W7,2 W9,2 W4,3 W1,4 W6,4 W8,4 W3,5 W0,6 W9,6 W2,7 W6,7 W4,8\n10x9 W0,0 W3,0 W6,0 W8,1 W6,2 W0,3 W3,3 W5,4 W8,4 W3,5 W1,6 W5,6 W7,7 W2,8 W5,8 W9,8\n10x9 W0,0 W6,0 W9,0 W4,1 W1,2 W8,2 W6,3 W0,4 W3,4 W5,5 W9,5 W7,6 W2,7 W0,8 W4,8 W7,8\n10x9 W5,0 W2,1 W0,2 W4,2 W6,2 W9,2 W1,4 W5,4 W8,4 W3,5 W0,6 W5,6 W2,7 W7,7 W4,8 W9,8\n10x9 W6,0 W4,1 W0,2 W2,2 W7,2 W9,2 W5,3 W1,4 W3,4 W8,4 W0,6 W4,6 W7,6 W2,7 W4,8 W7,8\n10x9 W0,0 W7,0 W4,1 W1,2 W4,3 W7,3 W9,3 W0,4 W2,4 W5,5 W1,6 W7,6 W4,7 W0,8 W6,8 W9,8\n10x9 W4,0 W2,1 W6,1 W0,2 W9,2 W2,3 W5,3 W7,3 W3,5 W6,5 W9,5 W1,6 W4,7 W7,7 W2,8 W9,8\n10x9 W2,0 W5,0 W7,1 W1,2 W9,2 W3,3 W6,3 W0,4 W8,4 W6,5 W1,6 W4,6 W7,7 W2,8 W5,8 W9,8\n10x9 W4,0 W9,0 W7,1 W0,2 W3,2 W5,3 W3,4 W7,4 W0,5 W5,5 W9,5 W7,6 W2,7 W5,7 W0,8 W7,8\n10x9 W6,0 W1,1 W4,1 W9,2 W0,3 W3,3 W6,3 W8,4 W3,5 W5,5 W1,6 W7,6 W9,6 W4,7 W0,8 W6,8\n10x9 W2,0 W5,1 W8,1 W1,2 W3,2 W0,4 W2,4 W5,4 W8,4 W1,6 W4,6 W7,6 W0,8 W3,8 W6,8 W9,8\n10x9 W2,0 W7,0 W5,1 W1,2 W3,2 W8,2 W6,3 W0,4 W9,4 W3,5 W1,6 W6,6 W8,7 W0,8 W3,8 W6,8\n10x9 W0,0 W3,0 W7,0 W5,1 W1,2 W7,2 W4,3 W9,3 W0,4 W2,4 W7,5 W1,6 W4,6 W8,7 W2,8 W5,8\n10x9 W0,0 W9,0 W4,1 W7,1 W2,2 W0,3 W6,3 W3,4 W8,4 W1,5 W5,5 W3,6 W9,6 W7,7 W2,8 W5,8\n10x9 W2,0 W7,0 W4,2 W7,2 W2,3 W9,3 W0,5 W4,5 W7,5 W2,6 W4,7 W8,7 W0,8 W6,8\n10x9 W0,0 W4,1 W7,1 W1,2 W9,2 W6,3 W0,4 W4,4 W8,4 W2,5 W6,5 W4,6 W9,6 W7,7 W0,8 W3,8\n10x9 W0,0 W6,0 W4,1 W8,1 W2,2 W0,3 W7,3 W9,3 W3,4 W5,4 W8,5 W1,6 W4,6 W6,6 W2,8 W7,8\n10x9 W5,0 W1,1 W7,1 W3,2 W9,2 W0,3 W5,3 W7,3 W2,4 W5,5 W0,6 W3,6 W7,6 W9,6 W5,7 W3,8\n10x9 W0,0 W3,0 W6,0 W1,2 W6,2 W9,2 W4,3 W0,4 W7,4 W3,5 W9,5 W5,6 W1,7 W8,7 W3,8 W6,8\n10x9 W6,0 W9,0 W1,1 W4,1 W7,2 W0,3 W3,3 W9,3 W5,4 W2,5 W7,5 W4,6 W7,7 W2,8 W5,8 W9,8\n10x9 W2,0 W5,0 W9,0 W7,1 W1,2 W5,2 W3,3 W7,3 W0,4 W6,5 W9,5 W3,6 W1,7 W8,7 W3,8 W6,8\n10x9 W0,0 W6,0 W2,1 W8,1 W5,2 W3,3 W9,3 W0,4 W7,4 W4,5 W1,6 W8,6 W5,7 W0,8 W3,8 W7,8\n10x9 W0,0 W4,0 W7,0 W2,1 W7,2 W2,3 W5,3 W0,4 W8,4 W6,5 W1,6 W4,6 W8,7 W0,8 W3,8 W6,8\n10x9 W3,0 W7,0 W5,1 W0,2 W7,2 W2,3 W9,3 W5,4 W7,5 W0,6 W2,6 W4,7 W8,7 W6,8\n10x9 W0,0 W4,0 W2,1 W7,1 W9,2 W0,3 W4,3 W6,3 W2,4 W8,4 W5,5 W0,6 W9,6 W2,7 W6,7 W4,8\n10x9 W3,0 W9,0 W5,1 W0,2 W8,2 W2,3 W5,3 W7,4 W9,4 W1,6 W4,6 W6,6 W8,6 W2,8 W5,8 W9,8\n10x9 W3,0 W5,1 W8,1 W0,2 W3,2 W5,3 W8,4 W2,5 W6,5 W0,6 W4,6 W9,6 W7,7 W3,8\n10x9 W2,0 W7,0 W4,1 W1,2 W7,3 W0,4 W4,4 W2,5 W6,5 W9,5 W4,7 W7,7 W2,8 W9,8\n10x9 W4,0 W9,0 W2,1 W7,1 W0,2 W3,3 W6,3 W9,3 W1,4 W3,5 W0,6 W5,6 W7,6 W9,6 W2,7 W6,8\n10x9 W4,0 W7,0 W2,1 W0,2 W5,2 W3,3 W7,3 W1,4 W9,4 W3,5 W6,5 W8,6 W1,7 W4,7 W6,8 W9,8\n10x9 W0,0 W6,0 W4,1 W8,1 W1,2 W6,2 W9,3 W0,4 W3,4 W5,4 W7,4 W6,6 W9,6 W1,7 W4,7 W6,8\n10x9 W6,0 W3,1 W8,1 W0,2 W5,2 W2,3 W8,4 W5,5 W0,6 W3,6 W7,6 W5,7 W3,8 W7,8\n10x9 W9,0 W2,1 W5,1 W0,2 W7,2 W3,3 W9,3 W1,4 W6,4 W4,5 W8,5 W6,6 W2,7 W0,8 W4,8 W7,8\n10x9 W2,0 W6,0 W8,1 W3,2 W5,2 W0,3 W7,3 W2,4 W4,4 W6,5 W9,5 W0,6 W3,6 W8,7 W3,8 W6,8\n10x9 W0,0 W4,0 W2,1 W8,1 W6,2 W4,3 W9,3 W1,4 W4,5 W7,5 W0,6 W2,6 W4,7 W7,8\n10x9 W2,0 W6,0 W9,0 W3,2 W5,2 W7,2 W1,3 W9,3 W6,4 W0,5 W3,5 W7,6 W1,7 W4,7 W6,8 W9,8\n10x9 W2,0 W6,0 W9,0 W4,1 W7,2 W2,3 W5,3 W9,3 W0,5 W3,5 W7,5 W5,6 W2,7 W8,7 W0,8 W4,8\n10x9 W3,0 W6,0 W8,1 W0,2 W2,2 W5,2 W7,3 W9,3 W1,4 W4,5 W6,5 W9,6 W2,7 W7,7 W0,8 W4,8\n10x9 W0,0 W3,0 W5,1 W8,1 W1,2 W4,3 W7,3 W9,3 W1,5 W6,5 W3,6 W9,6 W2,8 W6,8\n10x9 W2,0 W9,0 W4,1 W7,1 W1,2 W5,3 W9,3 W0,4 W3,4 W7,4 W5,5 W2,7 W7,7 W0,8 W5,8 W9,8\n10x9 W3,0 W5,1 W8,1 W0,2 W3,3 W1,4 W5,4 W8,4 W3,5 W7,6 W1,7 W5,7 W3,8 W7,8\n10x9 W4,0 W9,0 W2,1 W7,1 W0,2 W5,2 W3,3 W1,4 W8,4 W5,5 W0,6 W3,6 W7,6 W9,6 W3,8 W6,8\n10x9 W5,0 W2,1 W7,1 W0,2 W9,2 W5,3 W2,4 W7,4 W0,5 W5,5 W9,5 W3,6 W1,7 W7,7 W5,8 W9,8\n10x9 W0,0 W4,0 W7,0 W3,2 W5,2 W0,3 W7,3 W2,4 W5,5 W9,5 W0,6 W3,6 W7,6 W5,7 W3,8 W7,8\n10x9 W2,0 W6,0 W1,2 W5,2 W9,2 W3,3 W7,3 W0,5 W4,5 W6,5 W2,6 W8,6 W5,7 W0,8 W3,8 W9,8\n10x9 W0,0 W4,0 W2,1 W8,1 W5,2 W2,3 W8,4 W0,5 W3,5 W5,5 W1,7 W4,7 W7,7 W9,8\n10x9 W0,0 W6,0 W4,1 W2,2 W7,2 W9,2 W1,4 W4,4 W6,5 W9,5 W1,7 W4,7 W8,7 W6,8\n10x9 W2,0 W6,0 W4,1 W1,2 W9,2 W6,3 W0,4 W2,4 W4,4 W8,4 W1,6 W7,6 W9,6 W4,7 W0,8 W6,8\n10x9 W6,0 W4,1 W8,1 W0,2 W2,2 W4,3 W7,3 W9,4 W0,5 W2,5 W4,6 W6,6 W8,6 W2,8 W5,8 W9,8\n10x9 W0,0 W6,0 W2,1 W8,1 W5,2 W0,4 W3,4 W8,4 W5,5 W1,6 W9,6 W4,7 W7,7 W0,8\n10x9 W0,0 W7,0 W2,1 W5,1 W0,3 W3,3 W7,3 W5,4 W9,4 W7,5 W2,6 W5,6 W8,7 W0,8 W3,8 W6,8\n10x9 W2,0 W6,0 W4,1 W6,2 W9,2 W2,3 W4,3 W0,4 W7,4 W2,5 W9,5 W4,6 W1,7 W7,7 W5,8 W9,8\n10x9 W0,0 W3,0 W7,0 W5,1 W2,3 W7,3 W4,4 W9,4 W0,5 W2,6 W5,6 W8,6 W2,8 W7,8\n10x9 W0,0 W4,0 W7,0 W1,2 W3,2 W6,2 W8,3 W0,4 W3,4 W6,5 W4,6 W8,6 W2,7 W0,8 W4,8 W7,8\n10x9 W3,0 W6,0 W1,1 W8,1 W5,2 W2,3 W0,4 W4,4 W6,4 W8,4 W1,6 W4,6 W9,6 W6,7 W0,8 W3,8\n10x9 W0,0 W3,0 W6,0 W2,2 W6,2 W9,2 W0,3 W4,3 W7,4 W3,5 W9,5 W1,6 W6,6 W4,7 W0,8 W7,8\n10x9 W0,0 W4,0 W7,0 W2,1 W8,2 W2,3 W5,3 W9,4 W0,5 W4,5 W7,5 W2,6 W5,7 W8,7 W0,8 W3,8\n10x9 W3,0 W9,0 W5,1 W0,2 W2,2 W7,2 W4,3 W1,4 W6,4 W3,5 W9,5 W0,6 W5,6 W8,7 W3,8 W6,8\n10x9 W0,0 W5,0 W7,1 W1,2 W4,2 W9,2 W6,3 W0,4 W2,5 W4,5 W9,5 W6,6 W2,7 W0,8 W4,8 W7,8\n10x9 W0,0 W3,0 W6,0 W2,2 W7,2 W9,2 W0,3 W4,3 W2,4 W6,4 W8,4 W1,6 W4,6 W7,6 W0,8 W3,8 W6,8 W9,8\n10x9 W0,0 W3,0 W6,0 W8,1 W2,2 W5,2 W0,3 W7,3 W2,4 W5,4 W9,5 W1,6 W4,6 W7,6 W0,8 W3,8 W6,8 W9,8\n10x9 W4,0 W7,0 W2,1 W0,2 W5,2 W8,2 W3,3 W6,4 W9,4 W2,5 W4,5 W0,6 W3,7 W7,7 W5,8 W9,8\n10x9 W2,0 W6,0 W4,1 W8,1 W1,3 W4,3 W7,3 W0,5 W2,5 W6,5 W9,5 W4,6 W1,7 W7,7 W3,8 W9,8\n10x9 W4,0 W7,0 W2,1 W0,2 W5,2 W8,2 W2,4 W9,4 W0,5 W5,5 W7,5 W2,7 W7,7 W0,8 W5,8 W9,8\n10x9 W5,0 W9,0 W3,1 W7,1 W0,2 W6,3 W9,3 W1,4 W3,4 W2,6 W5,6 W8,6 W0,8 W3,8 W6,8 W9,8\n10x9 W5,0 W3,1 W7,1 W0,2 W9,2 W2,3 W4,3 W6,4 W8,4 W3,5 W1,6 W5,6 W9,6 W7,7 W2,8 W5,8\n10x9 W2,0 W5,0 W9,0 W7,1 W1,2 W4,2 W6,3 W9,3 W0,4 W3,4 W7,5 W5,6 W2,7 W0,8 W4,8 W7,8\n10x9 W2,0 W5,0 W7,1 W2,2 W9,2 W0,3 W4,3 W2,4 W6,4 W4,5 W9,5 W7,6 W2,7 W5,7 W0,8 W9,8\n10x9 W2,0 W7,0 W5,1 W1,2 W4,3 W6,3 W9,3 W0,4 W2,4 W4,5 W1,6 W6,6 W9,6 W4,7 W2,8 W6,8\n10x9 W2,0 W9,0 W4,1 W7,1 W1,2 W3,3 W6,4 W8,4 W0,5 W4,5 W2,6 W7,6 W9,6 W5,7 W0,8 W3,8\n10x9 W4,0 W7,0 W0,2 W3,2 W8,2 W5,3 W1,4 W7,4 W9,4 W4,5 W2,6 W8,6 W5,7 W0,8 W3,8 W9,8\n10x9 W0,0 W3,0 W9,0 W7,1 W2,2 W5,2 W9,3 W1,4 W3,4 W7,4 W5,5 W2,6 W4,7 W7,7 W2,8 W9,8\n10x9 W2,0 W6,0 W9,0 W1,2 W3,2 W5,2 W7,3 W0,4 W3,4 W5,5 W9,5 W7,6 W1,7 W4,7 W6,8 W9,8\n10x9 W2,0 W4,1 W7,1 W1,2 W9,2 W5,3 W0,4 W3,4 W8,4 W6,5 W9,6 W1,7 W4,7 W7,7\n10x9 W3,0 W6,0 W1,1 W8,1 W5,2 W0,3 W3,3 W8,4 W5,5 W0,6 W3,6 W7,6 W4,8 W7,8\n10x9 W0,0 W3,0 W9,0 W7,1 W1,2 W4,2 W6,3 W0,4 W3,4 W9,4 W4,6 W6,6 W8,6 W1,7 W5,8 W9,8\n10x9 W0,0 W4,0 W9,0 W2,1 W5,2 W8,2 W2,3 W0,4 W9,4 W5,5 W7,5 W1,6 W3,6 W5,7 W2,8 W7,8\n10x9 W0,0 W3,0 W7,0 W5,1 W1,2 W4,3 W6,3 W9,3 W0,4 W3,5 W7,5 W5,6 W1,7 W7,7 W3,8 W9,8\n10x9 W0,0 W4,0 W7,0 W2,1 W4,2 W2,3 W7,3 W5,4 W9,4 W0,5 W3,5 W6,6 W8,6 W1,7 W3,8 W7,8\n10x9 W3,0 W6,0 W1,1 W4,2 W7,2 W9,2 W2,3 W6,4 W8,4 W0,5 W4,5 W2,6 W9,6 W4,7 W7,7 W0,8\n10x9 W0,0 W6,0 W2,1 W5,2 W7,2 W9,2 W0,3 W3,3 W8,4 W3,5 W5,5 W0,6 W7,6 W9,6 W3,8 W6,8\n10x9 W5,0 W9,0 W3,1 W0,2 W6,2 W8,2 W2,3 W4,3 W7,4 W9,4 W0,5 W5,5 W2,6 W8,6 W4,7 W2,8 W6,8 W9,8\n10x9 W0,0 W2,1 W5,1 W7,2 W9,2 W2,3 W5,3 W0,4 W7,5 W9,5 W1,6 W3,6 W5,6 W8,7 W0,8 W4,8\n10x9 W7,0 W2,1 W5,1 W0,2 W7,3 W2,4 W5,4 W9,4 W0,5 W3,6 W6,6 W8,6 W2,8 W7,8\n10x9 W2,0 W6,0 W9,0 W5,2 W7,2 W2,3 W0,4 W4,4 W6,4 W8,4 W1,6 W7,6 W9,6 W4,7 W2,8 W6,8\n10x9 W2,0 W5,1 W1,2 W7,2 W9,2 W4,3 W2,4 W6,4 W8,4 W0,5 W4,6 W7,6 W2,7 W0,8 W4,8 W7,8\n10x9 W0,0 W3,0 W5,1 W8,1 W2,2 W6,3 W1,4 W3,4 W8,4 W5,5 W0,6 W2,6 W8,7 W5,8\n10x9 W2,0 W9,0 W4,1 W7,1 W2,3 W9,3 W0,4 W4,4 W7,4 W1,6 W3,6 W5,6 W8,6 W2,8 W6,8 W9,8\n10x9 W0,0 W6,0 W2,1 W4,2 W7,2 W9,2 W0,3 W3,4 W6,4 W8,4 W0,6 W5,6 W9,6 W3,7 W7,7 W5,8\n10x9 W2,0 W7,0 W5,2 W0,3 W3,3 W7,3 W9,4 W4,5 W0,6 W2,6 W6,6 W8,6 W3,8 W7,8\n10x9 W3,0 W6,0 W9,0 W0,2 W3,2 W8,2 W5,3 W1,4 W9,4 W3,5 W7,5 W0,6 W5,6 W7,7 W3,8 W9,8\n10x9 W6,0 W9,0 W1,1 W4,1 W8,2 W2,3 W6,3 W0,4 W4,4 W9,4 W1,6 W3,6 W6,6 W8,6 W2,8 W7,8\n10x9 W2,0 W6,0 W4,1 W8,1 W6,2 W1,3 W4,3 W9,3 W0,5 W2,5 W6,5 W4,6 W9,6 W7,7 W2,8 W5,8\n10x9 W3,0 W1,1 W5,1 W7,2 W9,2 W0,3 W3,3 W5,3 W6,5 W9,5 W1,6 W4,6 W7,7 W2,8 W5,8 W9,8\n10x9 W4,0 W9,0 W0,2 W3,2 W6,2 W8,2 W1,4 W3,4 W7,4 W9,4 W5,5 W0,6 W3,6 W8,6 W4,8 W7,8\n10x9 W2,0 W6,0 W9,0 W4,1 W7,2 W0,3 W3,3 W5,3 W8,4 W6,5 W1,6 W4,6 W7,7 W2,8 W5,8 W9,8\n10x9 W0,0 W4,0 W9,0 W3,2 W5,2 W8,2 W0,3 W2,4 W4,4 W7,4 W9,4 W0,6 W8,6 W2,7 W5,7 W9,8\n10x9 W3,0 W6,0 W1,1 W4,2 W7,2 W9,2 W0,3 W2,4 W5,4 W7,5 W9,5 W1,6 W4,7 W0,8 W6,8 W9,8\n10x9 W3,0 W7,0 W1,1 W4,2 W6,2 W8,2 W1,4 W9,4 W4,5 W6,5 W2,6 W8,6 W4,7 W2,8 W6,8 W9,8\n10x9 W4,0 W7,0 W2,1 W0,2 W8,2 W3,3 W6,3 W1,4 W4,5 W9,5 W0,6 W2,6 W7,6 W5,7 W3,8 W7,8\n10x9 W2,0 W5,1 W8,1 W1,2 W3,2 W2,4 W5,4 W8,4 W0,6 W4,6 W2,7 W7,7 W5,8 W9,8\n10x9 W2,0 W5,0 W9,0 W3,2 W6,2 W8,2 W1,3 W7,4 W9,4 W0,5 W3,5 W5,5 W8,6 W4,7 W2,8 W7,8\n10x9 W5,0 W1,1 W8,1 W3,2 W5,3 W7,3 W9,3 W2,4 W0,5 W4,5 W2,6 W7,6 W5,7 W0,8 W3,8 W7,8\n10x9 W5,0 W9,0 W1,1 W7,1 W4,2 W2,3 W6,3 W0,4 W4,4 W8,4 W6,5 W1,6 W4,7 W8,7 W0,8 W6,8\n10x9 W2,0 W5,1 W1,2 W7,2 W9,2 W4,3 W2,4 W0,5 W4,5 W7,5 W9,5 W2,6 W5,7 W0,8 W3,8 W7,8\n10x9 W0,0 W4,0 W1,2 W7,2 W9,2 W4,3 W2,4 W6,4 W8,4 W0,5 W2,6 W5,6 W9,6 W7,7 W0,8 W5,8\n10x9 W2,0 W5,0 W9,0 W7,1 W1,2 W5,2 W3,3 W8,4 W0,5 W5,5 W2,6 W7,6 W9,6 W4,7 W2,8 W6,8\n10x9 W2,0 W6,0 W4,1 W7,2 W9,2 W0,3 W3,3 W5,3 W8,4 W3,5 W1,6 W5,6 W7,7 W2,8 W5,8 W9,8\n10x9 W0,0 W4,0 W9,0 W2,1 W4,2 W7,2 W1,4 W3,4 W6,4 W9,5 W0,6 W2,6 W7,6 W5,7 W3,8 W9,8\n10x9 W6,0 W1,1 W4,1 W9,2 W7,3 W2,4 W5,4 W0,5 W7,5 W5,6 W9,6 W2,7 W0,8 W6,8\n10x9 W9,0 W1,1 W4,1 W7,1 W0,3 W9,3 W2,4 W4,4 W7,4 W0,6 W3,6 W6,6 W9,6 W5,8\n10x9 W2,0 W6,0 W4,1 W2,2 W6,2 W9,2 W4,3 W1,4 W7,4 W4,5 W9,5 W2,6 W6,6 W0,8 W3,8 W7,8\n10x9 W2,0 W6,0 W4,1 W1,2 W7,2 W9,2 W3,3 W5,3 W0,4 W8,4 W2,5 W4,5 W6,5 W9,6 W2,7 W7,7 W0,8 W4,8\n10x9 W0,0 W4,0 W2,1 W6,1 W4,2 W9,2 W7,3 W1,4 W4,4 W9,5 W3,6 W7,6 W1,7 W5,7 W3,8 W9,8";
+
+window.RemixUltraMod = {};
+
+window.REMIX_ULTRA_SETTINGS_KEY = "RemixUltraSettings";
+window.REMIX_ULTRA_TIMEKEEPER_KEY = "snake_timeKeeper_remix_ultra";
+
+// RemixInit already assigned RemixSettings keys at parse time. Point the
+// isolated-storage helpers at Ultra keys before any runCodeBefore runs, and
+// seed once from Remix (then Pudding) if Ultra is empty.
+window.REMIX_SETTINGS_KEY = window.REMIX_ULTRA_SETTINGS_KEY;
+window.REMIX_TIMEKEEPER_KEY = window.REMIX_ULTRA_TIMEKEEPER_KEY;
+
+window.remixSeedIsolatedStorage = function remixSeedIsolatedStorage() {
+  try {
+    if (!localStorage.getItem(window.REMIX_SETTINGS_KEY)) {
+      const remix = localStorage.getItem("RemixSettings");
+      if (remix) localStorage.setItem(window.REMIX_SETTINGS_KEY, remix);
+      else {
+        const pud = localStorage.getItem("PuddingSettings");
+        if (pud) localStorage.setItem(window.REMIX_SETTINGS_KEY, pud);
+      }
+    }
+    if (!localStorage.getItem(window.REMIX_TIMEKEEPER_KEY)) {
+      const remixTk = localStorage.getItem("snake_timeKeeper_remix");
+      if (remixTk) localStorage.setItem(window.REMIX_TIMEKEEPER_KEY, remixTk);
+      else {
+        const tk = localStorage.getItem("snake_timeKeeper");
+        if (tk) localStorage.setItem(window.REMIX_TIMEKEEPER_KEY, tk);
+      }
+    }
+  } catch (_e) {}
+};
+
+window.__remixCore = {
+  runCodeBefore: window.RemixMod.runCodeBefore,
+  alterSnakeCode: window.RemixMod.alterSnakeCode,
+  runCodeAfter: window.RemixMod.runCodeAfter,
+};
+
+window.ultraDock = {
+  right: "place",
+  left: null,
+  lastPlace: "place",
+  savedRight: null,
+};
+
+window.__ultraApplying = false;
+window.__ultraLayoutReady = false;
+
+window.ultraChallengeOrHamActive = function ultraChallengeOrHamActive() {
+  try {
+    const el = document.getElementsByClassName("chosen-preset")[0];
+    if (!el) return false;
+    return (
+      el.classList.contains("preset-challenge") ||
+      el.classList.contains("preset-random-ham")
+    );
+  } catch (_e) {
+    return false;
+  }
+};
+
+window.ultraSpeedInfoEnabled = function ultraSpeedInfoEnabled() {
+  return false;
+};
+
+window.ultraElShown = function ultraElShown(el) {
+  if (!el || el.hidden) return false;
+  const s = getComputedStyle(el);
+  return s.display !== "none" && s.visibility !== "hidden";
+};
+
+window.ultraModalOpen = function ultraModalOpen() {
+  if (window.portalPairsPanelVisible) return true;
+  if (window.timeKeeper && window.timeKeeper.dialogActive) return true;
+  const edit = document.getElementById("edit-box");
+  if (edit && edit.offsetWidth > 0 && window.ultraElShown(edit)) return true;
+  const vis = document.getElementById("delete-stuff-popup");
+  if (vis && vis.hidden === false && vis.offsetWidth > 0) return true;
+  const exp = document.getElementById("custom-export-dialogue-container");
+  if (exp && exp.style.display === "block") return true;
+  const tk = document.getElementById("timeKeeperDialog");
+  if (tk && window.ultraElShown(tk) && tk.offsetWidth > 0) return true;
+  return false;
+};
+
+window.ultraPersistDock = function ultraPersistDock() {
+  try {
+    if (!window.pudding_settings) return;
+    window.pudding_settings.ultraDockRight = window.ultraDock.right;
+    if (typeof window.saveSettings === "function") window.saveSettings();
+  } catch (_e) {}
+};
+
+window.ultraDefaultRightTab = function ultraDefaultRightTab() {
+  const saved =
+    window.pudding_settings && window.pudding_settings.ultraDockRight;
+  if (saved === "place" || saved === "presets" || saved === "more") return saved;
+  if (saved === null || saved === "" || saved === "off") return null;
+  return "place";
+};
+
+window.ultraDockTabH = 28;
+window.ultraDockH = 584;
+window.ultraInputH = 110;
+
+window.ultraInputOn = function ultraInputOn() {
+  return !!(window.pudding_settings && window.pudding_settings.InputDisplay);
+};
+
+window.ultraPanelH = function ultraPanelH() {
+  return (
+    window.ultraDockH -
+    window.ultraDockTabH -
+    (window.ultraInputOn() ? window.ultraInputH : 0)
+  );
+};
+
+window.ultraApplyTheme = function ultraApplyTheme() {
+  const bar = window.real_topbar_color || "#4a752c";
+  const btn = window.button_color || "#1155CC";
+  const root = document.documentElement;
+  root.style.setProperty("--ultra-bar", bar);
+  root.style.setProperty("--ultra-btn", btn);
+  window.ultraPaintTabs();
+};
+
+window.ultraInjectThemeCss = function ultraInjectThemeCss() {
+  if (document.getElementById("ultra-theme-css")) return;
+  const css = document.createElement("style");
+  css.id = "ultra-theme-css";
+  css.textContent = `
+#ultra-dock-tabs, #ultra-left-dock-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 2px;
+  box-sizing: border-box;
+}
+.ultra-tab {
+  font-family: Roboto, Arial, sans-serif !important;
+  font-size: 12px !important;
+  padding: 5px 10px !important;
+  border: none !important;
+  border-radius: 8px 8px 0 0 !important;
+  cursor: pointer;
+  line-height: 1.2;
+  background: var(--ultra-bar, #4a752c);
+  color: #fff;
+  box-shadow: 0 -1px 4px rgba(0,0,0,0.18);
+}
+.ultra-tab.ultra-tab-on {
+  background: var(--ultra-btn, #1155CC);
+  color: #fff;
+}
+#place-panel, #preset-panel, #custom-panel, #challenge-panel,
+#speedinfo-popup-pudding, #settings-popup-pudding, #split-panel-pudding,
+#ultra-input-slot {
+  background: var(--ultra-bar, #4a752c) !important;
+  background-color: var(--ultra-bar, #4a752c) !important;
+  border: none !important;
+  border-radius: 0 0 8px 8px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.28);
+  color: #fff !important;
+  font-family: Roboto, Arial, sans-serif !important;
+  box-sizing: border-box !important;
+  scrollbar-width: none !important;
+}
+.sEOCsb, .sEOCsb * {
+  scrollbar-width: none !important;
+}
+.sEOCsb::-webkit-scrollbar,
+.sEOCsb *::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+#place-panel, #preset-panel {
+  width: 220px !important;
+  overflow: hidden !important;
+  padding: 8px 4px 6px !important;
+  align-content: start !important;
+  justify-content: space-evenly !important;
+  gap: 6px 0 !important;
+}
+#place-panel {
+  grid-template-columns: repeat(4, 48px) !important;
+}
+#preset-panel {
+  grid-template-columns: repeat(3, 56px) !important;
+}
+#place-panel img.place-option {
+  width: 48px !important;
+  height: 48px !important;
+  max-width: 48px !important;
+  object-fit: contain !important;
+}
+#preset-panel img.preset-option {
+  width: 56px !important;
+  height: 56px !important;
+  max-width: 56px !important;
+  object-fit: contain !important;
+  background: rgba(0,0,0,0.18);
+  image-rendering: pixelated;
+}
+#preset-panel .preset-random-ham {
+  grid-column: 1 / -1 !important;
+  width: auto !important;
+  max-width: none !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  margin-top: 4px !important;
+  font-size: 13px !important;
+}
+#custom-panel, #challenge-panel {
+  width: 220px !important;
+  overflow: hidden !important;
+  padding: 8px !important;
+  color: #fff !important;
+}
+#custom-panel > div {
+  padding: 0 !important;
+}
+#settings-popup-pudding {
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column;
+  padding: 8px !important;
+  box-sizing: border-box !important;
+}
+#settings-popup-pudding > span {
+  flex-shrink: 0;
+  font-size: 13px;
+}
+#ultra-settings-pager {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  margin: 6px 0 8px;
+}
+.ultra-settings-tab {
+  flex: 1;
+  min-width: 0;
+  font-family: Roboto, Arial, sans-serif !important;
+  font-size: 11px !important;
+  padding: 5px 2px !important;
+  border: none !important;
+  border-radius: 8px !important;
+  cursor: pointer;
+  line-height: 1.2;
+  background: rgba(0,0,0,0.22);
+  color: #fff;
+}
+.ultra-settings-tab.ultra-tab-on {
+  background: var(--ultra-btn, #1155CC);
+  color: #fff;
+}
+.ultra-settings-page {
+  display: none;
+  overflow: hidden;
+  min-height: 0;
+}
+.ultra-settings-page.ultra-page-on {
+  display: block;
+}
+#settings-popup-pudding .form-check,
+#settings-popup-pudding .form-check-inline {
+  display: flex !important;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 4px 0 !important;
+  margin-right: 0 !important;
+  padding: 0 !important;
+  gap: 4px;
+}
+#ultra-settings-hidden,
+#ultra-settings-hidden .form-check,
+#ultra-settings-hidden .form-check-inline,
+#settings-popup-pudding .form-check.ultra-hide,
+#settings-popup-pudding .form-check-inline.ultra-hide,
+#settings-popup-pudding .ultra-hide,
+#AlwaysOnTimeKeeper,
+label[for="AlwaysOnTimeKeeper"],
+#ShowSplitPanel,
+label[for="ShowSplitPanel"],
+#RemoveScrollbar,
+label[for="RemoveScrollbar"] {
+  display: none !important;
+}
+#settings-popup-pudding .form-check-input {
+  float: none !important;
+  position: static !important;
+  margin: 0 !important;
+  flex-shrink: 0;
+}
+#settings-popup-pudding .form-check-label {
+  margin: 3px !important;
+  color: #fff !important;
+  font-family: Roboto, Arial, sans-serif !important;
+}
+#settings-popup-pudding .btn {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 5px 0 !important;
+  border-radius: 8px !important;
+  background: var(--ultra-btn, #1155CC) !important;
+  color: #fff !important;
+  border: none !important;
+  font-size: 12px !important;
+}
+#stat-chooser {
+  width: 100% !important;
+  box-sizing: border-box;
+  display: block !important;
+  min-height: 36px !important;
+  height: 36px !important;
+  line-height: 20px !important;
+  padding: 8px 10px !important;
+  margin: 4px 0 8px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  font-size: 13px !important;
+  color: #fff !important;
+  background-color: var(--ultra-btn, #1155CC) !important;
+}
+#black-dice-settings {
+  margin: 8px 0 0 !important;
+  padding: 6px 8px !important;
+  border-radius: 8px !important;
+}
+#black-dice-settings input {
+  width: 4.4em !important;
+}
+#split-panel-pudding,
+#split-panel-list {
+  overflow: hidden !important;
+}
+#split-panel-list {
+  overflow-y: auto !important;
+}
+#custom-panel p, #challenge-panel p,
+#custom-panel label, #challenge-panel label {
+  color: #fff !important;
+}
+#custom-preset-canvas {
+  width: 196px !important;
+  max-width: 100% !important;
+  height: auto !important;
+  display: block;
+  margin: 8px auto !important;
+  border: 2px solid rgba(255,255,255,0.28) !important;
+  border-radius: 8px !important;
+}
+#custom-panel p, #challenge-panel p {
+  font-size: 12px !important;
+  line-height: 1.35;
+}
+#custom-panel button, #challenge-panel button,
+#custom-import, #custom-export, #custom-clear, #custom-refresh {
+  padding: 5px 7px !important;
+  font-size: 11px !important;
+  margin: 2px 4px 6px 0 !important;
+}
+#custom-panel button, #challenge-panel button,
+#custom-import, #custom-export, #custom-clear, #custom-refresh {
+  border-radius: 8px !important;
+  background: var(--ultra-btn, #1155CC) !important;
+  color: #fff !important;
+  border: none !important;
+  font-family: Roboto, Arial, sans-serif !important;
+}
+#custom-clear { background: #b41111 !important; }
+#custom-map-size, #custom-brush, #challenge-level {
+  border-radius: 8px !important;
+  border: none !important;
+  padding: 4px 8px;
+}
+#link-to-preset, #link-to-place {
+  display: none !important;
+}
+#preset-panel > .preset-custom,
+#preset-panel > .preset-challenge {
+  display: none !important;
+}
+.place-option, .preset-option {
+  border-radius: 8px;
+}
+.chosen-preset {
+  outline: 3px solid #ffe566 !important;
+  border-radius: 8px;
+}
+#ultra-input-slot {
+  position: absolute;
+  left: 100%;
+  z-index: 10003;
+  width: 220px;
+  padding: 6px 8px 8px;
+  display: none;
+  justify-content: center;
+  align-items: flex-end;
+}
+#ultra-input-slot #input-display-section {
+  display: flex !important;
+  border-top: none !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100%;
+  justify-content: center;
+  align-items: flex-end;
+}
+#speedinfo-popup-pudding, #settings-popup-pudding, #split-panel-pudding {
+  border-radius: 0 0 8px 8px !important;
+}
+#custom-export-dialogue {
+  border-radius: 8px !important;
+}
+`;
+  document.head.appendChild(css);
+};
+
+window.ultraSetPanelDisplay = function ultraSetPanelDisplay(el, show, shown) {
+  if (!el) return;
+  el.style.display = show ? shown : "none";
+  el.style.visibility = show ? "visible" : "hidden";
+};
+
+window.ultraFitRightPanel = function ultraFitRightPanel(el) {
+  if (!el) return;
+  const abs =
+    el.id === "speedinfo-popup-pudding" ||
+    el.id === "settings-popup-pudding" ||
+    el.id === "split-panel-pudding";
+  if (abs) el.style.top = window.ultraDockTabH + "px";
+  el.style.height = window.ultraPanelH() + "px";
+  el.style.width = "220px";
+};
+
+window.ultraLayoutMenus = function ultraLayoutMenus() {
+  if (!window.__ultraLayoutReady) return;
+  if (window.__ultraApplying) return;
+  window.__ultraApplying = true;
+  try {
+    const modal = window.ultraModalOpen();
+    const tabBar = document.getElementById("ultra-dock-tabs");
+    const leftBar = document.getElementById("ultra-left-dock-tabs");
+    const place = document.getElementById("place-panel");
+    const preset = document.getElementById("preset-panel");
+    const custom = document.getElementById("custom-panel");
+    const challenge = document.getElementById("challenge-panel");
+    const speed = document.getElementById("speedinfo-popup-pudding");
+    const more = document.getElementById("settings-popup-pudding");
+    const splits = document.getElementById("split-panel-pudding");
+    const inputSlot = document.getElementById("ultra-input-slot");
+
+    if (modal) {
+      if (window.ultraDock.savedRight == null) {
+        window.ultraDock.savedRight = window.ultraDock.right;
+      }
+      if (tabBar) tabBar.style.display = "none";
+      if (leftBar) leftBar.style.display = "none";
+      window.ultraSetPanelDisplay(place, false, "grid");
+      window.ultraSetPanelDisplay(preset, false, "grid");
+      window.ultraSetPanelDisplay(custom, false, "block");
+      window.ultraSetPanelDisplay(challenge, false, "block");
+      window.ultraSetPanelDisplay(speed, false, "flex");
+      window.ultraSetPanelDisplay(more, false, "block");
+      window.ultraSetPanelDisplay(splits, false, "flex");
+      if (inputSlot) inputSlot.style.display = "none";
+      return;
+    }
+
+    if (window.ultraDock.savedRight != null) {
+      window.ultraDock.right = window.ultraDock.savedRight;
+      window.ultraDock.savedRight = null;
+    }
+
+    if (window.ultraDock.right === "speed") {
+      window.ultraDock.right = window.ultraDock.lastPlace || "place";
+    }
+
+    if (tabBar) tabBar.style.display = "flex";
+    if (leftBar) leftBar.style.display = "flex";
+
+    const right = window.ultraDock.right;
+    window.ultraSetPanelDisplay(place, right === "place", "grid");
+    window.ultraSetPanelDisplay(preset, right === "presets", "grid");
+    window.ultraFitRightPanel(place);
+    window.ultraFitRightPanel(preset);
+    const tabPx = window.ultraDockTabH + "px";
+    if (place && place.parentElement) {
+      place.parentElement.style.top = tabPx;
+      place.parentElement.style.zIndex = "10000";
+    }
+    if (custom && custom.parentElement) {
+      custom.parentElement.style.top = tabPx;
+      custom.parentElement.style.zIndex = "10000";
+    }
+
+    if (speed) {
+      speed.style.display = "none";
+      speed.style.visibility = "hidden";
+    }
+    if (more) {
+      window.ultraFitRightPanel(more);
+      if (right === "more") {
+        more.style.display = "block";
+        more.style.visibility = "visible";
+      } else {
+        more.style.display = "none";
+        more.style.visibility = "hidden";
+      }
+    }
+
+    if (inputSlot) {
+      if (window.ultraInputOn()) {
+        inputSlot.style.display = "flex";
+        inputSlot.style.top =
+          (right
+            ? window.ultraDockTabH + window.ultraPanelH()
+            : window.ultraDockTabH) + "px";
+        inputSlot.style.height = window.ultraInputH + "px";
+      } else {
+        inputSlot.style.display = "none";
+      }
+    }
+
+    const left = window.ultraDock.left;
+    const leftH = window.ultraDockH - window.ultraDockTabH + "px";
+    window.ultraSetPanelDisplay(custom, left === "custom", "block");
+    window.ultraSetPanelDisplay(challenge, left === "challenge", "block");
+    if (custom) custom.style.height = leftH;
+    if (challenge) challenge.style.height = leftH;
+    if (splits) {
+      splits.style.top = window.ultraDockTabH + "px";
+      splits.style.height = leftH;
+      splits.style.width = "220px";
+      if (left === "splits") {
+        splits.style.display = "flex";
+        splits.style.visibility = "visible";
+      } else {
+        splits.style.display = "none";
+        splits.style.visibility = "hidden";
+      }
+    }
+
+    window.ultraPaintTabs();
+  } finally {
+    window.__ultraApplying = false;
+  }
+};
+
+window.ultraPaintTabs = function ultraPaintTabs() {
+  const ids = [
+    ["ultra-tab-place", "place"],
+    ["ultra-tab-presets", "presets"],
+    ["ultra-tab-more", "more"],
+    ["ultra-tab-custom", "custom"],
+    ["ultra-tab-challenge", "challenge"],
+    ["ultra-tab-splits", "splits"],
+  ];
+  for (const [id, key] of ids) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const on =
+      window.ultraDock.right === key || window.ultraDock.left === key;
+    el.classList.toggle("ultra-tab-on", on);
+  }
+};
+
+window.ultraSetRight = function ultraSetRight(tab, opts) {
+  if (tab === "place" || tab === "presets") {
+    window.ultraDock.lastPlace = tab;
+  }
+  window.ultraDock.right = tab;
+  if (!opts || opts.persist !== false) window.ultraPersistDock();
+  window.ultraLayoutMenus();
+};
+
+window.ultraOpenRight = function ultraOpenRight(tab) {
+  if (window.ultraDock.right === tab) {
+    window.ultraSetRight(null);
+    return;
+  }
+  window.ultraSetRight(tab);
+};
+
+window.ultraSetLeft = function ultraSetLeft(tab) {
+  window.ultraDock.left = tab;
+  window.ultraLayoutMenus();
+};
+
+window.ultraSelectPresetKind = function ultraSelectPresetKind(kind, forceReset) {
+  const panel = document.getElementById("preset-panel");
+  if (!panel) return;
+  const el = panel.querySelector(".preset-" + kind);
+  if (!el) return;
+  const already = el.classList.contains("chosen-preset");
+  Array.from(panel.children).forEach(function (c) {
+    c.classList.remove("chosen-preset");
+  });
+  el.classList.add("chosen-preset");
+  if (!window.megaWholeSnakeObject && !window.__remixGame) return;
+  if (kind === "challenge") {
+    window.selectNewSizeSettingAndHardReset(0);
+    return;
+  }
+  if (!already || forceReset) window.ultraHardResetBoard();
+};
+
+window.ultraOpenLeft = function ultraOpenLeft(tab) {
+  if (window.ultraDock.left === tab) {
+    window.ultraSetLeft(null);
+    return;
+  }
+  window.ultraSetLeft(tab);
+  if (tab === "custom") window.ultraSelectPresetKind("custom", true);
+  if (tab === "challenge") window.ultraSelectPresetKind("challenge", true);
+  if (tab === "splits" && typeof window.SplitPanelRefresh === "function") {
+    window.SplitPanelRefresh();
+  }
+};
+
+window.ultraSetSizeSetting = function ultraSetSizeSetting(sizeIndex) {
+  if (sizeIndex == null || sizeIndex < 0) return;
+  const sizeEl = document.getElementById("size");
+  if (sizeEl && sizeEl.children[sizeIndex]) {
+    try {
+      sizeEl.children[sizeIndex].click();
+    } catch (_e) {}
+    try {
+      sizeEl.style.left =
+        sizeIndex === 0 ? "129.25px" : sizeIndex === 1 ? "91.5px" : "51.5px";
+    } catch (_e2) {}
+  }
+  const g = window.__remixGame || window.megaWholeSnakeObject;
+  if (g && g.settings) {
+    if ("Sa" in g.settings) g.settings.Sa = sizeIndex;
+    if ("Aa" in g.settings) g.settings.Aa = sizeIndex;
+  }
+};
+
+window.ultraResetBoard = function ultraResetBoard() {
+  const g = window.__remixGame || window.megaWholeSnakeObject;
+  try {
+    const fn = window.fullResetFuncName;
+    if (g && fn && typeof g[fn] === "function") {
+      try {
+        if (g.menu) g.menu.visible = true;
+      } catch (_m) {}
+      g[fn]();
+      try {
+        if (g.menu) g.menu.visible = false;
+      } catch (_m2) {}
+      return;
+    }
+  } catch (_e) {}
+  try {
+    if (g && g.wa && typeof g.wa.reset === "function") g.wa.reset();
+  } catch (_e2) {}
+};
+
+window.ultraHardResetBoard = function ultraHardResetBoard() {
+  window.selectNewSizeSettingAndHardReset(null);
+};
+
+window.ultraInstallSizeReset = function ultraInstallSizeReset() {
+  window.selectNewSizeSettingAndHardReset = function selectNewSizeSettingAndHardReset(
+    newSizeSetting
+  ) {
+    if (newSizeSetting != null) window.ultraSetSizeSetting(newSizeSetting);
+    window.ultraResetBoard();
+  };
+};
+
+window.selectNewSizeSettingAndHardReset = function selectNewSizeSettingAndHardReset(
+  newSizeSetting
+) {
+  if (newSizeSetting != null) window.ultraSetSizeSetting(newSizeSetting);
+  window.ultraResetBoard();
+};
+
+window.ultraInstallBlitGuard = function ultraInstallBlitGuard() {
+  if (typeof window.blitSelectedPreset !== "function") return;
+  if (window.blitSelectedPreset.__ultra) return;
+  const orig = window.blitSelectedPreset;
+  window.blitSelectedPreset = function () {
+    const presetEl = document.getElementsByClassName("chosen-preset")[0];
+    if (presetEl && presetEl.classList.contains("preset-challenge")) {
+      window.ultraSetSizeSetting(0);
+    }
+    if (presetEl && presetEl.tagName === "IMG") {
+      const key = presetEl.getAttribute("data-ultra-pattern");
+      if (
+        key &&
+        window.presetPatterns &&
+        window.presetPatterns[key] &&
+        !window.presetPatterns[presetEl.src]
+      ) {
+        window.presetPatterns[presetEl.src] = window.presetPatterns[key];
+      }
+    }
+    const origAlert = window.alert;
+    let tooSmall = false;
+    window.alert = function (msg) {
+      if (/too small/i.test(String(msg))) {
+        tooSmall = true;
+        return;
+      }
+      return origAlert.apply(this, arguments);
+    };
+    try {
+      orig.apply(this, arguments);
+    } finally {
+      window.alert = origAlert;
+    }
+    if (tooSmall && !window.__ultraFixingSize) {
+      window.__ultraFixingSize = true;
+      window.ultraSetSizeSetting(0);
+      window.ultraResetBoard();
+      window.__ultraFixingSize = false;
+    }
+  };
+  window.blitSelectedPreset.__ultra = true;
+};
+
+window.ultraScaleCustomCanvas = function ultraScaleCustomCanvas() {
+  const mgr = window.customPresetManager;
+  if (!mgr || mgr.__ultraScale) return;
+  const orig = mgr.attemptPlace;
+  mgr.attemptPlace = function (xPixelCoord, yPixelCoord, isErase) {
+    const canvas = document.getElementById("custom-preset-canvas");
+    if (canvas) {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width > 0) xPixelCoord *= this.canvasWidth / rect.width;
+      if (rect.height > 0) yPixelCoord *= this.canvasHeight / rect.height;
+    }
+    return orig.call(this, xPixelCoord, yPixelCoord, isErase);
+  };
+  mgr.__ultraScale = true;
+};
+
+window.ultraDisableSpeedInfo = function ultraDisableSpeedInfo() {
+  try {
+    if (window.pudding_settings) window.pudding_settings.SpeedInfo = false;
+  } catch (_e) {}
+  try {
+    if (typeof window.SpeedInfoHide === "function") window.SpeedInfoHide();
+  } catch (_e2) {}
+  const speed = document.getElementById("speedinfo-popup-pudding");
+  if (speed) {
+    speed.style.display = "none";
+    speed.style.visibility = "hidden";
+  }
+  const cb = document.getElementById("AlwaysOnTimeKeeper");
+  if (cb) {
+    cb.checked = false;
+    const wrap = cb.closest(".form-check") || cb.parentElement;
+    if (wrap) {
+      wrap.classList.add("ultra-hide");
+      wrap.style.display = "none";
+    }
+  }
+  const tab = document.getElementById("ultra-tab-speed");
+  if (tab) tab.remove();
+};
+
+window.ultraMakeTab = function ultraMakeTab(id, label, onClick) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.id = id;
+  b.className = "ultra-tab";
+  b.textContent = label;
+  b.addEventListener("click", onClick);
+  return b;
+};
+
+window.ultraMoveInputDisplay = function ultraMoveInputDisplay() {
+  const host = document.getElementsByClassName("sEOCsb")[0];
+  if (!host) return;
+  let slot = document.getElementById("ultra-input-slot");
+  if (!slot) {
+    slot = document.createElement("div");
+    slot.id = "ultra-input-slot";
+    host.appendChild(slot);
+  }
+  const section = document.getElementById("input-display-section");
+  if (section && section.parentElement !== slot) {
+    slot.appendChild(section);
+  }
+};
+
+window.ultraInjectTabStrip = function ultraInjectTabStrip() {
+  const host = document.getElementsByClassName("sEOCsb")[0];
+  if (!host || document.getElementById("ultra-dock-tabs")) return;
+
+  const right = document.createElement("div");
+  right.id = "ultra-dock-tabs";
+  right.style.cssText =
+    "position:absolute;left:100%;top:0;z-index:10002;display:flex;gap:4px;white-space:nowrap;pointer-events:auto;";
+  right.appendChild(
+    window.ultraMakeTab("ultra-tab-place", "Place", function () {
+      window.ultraOpenRight("place");
+    })
+  );
+  right.appendChild(
+    window.ultraMakeTab("ultra-tab-presets", "Presets", function () {
+      window.ultraOpenRight("presets");
+    })
+  );
+  right.appendChild(
+    window.ultraMakeTab("ultra-tab-more", "More", function () {
+      window.ultraOpenRight("more");
+    })
+  );
+  host.appendChild(right);
+
+  const left = document.createElement("div");
+  left.id = "ultra-left-dock-tabs";
+  left.style.cssText =
+    "position:absolute;right:100%;top:0;z-index:10002;display:flex;gap:4px;white-space:nowrap;pointer-events:auto;";
+  left.appendChild(
+    window.ultraMakeTab("ultra-tab-custom", "Custom", function () {
+      window.ultraOpenLeft("custom");
+    })
+  );
+  left.appendChild(
+    window.ultraMakeTab("ultra-tab-challenge", "Challenge", function () {
+      window.ultraOpenLeft("challenge");
+    })
+  );
+  left.appendChild(
+    window.ultraMakeTab("ultra-tab-splits", "Splits", function () {
+      window.ultraOpenLeft("splits");
+    })
+  );
+  host.appendChild(left);
+};
+
+window.ultraSyncLeNav = function ultraSyncLeNav() {
+  const toPreset = document.getElementById("link-to-preset");
+  if (toPreset) toPreset.style.display = "none";
+  const toPlace = document.getElementById("link-to-place");
+  if (toPlace) toPlace.style.display = "none";
+
+  Array.from(document.getElementsByClassName("preset-option")).forEach(
+    function (el) {
+      if (el.__ultraBound) return;
+      el.addEventListener(
+        "click",
+        function (ev) {
+          this.__ultraWasChosen = this.classList.contains("chosen-preset");
+          if (this.tagName === "IMG" && !this.classList.contains("preset-none")) {
+            ev.stopImmediatePropagation();
+            window.ultraApplyImagePreset(this);
+          }
+        },
+        true
+      );
+      el.addEventListener("click", function () {
+        if (this.classList.contains("preset-custom")) {
+          window.ultraSetRight("presets");
+          window.ultraSetLeft("custom");
+        } else if (this.classList.contains("preset-challenge")) {
+          window.ultraSetRight("presets");
+          window.ultraSetLeft("challenge");
+        } else if (!this.classList.contains("preset-none")) {
+          window.ultraSetLeft(null);
+        }
+        if (this.__ultraWasChosen && this.tagName !== "IMG") {
+          window.ultraHardResetBoard();
+        }
+      });
+      el.__ultraBound = true;
+    }
+  );
+
+  const challengeLevel = document.getElementById("challenge-level");
+  if (challengeLevel && !challengeLevel.__ultraBound) {
+    challengeLevel.addEventListener("change", function () {
+      window.ultraSetLeft("challenge");
+    });
+    challengeLevel.__ultraBound = true;
+  }
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "]") return;
+    setTimeout(function () {
+      const place = document.getElementById("place-panel");
+      if (place && place.style.display === "grid") {
+        window.ultraSetRight("place");
+      } else if (document.getElementById("preset-panel")?.style.display === "grid") {
+        window.ultraSetRight("presets");
+      }
+    }, 0);
+  });
+};
+
+window.ultraWrapShowHide = function ultraWrapShowHide() {
+  if (typeof window.SpeedInfoShow === "function" && !window.SpeedInfoShow.__ultra) {
+    window.SpeedInfoShow = function () {
+      if (window.pudding_settings) window.pudding_settings.SpeedInfo = false;
+      const box = document.getElementById("speedinfo-popup-pudding");
+      if (box) {
+        box.style.display = "none";
+        box.style.visibility = "hidden";
+      }
+    };
+    window.SpeedInfoShow.__ultra = true;
+  }
+  if (typeof window.ToggleSpeedInfo === "function" && !window.ToggleSpeedInfo.__ultra) {
+    window.ToggleSpeedInfo = function () {
+      window.ultraDisableSpeedInfo();
+    };
+    window.ToggleSpeedInfo.__ultra = true;
+  }
+  if (typeof window.SpeedInfoHide === "function" && !window.SpeedInfoHide.__ultra) {
+    const origHide = window.SpeedInfoHide;
+    window.SpeedInfoHide = function () {
+      origHide.apply(this, arguments);
+      if (!window.__ultraApplying) window.ultraLayoutMenus();
+    };
+    window.SpeedInfoHide.__ultra = true;
+  }
+  if (typeof window.BootstrapShow === "function" && !window.BootstrapShow.__ultra) {
+    const orig = window.BootstrapShow;
+    window.BootstrapShow = function () {
+      orig.apply(this, arguments);
+      if (!window.__ultraApplying) window.ultraSetRight("more");
+    };
+    window.BootstrapShow.__ultra = true;
+  }
+  if (typeof window.BootstrapHide === "function" && !window.BootstrapHide.__ultra) {
+    const orig = window.BootstrapHide;
+    window.BootstrapHide = function () {
+      orig.apply(this, arguments);
+      if (!window.__ultraApplying && window.ultraDock.right === "more") {
+        window.ultraSetRight(window.ultraDock.lastPlace || "place");
+      } else if (!window.__ultraApplying) {
+        window.ultraLayoutMenus();
+      }
+    };
+    window.BootstrapHide.__ultra = true;
+  }
+  if (
+    typeof window.PortalPairsPanelShow === "function" &&
+    !window.PortalPairsPanelShow.__ultra
+  ) {
+    const orig = window.PortalPairsPanelShow;
+    window.PortalPairsPanelShow = function () {
+      orig.apply(this, arguments);
+      window.ultraLayoutMenus();
+    };
+    window.PortalPairsPanelShow.__ultra = true;
+  }
+  if (
+    typeof window.PortalPairsPanelHide === "function" &&
+    !window.PortalPairsPanelHide.__ultra
+  ) {
+    const orig = window.PortalPairsPanelHide;
+    window.PortalPairsPanelHide = function () {
+      orig.apply(this, arguments);
+      window.ultraLayoutMenus();
+    };
+    window.PortalPairsPanelHide.__ultra = true;
+  }
+  if (typeof window.editTimer === "function" && !window.editTimer.__ultraDock) {
+    const orig = window.editTimer;
+    window.editTimer = function () {
+      orig.apply(this, arguments);
+      window.ultraLayoutMenus();
+    };
+    window.editTimer.__ultraDock = true;
+  }
+  if (
+    window.timeKeeper &&
+    typeof window.timeKeeper.toggleDialog === "function" &&
+    !window.timeKeeper.toggleDialog.__ultra
+  ) {
+    const orig = window.timeKeeper.toggleDialog;
+    window.timeKeeper.toggleDialog = function () {
+      orig.apply(this, arguments);
+      window.ultraLayoutMenus();
+    };
+    window.timeKeeper.toggleDialog.__ultra = true;
+  }
+
+  if (
+    typeof window.SplitPanelShow === "function" &&
+    !window.SplitPanelShow.__ultra
+  ) {
+    const orig = window.SplitPanelShow;
+    window.SplitPanelShow = function () {
+      orig.apply(this, arguments);
+      if (!window.__ultraApplying) window.ultraSetLeft("splits");
+    };
+    window.SplitPanelShow.__ultra = true;
+  }
+  if (
+    typeof window.SplitPanelHide === "function" &&
+    !window.SplitPanelHide.__ultra
+  ) {
+    const orig = window.SplitPanelHide;
+    window.SplitPanelHide = function () {
+      orig.apply(this, arguments);
+      if (!window.__ultraApplying && window.ultraDock.left === "splits") {
+        window.ultraSetLeft(null);
+      } else if (!window.__ultraApplying) {
+        window.ultraLayoutMenus();
+      }
+    };
+    window.SplitPanelHide.__ultra = true;
+  }
+  if (typeof window.setTheme === "function" && !window.setTheme.__ultra) {
+    const orig = window.setTheme;
+    window.setTheme = function () {
+      orig.apply(this, arguments);
+      window.ultraApplyTheme();
+    };
+    window.setTheme.__ultra = true;
+  }
+  if (
+    typeof window.toggle_input_display === "function" &&
+    !window.toggle_input_display.__ultra
+  ) {
+    const orig = window.toggle_input_display;
+    window.toggle_input_display = function () {
+      orig.apply(this, arguments);
+      window.ultraLayoutMenus();
+    };
+    window.toggle_input_display.__ultra = true;
+  }
+
+  const vis = document.getElementById("delete-stuff-popup");
+  if (vis && !vis.__ultraObs) {
+    const obs = new MutationObserver(function () {
+      window.ultraLayoutMenus();
+    });
+    obs.observe(vis, { attributes: true, attributeFilter: ["hidden", "style"] });
+    vis.__ultraObs = true;
+  }
+  const exp = document.getElementById("custom-export-dialogue-container");
+  if (exp && !exp.__ultraObs) {
+    const obs = new MutationObserver(function () {
+      window.ultraLayoutMenus();
+    });
+    obs.observe(exp, { attributes: true, attributeFilter: ["style"] });
+    exp.__ultraObs = true;
+  }
+};
+
+window.ultraSetIndicator = function ultraSetIndicator() {
+  const parent = document.getElementsByClassName("EjCLSb")[0];
+  if (!parent) return;
+  for (const el of [...parent.querySelectorAll("div")]) {
+    const t = (el.textContent || "").trim();
+    if (t === "Remix Mod" || t === "Level Editor Mod" || t === "Remix Ultra") {
+      el.remove();
+    }
+  }
+  const canvasNode = document.getElementsByClassName("jNB0Ic")[0];
+  const modIndicator = document.createElement("div");
+  modIndicator.id = "remix-ultra-indicator";
+  modIndicator.style =
+    "position:absolute;font-family:Arial,sans-serif;color:white;font-size:14px;padding-top:4px;padding-left:30px;user-select: none;";
+  modIndicator.textContent = "Remix Ultra";
+  if (canvasNode) parent.insertBefore(modIndicator, canvasNode);
+  else parent.appendChild(modIndicator);
+};
+
+window.ultraAppleManager = function ultraAppleManager() {
+  const game = window.__remixGame || window.megaWholeSnakeObject;
+  if (game && game.wa && Array.isArray(game.wa.ka)) return game.wa;
+  if (window.wholeSnakeObject && window.wholeSnakeObject.wa && Array.isArray(window.wholeSnakeObject.wa.ka)) {
+    return window.wholeSnakeObject.wa;
+  }
+  return null;
+};
+
+window.ultraAssignNewApples = function ultraAssignNewApples(added) {
+  const mgr = window.ultraAppleManager();
+  if (!mgr || !mgr.ka || !added || added <= 0) return;
+  window.appleArray = mgr.ka;
+  if (window.isChessActive && window.isChessActive() && typeof window.chess_convert_new_apples === "function") {
+    window.chess_convert_new_apples(mgr, added);
+  }
+  if (window.isBurgerActive && window.isBurgerActive() && typeof window.burger_assign_timer === "function") {
+    for (let i = mgr.ka.length - added; i < mgr.ka.length; i++) {
+      if (mgr.ka[i] && !mgr.ka[i].nla) window.burger_assign_timer(mgr.ka[i]);
+    }
+  }
+};
+
+window.ultraAssignAllBoardApples = function ultraAssignAllBoardApples() {
+  const mgr = window.ultraAppleManager();
+  if (!mgr || !mgr.ka) return;
+  window.appleArray = mgr.ka;
+  if (
+    window.isChessActive &&
+    window.isChessActive() &&
+    typeof window.chess_assign_piece === "function"
+  ) {
+    let converted = 0;
+    let first = -1;
+    for (let i = 0; i < mgr.ka.length; i++) {
+      const a = mgr.ka[i];
+      if (!a || a.isPiece || a.nla) continue;
+      window.chess_assign_piece(a);
+      converted++;
+      if (first < 0) first = i;
+    }
+    if (
+      converted > 0 &&
+      typeof window.chess_sanitize_spawns === "function"
+    ) {
+      const freePos =
+        window.__remixGame && typeof window.__remixGame.Tb === "function"
+          ? function (board, excl, radius) {
+              return window.__remixGame.Tb(excl, radius);
+            }
+          : null;
+      window.chess_sanitize_spawns(mgr, freePos, first);
+    }
+  }
+  if (
+    window.isBurgerActive &&
+    window.isBurgerActive() &&
+    typeof window.burger_assign_timer === "function"
+  ) {
+    for (let i = 0; i < mgr.ka.length; i++) {
+      const a = mgr.ka[i];
+      if (a && !a.nla && a.burgerTimer == null) {
+        window.burger_assign_timer(a);
+      }
+    }
+  }
+};
+
+window.ultraSetupGameplayHooks = function ultraSetupGameplayHooks() {
+  if (typeof window.placeApple === "function" && !window.placeApple.__ultra) {
+    const orig = window.placeApple;
+    window.placeApple = function () {
+      const mgr = window.ultraAppleManager();
+      const before = mgr && mgr.ka ? mgr.ka.length : 0;
+      orig.apply(this, arguments);
+      const after = mgr && mgr.ka ? mgr.ka.length : 0;
+      const added = after - before;
+      if (added > 0) window.ultraAssignNewApples(added);
+    };
+    window.placeApple.__ultra = true;
+  }
+
+  if (window.simpleHookManager && typeof window.simpleHookManager.registerHook === "function") {
+    window.simpleHookManager.registerHook(
+      "afterResetBoard",
+      "ultraChessBurgerApples",
+      window.ultraAssignAllBoardApples
+    );
+  }
+
+  if (
+    window.timeKeeper &&
+    typeof window.timeKeeper.shouldTrack === "function" &&
+    !window.timeKeeper.shouldTrack.__ultra
+  ) {
+    const origShouldTrack = window.timeKeeper.shouldTrack;
+    window.timeKeeper.shouldTrack = function ultraShouldTrack(ctx) {
+      if (window.ultraChallengeOrHamActive()) return false;
+      if (window.daily_challenge) return false;
+      const c =
+        ctx ||
+        (typeof window.timeKeeper.resolveRunContext === "function"
+          ? window.timeKeeper.resolveRunContext()
+          : null);
+      if (!c) return origShouldTrack.call(this, ctx);
+      // LE always assigns megaWholeSnakeObject; do not treat that as MouseMode.
+      if (c.count > 6 || c.speed > 2 || c.size > 2) return false;
+      if (
+        window.remixChessBurgerTimeKeeperActive &&
+        window.remixChessBurgerTimeKeeperActive()
+      ) {
+        return window.remixTimeKeeperOfficialSettings
+          ? window.remixTimeKeeperOfficialSettings(ctx)
+          : origShouldTrack.call(this, ctx);
+      }
+      return true;
+    };
+    window.timeKeeper.shouldTrack.__ultra = true;
+  }
+};
+
+window.ultraSettingsWrap = function ultraSettingsWrap(id) {
+  const el = document.getElementById(id);
+  if (!el) return null;
+  return el.closest(".form-check") || el;
+};
+
+window.ultraHideSettingsNode = function ultraHideSettingsNode(el, bin) {
+  if (!el) return;
+  el.classList.add("ultra-hide");
+  el.style.display = "none";
+  if (bin && el.parentElement !== bin) bin.appendChild(el);
+};
+
+window.ultraPresetDataUri = function ultraPresetDataUri(url) {
+  if (!url || !window.ULTRA_PRESET_PNG) return url;
+  if (String(url).indexOf("data:image/png") === 0) return url;
+  const keys = Object.keys(window.ULTRA_PRESET_PNG);
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    if (url === key || url.endsWith("/" + key) || url.endsWith(key)) {
+      return window.ULTRA_PRESET_PNG[key];
+    }
+  }
+  return url;
+};
+
+window.ultraExtractPresetPixels = function ultraExtractPresetPixels(img) {
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0);
+  const data = ctx.getImageData(0, 0, w, h).data;
+  const pixelList = [];
+  for (let i = 0; i < data.length; i += 4) {
+    const hex = window.rgbToHex(data[i], data[i + 1], data[i + 2]);
+    const details = window.hexToPixelDetails(hex);
+    pixelList.push({
+      x: (i / 4) % w,
+      y: Math.floor(i / 4 / w),
+      hex: hex,
+      category: details.category,
+      type: details.type,
+    });
+  }
+  return pixelList;
+};
+
+window.ultraPresetSizeIndex = function ultraPresetSizeIndex(el) {
+  const w = el.naturalWidth;
+  if (w === 17) return 0;
+  if (w === 10) return 1;
+  if (w === 24) return 2;
+  const key = el.getAttribute("data-ultra-pattern");
+  const pat = key && window.presetPatterns && window.presetPatterns[key];
+  if (pat && pat.pixelList && pat.pixelList.length) {
+    let maxX = 0;
+    for (let i = 0; i < pat.pixelList.length; i++) {
+      if (pat.pixelList[i].x > maxX) maxX = pat.pixelList[i].x;
+    }
+    const width = maxX + 1;
+    if (width <= 10) return 1;
+    if (width <= 17) return 0;
+    return 2;
+  }
+  return 0;
+};
+
+window.ultraApplyImagePreset = function ultraApplyImagePreset(el) {
+  const panel = document.getElementById("preset-panel");
+  if (!panel || !el) return;
+  Array.from(panel.children).forEach(function (c) {
+    c.classList.remove("chosen-preset");
+  });
+  el.classList.add("chosen-preset");
+  const key = el.getAttribute("data-ultra-pattern");
+  if (key && window.presetPatterns && window.presetPatterns[key]) {
+    window.presetPatterns[el.src] = window.presetPatterns[key];
+  }
+  window.ultraSetLeft(null);
+  window.selectNewSizeSettingAndHardReset(window.ultraPresetSizeIndex(el));
+};
+
+window.ultraPatchPresetLoads = function ultraPatchPresetLoads() {
+  window.setPixelData = function (target, url, callback) {
+    url = window.ultraPresetDataUri(url);
+    target.complete = false;
+    const img = new Image();
+    let ran = false;
+    function done() {
+      if (ran) return;
+      ran = true;
+      try {
+        target.pixelList = window.ultraExtractPresetPixels(img);
+        target.complete = true;
+        if (typeof callback === "function") callback();
+      } catch (e) {
+        console.error("RemixUltra: preset decode failed", e);
+      }
+    }
+    img.onload = done;
+    img.onerror = function () {
+      console.error("RemixUltra: preset image error");
+    };
+    img.src = url;
+    if (img.complete && img.naturalWidth) done();
+  };
+  window.setPixelData.__ultra = true;
+};
+
+window.ULTRA_HAM_W = 10;
+window.ULTRA_HAM_H = 9;
+window.ULTRA_HAM_MIDDLE = { x: 7, y: 4 };
+
+// Vanilla 10-apple start in spawn-relative coords (same offsets the game
+// passes to makeApple). On small, (4,0) is off the board and (-5,0) sits
+// on the snake's head; those are dropped when converting to tiles.
+window.ULTRA_TEN_APPLE_VANILLA = [
+  [-5, -4],
+  [-2, -4],
+  [1, -4],
+  [-5, 0],
+  [-2, 0],
+  [1, 0],
+  [-5, 4],
+  [-2, 4],
+  [1, 4],
+  [4, 0],
+];
+
+window.ultraHamOffset = function ultraHamOffset() {
+  try {
+    if (typeof window.getAppleSpawnPointOffset === "function") {
+      const off = window.getAppleSpawnPointOffset();
+      if (off && typeof off.x === "number") return off;
+    }
+  } catch (_e) {}
+  return { x: -7, y: -4 };
+};
+
+window.ultraVanillaToHamBoard = function ultraVanillaToHamBoard(vx, vy) {
+  const off = window.ultraHamOffset();
+  return { x: vx - off.x, y: vy - off.y };
+};
+
+window.ultraHamKey = function ultraHamKey(x, y) {
+  return x + "," + y;
+};
+
+window.ultraHamInBounds = function ultraHamInBounds(x, y) {
+  return x >= 0 && y >= 0 && x < window.ULTRA_HAM_W && y < window.ULTRA_HAM_H;
+};
+
+window.ultraHamSnakeBoardCells = function ultraHamSnakeBoardCells() {
+  const off = window.ultraHamOffset();
+  const fallback = [
+    { x: 2, y: 4 },
+    { x: 1, y: 4 },
+    { x: 0, y: 4 },
+    { x: -1, y: 4 },
+  ];
+  try {
+    const g = window.__remixGame || window.megaWholeSnakeObject;
+    const segs = g && g.oa && g.oa.ka;
+    if (!Array.isArray(segs) || !segs.length) return fallback;
+    const raw = segs.map(function (s) {
+      return { x: s.x, y: s.y };
+    });
+    const h = raw[0];
+    if (h.x < 0 || h.x >= window.ULTRA_HAM_W || h.y < 0 || h.y >= window.ULTRA_HAM_H) {
+      return raw.map(function (s) {
+        return { x: s.x - off.x, y: s.y - off.y };
+      });
+    }
+    return raw;
+  } catch (_e) {
+    return fallback;
+  }
+};
+
+window.ultraHamBlockedSet = function ultraHamBlockedSet(walls) {
+  const set = Object.create(null);
+  if (walls) {
+    for (let i = 0; i < walls.length; i++) {
+      set[window.ultraHamKey(walls[i].x, walls[i].y)] = true;
+    }
+  }
+  const snake = window.ultraHamSnakeBoardCells();
+  for (let i = 0; i < snake.length; i++) {
+    set[window.ultraHamKey(snake[i].x, snake[i].y)] = true;
+  }
+  return set;
+};
+
+window.ultraHamIsFree = function ultraHamIsFree(x, y, blocked) {
+  return window.ultraHamInBounds(x, y) && !blocked[window.ultraHamKey(x, y)];
+};
+
+window.ultraHamNearestFree = function ultraHamNearestFree(tx, ty, blocked) {
+  if (window.ultraHamIsFree(tx, ty, blocked)) return { x: tx, y: ty };
+  let best = null;
+  let bestD = 1e9;
+  for (let y = 0; y < window.ULTRA_HAM_H; y++) {
+    for (let x = 0; x < window.ULTRA_HAM_W; x++) {
+      if (!window.ultraHamIsFree(x, y, blocked)) continue;
+      const d = (x - tx) * (x - tx) + (y - ty) * (y - ty);
+      if (d < bestD) {
+        bestD = d;
+        best = { x: x, y: y };
+      }
+    }
+  }
+  return best;
+};
+
+window.ultraHamCountIndex = function ultraHamCountIndex() {
+  try {
+    const g = window.__remixGame;
+    if (g && g.settings && typeof g.settings.ka === "number") return g.settings.ka;
+    if (window.timeKeeper && typeof window.timeKeeper.getCurrentSetting === "function") {
+      const c = window.timeKeeper.getCurrentSetting("count");
+      if (typeof c === "number") return c;
+    }
+  } catch (_e) {}
+  return 0;
+};
+
+window.ultraHamWantSingleApple = function ultraHamWantSingleApple(count) {
+  if (count === 0 || count === 4 || count === 5) return true;
+  if (typeof window.remixIsColoredDice === "function" && window.remixIsColoredDice(count)) {
+    return true;
+  }
+  if (
+    count === window.BLUE_DICE_COUNT ||
+    count === window.GREEN_DICE_COUNT ||
+    count === window.BLACK_DICE_COUNT
+  ) {
+    return true;
+  }
+  return false;
+};
+
+window.ultraTenAppleBoardCoords = function ultraTenAppleBoardCoords() {
+  const pts = window.ULTRA_TEN_APPLE_VANILLA;
+  const out = [];
+  for (let i = 0; i < pts.length; i++) {
+    out.push(window.ultraVanillaToHamBoard(pts[i][0], pts[i][1]));
+  }
+  return out;
+};
+
+window.ultraNativeAppleBoardCoords = function ultraNativeAppleBoardCoords() {
+  const off = window.ultraHamOffset();
+  const pts = [];
+  try {
+    const g = window.__remixGame;
+    const apples = (g && g.wa && g.wa.ka) || window.appleArray || [];
+    for (let i = 0; i < apples.length; i++) {
+      const p = apples[i] && apples[i].pos;
+      if (!p || typeof p.x !== "number") continue;
+      pts.push({ x: p.x, y: p.y });
+    }
+  } catch (_e) {}
+  if (!pts.length) return [];
+  let spawnRel = false;
+  for (let i = 0; i < pts.length; i++) {
+    if (pts[i].x < 0 || pts[i].y < 0) {
+      spawnRel = true;
+      break;
+    }
+  }
+  if (spawnRel) {
+    return pts.map(function (p) {
+      return { x: p.x - off.x, y: p.y - off.y };
+    });
+  }
+  return pts;
+};
+
+window.ultraHamFilterCoords = function ultraHamFilterCoords(coords, blocked) {
+  const out = [];
+  const seen = Object.create(null);
+  if (!coords) return out;
+  for (let i = 0; i < coords.length; i++) {
+    const x = coords[i].x;
+    const y = coords[i].y;
+    if (!window.ultraHamIsFree(x, y, blocked)) continue;
+    const k = window.ultraHamKey(x, y);
+    if (seen[k]) continue;
+    seen[k] = true;
+    out.push({ x: x, y: y });
+  }
+  return out;
+};
+
+window.ultraHamClosestToSnake = function ultraHamClosestToSnake(coords, n, blocked) {
+  const snake = window.ultraHamSnakeBoardCells();
+  const head = snake[0] || { x: 2, y: 4 };
+  const free = window.ultraHamFilterCoords(coords, blocked);
+  free.sort(function (a, b) {
+    const da = (a.x - head.x) * (a.x - head.x) + (a.y - head.y) * (a.y - head.y);
+    const db = (b.x - head.x) * (b.x - head.x) + (b.y - head.y) * (b.y - head.y);
+    return da - db || a.y - b.y || a.x - b.x;
+  });
+  return free.slice(0, n);
+};
+
+window.ultraHamPlaceCount = function ultraHamPlaceCount(intended, blocked, want) {
+  const occ = Object.assign(Object.create(null), blocked);
+  const out = [];
+  const src = intended ? intended.slice() : [];
+  for (let i = 0; i < src.length && out.length < want; i++) {
+    const p = src[i];
+    const at = window.ultraHamNearestFree(p.x, p.y, occ);
+    if (!at) continue;
+    occ[window.ultraHamKey(at.x, at.y)] = true;
+    out.push(at);
+  }
+  if (out.length < want) {
+    const mid = window.ULTRA_HAM_MIDDLE;
+    const extras = [];
+    for (let y = 0; y < window.ULTRA_HAM_H; y++) {
+      for (let x = 0; x < window.ULTRA_HAM_W; x++) {
+        if (window.ultraHamIsFree(x, y, occ)) extras.push({ x: x, y: y });
+      }
+    }
+    extras.sort(function (a, b) {
+      const da = (a.x - mid.x) * (a.x - mid.x) + (a.y - mid.y) * (a.y - mid.y);
+      const db = (b.x - mid.x) * (b.x - mid.x) + (b.y - mid.y) * (b.y - mid.y);
+      return da - db || a.y - b.y || a.x - b.x;
+    });
+    for (let i = 0; i < extras.length && out.length < want; i++) {
+      const p = extras[i];
+      occ[window.ultraHamKey(p.x, p.y)] = true;
+      out.push(p);
+    }
+  }
+  return out;
+};
+
+window.ultraHamAppleCoords = function ultraHamAppleCoords(walls) {
+  const blocked = window.ultraHamBlockedSet(walls);
+  const count = window.ultraHamCountIndex();
+  const ten = window.ultraTenAppleBoardCoords();
+  const native = window.ultraNativeAppleBoardCoords();
+  const mid = window.ULTRA_HAM_MIDDLE;
+
+  if (window.ultraHamWantSingleApple(count)) {
+    const at = window.ultraHamNearestFree(mid.x, mid.y, blocked);
+    return at ? [at] : [];
+  }
+
+  if (count === 1) {
+    let picked = window.ultraHamClosestToSnake(ten, 3, blocked);
+    if (picked.length < 3) {
+      const extra = [];
+      for (let y = 0; y < window.ULTRA_HAM_H; y++) {
+        for (let x = 0; x < window.ULTRA_HAM_W; x++) extra.push({ x: x, y: y });
+      }
+      picked = window.ultraHamClosestToSnake(extra, 3, blocked);
+    }
+    return picked;
+  }
+
+  if (count === 2) {
+    const five = [
+      [-5, -4],
+      [1, -4],
+      [-2, 0],
+      [-5, 4],
+      [1, 4],
+    ].map(function (p) {
+      return window.ultraVanillaToHamBoard(p[0], p[1]);
+    });
+    return window.ultraHamFilterCoords(five, blocked);
+  }
+
+  if (count === 3) {
+    const intended = [];
+    const seen = Object.create(null);
+    function addIntended(list) {
+      if (!list) return;
+      for (let i = 0; i < list.length; i++) {
+        const p = list[i];
+        const k = window.ultraHamKey(p.x, p.y);
+        if (seen[k]) continue;
+        seen[k] = true;
+        intended.push({ x: p.x, y: p.y });
+      }
+    }
+    addIntended(native);
+    addIntended(ten);
+    return window.ultraHamPlaceCount(intended, blocked, 10);
+  }
+
+  return window.ultraHamFilterCoords(native.length ? native : ten, blocked);
+};
+
+window.ultraPatchLevelLoads = function ultraPatchLevelLoads() {
+  const mgr = window.otherPresetmanager;
+  if (!mgr || mgr.__ultra) return;
+  if (window.ULTRA_CHALLENGE_TXT) {
+    mgr.challengeLevelCodes = String(window.ULTRA_CHALLENGE_TXT)
+      .split(/\r?\n/)
+      .filter(function (line) {
+        return line.trim().length > 0;
+      });
+    mgr.isChallengeLoaded = mgr.challengeLevelCodes.length > 0;
+  }
+  if (window.ULTRA_HAM_TXT) {
+    mgr.hamLevelCodes = String(window.ULTRA_HAM_TXT).split(/\r?\n/);
+    mgr.isHamsLoaded = mgr.hamLevelCodes.length > 0;
+  }
+  const origGet = mgr.getChallengePixelList;
+  mgr.getChallengePixelList = function () {
+    this.challengelevel = Number(this.challengelevel) || 1;
+    return origGet.call(this);
+  };
+  mgr.loadChallenge = function () {};
+  mgr.loadRandomHams = function () {};
+  mgr.getRandomHamPixelList = function () {
+    if (!this.isHamsLoaded || !this.hamLevelCodes || !this.hamLevelCodes.length) {
+      return [];
+    }
+    const chosen =
+      this.hamLevelCodes[Math.floor(Math.random() * this.hamLevelCodes.length)];
+    const decoded = window.customPresetManager.getPixelListFromLevelCode(chosen);
+    const walls = decoded.filter(function (e) {
+      return e.category === "wall";
+    });
+    const apples = window.ultraHamAppleCoords(walls);
+    for (let i = 0; i < apples.length; i++) {
+      walls.push({
+        x: apples[i].x,
+        y: apples[i].y,
+        category: "apple",
+        type: 0,
+      });
+    }
+    return walls;
+  };
+  mgr.__ultra = true;
+};
+
+window.ultraFixPresetImages = function ultraFixPresetImages() {
+  document.querySelectorAll("#preset-panel img.preset-option").forEach(function (img) {
+    const src = img.getAttribute("src") || img.src || "";
+    const key = src.replace(window.rootUrl || "", "");
+    if (key) img.setAttribute("data-ultra-pattern", key);
+    const uri = window.ultraPresetDataUri(src);
+    if (!uri || uri === src) return;
+    if (window.presetPatterns && key && window.presetPatterns[key]) {
+      window.presetPatterns[uri] = window.presetPatterns[key];
+    }
+    img.src = uri;
+  });
+};
+
+window.ultraShowSettingsPage = function ultraShowSettingsPage(id) {
+  window.__ultraSettingsPage = id;
+  ["play", "stats", "setup"].forEach(function (pageId) {
+    const page = document.getElementById("ultra-settings-page-" + pageId);
+    const tab = document.getElementById("ultra-settings-tab-" + pageId);
+    if (page) page.classList.toggle("ultra-page-on", pageId === id);
+    if (tab) tab.classList.toggle("ultra-tab-on", pageId === id);
+  });
+};
+
+window.ultraOrganizeSettings = function ultraOrganizeSettings() {
+  const root = document.getElementById("settings-popup-pudding");
+  if (!root) return;
+
+  if (typeof window.remixInjectBlackDiceSettingsUi === "function") {
+    window.remixInjectBlackDiceSettingsUi();
+  }
+
+  let bin = document.getElementById("ultra-settings-hidden");
+  if (!bin) {
+    bin = document.createElement("div");
+    bin.id = "ultra-settings-hidden";
+    bin.className = "ultra-hide";
+    root.appendChild(bin);
+  }
+
+  window.ultraHideSettingsNode(window.ultraSettingsWrap("AlwaysOnTimeKeeper"), bin);
+  window.ultraHideSettingsNode(window.ultraSettingsWrap("ShowSplitPanel"), bin);
+  window.ultraHideSettingsNode(window.ultraSettingsWrap("RemoveScrollbar"), bin);
+  window.ultraHideSettingsNode(document.getElementById("ScrollLeftBtn"), bin);
+  window.ultraHideSettingsNode(document.getElementById("settings-close"), bin);
+  window.ultraHideSettingsNode(document.getElementById("snakePride"), bin);
+  Array.from(root.querySelectorAll(":scope > br")).forEach(function (el) {
+    window.ultraHideSettingsNode(el, bin);
+  });
+
+  let pager = document.getElementById("ultra-settings-pager");
+  if (!pager) {
+    pager = document.createElement("div");
+    pager.id = "ultra-settings-pager";
+    const title = root.querySelector(":scope > span");
+    if (title && title.nextSibling) root.insertBefore(pager, title.nextSibling);
+    else root.insertBefore(pager, root.firstChild);
+
+    [
+      ["play", "Play"],
+      ["stats", "Stats"],
+      ["setup", "Setup"],
+    ].forEach(function (pair) {
+      const page = document.createElement("div");
+      page.id = "ultra-settings-page-" + pair[0];
+      page.className = "ultra-settings-page";
+      root.appendChild(page);
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "ultra-settings-tab-" + pair[0];
+      btn.className = "ultra-settings-tab";
+      btn.textContent = pair[1];
+      btn.addEventListener("click", function () {
+        window.ultraShowSettingsPage(pair[0]);
+      });
+      pager.appendChild(btn);
+    });
+  }
+
+  const play = document.getElementById("ultra-settings-page-play");
+  const stats = document.getElementById("ultra-settings-page-stats");
+  const setup = document.getElementById("ultra-settings-page-setup");
+  if (!play || !stats || !setup) return;
+
+  [
+    "SkullPoisonFruit",
+    "DistinctSokoGoals",
+    "InputDisplay",
+    "TopBarIcons",
+    "EatThemeRandomizer",
+    "DisableRandom",
+  ].forEach(function (id) {
+    const el = window.ultraSettingsWrap(id);
+    if (el && el.parentElement !== play) play.appendChild(el);
+  });
+  ["stat-chooser", "edit-stat", "reset-stats"].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (el && el.parentElement !== stats) stats.appendChild(el);
+  });
+  [
+    "SaveGameSettings",
+    "TimerSettings",
+    "ResetKeybind",
+    "CustomBowlFruits",
+    "black-dice-settings",
+  ].forEach(function (id) {
+    const el = window.ultraSettingsWrap(id) || document.getElementById(id);
+    if (el && el.parentElement !== setup) setup.appendChild(el);
+  });
+
+  window.ultraShowSettingsPage(window.__ultraSettingsPage || "play");
+};
+
+window.ultraSetupLayout = function ultraSetupLayout() {
+  const vis = document.getElementById("delete-stuff-popup");
+  if (vis && !vis.hasAttribute("hidden")) vis.hidden = true;
+  window.ultraInjectThemeCss();
+  window.ultraInjectTabStrip();
+  window.ultraMoveInputDisplay();
+  window.ultraSyncLeNav();
+  window.ultraWrapShowHide();
+  window.ultraDisableSpeedInfo();
+  window.ultraOrganizeSettings();
+  window.ultraFixPresetImages();
+  window.ultraInstallSizeReset();
+  window.ultraInstallBlitGuard();
+  window.ultraScaleCustomCanvas();
+  window.ultraApplyTheme();
+  window.ultraDock.right = window.ultraDefaultRightTab();
+  if (window.ultraDock.right === "place" || window.ultraDock.right === "presets") {
+    window.ultraDock.lastPlace = window.ultraDock.right;
+  }
+  if (window.pudding_settings && window.pudding_settings.SplitPanel) {
+    window.ultraDock.left = "splits";
+  }
+  window.__ultraLayoutReady = true;
+  window.ultraLayoutMenus();
+};
+
+////////////////////////////////////////////////////////////////////
+//RUNCODEBEFORE
+////////////////////////////////////////////////////////////////////
+
+window.RemixUltraMod.runCodeBefore = function () {
+  window.__remixCore.runCodeBefore();
+  window.levelEditorMod.runCodeBefore();
+};
+
+////////////////////////////////////////////////////////////////////
+//ALTERSNAKECODE
+////////////////////////////////////////////////////////////////////
+
+window.ultraMatchWallContainer = function ultraMatchWallContainer(text) {
+  const pats = [
+    /&&\s*\(\s*([$a-zA-Z0-9_]{1,8})\(\s*this\.([$a-zA-Z0-9_]{1,8})\s*,\s*[$a-zA-Z0-9_]{1,8}\s*\)\s*,\s*[$a-zA-Z0-9_]{1,8}\(\s*this\.[$a-zA-Z0-9_]{1,8}\s*,\s*7\s*\)/,
+    /&&\s*\(\s*([$a-zA-Z0-9_]{1,8})\(\s*this\.([$a-zA-Z0-9_]{1,8})\s*,\s*[$a-zA-Z0-9_]{1,8}\s*\)\s*&&\s*[$a-zA-Z0-9_]{1,8}\(\s*this\.[$a-zA-Z0-9_]{1,8}\s*,\s*7\s*\)/,
+    /([$a-zA-Z0-9_]{1,8})\(\s*this\.([$a-zA-Z0-9_]{1,8})\s*,\s*[$a-zA-Z0-9_]{1,8}\s*\)\s*,\s*[$a-zA-Z0-9_]{1,8}\(\s*this\.[$a-zA-Z0-9_]{1,8}\s*,\s*7\s*\)/,
+  ];
+  const needles = [",7)", ", 7)", ",7 )"];
+  for (let n = 0; n < needles.length; n++) {
+    let from = 0;
+    while (from < text.length) {
+      const i = text.indexOf(needles[n], from);
+      if (i < 0) break;
+      const start = Math.max(0, i - 160);
+      const slice = text.slice(start, i + 8);
+      for (let p = 0; p < pats.length; p++) {
+        const m = slice.match(pats[p]);
+        if (m) {
+          const out = [m[0], m[2]];
+          out.index = start + slice.indexOf(m[0]);
+          out.input = text;
+          return out;
+        }
+      }
+      from = i + 2;
+    }
+  }
+  return null;
+};
+
+window.ultraQuietFinderLogs = function ultraQuietFinderLogs(fn) {
+  const origLog = console.log;
+  const origError = console.error;
+
+  function isFinderNoise(args) {
+    const parts = [];
+    for (let i = 0; i < (args ? args.length : 0); i++) {
+      parts.push(String(args[i] == null ? "" : args[i]));
+    }
+    return parts.join(" ").indexOf("Couldn't find a match for somethingInsideFunction") !== -1;
+  }
+
+  console.log = function () {
+    if (isFinderNoise(arguments)) return;
+    return origLog.apply(console, arguments);
+  };
+  console.error = function () {
+    if (isFinderNoise(arguments)) return;
+    return origError.apply(console, arguments);
+  };
+  try {
+    return fn();
+  } finally {
+    console.log = origLog;
+    console.error = origError;
+  }
+};
+
+window.ultraWithLeRegexFallbacks = function ultraWithLeRegexFallbacks(fn) {
+  const origFind = window.findFunctionInCode;
+  const origAssert = window.assertReplace;
+  const origError = console.error;
+  const origLog = console.log;
+  const origProto =
+    String.prototype.assertReplace && String.prototype.assertReplace.__ultra
+      ? null
+      : String.prototype.assertReplace;
+
+  function spacedEquals(re) {
+    if (!(re instanceof RegExp)) return re;
+    return new RegExp(re.source.replace(/=/g, "\\s*=\\s*"), re.flags);
+  }
+
+  function isExpectedLeMiss(args) {
+    const parts = [];
+    for (let i = 0; i < (args ? args.length : 0); i++) {
+      parts.push(String(args[i] == null ? "" : args[i]));
+    }
+    return parts.join(" ").indexOf("Couldn't find a match for somethingInsideFunction") !== -1;
+  }
+
+  // Loader uses console.log('%c...somethingInsideFunction', 'color:red'), not console.error.
+  console.log = function () {
+    if (isExpectedLeMiss(arguments)) return;
+    return origLog.apply(console, arguments);
+  };
+  console.error = function () {
+    if (isExpectedLeMiss(arguments)) return;
+    return origError.apply(console, arguments);
+  };
+
+  if (typeof origFind === "function") {
+    window.findFunctionInCode = function (src, sig, inside, logging) {
+      try {
+        return origFind.apply(this, arguments);
+      } catch (e) {
+        const insides = inside instanceof RegExp ? [inside] : [];
+        const sigs = [sig];
+        if (inside instanceof RegExp) {
+          insides.push(
+            new RegExp(inside.source.replace(/=/g, "\\s*=\\s*"), inside.flags)
+          );
+          insides.push(
+            new RegExp(
+              inside.source.replace(/:/g, ":\\s*").replace(/=/g, "\\s*=\\s*"),
+              inside.flags
+            )
+          );
+          if (/case 1/.test(inside.source)) {
+            insides.push(/case 1:\s*a\s*=\s*\.66/);
+          }
+          if (/case "apple"/.test(inside.source)) {
+            insides.push(/case "apple":/);
+          }
+          if (/isVisible/.test(inside.source)) {
+            insides.push(
+              /isVisible\(\)\|\|this\.[$a-zA-Z0-9_]{0,8}\.[$a-zA-Z0-9_]{0,8}/
+            );
+          }
+        }
+        if (sig instanceof RegExp) {
+          if (/d=-1/.test(sig.source)) {
+            sigs.push(/[$a-zA-Z0-9_]{0,8}=function\(a,b,c,d=-1\)/);
+            sigs.push(/[$a-zA-Z0-9_]{0,8}=function\(a,b,c,d\s*=\s*-1\)/);
+            sigs.push(/[$a-zA-Z0-9_]{0,8}=function\(a,b,c,d\)/);
+          }
+          if (/\\(\\)\\\{/.test(sig.source) || /\(\)\\\{/.test(sig.source)) {
+            sigs.push(/[$a-zA-Z0-9_]{0,8}\(\)\{/);
+          }
+        }
+        for (let s = 0; s < sigs.length; s++) {
+          for (let i = 0; i < insides.length; i++) {
+            try {
+              return origFind.call(this, src, sigs[s], insides[i], logging);
+            } catch (_e2) {}
+          }
+        }
+        throw e;
+      }
+    };
+  }
+
+  if (typeof origAssert === "function") {
+    window.assertReplace = function (base, regex, replacement) {
+      try {
+        return origAssert.apply(this, arguments);
+      } catch (e) {
+        if (regex instanceof RegExp) {
+          const flexes = [
+            spacedEquals(regex),
+            new RegExp(
+              regex.source.replace(/:/g, ":\\s*").replace(/=/g, "\\s*=\\s*"),
+              regex.flags
+            ),
+          ];
+          for (let i = 0; i < flexes.length; i++) {
+            try {
+              return origAssert.call(this, base, flexes[i], replacement);
+            } catch (_e2) {}
+          }
+          if (/odF|WIN\\.play|leftBorderWidth|\\$d/.test(regex.source)) {
+            return base;
+          }
+        }
+        throw e;
+      }
+    };
+  }
+
+  if (typeof origProto === "function") {
+    String.prototype.assertReplace = function (regex, replacement) {
+      try {
+        return origProto.call(this, regex, replacement);
+      } catch (e) {
+        if (regex instanceof RegExp) {
+          const flexes = [
+            spacedEquals(regex),
+            new RegExp(
+              regex.source.replace(/:/g, ":\\s*").replace(/=/g, "\\s*=\\s*"),
+              regex.flags
+            ),
+          ];
+          for (let i = 0; i < flexes.length; i++) {
+            try {
+              return origProto.call(this, flexes[i], replacement);
+            } catch (_e2) {}
+          }
+          if (/odF|WIN\\.play|leftBorderWidth|\\$d/.test(regex.source)) {
+            return String(this);
+          }
+        }
+        throw e;
+      }
+    };
+  }
+
+  const origMatch = String.prototype.assertMatch;
+  if (typeof origMatch === "function") {
+    String.prototype.assertMatch = function (regex) {
+      try {
+        return origMatch.call(this, regex);
+      } catch (e) {
+        if (regex instanceof RegExp) {
+          const tries = [
+            spacedEquals(regex),
+            new RegExp(regex.source.replace(/\\n\?/g, "\\s*"), regex.flags),
+            new RegExp(
+              regex.source.replace(/,/g, ",\\s*").replace(/=/g, "\\s*=\\s*"),
+              regex.flags
+            ),
+            new RegExp(
+              regex.source
+                .replace(/\\n\?/g, "\\s*")
+                .replace(/&&/g, "\\s*&&\\s*")
+                .replace(/,/g, ",\\s*"),
+              regex.flags
+            ),
+          ];
+          const text = String(this);
+          if (/,7/.test(regex.source)) {
+            const wall = window.ultraMatchWallContainer(text);
+            if (wall) return wall;
+          }
+          for (let i = 0; i < tries.length; i++) {
+            try {
+              const m = text.match(tries[i]);
+              if (m) return m;
+            } catch (_badRe) {}
+          }
+        }
+        throw e;
+      }
+    };
+  }
+
+  try {
+    return fn();
+  } finally {
+    console.log = origLog;
+    console.error = origError;
+    if (origFind) window.findFunctionInCode = origFind;
+    if (origAssert) window.assertReplace = origAssert;
+    if (origProto) String.prototype.assertReplace = origProto;
+    if (origMatch) String.prototype.assertMatch = origMatch;
+  }
+};
+
+window.RemixUltraMod.alterSnakeCode = function (code) {
+  return window.ultraQuietFinderLogs(function () {
+    code = window.remixBaseAlterSnakeCode(code);
+    // Apply Cat before LE so the tick/reset speed cases exist even if LE
+    // rewrites reset(). Re-apply after LE in case that rewrite dropped them.
+    code = window.CatSpeed.alterSnakeCode(code);
+    try {
+      code = window.ultraWithLeRegexFallbacks(function () {
+        return window.levelEditorMod.alterSnakeCode(code);
+      });
+    } catch (e) {
+      console.error("RemixUltraMod: Level Editor alterSnakeCode failed", e);
+    }
+    code = window.CandyMod.alterSnakeCode(code);
+    code = window.ChessMod.alterSnakeCode(code);
+    code = window.BurgerMod.alterSnakeCode(code);
+    code = window.CatSpeed.alterSnakeCode(code);
+    code = window.DiceCounts.alterSnakeCode(code);
+    code = window.RemixSpeedInfo.alterSnakeCode(code);
+    return code;
+  });
+};
+
+////////////////////////////////////////////////////////////////////
+//RUNCODEAFTER
+////////////////////////////////////////////////////////////////////
+
+window.RemixUltraMod.runCodeAfter = function () {
+  window.CandyMod.runCodeAfter && window.CandyMod.runCodeAfter();
+  window.ChessMod.runCodeAfter && window.ChessMod.runCodeAfter();
+  window.BurgerMod.runCodeAfter && window.BurgerMod.runCodeAfter();
+  window.DiceCounts &&
+    window.DiceCounts.runCodeAfter &&
+    window.DiceCounts.runCodeAfter();
+  window.RemixSpeedInfo.runCodeAfter && window.RemixSpeedInfo.runCodeAfter();
+
+  window.ultraPatchPresetLoads();
+  window.ultraPatchLevelLoads();
+  window.levelEditorMod.runCodeAfter();
+  window.ultraPatchLevelLoads();
+  window.ultraFixPresetImages();
+
+  window.ultraSetIndicator();
+  window.ultraSetupLayout();
+  window.ultraSetupGameplayHooks();
+};
+
+// Custom URL often keeps customModName as RemixMod. Alias so either name
+// runs the Ultra chain. Inner Remix methods live on window.__remixCore.
+window.RemixMod = window.RemixUltraMod;
 

@@ -31,7 +31,7 @@ This downloads `MorePudding.js` (and bootstrap CSS) from [GoogleSnakePudding](ht
 7. `RemixSpeedInfoInit.js`
 8. `RemixInit.js`
 
-Output: **`RemixMod.js`** (committed for raw-GitHub / custom URL use).
+Output: **`RemixMod.js`** (committed for raw-GitHub / custom URL use). The same command also writes **`RemixUltraMod.js`** (Remix + Level Editor v12). See RemixUltra below.
 
 More Pudding already bundles Pudding Mod, Visibility Mod and More Menu Mod and runs them in that order, so Remix calls `window.MorePudding` rather than wiring those three itself. `RemixInit.js` still falls back to Pudding + Visibility directly if a build ever ships without More Pudding.
 
@@ -50,6 +50,24 @@ On [googlesnakemods.com](https://googlesnakemods.com/v/current/), use custom URL
 `https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeRemix/main/RemixMod.js`
 
 The exported API object is `window.RemixMod`.
+
+## RemixUltra (Remix + Level Editor)
+
+A second loadable bundle that is Remix plus [Level Editor v12](https://github.com/DarkSnakeGang/GoogleSnakeLevelEditor/tree/v12). Remix itself is unchanged.
+
+**Desktop only** — Level Editor has no mobile support.
+
+Custom URL:
+
+`https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeRemix/main/RemixUltraMod.js`
+
+API: `window.RemixUltraMod` (the bundle also aliases `window.RemixMod` to Ultra so a leftover custom-mod name of `RemixMod` still runs the Ultra chain).
+
+Settings are isolated to `RemixUltraSettings` and `snake_timeKeeper_remix_ultra` (seeded once from Remix keys if empty). Saving Ultra does not write `PuddingSettings` or `RemixSettings`.
+
+Menus share one right dock and one left dock with tabs (**Place | Presets | Speed | More** on the right, **Custom | Challenge** on the left) instead of stacking every 220px sidebar. Full-screen Pudding overlays hide the docks and restore the previous tab when closed. The canvas label is **Remix Ultra**.
+
+Build still uses `python RemixBuilder.py` — it writes both `RemixMod.js` and `RemixUltraMod.js`.
 
 ## Mode IDs (v12)
 
@@ -118,13 +136,15 @@ npm run capture            # dump original ChessMod on /v/3
 
 | File | Role |
 |------|------|
-| `RemixBuilder.py` | Fetch More Pudding + concat build |
+| `RemixBuilder.py` | Fetch More Pudding + Level Editor; concat Remix and RemixUltra |
+| `UltraInit.js` | `window.RemixUltraMod` chain, dock tabs, LE+Chess/Burger hooks |
+| `RemixUltraMod.js` | Built Ultra bundle (Remix + Level Editor) |
 | `ChessInit.js` | Chess mode + blender toggle + fruit inject + Chess Pieces visibility row |
 | `CandyInit.js` | Candy mode + blender toggle |
 | `BurgerInit.js` | Burger mode + blender toggle |
 | `RemixInit.js` | `window.RemixMod` chain + shared blender slot helper |
 | `ChessCapture.mp3` | Capture sound |
-| `RemixMod.js` | Built bundle |
+| `RemixMod.js` | Built Remix bundle |
 
 ## Versions
 
