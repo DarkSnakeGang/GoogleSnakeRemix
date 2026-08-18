@@ -181,6 +181,7 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
           ),
           noneTag: none && none.tagName,
           noneText: none && none.textContent.trim(),
+          hamText: ham && ham.textContent.trim(),
           noneTop: nr && nr.top,
           hamTop: hr && hr.top,
           noneW: nr && nr.width,
@@ -194,6 +195,7 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       );
       assert.equal(presetThumbs.noneTag, "DIV", JSON.stringify(presetThumbs));
       assert.match(String(presetThumbs.noneText), /none/i);
+      assert.equal(presetThumbs.hamText, "Random Ham", JSON.stringify(presetThumbs));
       assert.ok(
         Math.abs(presetThumbs.noneTop - presetThumbs.hamTop) < 2,
         "None should sit on the same row as Random Ham " + JSON.stringify(presetThumbs)

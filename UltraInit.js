@@ -1754,7 +1754,10 @@ window.ultraInstallPresetNoneButton = function ultraInstallPresetNoneButton() {
     none.textContent = "None";
   }
   const ham = panel.querySelector(".preset-random-ham");
-  if (ham) ham.before(none);
+  if (ham) {
+    ham.textContent = "Random Ham";
+    ham.before(none);
+  }
 };
 
 window.ultraShowSettingsPage = window.remixShowSettingsPage;
