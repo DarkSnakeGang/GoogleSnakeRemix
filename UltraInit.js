@@ -1819,6 +1819,10 @@ window.ultraOrganizeSettings = function ultraOrganizeSettings() {
   }
   window.ultraInstallGameplayToggleUi();
   window.ultraEnsureGameplayToggles();
+  window.ultraPlaceWallEveryAppleToggle();
+  if (typeof window.remixSyncWallEveryAppleEnabled === "function") {
+    window.remixSyncWallEveryAppleEnabled();
+  }
 };
 
 window.ultraEnsureGameplayToggles = function ultraEnsureGameplayToggles() {
@@ -1905,10 +1909,28 @@ window.ultraBlockNativeArrowTurns = function ultraBlockNativeArrowTurns() {
   return !window.pudding_settings.UltraArrowTurnSpawn;
 };
 
+window.ultraPlaceWallEveryAppleToggle = function ultraPlaceWallEveryAppleToggle() {
+  const every = document.getElementById("WallEveryApple");
+  const spawn = document.getElementById("UltraWallModeSpawn");
+  if (!every || !spawn) return;
+  const everyWrap = every.closest(".form-check");
+  const spawnWrap = spawn.closest(".form-check");
+  if (everyWrap && spawnWrap && everyWrap.previousElementSibling !== spawnWrap) {
+    spawnWrap.after(everyWrap);
+  }
+};
+
 window.ultraInstallGameplayToggleUi = function ultraInstallGameplayToggleUi() {
   window.ultraEnsureGameplayToggles();
   const play = document.getElementById("ultra-settings-page-play");
-  if (!play || document.getElementById("UltraShieldedFruitSpawn")) return;
+  if (!play) return;
+  if (document.getElementById("UltraShieldedFruitSpawn")) {
+    window.ultraPlaceWallEveryAppleToggle();
+    if (typeof window.remixSyncWallEveryAppleEnabled === "function") {
+      window.remixSyncWallEveryAppleEnabled();
+    }
+    return;
+  }
   const specs = [
     { id: "UltraShieldedFruitSpawn", label: "Spawn fruit with shields" },
     { id: "UltraWallModeSpawn", label: "Walls spawn in wall mode" },
@@ -1934,9 +1956,16 @@ window.ultraInstallGameplayToggleUi = function ultraInstallGameplayToggleUi() {
       window.pudding_settings[spec.id] = !!input.checked;
       if (spec.id === "UltraWallModeSpawn") {
         window.disableWallMode = !input.checked;
+        if (typeof window.remixSyncWallEveryAppleEnabled === "function") {
+          window.remixSyncWallEveryAppleEnabled();
+        }
       }
       if (typeof window.saveSettings === "function") window.saveSettings();
     });
+  }
+  window.ultraPlaceWallEveryAppleToggle();
+  if (typeof window.remixSyncWallEveryAppleEnabled === "function") {
+    window.remixSyncWallEveryAppleEnabled();
   }
 };
 
@@ -2258,6 +2287,9 @@ window.RemixUltraMod.alterSnakeCode = function (code) {
     code = window.RemixSpeedInfo.alterSnakeCode(code);
     code = window.PauseMod.alterSnakeCode(code);
     code = window.ultraPatchChallengeSpeedrunWin(code);
+    if (typeof window.remixPatchWallEveryApple === "function") {
+      code = window.remixPatchWallEveryApple(code);
+    }
     return code;
   });
 };

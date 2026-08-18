@@ -38,16 +38,35 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
             display: cs && cs.display,
           };
         });
+        const every = document.getElementById("WallEveryApple");
+        const everyLabel =
+          every && document.querySelector('label[for="WallEveryApple"]');
+        const wallWrap = document.getElementById("UltraWallModeSpawn") &&
+          document.getElementById("UltraWallModeSpawn").closest(".form-check");
+        const everyWrap = every && every.closest(".form-check");
         return {
           items,
+          everyApple: {
+            has: !!every,
+            checked: !!(every && every.checked),
+            disabled: !!(every && every.disabled),
+            label: everyLabel && String(everyLabel.textContent || "").trim(),
+            afterWallSpawn: !!(
+              wallWrap &&
+              everyWrap &&
+              wallWrap.nextElementSibling === everyWrap
+            ),
+          },
           settings: {
             shields: window.pudding_settings.UltraShieldedFruitSpawn,
             walls: window.pudding_settings.UltraWallModeSpawn,
             arrows: window.pudding_settings.UltraArrowTurnSpawn,
+            everyApple: window.pudding_settings.WallEveryApple,
           },
           disableWallMode: !!window.disableWallMode,
           shouldShields: window.ultraShouldSpawnFruitShields(),
           blockArrows: window.ultraBlockNativeArrowTurns(),
+          shouldEvery: window.remixShouldSpawnWallEveryApple(),
         };
       });
       assert.deepEqual(
@@ -69,9 +88,20 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
       assert.equal(probe.settings.shields, false, JSON.stringify(probe));
       assert.equal(probe.settings.walls, false, JSON.stringify(probe));
       assert.equal(probe.settings.arrows, false, JSON.stringify(probe));
+      assert.equal(probe.settings.everyApple, false, JSON.stringify(probe));
       assert.equal(probe.disableWallMode, true, JSON.stringify(probe));
       assert.equal(probe.shouldShields, false, JSON.stringify(probe));
       assert.equal(probe.blockArrows, true, JSON.stringify(probe));
+      assert.equal(probe.shouldEvery, false, JSON.stringify(probe));
+      assert.equal(probe.everyApple.has, true, JSON.stringify(probe));
+      assert.equal(probe.everyApple.checked, false, JSON.stringify(probe));
+      assert.equal(probe.everyApple.disabled, true, JSON.stringify(probe));
+      assert.equal(
+        probe.everyApple.label,
+        "Walls spawn every apple",
+        JSON.stringify(probe)
+      );
+      assert.equal(probe.everyApple.afterWallSpawn, true, JSON.stringify(probe));
       assert.deepEqual(h.modErrors(), [], "no mod errors");
     } finally {
       await h.close();
@@ -345,6 +375,154 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
         probe.onAfter > probe.onBefore,
         "wall mode should spawn walls when toggle is on " + JSON.stringify(probe)
       );
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("every-apple wall toggle is disabled until wall spawning is on", async () => {
+    const h = await launchUltra(86);
+    try {
+      const { COUNT, SIZE } = await import("../tools/harness.mjs");
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
+      const probe = await h.page.evaluate(() => {
+        window.ultraOrganizeSettings();
+        const playTab = document.getElementById("ultra-settings-tab-play");
+        if (playTab) playTab.click();
+        const every = document.getElementById("WallEveryApple");
+        const spawn = document.getElementById("UltraWallModeSpawn");
+        const off = {
+          spawn: !!(spawn && spawn.checked),
+          everyDisabled: !!(every && every.disabled),
+          should: window.remixShouldSpawnWallEveryApple(),
+        };
+        spawn.checked = true;
+        spawn.dispatchEvent(new Event("change"));
+        const on = {
+          spawn: !!(spawn && spawn.checked),
+          everyDisabled: !!(every && every.disabled),
+          disableWallMode: !!window.disableWallMode,
+          shouldOff: window.remixShouldSpawnWallEveryApple(),
+        };
+        every.checked = true;
+        every.dispatchEvent(new Event("change"));
+        const everyOn = {
+          checked: !!every.checked,
+          setting: !!window.pudding_settings.WallEveryApple,
+          should: window.remixShouldSpawnWallEveryApple(),
+          disabled: !!every.disabled,
+        };
+        spawn.checked = false;
+        spawn.dispatchEvent(new Event("change"));
+        const spawnOffAgain = {
+          everyDisabled: !!every.disabled,
+          everyChecked: !!every.checked,
+          setting: !!window.pudding_settings.WallEveryApple,
+          should: window.remixShouldSpawnWallEveryApple(),
+          disableWallMode: !!window.disableWallMode,
+        };
+        return { off, on, everyOn, spawnOffAgain };
+      });
+      assert.equal(probe.off.spawn, false, JSON.stringify(probe));
+      assert.equal(probe.off.everyDisabled, true, JSON.stringify(probe));
+      assert.equal(probe.off.should, false, JSON.stringify(probe));
+      assert.equal(probe.on.spawn, true, JSON.stringify(probe));
+      assert.equal(probe.on.everyDisabled, false, JSON.stringify(probe));
+      assert.equal(probe.on.disableWallMode, false, JSON.stringify(probe));
+      assert.equal(probe.on.shouldOff, false, JSON.stringify(probe));
+      assert.equal(probe.everyOn.checked, true, JSON.stringify(probe));
+      assert.equal(probe.everyOn.setting, true, JSON.stringify(probe));
+      assert.equal(probe.everyOn.should, true, JSON.stringify(probe));
+      assert.equal(probe.everyOn.disabled, false, JSON.stringify(probe));
+      assert.equal(probe.spawnOffAgain.everyDisabled, true, JSON.stringify(probe));
+      assert.equal(probe.spawnOffAgain.everyChecked, true, JSON.stringify(probe));
+      assert.equal(probe.spawnOffAgain.setting, true, JSON.stringify(probe));
+      assert.equal(probe.spawnOffAgain.should, false, JSON.stringify(probe));
+      assert.equal(probe.spawnOffAgain.disableWallMode, true, JSON.stringify(probe));
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("wall mode spawns a wall every apple when that toggle is on", async () => {
+    const h = await launchUltra(87);
+    try {
+      const { COUNT, SIZE } = await import("../tools/harness.mjs");
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.LARGE });
+      const probe = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        function wallCount() {
+          const size = eval("window.wholeSnakeObject." + window.boardDimensions);
+          let n = 0;
+          for (let y = 0; y < size.height; y++) {
+            for (let x = 0; x < size.width; x++) {
+              if (window.checkWall(x, y)) n++;
+            }
+          }
+          return n;
+        }
+        function revive() {
+          g.nj = false;
+          const snake = g.oa.ka;
+          for (let i = 0; i < snake.length; i++) {
+            snake[i].x = 6;
+            snake[i].y = 8;
+          }
+          g.oa.direction = "RIGHT";
+        }
+        function startWall() {
+          g.settings.ub = 1;
+          g.settings.ob = 1;
+          window.CurrentModeNum = 1;
+          if (typeof window.ensureGameMode === "function") window.ensureGameMode(1);
+          g.wa.reset();
+          if (typeof window.emptyWalls === "function") window.emptyWalls();
+          g.Sh = 0;
+          revive();
+        }
+        function eatOne() {
+          const apples = g.wa.ka;
+          if (!apples.length) return false;
+          revive();
+          const head = g.oa.ka[0];
+          apples[0].pos.x = head.x + 1;
+          apples[0].pos.y = head.y;
+          const before = g.Sh;
+          for (let i = 0; i < 6; i++) {
+            if (g.nj) revive();
+            g.tick();
+            if (g.Sh > before) return true;
+          }
+          return g.Sh > before;
+        }
+        function eatTwo(everyApple) {
+          window.pudding_settings.UltraWallModeSpawn = true;
+          window.pudding_settings.WallEveryApple = !!everyApple;
+          window.ultraEnsureGameplayToggles();
+          window.remixEnsureWallEveryAppleSetting();
+          startWall();
+          const before = wallCount();
+          const ate = [eatOne(), eatOne()];
+          return {
+            everyApple: window.remixShouldSpawnWallEveryApple(),
+            ate,
+            delta: wallCount() - before,
+            dead: !!g.nj,
+          };
+        }
+        return {
+          off: eatTwo(false),
+          on: eatTwo(true),
+        };
+      });
+      assert.equal(probe.off.everyApple, false, JSON.stringify(probe));
+      assert.equal(probe.on.everyApple, true, JSON.stringify(probe));
+      assert.ok(probe.off.ate.every(Boolean), "ate two apples off " + JSON.stringify(probe));
+      assert.ok(probe.on.ate.every(Boolean), "ate two apples on " + JSON.stringify(probe));
+      assert.equal(probe.off.delta, 1, JSON.stringify(probe));
+      assert.equal(probe.on.delta, 2, JSON.stringify(probe));
       assert.deepEqual(h.modErrors(), [], "no mod errors");
     } finally {
       await h.close();

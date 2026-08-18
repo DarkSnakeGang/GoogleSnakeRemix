@@ -128,6 +128,12 @@ label[for="RemoveScrollbar"] {
   margin: 0 !important;
   flex-shrink: 0;
 }
+#settings-popup-pudding .form-check.remix-toggle-disabled {
+  opacity: 0.55;
+}
+#settings-popup-pudding .form-check-input:disabled {
+  cursor: not-allowed;
+}
 #settings-popup-pudding .form-check-label {
   margin: 3px !important;
   color: #fff !important;
@@ -236,6 +242,63 @@ window.remixShowDragonFruitCheckbox = function remixShowDragonFruitCheckbox(play
   const host = play || document.getElementById("ultra-settings-page-play");
   if (host && wrap.parentElement !== host) host.appendChild(wrap);
   return wrap;
+};
+
+window.remixEnsureWallEveryAppleSetting = function remixEnsureWallEveryAppleSetting() {
+  const s = window.pudding_settings || (window.pudding_settings = {});
+  if (typeof s.WallEveryApple !== "boolean") s.WallEveryApple = false;
+  return s;
+};
+
+window.remixShouldSpawnWallEveryApple = function remixShouldSpawnWallEveryApple() {
+  window.remixEnsureWallEveryAppleSetting();
+  if (window.disableWallMode) return false;
+  return !!window.pudding_settings.WallEveryApple;
+};
+
+window.remixSyncWallEveryAppleEnabled = function remixSyncWallEveryAppleEnabled() {
+  const input = document.getElementById("WallEveryApple");
+  if (!input) return;
+  const wallsOn = !window.disableWallMode;
+  input.disabled = !wallsOn;
+  const wrap = input.closest(".form-check");
+  if (wrap) wrap.classList.toggle("remix-toggle-disabled", !wallsOn);
+};
+
+window.remixInstallWallEveryAppleToggle = function remixInstallWallEveryAppleToggle(play) {
+  window.remixEnsureWallEveryAppleSetting();
+  const host = play || document.getElementById("ultra-settings-page-play");
+  if (!host) return null;
+  let input = document.getElementById("WallEveryApple");
+  if (!input) {
+    const wrap = document.createElement("div");
+    wrap.className = "form-check form-check-inline";
+    wrap.innerHTML =
+      '<input class="form-check-input" type="checkbox" role="switch" id="WallEveryApple">' +
+      '<label class="form-check-label" for="WallEveryApple">Walls spawn every apple</label>';
+    host.appendChild(wrap);
+    input = wrap.querySelector("input");
+    input.checked = !!window.pudding_settings.WallEveryApple;
+    input.addEventListener("change", function () {
+      window.pudding_settings.WallEveryApple = !!input.checked;
+      if (typeof window.saveSettings === "function") window.saveSettings();
+    });
+  }
+  window.remixSyncWallEveryAppleEnabled();
+  return input;
+};
+
+window.remixPatchWallEveryApple = function remixPatchWallEveryApple(code) {
+  const re =
+    /([a-zA-Z_$][\w$]*)=!([a-zA-Z_$][\w$]*)\.nj&&!([a-zA-Z_$][\w$]*)&&\(\2\.Sh%2===1\|\|e7\(\2\.settings,11\)\);e7\(\2\.settings,1\)&&\1&&/;
+  if (!re.test(code)) {
+    console.error("Remix: failed to find wall-mode every-other-apple spawn gate");
+    return code;
+  }
+  return code.replace(
+    re,
+    "$1=!$2.nj&&!$3&&($2.Sh%2===1||e7($2.settings,11));e7($2.settings,1)&&($1||window.remixShouldSpawnWallEveryApple()&&!$2.nj&&!$3)&&"
+  );
 };
 
 window.remixBindResetKeyButtons = function remixBindResetKeyButtons() {
@@ -456,6 +519,7 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     if (el && el.parentElement !== play) play.appendChild(el);
   });
   window.remixShowDragonFruitCheckbox(play);
+  window.remixInstallWallEveryAppleToggle(play);
   ["stat-chooser", "edit-stat", "reset-stats"].forEach(function (id) {
     const el = window.remixSettingsEl(id, root);
     if (el && el.parentElement !== stats) stats.appendChild(el);
@@ -604,6 +668,7 @@ window.RemixMod.alterSnakeCode = function (code) {
   code = window.RemixSpeedInfo.alterSnakeCode(code);
   // After MoreMenu: skip if the tick is already gated.
   code = window.PauseMod.alterSnakeCode(code);
+  code = window.remixPatchWallEveryApple(code);
   return code;
 };
 

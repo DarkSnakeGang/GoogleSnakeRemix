@@ -659,3 +659,116 @@ describe("Key mode start plants key + keyblock", { skip: !runBrowser }, () => {
     );
   });
 });
+
+describe("Walls spawn every apple", { skip: !runBrowser }, () => {
+  it("Remix Play tab shows the toggle enabled and off by default", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 73, headless: true });
+    try {
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
+      const probe = await h.page.evaluate(() => {
+        window.remixOrganizeSettings();
+        if (typeof window.BootstrapShow === "function") window.BootstrapShow();
+        const playTab = document.getElementById("ultra-settings-tab-play");
+        if (playTab) playTab.click();
+        const input = document.getElementById("WallEveryApple");
+        const label = input && document.querySelector('label[for="WallEveryApple"]');
+        const wrap = input && (input.closest(".form-check") || input.parentElement);
+        const play = document.getElementById("ultra-settings-page-play");
+        return {
+          has: !!input,
+          inPlay: !!(play && input && play.contains(input)),
+          checked: !!(input && input.checked),
+          disabled: !!(input && input.disabled),
+          label: label && String(label.textContent || "").trim(),
+          wrapDisplay: wrap && getComputedStyle(wrap).display,
+          setting: window.pudding_settings.WallEveryApple,
+          should: window.remixShouldSpawnWallEveryApple(),
+          disableWallMode: !!window.disableWallMode,
+        };
+      });
+      assert.equal(probe.has, true, JSON.stringify(probe));
+      assert.equal(probe.inPlay, true, JSON.stringify(probe));
+      assert.equal(probe.checked, false, JSON.stringify(probe));
+      assert.equal(probe.disabled, false, JSON.stringify(probe));
+      assert.equal(probe.label, "Walls spawn every apple", JSON.stringify(probe));
+      assert.notEqual(probe.wrapDisplay, "none", JSON.stringify(probe));
+      assert.equal(probe.setting, false, JSON.stringify(probe));
+      assert.equal(probe.should, false, JSON.stringify(probe));
+      assert.equal(probe.disableWallMode, false, JSON.stringify(probe));
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("Remix wall mode spawns a wall every apple when the toggle is on", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 74, headless: true });
+    try {
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.LARGE });
+      const probe = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        function wallCount() {
+          const map = g.Ca && g.Ca.Aa;
+          if (map && typeof map.size === "number") return map.size;
+          return -1;
+        }
+        function revive() {
+          g.nj = false;
+          const snake = g.oa.ka;
+          for (let i = 0; i < snake.length; i++) {
+            snake[i].x = 6;
+            snake[i].y = 8;
+          }
+          g.oa.direction = "RIGHT";
+        }
+        function startWall() {
+          g.settings.ub = 1;
+          g.settings.ob = 1;
+          window.CurrentModeNum = 1;
+          g.wa.reset();
+          g.Sh = 0;
+          revive();
+        }
+        function eatOne() {
+          const apples = g.wa.ka;
+          if (!apples.length) return false;
+          revive();
+          const head = g.oa.ka[0];
+          apples[0].pos.x = head.x + 1;
+          apples[0].pos.y = head.y;
+          const before = g.Sh;
+          for (let i = 0; i < 6; i++) {
+            if (g.nj) revive();
+            g.tick();
+            if (g.Sh > before) return true;
+          }
+          return g.Sh > before;
+        }
+        function eatTwo(everyApple) {
+          window.pudding_settings.WallEveryApple = !!everyApple;
+          window.remixEnsureWallEveryAppleSetting();
+          startWall();
+          const before = wallCount();
+          const ate = [eatOne(), eatOne()];
+          return {
+            everyApple: window.remixShouldSpawnWallEveryApple(),
+            ate,
+            delta: wallCount() - before,
+          };
+        }
+        return { off: eatTwo(false), on: eatTwo(true) };
+      });
+      assert.equal(probe.off.everyApple, false, JSON.stringify(probe));
+      assert.equal(probe.on.everyApple, true, JSON.stringify(probe));
+      assert.ok(probe.off.ate.every(Boolean), "ate two apples off " + JSON.stringify(probe));
+      assert.ok(probe.on.ate.every(Boolean), "ate two apples on " + JSON.stringify(probe));
+      assert.equal(probe.off.delta, 1, JSON.stringify(probe));
+      assert.equal(probe.on.delta, 2, JSON.stringify(probe));
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
+});
