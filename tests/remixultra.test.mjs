@@ -1084,4 +1084,45 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       await h.close();
     }
   });
+
+  it("Random Ham re-click replaces the pattern instead of stacking walls", async () => {
+    const h = await launchUltra({ seed: 47, headless: true });
+    try {
+      const { COUNT, SIZE } = await import("../tools/harness.mjs");
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
+      const probe = await h.page.evaluate(() => {
+        function wallKeys() {
+          const size = eval("window.wholeSnakeObject." + window.boardDimensions);
+          const keys = [];
+          for (let y = 0; y < size.height; y++) {
+            for (let x = 0; x < size.width; x++) {
+              if (window.checkWall(x, y)) keys.push(x + "," + y);
+            }
+          }
+          return keys.sort();
+        }
+        document.getElementById("ultra-tab-presets").click();
+        const ham = document.querySelector("#preset-panel .preset-random-ham");
+        const origRand = Math.random;
+        Math.random = function () {
+          return 0;
+        };
+        ham.click();
+        const first = wallKeys();
+        ham.click();
+        const second = wallKeys();
+        Math.random = origRand;
+        return { first, second, n1: first.length, n2: second.length };
+      });
+      assert.ok(probe.n1 > 0, JSON.stringify(probe));
+      assert.deepEqual(
+        probe.second,
+        probe.first,
+        "second ham click stacked extra walls " + JSON.stringify(probe)
+      );
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
 });

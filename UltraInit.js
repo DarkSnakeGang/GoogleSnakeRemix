@@ -711,12 +711,10 @@ window.ultraSelectPresetKind = function ultraSelectPresetKind(kind, forceReset) 
       window.otherPresetmanager.challengelevel = Number(sel.value) || 1;
     }
     window.selectNewSizeSettingAndHardReset(0);
-    window.ultraBlitChosenPreset();
     return;
   }
   if (!already || forceReset) {
     window.ultraHardResetBoard();
-    window.ultraBlitChosenPreset();
   }
 };
 
@@ -860,9 +858,6 @@ window.ultraInstallChallengeSpeedrun = function ultraInstallChallengeSpeedrun() 
     setTimeout(function () {
       if (typeof window.selectNewSizeSettingAndHardReset === "function") {
         window.selectNewSizeSettingAndHardReset(0);
-      }
-      if (typeof window.ultraBlitChosenPreset === "function") {
-        window.ultraBlitChosenPreset();
       }
     }, 0);
     return true;
@@ -1068,8 +1063,9 @@ window.ultraSyncLeNav = function ultraSyncLeNav() {
           window.ultraSetLeft(null);
         }
         if (this.__ultraWasChosen && this.tagName !== "IMG") {
+          // afterResetBoard already blits; a second blit stacks walls (Random Ham
+          // would pick a second pattern on top of the first).
           window.ultraHardResetBoard();
-          window.ultraBlitChosenPreset();
         }
       });
       el.__ultraBound = true;
@@ -1468,7 +1464,6 @@ window.ultraApplyImagePreset = function ultraApplyImagePreset(el) {
   }
   window.ultraSetLeft(null);
   window.selectNewSizeSettingAndHardReset(window.ultraPresetSizeIndex(el));
-  window.ultraBlitChosenPreset();
 };
 
 window.ultraPatchPresetLoads = function ultraPatchPresetLoads() {
