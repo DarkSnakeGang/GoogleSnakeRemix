@@ -41,6 +41,206 @@ window.remixBaseAlterSnakeCode = function remixBaseAlterSnakeCode(code) {
   return window.VisibilityModCode.alterSnakeCode(code);
 };
 
+window.remixInjectSettingsCss = function remixInjectSettingsCss() {
+  if (document.getElementById("remix-settings-css")) return;
+  const style = document.createElement("style");
+  style.id = "remix-settings-css";
+  style.textContent = `
+#ultra-settings-pager {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  margin: 6px 0 8px;
+}
+.ultra-settings-tab {
+  flex: 1;
+  min-width: 0;
+  font-family: Roboto, Arial, sans-serif !important;
+  font-size: 11px !important;
+  padding: 5px 2px !important;
+  border: none !important;
+  border-radius: 8px !important;
+  cursor: pointer;
+  line-height: 1.2;
+  background: rgba(0,0,0,0.22);
+  color: #fff;
+}
+.ultra-settings-tab.ultra-tab-on {
+  background: #1155CC;
+  color: #fff;
+}
+.ultra-settings-page {
+  display: none;
+  overflow: hidden;
+  min-height: 0;
+}
+.ultra-settings-page.ultra-page-on {
+  display: block;
+}
+#settings-popup-pudding .form-check,
+#settings-popup-pudding .form-check-inline {
+  display: flex !important;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 4px 0 !important;
+  margin-right: 0 !important;
+  padding: 0 !important;
+  gap: 4px;
+}
+#ultra-settings-hidden,
+#ultra-settings-hidden .form-check,
+#ultra-settings-hidden .form-check-inline,
+#settings-popup-pudding .form-check.ultra-hide,
+#settings-popup-pudding .form-check-inline.ultra-hide,
+#settings-popup-pudding .ultra-hide,
+#AlwaysOnTimeKeeper,
+label[for="AlwaysOnTimeKeeper"],
+#ShowSplitPanel,
+label[for="ShowSplitPanel"],
+#RemoveScrollbar,
+label[for="RemoveScrollbar"] {
+  display: none !important;
+}
+#settings-popup-pudding .form-check-input {
+  float: none !important;
+  position: static !important;
+  margin: 0 !important;
+  flex-shrink: 0;
+}
+#stat-chooser {
+  width: 100% !important;
+  box-sizing: border-box;
+  display: block !important;
+  margin: 4px 0 8px !important;
+}
+#black-dice-settings {
+  margin: 8px 0 0 !important;
+  padding: 6px 8px !important;
+  border-radius: 8px !important;
+}
+`;
+  document.head.appendChild(style);
+};
+
+window.remixSettingsWrap = function remixSettingsWrap(id) {
+  const el = document.getElementById(id);
+  if (!el) return null;
+  return el.closest(".form-check") || el;
+};
+
+window.remixHideSettingsNode = function remixHideSettingsNode(el, bin) {
+  if (!el) return;
+  el.classList.add("ultra-hide");
+  el.style.display = "none";
+  if (bin && el.parentElement !== bin) bin.appendChild(el);
+};
+
+window.remixShowSettingsPage = function remixShowSettingsPage(id) {
+  window.__remixSettingsPage = id;
+  window.__ultraSettingsPage = id;
+  ["play", "stats", "setup"].forEach(function (pageId) {
+    const page = document.getElementById("ultra-settings-page-" + pageId);
+    const tab = document.getElementById("ultra-settings-tab-" + pageId);
+    if (page) page.classList.toggle("ultra-page-on", pageId === id);
+    if (tab) tab.classList.toggle("ultra-tab-on", pageId === id);
+  });
+};
+
+window.remixOrganizeSettings = function remixOrganizeSettings() {
+  const root = document.getElementById("settings-popup-pudding");
+  if (!root) return;
+
+  window.remixInjectSettingsCss();
+
+  if (typeof window.remixInjectBlackDiceSettingsUi === "function") {
+    window.remixInjectBlackDiceSettingsUi();
+  }
+
+  let bin = document.getElementById("ultra-settings-hidden");
+  if (!bin) {
+    bin = document.createElement("div");
+    bin.id = "ultra-settings-hidden";
+    bin.className = "ultra-hide";
+    root.appendChild(bin);
+  }
+
+  window.remixHideSettingsNode(window.remixSettingsWrap("AlwaysOnTimeKeeper"), bin);
+  window.remixHideSettingsNode(window.remixSettingsWrap("ShowSplitPanel"), bin);
+  window.remixHideSettingsNode(window.remixSettingsWrap("RemoveScrollbar"), bin);
+  window.remixHideSettingsNode(document.getElementById("ScrollLeftBtn"), bin);
+  window.remixHideSettingsNode(document.getElementById("settings-close"), bin);
+  window.remixHideSettingsNode(document.getElementById("snakePride"), bin);
+  Array.from(root.querySelectorAll(":scope > br")).forEach(function (el) {
+    window.remixHideSettingsNode(el, bin);
+  });
+
+  let pager = document.getElementById("ultra-settings-pager");
+  if (!pager) {
+    pager = document.createElement("div");
+    pager.id = "ultra-settings-pager";
+    const title = root.querySelector(":scope > span");
+    if (title && title.nextSibling) root.insertBefore(pager, title.nextSibling);
+    else root.insertBefore(pager, root.firstChild);
+
+    [
+      ["play", "Play"],
+      ["stats", "Stats"],
+      ["setup", "Setup"],
+    ].forEach(function (pair) {
+      const page = document.createElement("div");
+      page.id = "ultra-settings-page-" + pair[0];
+      page.className = "ultra-settings-page";
+      root.appendChild(page);
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "ultra-settings-tab-" + pair[0];
+      btn.className = "ultra-settings-tab";
+      btn.textContent = pair[1];
+      btn.addEventListener("click", function () {
+        window.remixShowSettingsPage(pair[0]);
+      });
+      pager.appendChild(btn);
+    });
+  }
+
+  const play = document.getElementById("ultra-settings-page-play");
+  const stats = document.getElementById("ultra-settings-page-stats");
+  const setup = document.getElementById("ultra-settings-page-setup");
+  if (!play || !stats || !setup) return;
+
+  [
+    "SkullPoisonFruit",
+    "DistinctSokoGoals",
+    "InputDisplay",
+    "TopBarIcons",
+    "EatThemeRandomizer",
+    "DisableRandom",
+  ].forEach(function (id) {
+    const el = window.remixSettingsWrap(id);
+    if (el && el.parentElement !== play) play.appendChild(el);
+  });
+  ["stat-chooser", "edit-stat", "reset-stats"].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (el && el.parentElement !== stats) stats.appendChild(el);
+  });
+  [
+    "SaveGameSettings",
+    "TimerSettings",
+    "ResetKeybind",
+    "CustomBowlFruits",
+    "black-dice-settings",
+  ].forEach(function (id) {
+    const el = window.remixSettingsWrap(id) || document.getElementById(id);
+    if (el && el.parentElement !== setup) setup.appendChild(el);
+  });
+
+  window.remixShowSettingsPage(
+    window.__remixSettingsPage || window.__ultraSettingsPage || "play"
+  );
+};
+
 window.RemixMod.runCodeBefore = function () {
   // Shared Blender placement: fill existing empty cells after Peaceful (trophy_21).
   // The list is cached per panel because claiming a cell drops its "empty"
@@ -150,6 +350,10 @@ window.RemixMod.runCodeAfter = function () {
   window.BurgerMod.runCodeAfter && window.BurgerMod.runCodeAfter();
   window.RemixSpeedInfo.runCodeAfter && window.RemixSpeedInfo.runCodeAfter();
   window.PauseMod.runCodeAfter && window.PauseMod.runCodeAfter();
+  window.remixOrganizeSettings();
+  setTimeout(function () {
+    window.remixOrganizeSettings();
+  }, 0);
 
   let modIndicator = document.createElement("div");
   modIndicator.style =

@@ -18,6 +18,7 @@ describe("RemixUltra build artifacts", () => {
     assert.doesNotMatch(remix, /window\.RemixUltraMod/);
     assert.doesNotMatch(remix, /window\.levelEditorMod/);
     assert.match(remix, /window\.PauseMod/);
+    assert.match(remix, /remixOrganizeSettings/);
     assert.match(remix, /RemixSettings/);
     assert.doesNotMatch(remix, /RemixUltraSettings/);
   });

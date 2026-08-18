@@ -1189,18 +1189,8 @@ window.ultraSetupGameplayHooks = function ultraSetupGameplayHooks() {
   }
 };
 
-window.ultraSettingsWrap = function ultraSettingsWrap(id) {
-  const el = document.getElementById(id);
-  if (!el) return null;
-  return el.closest(".form-check") || el;
-};
-
-window.ultraHideSettingsNode = function ultraHideSettingsNode(el, bin) {
-  if (!el) return;
-  el.classList.add("ultra-hide");
-  el.style.display = "none";
-  if (bin && el.parentElement !== bin) bin.appendChild(el);
-};
+window.ultraSettingsWrap = window.remixSettingsWrap;
+window.ultraHideSettingsNode = window.remixHideSettingsNode;
 
 window.ultraPresetDataUri = function ultraPresetDataUri(url) {
   if (!url || !window.ULTRA_PRESET_PNG) return url;
@@ -1649,105 +1639,8 @@ window.ultraFixPresetImages = function ultraFixPresetImages() {
   });
 };
 
-window.ultraShowSettingsPage = function ultraShowSettingsPage(id) {
-  window.__ultraSettingsPage = id;
-  ["play", "stats", "setup"].forEach(function (pageId) {
-    const page = document.getElementById("ultra-settings-page-" + pageId);
-    const tab = document.getElementById("ultra-settings-tab-" + pageId);
-    if (page) page.classList.toggle("ultra-page-on", pageId === id);
-    if (tab) tab.classList.toggle("ultra-tab-on", pageId === id);
-  });
-};
-
-window.ultraOrganizeSettings = function ultraOrganizeSettings() {
-  const root = document.getElementById("settings-popup-pudding");
-  if (!root) return;
-
-  if (typeof window.remixInjectBlackDiceSettingsUi === "function") {
-    window.remixInjectBlackDiceSettingsUi();
-  }
-
-  let bin = document.getElementById("ultra-settings-hidden");
-  if (!bin) {
-    bin = document.createElement("div");
-    bin.id = "ultra-settings-hidden";
-    bin.className = "ultra-hide";
-    root.appendChild(bin);
-  }
-
-  window.ultraHideSettingsNode(window.ultraSettingsWrap("AlwaysOnTimeKeeper"), bin);
-  window.ultraHideSettingsNode(window.ultraSettingsWrap("ShowSplitPanel"), bin);
-  window.ultraHideSettingsNode(window.ultraSettingsWrap("RemoveScrollbar"), bin);
-  window.ultraHideSettingsNode(document.getElementById("ScrollLeftBtn"), bin);
-  window.ultraHideSettingsNode(document.getElementById("settings-close"), bin);
-  window.ultraHideSettingsNode(document.getElementById("snakePride"), bin);
-  Array.from(root.querySelectorAll(":scope > br")).forEach(function (el) {
-    window.ultraHideSettingsNode(el, bin);
-  });
-
-  let pager = document.getElementById("ultra-settings-pager");
-  if (!pager) {
-    pager = document.createElement("div");
-    pager.id = "ultra-settings-pager";
-    const title = root.querySelector(":scope > span");
-    if (title && title.nextSibling) root.insertBefore(pager, title.nextSibling);
-    else root.insertBefore(pager, root.firstChild);
-
-    [
-      ["play", "Play"],
-      ["stats", "Stats"],
-      ["setup", "Setup"],
-    ].forEach(function (pair) {
-      const page = document.createElement("div");
-      page.id = "ultra-settings-page-" + pair[0];
-      page.className = "ultra-settings-page";
-      root.appendChild(page);
-
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.id = "ultra-settings-tab-" + pair[0];
-      btn.className = "ultra-settings-tab";
-      btn.textContent = pair[1];
-      btn.addEventListener("click", function () {
-        window.ultraShowSettingsPage(pair[0]);
-      });
-      pager.appendChild(btn);
-    });
-  }
-
-  const play = document.getElementById("ultra-settings-page-play");
-  const stats = document.getElementById("ultra-settings-page-stats");
-  const setup = document.getElementById("ultra-settings-page-setup");
-  if (!play || !stats || !setup) return;
-
-  [
-    "SkullPoisonFruit",
-    "DistinctSokoGoals",
-    "InputDisplay",
-    "TopBarIcons",
-    "EatThemeRandomizer",
-    "DisableRandom",
-  ].forEach(function (id) {
-    const el = window.ultraSettingsWrap(id);
-    if (el && el.parentElement !== play) play.appendChild(el);
-  });
-  ["stat-chooser", "edit-stat", "reset-stats"].forEach(function (id) {
-    const el = document.getElementById(id);
-    if (el && el.parentElement !== stats) stats.appendChild(el);
-  });
-  [
-    "SaveGameSettings",
-    "TimerSettings",
-    "ResetKeybind",
-    "CustomBowlFruits",
-    "black-dice-settings",
-  ].forEach(function (id) {
-    const el = window.ultraSettingsWrap(id) || document.getElementById(id);
-    if (el && el.parentElement !== setup) setup.appendChild(el);
-  });
-
-  window.ultraShowSettingsPage(window.__ultraSettingsPage || "play");
-};
+window.ultraShowSettingsPage = window.remixShowSettingsPage;
+window.ultraOrganizeSettings = window.remixOrganizeSettings;
 
 window.ultraSetupLayout = function ultraSetupLayout() {
   const vis = document.getElementById("delete-stuff-popup");
