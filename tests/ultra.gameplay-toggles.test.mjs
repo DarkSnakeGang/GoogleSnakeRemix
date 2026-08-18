@@ -11,7 +11,7 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
     return launchHarness(ultraHarnessOpts({ seed, headless: true }));
   }
 
-  it("Play tab has three spawn toggles, default off", async () => {
+  it("Play tab has spawn toggles, default off", async () => {
     const h = await launchUltra(81);
     try {
       const { COUNT, SIZE } = await import("../tools/harness.mjs");
@@ -24,6 +24,7 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
           "UltraShieldedFruitSpawn",
           "UltraWallModeSpawn",
           "UltraArrowTurnSpawn",
+          "UltraMineModeSpawn",
         ];
         const items = ids.map((id) => {
           const el = document.getElementById(id);
@@ -61,9 +62,11 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
             shields: window.pudding_settings.UltraShieldedFruitSpawn,
             walls: window.pudding_settings.UltraWallModeSpawn,
             arrows: window.pudding_settings.UltraArrowTurnSpawn,
+            mines: window.pudding_settings.UltraMineModeSpawn,
             everyApple: window.pudding_settings.WallEveryApple,
           },
           disableWallMode: !!window.disableWallMode,
+          disableMineMode: !!window.disableMineMode,
           shouldShields: window.ultraShouldSpawnFruitShields(),
           blockArrows: window.ultraBlockNativeArrowTurns(),
           shouldEvery: window.remixShouldSpawnWallEveryApple(),
@@ -71,25 +74,28 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
       });
       assert.deepEqual(
         probe.items.map((x) => x.has),
-        [true, true, true],
+        [true, true, true, true],
         JSON.stringify(probe)
       );
       assert.deepEqual(
         probe.items.map((x) => x.checked),
-        [false, false, false],
+        [false, false, false, false],
         JSON.stringify(probe)
       );
       assert.equal(probe.items[0].label, "Spawn fruit with shields");
       assert.equal(probe.items[1].label, "Walls spawn in wall mode");
       assert.equal(probe.items[2].label, "Arrows spawn on turns");
+      assert.equal(probe.items[3].label, "Mines spawn in minesweeper mode");
       for (const item of probe.items) {
         assert.notEqual(item.display, "none", JSON.stringify(item));
       }
       assert.equal(probe.settings.shields, false, JSON.stringify(probe));
       assert.equal(probe.settings.walls, false, JSON.stringify(probe));
       assert.equal(probe.settings.arrows, false, JSON.stringify(probe));
+      assert.equal(probe.settings.mines, false, JSON.stringify(probe));
       assert.equal(probe.settings.everyApple, false, JSON.stringify(probe));
       assert.equal(probe.disableWallMode, true, JSON.stringify(probe));
+      assert.equal(probe.disableMineMode, true, JSON.stringify(probe));
       assert.equal(probe.shouldShields, false, JSON.stringify(probe));
       assert.equal(probe.blockArrows, true, JSON.stringify(probe));
       assert.equal(probe.shouldEvery, false, JSON.stringify(probe));
@@ -374,6 +380,108 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
       assert.ok(
         probe.onAfter > probe.onBefore,
         "wall mode should spawn walls when toggle is on " + JSON.stringify(probe)
+      );
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("minesweeper does not spawn mines unless the mine-spawn toggle is on", async () => {
+    const h = await launchUltra(88);
+    try {
+      const { COUNT, SIZE } = await import("../tools/harness.mjs");
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
+      const probe = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        function mineCount() {
+          const ma =
+            typeof window.ultraMineManager === "function" && window.ultraMineManager();
+          return ma && ma.oa && typeof ma.oa.size === "number" ? ma.oa.size : 0;
+        }
+        function reviveCenter() {
+          g.nj = false;
+          const snake = g.oa.ka;
+          for (let i = 0; i < snake.length; i++) {
+            snake[i].x = 8;
+            snake[i].y = 10;
+          }
+          g.oa.direction = "RIGHT";
+        }
+        function startMine() {
+          g.settings.ub = 12;
+          g.settings.ob = 12;
+          window.CurrentModeNum = 12;
+          if (typeof window.ensureGameMode === "function") window.ensureGameMode(12);
+          g.wa.reset();
+          if (typeof window.emptyMines === "function") window.emptyMines();
+          reviveCenter();
+        }
+        function eatAhead() {
+          const apples = g.wa.ka;
+          if (!apples.length) return;
+          const head = g.oa.ka[0];
+          apples[0].pos.x = head.x + 1;
+          apples[0].pos.y = head.y;
+        }
+        function tickSafe(n) {
+          for (let i = 0; i < n; i++) {
+            if (g.nj) break;
+            g.tick();
+          }
+        }
+
+        window.pudding_settings.UltraMineModeSpawn = false;
+        window.ultraEnsureGameplayToggles();
+        const disableOff = !!window.disableMineMode;
+        startMine();
+        const offBefore = mineCount();
+        eatAhead();
+        tickSafe(20);
+        const offAfter = mineCount();
+
+        window.pudding_settings.UltraMineModeSpawn = true;
+        window.ultraEnsureGameplayToggles();
+        const disableOn = !!window.disableMineMode;
+        startMine();
+        const onBefore = mineCount();
+        for (let n = 0; n < 4; n++) {
+          reviveCenter();
+          eatAhead();
+          tickSafe(8);
+        }
+        const onAfter = mineCount();
+
+        window.pudding_settings.UltraMineModeSpawn = false;
+        window.ultraEnsureGameplayToggles();
+        const placed = typeof window.placeMine === "function";
+        if (typeof window.emptyMines === "function") window.emptyMines();
+        const beforePlace = mineCount();
+        if (placed) window.placeMine(3, 3);
+        const afterPlace = mineCount();
+        return {
+          disableOff,
+          offBefore,
+          offAfter,
+          disableOn,
+          onBefore,
+          onAfter,
+          placed,
+          beforePlace,
+          afterPlace,
+        };
+      });
+      assert.equal(probe.disableOff, true, JSON.stringify(probe));
+      assert.equal(probe.disableOn, false, JSON.stringify(probe));
+      assert.equal(probe.offAfter, probe.offBefore, JSON.stringify(probe));
+      assert.ok(
+        probe.onAfter > probe.onBefore,
+        "minesweeper should spawn mines when toggle is on " + JSON.stringify(probe)
+      );
+      assert.equal(probe.placed, true, JSON.stringify(probe));
+      assert.ok(
+        probe.afterPlace > probe.beforePlace,
+        "placeMine still works " + JSON.stringify(probe)
       );
       assert.deepEqual(h.modErrors(), [], "no mod errors");
     } finally {

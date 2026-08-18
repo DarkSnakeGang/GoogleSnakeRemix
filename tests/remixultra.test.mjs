@@ -29,6 +29,7 @@ describe("RemixUltra build artifacts", () => {
     assert.match(remix, /remixShouldSpawnWallEveryApple/);
     assert.doesNotMatch(remix, /RemixUltraSettings/);
     assert.doesNotMatch(remix, /UltraShieldedFruitSpawn/);
+    assert.doesNotMatch(remix, /UltraMineModeSpawn/);
     assert.doesNotMatch(remix, /ultraInstallGameplayToggleUi/);
     assert.doesNotMatch(remix, /ultraPlaceWallEveryAppleToggle/);
   });
@@ -62,6 +63,7 @@ describe("RemixUltra build artifacts", () => {
     assert.match(ultra, /UltraShieldedFruitSpawn/);
     assert.match(ultra, /UltraWallModeSpawn/);
     assert.match(ultra, /UltraArrowTurnSpawn/);
+    assert.match(ultra, /UltraMineModeSpawn/);
     assert.match(ultra, /ultraBlockNativeArrowTurns/);
   });
 });

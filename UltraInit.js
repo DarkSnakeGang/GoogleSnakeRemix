@@ -1830,7 +1830,9 @@ window.ultraEnsureGameplayToggles = function ultraEnsureGameplayToggles() {
   if (typeof s.UltraShieldedFruitSpawn !== "boolean") s.UltraShieldedFruitSpawn = false;
   if (typeof s.UltraWallModeSpawn !== "boolean") s.UltraWallModeSpawn = false;
   if (typeof s.UltraArrowTurnSpawn !== "boolean") s.UltraArrowTurnSpawn = false;
+  if (typeof s.UltraMineModeSpawn !== "boolean") s.UltraMineModeSpawn = false;
   window.disableWallMode = !s.UltraWallModeSpawn;
+  window.disableMineMode = !s.UltraMineModeSpawn;
 };
 
 window.ultraShouldSpawnFruitShields = function ultraShouldSpawnFruitShields() {
@@ -1935,6 +1937,7 @@ window.ultraInstallGameplayToggleUi = function ultraInstallGameplayToggleUi() {
     { id: "UltraShieldedFruitSpawn", label: "Spawn fruit with shields" },
     { id: "UltraWallModeSpawn", label: "Walls spawn in wall mode" },
     { id: "UltraArrowTurnSpawn", label: "Arrows spawn on turns" },
+    { id: "UltraMineModeSpawn", label: "Mines spawn in minesweeper mode" },
   ];
   for (let i = 0; i < specs.length; i++) {
     const spec = specs[i];
@@ -1959,6 +1962,9 @@ window.ultraInstallGameplayToggleUi = function ultraInstallGameplayToggleUi() {
         if (typeof window.remixSyncWallEveryAppleEnabled === "function") {
           window.remixSyncWallEveryAppleEnabled();
         }
+      }
+      if (spec.id === "UltraMineModeSpawn") {
+        window.disableMineMode = !input.checked;
       }
       if (typeof window.saveSettings === "function") window.saveSettings();
     });
