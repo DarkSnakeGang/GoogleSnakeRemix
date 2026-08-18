@@ -609,23 +609,20 @@ window.BurgerMod.alterSnakeCode = function (code) {
 
   // After apple reset / shield init (Chess may have already appended): assign burger timers.
   // Hook the end of apple manager reset via shield init line (post-Pudding doubleDE).
-  if (
-    code.match(
-      /if\(e7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);if\(window\.isChessActive&&window\.isChessActive\(\)\)/
-    )
-  ) {
+  // Chess may gate P3E behind ultraShouldSpawnFruitShields (Remix Ultra).
+  const burgerShieldInit =
+    /if\(e7\(this\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);/;
+  const burgerShieldInitChess =
+    /if\(e7\(this\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);if\(window\.isChessActive&&window\.isChessActive\(\)\)\{try\{window\.appleArray=this\.ka;window\.randomize_pieces\(\);window\.shield_empty_all\(\);\}catch\(_ce\)\{console\.error\("ChessMod: reset failed",_ce\);\}\}/;
+  if (code.match(burgerShieldInitChess)) {
     code = code.assertReplace(
-      /if\(e7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);if\(window\.isChessActive&&window\.isChessActive\(\)\)\{try\{window\.appleArray=this\.ka;window\.randomize_pieces\(\);window\.shield_empty_all\(\);\}catch\(_ce\)\{console\.error\("ChessMod: reset failed",_ce\);\}\}/,
-      `if(e7(this.settings,15))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}`
+      burgerShieldInitChess,
+      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}`
     );
-  } else if (
-    code.match(
-      /if\(e7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);/
-    )
-  ) {
+  } else if (code.match(burgerShieldInit)) {
     code = code.assertReplace(
-      /if\(e7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);/,
-      `if(e7(this.settings,15))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}`
+      burgerShieldInit,
+      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}`
     );
   } else {
     console.error("BurgerMod: failed to find reset timer hook");
@@ -653,12 +650,12 @@ window.BurgerMod.alterSnakeCode = function (code) {
     );
   } else if (
     code.match(
-      /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(e7\(a\.settings,15\)\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.nba=P3E\(a,c\.pos\);/
+      /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(e7\(a\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.nba=P3E\(a,c\.pos\);/
     )
   ) {
     code = code.assertReplace(
-      /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(e7\(a\.settings,15\)\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.nba=P3E\(a,c\.pos\);/,
-      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(e7(a.settings,15))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.nba=P3E(a,c.pos);if(window.isBurgerActive&&window.isBurgerActive()&&g>0){for(let _bi=a.ka.length-g;_bi<a.ka.length;_bi++){if(a.ka[_bi]&&!a.ka[_bi].Oka)window.burger_assign_timer(a.ka[_bi]);}}`
+      /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(e7\(a\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.nba=P3E\(a,c\.pos\);/,
+      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(e7(a.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.nba=P3E(a,c.pos);if(window.isBurgerActive&&window.isBurgerActive()&&g>0){for(let _bi=a.ka.length-g;_bi<a.ka.length;_bi++){if(a.ka[_bi]&&!a.ka[_bi].Oka)window.burger_assign_timer(a.ka[_bi]);}}`
     );
   } else {
     console.error("BurgerMod: failed to find qaF trailing hook");

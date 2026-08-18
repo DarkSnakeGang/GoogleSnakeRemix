@@ -937,7 +937,7 @@ window.ChessMod.alterSnakeCode = function (code) {
   if (code.match(after_shield_init)) {
     code = code.assertReplace(
       after_shield_init,
-      `if(e7(this.settings,15))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}`
+      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}`
     );
   } else {
     console.error("ChessMod: failed to find shield init on reset");
@@ -976,7 +976,7 @@ window.ChessMod.alterSnakeCode = function (code) {
   if (code.match(qaf_after_oba)) {
     code = code.assertReplace(
       qaf_after_oba,
-      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(e7(a.settings,15))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.nba=P3E(a,c.pos);if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}`
+      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(e7(a.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.nba=P3E(a,c.pos);if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(g>0&&window.ultraShouldSpawnFruitShields&&!window.ultraShouldSpawnFruitShields()){for(e=0;e<g;e++){c=a.ka[a.ka.length-1-e];if(!c.isPiece)c.nba=void 0;}}`
     );
   } else {
     console.error("ChessMod: failed to find f4E trailing convert hook");

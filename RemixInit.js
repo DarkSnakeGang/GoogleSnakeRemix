@@ -118,6 +118,10 @@ label[for="ShowSplitPanel"],
 label[for="RemoveScrollbar"] {
   display: none !important;
 }
+#ultra-settings-page-play .form-check:has(#EatThemeRandomizer),
+#settings-popup-pudding .form-check:has(#EatThemeRandomizer) {
+  display: flex !important;
+}
 #settings-popup-pudding .form-check-input {
   float: none !important;
   position: static !important;
@@ -215,6 +219,23 @@ window.remixSettingsWrap = function remixSettingsWrap(id, root) {
   const el = window.remixSettingsEl(id, root);
   if (!el) return null;
   return el.closest(".form-check") || el;
+};
+
+window.remixShowDragonFruitCheckbox = function remixShowDragonFruitCheckbox(play) {
+  const wrap = window.remixSettingsWrap("EatThemeRandomizer");
+  if (!wrap) return null;
+  wrap.classList.remove("ultra-hide");
+  wrap.style.display = "flex";
+  const input = document.getElementById("EatThemeRandomizer");
+  const label = document.getElementById("EatThemeRandomizer2");
+  if (input) input.style.display = "";
+  if (label) {
+    label.style.display = "";
+    label.textContent = "Dragon Fruit";
+  }
+  const host = play || document.getElementById("ultra-settings-page-play");
+  if (host && wrap.parentElement !== host) host.appendChild(wrap);
+  return wrap;
 };
 
 window.remixBindResetKeyButtons = function remixBindResetKeyButtons() {
@@ -434,6 +455,7 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     const el = window.remixSettingsWrap(id, root);
     if (el && el.parentElement !== play) play.appendChild(el);
   });
+  window.remixShowDragonFruitCheckbox(play);
   ["stat-chooser", "edit-stat", "reset-stats"].forEach(function (id) {
     const el = window.remixSettingsEl(id, root);
     if (el && el.parentElement !== stats) stats.appendChild(el);

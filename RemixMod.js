@@ -6861,7 +6861,10 @@ window.BootstrapMenu.make = function () {
             if (typeof window.saveSettings === "function") window.saveSettings();
         });
 
-        if (localStorage.getItem('snakeChosenMod') === "PuddingMod" || window.NepDebug) {
+        EatThemeRandomizer.parentElement.style.display = 'block';
+        EatThemeRandomizer.style.display = '';
+        EatThemeRandomizer2.style.display = '';
+        if (false && (localStorage.getItem('snakeChosenMod') === "PuddingMod" || window.NepDebug)) {
             EatThemeRandomizer.style.display = 'none';
             EatThemeRandomizer2.style.display = 'none';
             EatThemeRandomizer.checked = false;
@@ -11157,7 +11160,7 @@ window.ChessMod.alterSnakeCode = function (code) {
   if (code.match(after_shield_init)) {
     code = code.assertReplace(
       after_shield_init,
-      `if(e7(this.settings,15))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}`
+      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}`
     );
   } else {
     console.error("ChessMod: failed to find shield init on reset");
@@ -11196,7 +11199,7 @@ window.ChessMod.alterSnakeCode = function (code) {
   if (code.match(qaf_after_oba)) {
     code = code.assertReplace(
       qaf_after_oba,
-      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(e7(a.settings,15))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.nba=P3E(a,c.pos);if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}`
+      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(e7(a.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.nba=P3E(a,c.pos);if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(g>0&&window.ultraShouldSpawnFruitShields&&!window.ultraShouldSpawnFruitShields()){for(e=0;e<g;e++){c=a.ka[a.ka.length-1-e];if(!c.isPiece)c.nba=void 0;}}`
     );
   } else {
     console.error("ChessMod: failed to find f4E trailing convert hook");
@@ -11935,23 +11938,20 @@ window.BurgerMod.alterSnakeCode = function (code) {
 
   // After apple reset / shield init (Chess may have already appended): assign burger timers.
   // Hook the end of apple manager reset via shield init line (post-Pudding doubleDE).
-  if (
-    code.match(
-      /if\(e7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);if\(window\.isChessActive&&window\.isChessActive\(\)\)/
-    )
-  ) {
+  // Chess may gate P3E behind ultraShouldSpawnFruitShields (Remix Ultra).
+  const burgerShieldInit =
+    /if\(e7\(this\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);/;
+  const burgerShieldInitChess =
+    /if\(e7\(this\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);if\(window\.isChessActive&&window\.isChessActive\(\)\)\{try\{window\.appleArray=this\.ka;window\.randomize_pieces\(\);window\.shield_empty_all\(\);\}catch\(_ce\)\{console\.error\("ChessMod: reset failed",_ce\);\}\}/;
+  if (code.match(burgerShieldInitChess)) {
     code = code.assertReplace(
-      /if\(e7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);if\(window\.isChessActive&&window\.isChessActive\(\)\)\{try\{window\.appleArray=this\.ka;window\.randomize_pieces\(\);window\.shield_empty_all\(\);\}catch\(_ce\)\{console\.error\("ChessMod: reset failed",_ce\);\}\}/,
-      `if(e7(this.settings,15))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}`
+      burgerShieldInitChess,
+      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}`
     );
-  } else if (
-    code.match(
-      /if\(e7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);/
-    )
-  ) {
+  } else if (code.match(burgerShieldInit)) {
     code = code.assertReplace(
-      /if\(e7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);/,
-      `if(e7(this.settings,15))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}`
+      burgerShieldInit,
+      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}`
     );
   } else {
     console.error("BurgerMod: failed to find reset timer hook");
@@ -11979,12 +11979,12 @@ window.BurgerMod.alterSnakeCode = function (code) {
     );
   } else if (
     code.match(
-      /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(e7\(a\.settings,15\)\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.nba=P3E\(a,c\.pos\);/
+      /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(e7\(a\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.nba=P3E\(a,c\.pos\);/
     )
   ) {
     code = code.assertReplace(
-      /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(e7\(a\.settings,15\)\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.nba=P3E\(a,c\.pos\);/,
-      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(e7(a.settings,15))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.nba=P3E(a,c.pos);if(window.isBurgerActive&&window.isBurgerActive()&&g>0){for(let _bi=a.ka.length-g;_bi<a.ka.length;_bi++){if(a.ka[_bi]&&!a.ka[_bi].Oka)window.burger_assign_timer(a.ka[_bi]);}}`
+      /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(e7\(a\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.nba=P3E\(a,c\.pos\);/,
+      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(e7(a.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.nba=P3E(a,c.pos);if(window.isBurgerActive&&window.isBurgerActive()&&g>0){for(let _bi=a.ka.length-g;_bi<a.ka.length;_bi++){if(a.ka[_bi]&&!a.ka[_bi].Oka)window.burger_assign_timer(a.ka[_bi]);}}`
     );
   } else {
     console.error("BurgerMod: failed to find qaF trailing hook");
@@ -13767,6 +13767,10 @@ label[for="ShowSplitPanel"],
 label[for="RemoveScrollbar"] {
   display: none !important;
 }
+#ultra-settings-page-play .form-check:has(#EatThemeRandomizer),
+#settings-popup-pudding .form-check:has(#EatThemeRandomizer) {
+  display: flex !important;
+}
 #settings-popup-pudding .form-check-input {
   float: none !important;
   position: static !important;
@@ -13864,6 +13868,23 @@ window.remixSettingsWrap = function remixSettingsWrap(id, root) {
   const el = window.remixSettingsEl(id, root);
   if (!el) return null;
   return el.closest(".form-check") || el;
+};
+
+window.remixShowDragonFruitCheckbox = function remixShowDragonFruitCheckbox(play) {
+  const wrap = window.remixSettingsWrap("EatThemeRandomizer");
+  if (!wrap) return null;
+  wrap.classList.remove("ultra-hide");
+  wrap.style.display = "flex";
+  const input = document.getElementById("EatThemeRandomizer");
+  const label = document.getElementById("EatThemeRandomizer2");
+  if (input) input.style.display = "";
+  if (label) {
+    label.style.display = "";
+    label.textContent = "Dragon Fruit";
+  }
+  const host = play || document.getElementById("ultra-settings-page-play");
+  if (host && wrap.parentElement !== host) host.appendChild(wrap);
+  return wrap;
 };
 
 window.remixBindResetKeyButtons = function remixBindResetKeyButtons() {
@@ -14083,6 +14104,7 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     const el = window.remixSettingsWrap(id, root);
     if (el && el.parentElement !== play) play.appendChild(el);
   });
+  window.remixShowDragonFruitCheckbox(play);
   ["stat-chooser", "edit-stat", "reset-stats"].forEach(function (id) {
     const el = window.remixSettingsEl(id, root);
     if (el && el.parentElement !== stats) stats.appendChild(el);

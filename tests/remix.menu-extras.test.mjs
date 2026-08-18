@@ -406,6 +406,75 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
   });
 });
 
+async function assertDragonFruitVisible(launch) {
+  const h = await launch();
+  try {
+    await h.page.waitForFunction(
+      () =>
+        !!document.getElementById("EatThemeRandomizer") &&
+        typeof window.remixOrganizeSettings === "function",
+      null,
+      { timeout: 60000 }
+    );
+    const probe = await h.page.evaluate(() => {
+      window.remixOrganizeSettings();
+      if (typeof window.ultraOrganizeSettings === "function") {
+        window.ultraOrganizeSettings();
+      }
+      if (typeof window.BootstrapShow === "function") window.BootstrapShow();
+      const playTab = document.getElementById("ultra-settings-tab-play");
+      if (playTab) playTab.click();
+      const input = document.getElementById("EatThemeRandomizer");
+      const label = document.getElementById("EatThemeRandomizer2");
+      const wrap = input && (input.closest(".form-check") || input.parentElement);
+      const play = document.getElementById("ultra-settings-page-play");
+      const wrapCs = wrap && getComputedStyle(wrap);
+      const inputCs = input && getComputedStyle(input);
+      const labelCs = label && getComputedStyle(label);
+      const box = wrap && wrap.getBoundingClientRect();
+      return {
+        hasInput: !!input,
+        inPlay: !!(play && input && play.contains(input)),
+        wrapDisplay: wrapCs && wrapCs.display,
+        inputDisplay: inputCs && inputCs.display,
+        labelDisplay: labelCs && labelCs.display,
+        boxH: box && box.height,
+        boxW: box && box.width,
+        label: label && String(label.textContent || "").trim(),
+        ultraToggles: !!document.getElementById("UltraShieldedFruitSpawn"),
+      };
+    });
+    assert.equal(probe.hasInput, true, JSON.stringify(probe));
+    assert.equal(probe.inPlay, true, JSON.stringify(probe));
+    assert.notEqual(probe.wrapDisplay, "none", JSON.stringify(probe));
+    assert.notEqual(probe.inputDisplay, "none", JSON.stringify(probe));
+    assert.notEqual(probe.labelDisplay, "none", JSON.stringify(probe));
+    assert.ok(probe.boxH > 8 && probe.boxW > 8, JSON.stringify(probe));
+    assert.equal(probe.label, "Dragon Fruit", JSON.stringify(probe));
+    assert.deepEqual(h.modErrors(), [], "no mod errors");
+    return probe;
+  } finally {
+    await h.close();
+  }
+}
+
+describe("Dragon Fruit checkbox", { skip: !runBrowser }, () => {
+  it("Remix Play tab shows Dragon Fruit", async () => {
+    const { launchHarness } = await import("../tools/harness.mjs");
+    const probe = await assertDragonFruitVisible(() =>
+      launchHarness({ seed: 71, headless: true })
+    );
+    assert.equal(probe.ultraToggles, false, JSON.stringify(probe));
+  });
+
+  it("Ultra Play tab shows Dragon Fruit", async () => {
+    const { launchHarness, ultraHarnessOpts } = await import("../tools/harness.mjs");
+    await assertDragonFruitVisible(() =>
+      launchHarness(ultraHarnessOpts({ seed: 72, headless: true }))
+    );
+  });
+});
+
 async function assertSokobanKeyBlackDiceStartsLikeDice(launch) {
   const { COUNT, SIZE } = await import("../tools/harness.mjs");
   const h = await launch();

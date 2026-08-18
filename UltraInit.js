@@ -1290,6 +1290,7 @@ window.ultraAssignNewApples = function ultraAssignNewApples(added) {
       if (mgr.ka[i] && !mgr.ka[i].Oka) window.burger_assign_timer(mgr.ka[i]);
     }
   }
+  window.ultraStripUnwantedFruitShields(mgr.ka.slice(start));
 };
 
 window.ultraAssignAllBoardApples = function ultraAssignAllBoardApples() {
@@ -1335,9 +1336,11 @@ window.ultraAssignAllBoardApples = function ultraAssignAllBoardApples() {
       }
     }
   }
+  window.ultraStripUnwantedFruitShields(mgr.ka);
 };
 
 window.ultraSetupGameplayHooks = function ultraSetupGameplayHooks() {
+  window.ultraWatchRemixGameForShieldGate();
   if (typeof window.placeApple === "function" && !window.placeApple.__ultra) {
     const orig = window.placeApple;
     window.placeApple = function () {
@@ -1810,8 +1813,134 @@ window.ultraInstallPresetNoneButton = function ultraInstallPresetNoneButton() {
   }
 };
 
+window.ultraOrganizeSettings = function ultraOrganizeSettings() {
+  if (typeof window.remixOrganizeSettings === "function") {
+    window.remixOrganizeSettings();
+  }
+  window.ultraInstallGameplayToggleUi();
+  window.ultraEnsureGameplayToggles();
+};
+
+window.ultraEnsureGameplayToggles = function ultraEnsureGameplayToggles() {
+  const s = window.pudding_settings || (window.pudding_settings = {});
+  if (typeof s.UltraShieldedFruitSpawn !== "boolean") s.UltraShieldedFruitSpawn = false;
+  if (typeof s.UltraWallModeSpawn !== "boolean") s.UltraWallModeSpawn = false;
+  if (typeof s.UltraArrowTurnSpawn !== "boolean") s.UltraArrowTurnSpawn = false;
+  window.disableWallMode = !s.UltraWallModeSpawn;
+};
+
+window.ultraShouldSpawnFruitShields = function ultraShouldSpawnFruitShields() {
+  window.ultraEnsureGameplayToggles();
+  return !!window.pudding_settings.UltraShieldedFruitSpawn;
+};
+
+window.ultraStripUnwantedFruitShields = function ultraStripUnwantedFruitShields(list) {
+  if (!list || window.ultraShouldSpawnFruitShields()) return;
+  if (
+    window.isChessActive &&
+    window.isChessActive() &&
+    window.head_state &&
+    window.head_state !== "OPEN"
+  ) {
+    return;
+  }
+  for (let i = 0; i < list.length; i++) {
+    const a = list[i];
+    if (a && !a.isPiece && !a.__ultraKeepShield) a.nba = undefined;
+  }
+};
+
+window.ultraInstallFruitShieldSpawnGate = function ultraInstallFruitShieldSpawnGate() {
+  const g = window.__remixGame;
+  if (!g || !g.wa) return;
+  if (typeof g.wa.reset === "function" && !g.wa.reset.__ultraShieldGate) {
+    const origReset = g.wa.reset;
+    g.wa.reset = function () {
+      const r = origReset.apply(this, arguments);
+      window.ultraStripUnwantedFruitShields(this.ka);
+      return r;
+    };
+    g.wa.reset.__ultraShieldGate = true;
+  }
+  function wrapTick(obj) {
+    if (!obj || typeof obj.tick !== "function" || obj.tick.__ultraShieldGate) return;
+    const origTick = obj.tick;
+    const wrapped = function () {
+      const r = origTick.apply(this, arguments);
+      const list = (this && this.wa && this.wa.ka) || (window.__remixGame && window.__remixGame.wa && window.__remixGame.wa.ka);
+      window.ultraStripUnwantedFruitShields(list);
+      return r;
+    };
+    wrapped.__ultraShieldGate = true;
+    obj.tick = wrapped;
+  }
+  wrapTick(g);
+  try {
+    wrapTick(Object.getPrototypeOf(g));
+  } catch (_e) {}
+};
+
+window.ultraWatchRemixGameForShieldGate = function ultraWatchRemixGameForShieldGate() {
+  if (window.__ultraWatchingRemixGame) return;
+  window.__ultraWatchingRemixGame = true;
+  let current = window.__remixGame;
+  try {
+    Object.defineProperty(window, "__remixGame", {
+      configurable: true,
+      enumerable: true,
+      get: function () {
+        return current;
+      },
+      set: function (v) {
+        current = v;
+        window.ultraInstallFruitShieldSpawnGate();
+      },
+    });
+  } catch (_e) {}
+  if (current) window.ultraInstallFruitShieldSpawnGate();
+};
+
+window.ultraBlockNativeArrowTurns = function ultraBlockNativeArrowTurns() {
+  window.ultraEnsureGameplayToggles();
+  return !window.pudding_settings.UltraArrowTurnSpawn;
+};
+
+window.ultraInstallGameplayToggleUi = function ultraInstallGameplayToggleUi() {
+  window.ultraEnsureGameplayToggles();
+  const play = document.getElementById("ultra-settings-page-play");
+  if (!play || document.getElementById("UltraShieldedFruitSpawn")) return;
+  const specs = [
+    { id: "UltraShieldedFruitSpawn", label: "Spawn fruit with shields" },
+    { id: "UltraWallModeSpawn", label: "Walls spawn in wall mode" },
+    { id: "UltraArrowTurnSpawn", label: "Arrows spawn on turns" },
+  ];
+  for (let i = 0; i < specs.length; i++) {
+    const spec = specs[i];
+    const wrap = document.createElement("div");
+    wrap.className = "form-check form-check-inline";
+    wrap.innerHTML =
+      '<input class="form-check-input" type="checkbox" role="switch" id="' +
+      spec.id +
+      '">' +
+      '<label class="form-check-label" for="' +
+      spec.id +
+      '">' +
+      spec.label +
+      "</label>";
+    play.appendChild(wrap);
+    const input = wrap.querySelector("input");
+    input.checked = !!window.pudding_settings[spec.id];
+    input.addEventListener("change", function () {
+      window.pudding_settings[spec.id] = !!input.checked;
+      if (spec.id === "UltraWallModeSpawn") {
+        window.disableWallMode = !input.checked;
+      }
+      if (typeof window.saveSettings === "function") window.saveSettings();
+    });
+  }
+};
+
 window.ultraShowSettingsPage = window.remixShowSettingsPage;
-window.ultraOrganizeSettings = window.remixOrganizeSettings;
 
 window.ultraSetupLayout = function ultraSetupLayout() {
   const vis = document.getElementById("delete-stuff-popup");
@@ -1824,6 +1953,8 @@ window.ultraSetupLayout = function ultraSetupLayout() {
   window.ultraWrapShowHide();
   window.ultraDisableSpeedInfo();
   window.ultraOrganizeSettings();
+  window.ultraEnsureGameplayToggles();
+  window.ultraWatchRemixGameForShieldGate();
   window.ultraFixPresetImages();
   window.ultraInstallSizeReset();
   window.ultraInstallBlitGuard();

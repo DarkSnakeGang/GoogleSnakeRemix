@@ -1348,6 +1348,16 @@ window.UltraPlace.alterSnakeCode = function (code) {
     1,
     "addArrow"
   );
+  if (addArrow) {
+    const arrowStem = addArrow + "=function(a,b,c){var d=a.ka[c.y][c.x];d.direction=b";
+    if (code.indexOf(arrowStem) >= 0) {
+      code = code.replace(
+        arrowStem,
+        addArrow +
+          "=function(a,b,c){if(window.ultraBlockNativeArrowTurns&&window.ultraBlockNativeArrowTurns()&&!window.__ultraPaintArrowFromPlace)return;var d=a.ka[c.y][c.x];d.direction=b"
+      );
+    }
+  }
   const addGate = window.ultraPlaceCapture(
     code,
     /([$a-zA-Z0-9_]{0,8})=function\(a,b,c,d\)\{c\?\(a\.ka\[b\.y\]\[b\.x\]\.B7\.set\("RIGHT"/,
@@ -1806,7 +1816,12 @@ window.UltraPlace.alterSnakeCode = function (code) {
     dir = dir || 'UP';
     const arrows = ultraArrowManager();
     if(!arrows || !arrows.ka || !arrows.ka[y] || !arrows.ka[y][x]) return;
-    if(typeof ${n.addArrow} === 'function') ${n.addArrow}(arrows, dir, new ${n.coordCtor}(x,y));
+    window.__ultraPaintArrowFromPlace = true;
+    try {
+      if(typeof ${n.addArrow} === 'function') ${n.addArrow}(arrows, dir, new ${n.coordCtor}(x,y));
+    } finally {
+      window.__ultraPaintArrowFromPlace = false;
+    }
     const cell = arrows.ka[y][x];
     cell.direction = dir;
     cell.wm = false;
@@ -1929,6 +1944,7 @@ window.UltraPlace.alterSnakeCode = function (code) {
     }
     if(!apple) return;
     apple.wm = false;
+    apple.__ultraKeepShield = true;
     const next = new Set();
     const cur = apple[field] || apple.nba;
     if(cur && typeof cur.forEach === 'function') cur.forEach(function(d){ next.add(d); });

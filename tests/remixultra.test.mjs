@@ -24,7 +24,10 @@ describe("RemixUltra build artifacts", () => {
     assert.match(remix, /var\(--ultra-btn/);
     assert.match(remix, /\(b\.nla\|\|b\.Oka\)/);
     assert.match(remix, /RemixSettings/);
+    assert.match(remix, /remixShowDragonFruitCheckbox/);
     assert.doesNotMatch(remix, /RemixUltraSettings/);
+    assert.doesNotMatch(remix, /UltraShieldedFruitSpawn/);
+    assert.doesNotMatch(remix, /ultraInstallGameplayToggleUi/);
   });
 
   it("RemixUltraMod.js concatenates LE + Ultra keys + dock helper", () => {
@@ -49,6 +52,12 @@ describe("RemixUltra build artifacts", () => {
     assert.match(ultra, /window\.UltraPlace/);
     assert.match(ultra, /wa\\s\*===\\s\*10/);
     assert.match(ultra, /ultraPlaceBuildGridHtml/);
+    assert.match(ultra, /remixShowDragonFruitCheckbox/);
+    assert.match(ultra, /ultraInstallGameplayToggleUi/);
+    assert.match(ultra, /UltraShieldedFruitSpawn/);
+    assert.match(ultra, /UltraWallModeSpawn/);
+    assert.match(ultra, /UltraArrowTurnSpawn/);
+    assert.match(ultra, /ultraBlockNativeArrowTurns/);
   });
 });
 
