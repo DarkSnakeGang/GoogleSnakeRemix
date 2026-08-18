@@ -405,3 +405,87 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
     }
   });
 });
+
+async function assertSokobanKeyBlackDiceStartsLikeDice(launch) {
+  const { COUNT, SIZE } = await import("../tools/harness.mjs");
+  const h = await launch();
+  try {
+    try {
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
+    } catch (err) {
+      const dump = await h.page
+        .evaluate(() => ({
+          href: location.href,
+          title: document.title,
+          remix: typeof window.RemixMod,
+          ultra: typeof window.RemixUltraMod,
+          game: !!window.__remixGame,
+        }))
+        .catch(() => null);
+      err.message += " dump=" + JSON.stringify({ dump, errors: h.modErrors() });
+      throw err;
+    }
+    const probe = await h.page.evaluate(() => {
+      const g = window.__remixGame;
+      function apples() {
+        return (g.wa.ka || [])
+          .map((a) => ({ x: a.pos.x, y: a.pos.y }))
+          .sort((p, q) => p.x - q.x || p.y - q.y);
+      }
+      function snap(mode, ka, size) {
+        g.settings.ub = mode;
+        g.settings.ob = mode;
+        g.settings.ka = ka;
+        g.settings.Ca = ka;
+        if (typeof size === "number") {
+          g.settings.Aa = size;
+          g.settings.Sa = size;
+        }
+        window.CurrentModeNum = mode;
+        g.wa.reset();
+        return apples();
+      }
+      const black = window.BLACK_DICE_COUNT;
+      return {
+        black,
+        sokoDice: snap(9, 4),
+        sokoBlack: snap(9, black),
+        sokoOne: snap(9, 0),
+        keyDice: snap(8, 4),
+        keyBlack: snap(8, black),
+        keyOne: snap(8, 0),
+        classicBlack: snap(0, black),
+        classicDice: snap(0, 4),
+        sokoSmallDice: snap(9, 4, 1),
+        sokoSmallBlack: snap(9, black, 1),
+      };
+    });
+    assert.ok(probe.sokoDice.length >= 1, JSON.stringify(probe));
+    assert.deepEqual(probe.sokoBlack, probe.sokoDice, JSON.stringify(probe));
+    assert.deepEqual(probe.keyBlack, probe.keyDice, JSON.stringify(probe));
+    assert.deepEqual(probe.sokoBlack, probe.sokoOne, JSON.stringify(probe));
+    assert.deepEqual(probe.keyBlack, probe.keyOne, JSON.stringify(probe));
+    assert.deepEqual(probe.classicBlack, probe.classicDice, JSON.stringify(probe));
+    assert.equal(probe.classicDice.length, 1, JSON.stringify(probe));
+    assert.deepEqual(probe.sokoSmallBlack, probe.sokoSmallDice, JSON.stringify(probe));
+    assert.deepEqual(h.modErrors(), [], "no mod errors");
+  } finally {
+    await h.close();
+  }
+}
+
+describe("Sokoban/Key black dice start", { skip: !runBrowser }, () => {
+  it("Remix: sokoban and key black dice start like Dice", async () => {
+    const { launchHarness } = await import("../tools/harness.mjs");
+    await assertSokobanKeyBlackDiceStartsLikeDice(() =>
+      launchHarness({ seed: 62, headless: true })
+    );
+  });
+
+  it("Ultra: sokoban and key black dice start like Dice", async () => {
+    const { launchHarness, ultraHarnessOpts } = await import("../tools/harness.mjs");
+    await assertSokobanKeyBlackDiceStartsLikeDice(() =>
+      launchHarness(ultraHarnessOpts({ seed: 63, headless: true }))
+    );
+  });
+});

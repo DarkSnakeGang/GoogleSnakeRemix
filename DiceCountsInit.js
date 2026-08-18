@@ -469,7 +469,24 @@ window.DiceCounts.alterSnakeCode = function (code) {
     console.error("DiceCounts: failed to narrow MoreMenu count > 6 gate");
   }
 
-  // After MoreMenu's `} else if(a)` — start colored dice with one apple.
+  // Native reset: a = key/sokoban/portal/poison (or chess), b = one/dice/bomb.
+  // if(a) places -1,-2 and -1,+2, then extra apples when !b. Colored dice must
+  // count as b so Key/Sokoban start like Dice (two apples), not the !b extras.
+  if (
+    code.match(
+      /b=this\.settings\.ka===0\|\|this\.settings\.ka===4\|\|this\.settings\.ka===5/
+    )
+  ) {
+    code = code.assertReplace(
+      /b=this\.settings\.ka===0\|\|this\.settings\.ka===4\|\|this\.settings\.ka===5/,
+      "b=this.settings.ka===0||this.settings.ka===4||this.settings.ka===5||(window.remixIsColoredDice&&window.remixIsColoredDice(this.settings.ka))"
+    );
+  } else {
+    console.error("DiceCounts: failed to extend reset b (one/dice/bomb) for colored dice");
+  }
+
+  // After MoreMenu's `} else if(a)` — classic colored dice uses +0,+0 like Dice.
+  // When a is set, fall through to the native two-apple body (b now includes us).
   const countGate = code.match(/if\(([a-zA-Z0-9_$.]+) > 6 && \1 <= 12\)/);
   const stemMatch = code.match(
     /(this\.[a-zA-Z0-9_$]{1,8}\.push\([a-zA-Z0-9_$]{1,8}\(this,)/
@@ -477,9 +494,10 @@ window.DiceCounts.alterSnakeCode = function (code) {
   if (countGate && stemMatch && code.match(/\} else if\(a\)/)) {
     const countExpr = countGate[1];
     const stem = stemMatch[1];
+    const colored = `window.remixIsColoredDice&&window.remixIsColoredDice(${countExpr})`;
     code = code.assertReplace(
       /\} else if\(a\)/,
-      `} else if(window.remixIsColoredDice&&window.remixIsColoredDice(${countExpr})) {
+      `} else if(${colored}&&!a) {
           ${stem} +0, +0));
         } else if(a)`
     );

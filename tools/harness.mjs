@@ -193,14 +193,18 @@ export async function launchHarness(opts = {}) {
       const hasGame = await page.evaluate(() => !!window.__remixGame);
       if (!hasGame) {
         await page.evaluate(() => {
-          for (const el of document.querySelectorAll(
-            "div[role=button],button"
-          )) {
-            if ((el.innerText || "").trim() === "Play") {
-              el.click();
-              return;
-            }
-          }
+          const plays = [
+            ...document.querySelectorAll("div[role=button],button"),
+          ].filter((el) => (el.innerText || "").trim() === "Play");
+          const visible = plays.find((el) => {
+            const r = el.getBoundingClientRect();
+            return (
+              r.width > 0 &&
+              r.height > 0 &&
+              el.id !== "ultra-settings-tab-play"
+            );
+          });
+          (visible || plays[plays.length - 1] || plays[0])?.click();
         });
         await page.waitForTimeout(400);
         await page.keyboard.press("ArrowRight");
