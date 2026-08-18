@@ -33,6 +33,7 @@ describe("RemixUltra build artifacts", () => {
     assert.doesNotMatch(remix, /UltraGateModeSpawn/);
     assert.doesNotMatch(remix, /ultraEnsureModesSettingsPage/);
     assert.doesNotMatch(remix, /ultraInstallGameplayToggleUi/);
+    assert.doesNotMatch(remix, /ultraSetWallModeSpawn/);
     assert.doesNotMatch(remix, /ultraPlaceWallEveryAppleToggle/);
   });
 
@@ -72,6 +73,7 @@ describe("RemixUltra build artifacts", () => {
     assert.match(ultra, /ultraEnsureModesSettingsPage/);
     assert.match(ultra, /ultra-pager-grid/);
     assert.match(ultra, /ultraBlockNativeArrowTurns/);
+    assert.match(ultra, /ultraSetWallModeSpawn/);
   });
 });
 
@@ -966,6 +968,16 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
         }
         document.getElementById("ultra-tab-presets").click();
         const ham = document.querySelector("#preset-panel .preset-random-ham");
+        window.ultraOrganizeSettings();
+        window.pudding_settings.UltraWallModeSpawn = true;
+        window.ultraEnsureGameplayToggles();
+        const spawnBox = document.getElementById("UltraWallModeSpawn");
+        if (spawnBox) spawnBox.checked = true;
+        const spawnBefore = {
+          setting: !!window.pudding_settings.UltraWallModeSpawn,
+          disable: !!window.disableWallMode,
+          checked: !!(spawnBox && spawnBox.checked),
+        };
         const before = {
           size: boardSize(),
           walls: wallCount(),
@@ -1010,6 +1022,18 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
             typeof window.getAppleSpawnPointOffset === "function"
               ? window.getAppleSpawnPointOffset()
               : null,
+          wallSpawn: {
+            setting: !!window.pudding_settings.UltraWallModeSpawn,
+            disable: !!window.disableWallMode,
+            checked: !!(
+              document.getElementById("UltraWallModeSpawn") &&
+              document.getElementById("UltraWallModeSpawn").checked
+            ),
+            everyDisabled: !!(
+              document.getElementById("WallEveryApple") &&
+              document.getElementById("WallEveryApple").disabled
+            ),
+          },
         };
         const cats = {};
         if (list) {
@@ -1039,6 +1063,7 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
         return {
           before,
           after,
+          spawnBefore,
           listLen: list ? list.length : -1,
           cats,
           listSample: list ? list.slice(0, 5) : null,
@@ -1062,6 +1087,13 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       assert.ok(probe.cats.wall > 0, JSON.stringify(probe));
       assert.ok(probe.after.walls > 0, JSON.stringify(probe));
       assert.match(String(probe.after.chosen), /preset-random-ham/, JSON.stringify(probe));
+      assert.equal(probe.spawnBefore.setting, true, JSON.stringify(probe.spawnBefore));
+      assert.equal(probe.spawnBefore.disable, false, JSON.stringify(probe.spawnBefore));
+      assert.equal(probe.spawnBefore.checked, true, JSON.stringify(probe.spawnBefore));
+      assert.equal(probe.after.wallSpawn.setting, false, JSON.stringify(probe.after.wallSpawn));
+      assert.equal(probe.after.wallSpawn.disable, true, JSON.stringify(probe.after.wallSpawn));
+      assert.equal(probe.after.wallSpawn.checked, false, JSON.stringify(probe.after.wallSpawn));
+      assert.equal(probe.after.wallSpawn.everyDisabled, true, JSON.stringify(probe.after.wallSpawn));
       assert.equal(probe.after.size && probe.after.size.width, 10, JSON.stringify(probe));
       assert.equal(probe.byCount[0].apples.length, 1, JSON.stringify(probe.byCount[0]));
       assert.equal(probe.byCount[2].apples.length, 5, JSON.stringify(probe.byCount[2]));

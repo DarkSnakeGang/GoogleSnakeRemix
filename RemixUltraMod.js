@@ -19211,6 +19211,9 @@ window.ultraSyncLeNav = function ultraSyncLeNav() {
             window.ultraSetLeft(null);
             return;
           }
+          if (this.classList.contains("preset-random-ham")) {
+            window.ultraSetWallModeSpawn(false);
+          }
           if (this.tagName === "IMG") {
             ev.stopImmediatePropagation();
             window.ultraApplyImagePreset(this);
@@ -20120,6 +20123,16 @@ window.ultraApplyGameplayToggleFlags = function ultraApplyGameplayToggleFlags(id
   if (id === "UltraGateModeSpawn") window.disableGateMode = !checked;
   if (id === "UltraBridgeModeSpawn") window.disableBridgeMode = !checked;
   if (id === "UltraStatueModeSpawn") window.disableStatueBodyPlant = !checked;
+};
+
+window.ultraSetWallModeSpawn = function ultraSetWallModeSpawn(on) {
+  window.ultraEnsureGameplayToggles();
+  const checked = !!on;
+  window.pudding_settings.UltraWallModeSpawn = checked;
+  window.ultraApplyGameplayToggleFlags("UltraWallModeSpawn", checked);
+  const input = document.getElementById("UltraWallModeSpawn");
+  if (input) input.checked = checked;
+  if (typeof window.saveSettings === "function") window.saveSettings();
 };
 
 window.ultraEnsureModesSettingsPage = function ultraEnsureModesSettingsPage() {
