@@ -812,4 +812,209 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       await h.close();
     }
   });
+
+  it("Random Ham places small-board walls and count-matching apples", async () => {
+    const h = await launchUltra({ seed: 46, headless: true });
+    try {
+      const { COUNT, SIZE } = await import("../tools/harness.mjs");
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
+      const probe = await h.page.evaluate(() => {
+        function boardSize() {
+          try {
+            return eval("window.wholeSnakeObject." + window.boardDimensions);
+          } catch (_e) {
+            return null;
+          }
+        }
+        function wallCount() {
+          try {
+            const size = boardSize();
+            if (!size || typeof window.checkWall !== "function") return -1;
+            let n = 0;
+            for (let y = 0; y < size.height; y++) {
+              for (let x = 0; x < size.width; x++) {
+                if (window.checkWall(x, y)) n++;
+              }
+            }
+            return n;
+          } catch (_e) {
+            return -2;
+          }
+        }
+        function appleInfo() {
+          const apples =
+            (window.wholeSnakeObject &&
+              window.wholeSnakeObject.wa &&
+              window.wholeSnakeObject.wa.ka) ||
+            [];
+          return {
+            n: apples.length,
+            pos: apples.slice(0, 12).map((a) => {
+              const p = a && (a.pos || a);
+              return p && typeof p.x === "number" ? { x: p.x, y: p.y } : null;
+            }),
+          };
+        }
+        document.getElementById("ultra-tab-presets").click();
+        const ham = document.querySelector("#preset-panel .preset-random-ham");
+        const before = {
+          size: boardSize(),
+          walls: wallCount(),
+          apples: appleInfo(),
+          countIdx:
+            typeof window.ultraHamCountIndex === "function"
+              ? window.ultraHamCountIndex()
+              : null,
+          ka:
+            window.__remixGame &&
+            window.__remixGame.settings &&
+            window.__remixGame.settings.ka,
+        };
+        let list = null;
+        let listErr = null;
+        try {
+          if (window.otherPresetmanager && window.otherPresetmanager.getRandomHamPixelList) {
+            const origRand = Math.random;
+            Math.random = function () {
+              return 0;
+            };
+            list = window.otherPresetmanager.getRandomHamPixelList();
+            Math.random = origRand;
+          }
+        } catch (e) {
+          listErr = String(e && e.message ? e.message : e);
+        }
+        let clickErr = null;
+        try {
+          if (ham) ham.click();
+        } catch (e) {
+          clickErr = String(e && e.message ? e.message : e);
+        }
+        const after = {
+          size: boardSize(),
+          walls: wallCount(),
+          apples: appleInfo(),
+          chosen:
+            document.querySelector(".chosen-preset") &&
+            document.querySelector(".chosen-preset").className,
+          offset:
+            typeof window.getAppleSpawnPointOffset === "function"
+              ? window.getAppleSpawnPointOffset()
+              : null,
+        };
+        const cats = {};
+        if (list) {
+          for (let i = 0; i < list.length; i++) {
+            const c = list[i] && list[i].category;
+            cats[c] = (cats[c] || 0) + 1;
+          }
+        }
+        const origCount = window.ultraHamCountIndex;
+        const byCount = {};
+        const origRand = Math.random;
+        Math.random = function () {
+          return 0;
+        };
+        [0, 1, 2, 3, 4, 5].forEach(function (idx) {
+          window.ultraHamCountIndex = function () {
+            return idx;
+          };
+          const px = window.otherPresetmanager.getRandomHamPixelList();
+          byCount[idx] = {
+            apples: px.filter((e) => e.category === "apple").map((e) => ({ x: e.x, y: e.y })),
+            walls: px.filter((e) => e.category === "wall").length,
+          };
+        });
+        Math.random = origRand;
+        window.ultraHamCountIndex = origCount;
+        return {
+          before,
+          after,
+          listLen: list ? list.length : -1,
+          cats,
+          listSample: list ? list.slice(0, 5) : null,
+          listErr,
+          clickErr,
+          byCount,
+          loaded: !!(
+            window.otherPresetmanager && window.otherPresetmanager.isHamsLoaded
+          ),
+          hamCodes:
+            window.otherPresetmanager && window.otherPresetmanager.hamLevelCodes
+              ? window.otherPresetmanager.hamLevelCodes.length
+              : 0,
+          wrappedGet: !!(
+            window.otherPresetmanager && window.otherPresetmanager.__ultra
+          ),
+        };
+      });
+      assert.equal(probe.loaded, true, JSON.stringify(probe));
+      assert.ok(probe.hamCodes > 0, JSON.stringify(probe));
+      assert.ok(probe.cats.wall > 0, JSON.stringify(probe));
+      assert.ok(probe.after.walls > 0, JSON.stringify(probe));
+      assert.match(String(probe.after.chosen), /preset-random-ham/, JSON.stringify(probe));
+      assert.equal(probe.after.size && probe.after.size.width, 10, JSON.stringify(probe));
+      assert.equal(probe.byCount[0].apples.length, 1, JSON.stringify(probe.byCount[0]));
+      assert.equal(probe.byCount[2].apples.length, 5, JSON.stringify(probe.byCount[2]));
+      const five = probe.byCount[2].apples.map((p) => p.x + "," + p.y).sort();
+      assert.deepEqual(
+        five,
+        ["4,2", "4,6", "6,4", "8,2", "8,6"],
+        "5a should use the native small pentagon " + JSON.stringify(probe.byCount[2])
+      );
+      assert.equal(probe.byCount[3].apples.length, 10, JSON.stringify(probe.byCount[3]));
+      const ten = probe.byCount[3].apples.map((p) => p.x + "," + p.y).sort();
+      const pattern0Walls = new Set([
+        "3,0", "5,1", "8,1", "0,2", "3,2", "9,3", "1,4", "4,4", "7,4", "2,6", "5,7", "8,7", "0,8", "3,8",
+      ]);
+      assert.ok(
+        ten.every((t) => !pattern0Walls.has(t)),
+        "10a apples must not sit on walls " + JSON.stringify(ten)
+      );
+      assert.ok(
+        ten.every((t) => {
+          const [x, y] = t.split(",").map(Number);
+          return x >= 0 && y >= 0 && x < 10 && y < 9;
+        }),
+        JSON.stringify(ten)
+      );
+      const fiveLive = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        g.settings.ka = 2;
+        const origRand = Math.random;
+        Math.random = function () {
+          return 0;
+        };
+        const list = window.otherPresetmanager.getRandomHamPixelList();
+        Math.random = origRand;
+        const off = window.getAppleSpawnPointOffset();
+        window.blitPattern(list, off.x, off.y);
+        const apples = (g.wa && g.wa.ka) || [];
+        return {
+          apples: apples
+            .map((a) => {
+              const p = a && a.pos;
+              return p ? p.x + "," + p.y : "";
+            })
+            .sort(),
+          listApples: list
+            .filter((e) => e.category === "apple")
+            .map((e) => e.x + "," + e.y)
+            .sort(),
+        };
+      });
+      assert.deepEqual(
+        fiveLive.listApples,
+        ["4,2", "4,6", "6,4", "8,2", "8,6"],
+        "5a pixel list " + JSON.stringify(fiveLive)
+      );
+      assert.deepEqual(
+        fiveLive.apples,
+        ["4,2", "4,6", "6,4", "8,2", "8,6"],
+        "live 5a blit " + JSON.stringify(fiveLive)
+      );
+    } finally {
+      await h.close();
+    }
+  });
 });

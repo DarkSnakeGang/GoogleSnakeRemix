@@ -1447,35 +1447,30 @@ window.ULTRA_HAM_W = 10;
 window.ULTRA_HAM_H = 9;
 window.ULTRA_HAM_MIDDLE = { x: 7, y: 4 };
 
-// Vanilla 10-apple start in spawn-relative coords (same offsets the game
-// passes to makeApple). On small, (4,0) is off the board and (-5,0) sits
-// on the snake's head; those are dropped when converting to tiles.
-window.ULTRA_TEN_APPLE_VANILLA = [
-  [-5, -4],
-  [-2, -4],
-  [1, -4],
-  [-5, 0],
-  [-2, 0],
-  [1, 0],
-  [-5, 4],
-  [-2, 4],
-  [1, 4],
-  [4, 0],
+// Native small-board apple starts (g7 spawn + the x shift the game applies when
+// size is Small). Ham is always 10x9, so these are board tiles, not standard-board offsets.
+window.ULTRA_HAM_SMALL_5 = [
+  { x: 4, y: 2 },
+  { x: 8, y: 2 },
+  { x: 6, y: 4 },
+  { x: 4, y: 6 },
+  { x: 8, y: 6 },
+];
+window.ULTRA_HAM_SMALL_10 = [
+  { x: 5, y: 4 },
+  { x: 3, y: 2 },
+  { x: 3, y: 6 },
+  { x: 7, y: 2 },
+  { x: 7, y: 6 },
+  { x: 1, y: 0 },
+  { x: 5, y: 0 },
+  { x: 9, y: 4 },
+  { x: 1, y: 8 },
+  { x: 5, y: 8 },
 ];
 
 window.ultraHamOffset = function ultraHamOffset() {
-  try {
-    if (typeof window.getAppleSpawnPointOffset === "function") {
-      const off = window.getAppleSpawnPointOffset();
-      if (off && typeof off.x === "number") return off;
-    }
-  } catch (_e) {}
   return { x: -7, y: -4 };
-};
-
-window.ultraVanillaToHamBoard = function ultraVanillaToHamBoard(vx, vy) {
-  const off = window.ultraHamOffset();
-  return { x: vx - off.x, y: vy - off.y };
 };
 
 window.ultraHamKey = function ultraHamKey(x, y) {
@@ -1576,40 +1571,9 @@ window.ultraHamWantSingleApple = function ultraHamWantSingleApple(count) {
 };
 
 window.ultraTenAppleBoardCoords = function ultraTenAppleBoardCoords() {
-  const pts = window.ULTRA_TEN_APPLE_VANILLA;
-  const out = [];
-  for (let i = 0; i < pts.length; i++) {
-    out.push(window.ultraVanillaToHamBoard(pts[i][0], pts[i][1]));
-  }
-  return out;
-};
-
-window.ultraNativeAppleBoardCoords = function ultraNativeAppleBoardCoords() {
-  const off = window.ultraHamOffset();
-  const pts = [];
-  try {
-    const g = window.__remixGame;
-    const apples = (g && g.wa && g.wa.ka) || window.appleArray || [];
-    for (let i = 0; i < apples.length; i++) {
-      const p = apples[i] && apples[i].pos;
-      if (!p || typeof p.x !== "number") continue;
-      pts.push({ x: p.x, y: p.y });
-    }
-  } catch (_e) {}
-  if (!pts.length) return [];
-  let spawnRel = false;
-  for (let i = 0; i < pts.length; i++) {
-    if (pts[i].x < 0 || pts[i].y < 0) {
-      spawnRel = true;
-      break;
-    }
-  }
-  if (spawnRel) {
-    return pts.map(function (p) {
-      return { x: p.x - off.x, y: p.y - off.y };
-    });
-  }
-  return pts;
+  return window.ULTRA_HAM_SMALL_10.map(function (p) {
+    return { x: p.x, y: p.y };
+  });
 };
 
 window.ultraHamFilterCoords = function ultraHamFilterCoords(coords, blocked) {
@@ -1677,7 +1641,7 @@ window.ultraHamAppleCoords = function ultraHamAppleCoords(walls) {
   const blocked = window.ultraHamBlockedSet(walls);
   const count = window.ultraHamCountIndex();
   const ten = window.ultraTenAppleBoardCoords();
-  const native = window.ultraNativeAppleBoardCoords();
+  const five = window.ULTRA_HAM_SMALL_5;
   const mid = window.ULTRA_HAM_MIDDLE;
 
   if (window.ultraHamWantSingleApple(count)) {
@@ -1692,43 +1656,20 @@ window.ultraHamAppleCoords = function ultraHamAppleCoords(walls) {
       for (let y = 0; y < window.ULTRA_HAM_H; y++) {
         for (let x = 0; x < window.ULTRA_HAM_W; x++) extra.push({ x: x, y: y });
       }
-      picked = window.ultraHamClosestToSnake(extra, 3, blocked);
+      picked = window.ultraHamClosestToSnake(ten.concat(extra), 3, blocked);
     }
     return picked;
   }
 
   if (count === 2) {
-    const five = [
-      [-5, -4],
-      [1, -4],
-      [-2, 0],
-      [-5, 4],
-      [1, 4],
-    ].map(function (p) {
-      return window.ultraVanillaToHamBoard(p[0], p[1]);
-    });
-    return window.ultraHamFilterCoords(five, blocked);
+    return window.ultraHamPlaceCount(five, blocked, 5);
   }
 
   if (count === 3) {
-    const intended = [];
-    const seen = Object.create(null);
-    function addIntended(list) {
-      if (!list) return;
-      for (let i = 0; i < list.length; i++) {
-        const p = list[i];
-        const k = window.ultraHamKey(p.x, p.y);
-        if (seen[k]) continue;
-        seen[k] = true;
-        intended.push({ x: p.x, y: p.y });
-      }
-    }
-    addIntended(native);
-    addIntended(ten);
-    return window.ultraHamPlaceCount(intended, blocked, 10);
+    return window.ultraHamPlaceCount(ten, blocked, 10);
   }
 
-  return window.ultraHamFilterCoords(native.length ? native : ten, blocked);
+  return window.ultraHamPlaceCount(five, blocked, 5);
 };
 
 window.ultraPatchLevelLoads = function ultraPatchLevelLoads() {
@@ -1743,7 +1684,11 @@ window.ultraPatchLevelLoads = function ultraPatchLevelLoads() {
     mgr.isChallengeLoaded = mgr.challengeLevelCodes.length > 0;
   }
   if (window.ULTRA_HAM_TXT) {
-    mgr.hamLevelCodes = String(window.ULTRA_HAM_TXT).split(/\r?\n/);
+    mgr.hamLevelCodes = String(window.ULTRA_HAM_TXT)
+      .split(/\r?\n/)
+      .filter(function (line) {
+        return line.trim().length > 0;
+      });
     mgr.isHamsLoaded = mgr.hamLevelCodes.length > 0;
   }
   const origGet = mgr.getChallengePixelList;
@@ -1754,11 +1699,13 @@ window.ultraPatchLevelLoads = function ultraPatchLevelLoads() {
   mgr.loadChallenge = function () {};
   mgr.loadRandomHams = function () {};
   mgr.getRandomHamPixelList = function () {
-    if (!this.isHamsLoaded || !this.hamLevelCodes || !this.hamLevelCodes.length) {
+    const codes = (this.hamLevelCodes || []).filter(function (line) {
+      return String(line || "").trim().length > 0;
+    });
+    if (!this.isHamsLoaded || !codes.length) {
       return [];
     }
-    const chosen =
-      this.hamLevelCodes[Math.floor(Math.random() * this.hamLevelCodes.length)];
+    const chosen = codes[Math.floor(Math.random() * codes.length)];
     const decoded = window.customPresetManager.getPixelListFromLevelCode(chosen);
     const walls = decoded.filter(function (e) {
       return e.category === "wall";
