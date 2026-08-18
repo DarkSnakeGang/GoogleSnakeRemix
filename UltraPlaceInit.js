@@ -25,7 +25,7 @@ window.ULTRA_PLACE_SIZES = [
 
 window.ultraPlaceCodec = {
   sizes: window.ULTRA_PLACE_SIZES,
-  // Export letters: Yx,y Cx,y Ex,y,h Ex,y,v Px,y Vx,y,U Hx,y,U Nx,y Tx,y,0 Fx,y,bB Kx,y,t Lx,y,t
+  // Export letters: Yx,y Cx,y Ex,y,h Ex,y,v Px,y Vx,y,U Hx,y,ULDR Nx,y Tx,y,0 Fx,y,bB Kx,y,t Lx,y,t
   appleOffsetForSize: function (w, h) {
     if (w === 17 && h === 15) return { x: -12, y: -7 };
     if (w === 10 && h === 9) return { x: -7, y: -4 };
@@ -60,6 +60,69 @@ window.ultraPlaceCodec = {
     if (d === "LEFT") return "L";
     if (d === "RIGHT") return "R";
     return d.charAt(0) || "U";
+  },
+  statueIsCracked: function (extra, type) {
+    const v = extra === undefined || extra === null || extra === "" ? type : extra;
+    return v === true || v === 1 || v === "1";
+  },
+  dirsFromCode: function (raw) {
+    const t = String(raw || "").toUpperCase();
+    if (!t) return [];
+    const dirs = [];
+    let i = 0;
+    while (i < t.length) {
+      const ch = t.charAt(i);
+      if (t.indexOf("DOWN", i) === i) {
+        dirs.push("DOWN");
+        i += 4;
+      } else if (t.indexOf("LEFT", i) === i) {
+        dirs.push("LEFT");
+        i += 4;
+      } else if (t.indexOf("RIGHT", i) === i) {
+        dirs.push("RIGHT");
+        i += 5;
+      } else if (t.indexOf("UP", i) === i) {
+        dirs.push("UP");
+        i += 2;
+      } else if (ch === "U") {
+        dirs.push("UP");
+        i += 1;
+      } else if (ch === "D") {
+        dirs.push("DOWN");
+        i += 1;
+      } else if (ch === "L") {
+        dirs.push("LEFT");
+        i += 1;
+      } else if (ch === "R") {
+        dirs.push("RIGHT");
+        i += 1;
+      } else {
+        i += 1;
+      }
+    }
+    const seen = {};
+    const out = [];
+    for (let n = 0; n < dirs.length; n++) {
+      if (!seen[dirs[n]]) {
+        seen[dirs[n]] = true;
+        out.push(dirs[n]);
+      }
+    }
+    return out;
+  },
+  dirLettersPacked: function (dirs) {
+    const order = ["UP", "DOWN", "LEFT", "RIGHT"];
+    const seen = {};
+    const list = dirs || [];
+    for (let i = 0; i < list.length; i++) {
+      const full = this.dirFromLetter(list[i]) || this.dirFromLetter(this.dirLetter(list[i]));
+      if (full) seen[full] = true;
+    }
+    let packed = "";
+    for (let j = 0; j < order.length; j++) {
+      if (seen[order[j]]) packed += this.dirLetter(order[j]);
+    }
+    return packed;
   },
   chessFromCode: function (raw) {
     const t = String(raw || "");
@@ -119,9 +182,14 @@ window.ultraPlaceCodec = {
         return { x: x, y: y, category: "arrow", type: -1, extra: dir };
       }
       case "H": {
-        const dir = this.dirFromLetter(parts[2]);
-        if (!dir) return null;
-        return { x: x, y: y, category: "shield", type: -1, extra: dir };
+        const dirs = this.dirsFromCode(parts.slice(2).join(","));
+        if (!dirs.length) return null;
+        if (dirs.length === 1) {
+          return { x: x, y: y, category: "shield", type: -1, extra: dirs[0] };
+        }
+        return dirs.map(function (dir) {
+          return { x: x, y: y, category: "shield", type: -1, extra: dir };
+        });
       }
       case "N":
         return { x: x, y: y, category: "mine", type: -1 };
@@ -145,13 +213,13 @@ window.ultraPlaceCodec = {
       case "K": {
         let type = parseInt(parts[2], 10);
         if (!isFinite(type)) type = 0;
-        type = Math.max(0, Math.min(4, type));
+        type = Math.max(0, Math.min(23, type));
         return { x: x, y: y, category: "key", type: type };
       }
       case "L": {
         let type = parseInt(parts[2], 10);
         if (!isFinite(type)) type = 0;
-        type = Math.max(0, Math.min(4, type));
+        type = Math.max(0, Math.min(23, type));
         return { x: x, y: y, category: "keyblock", type: type };
       }
       default:
@@ -182,11 +250,11 @@ window.ultraPlaceCodec = {
       case "arrow":
         return "V" + x + "," + y + "," + this.dirLetter(entity.extra);
       case "shield":
-        return "H" + x + "," + y + "," + this.dirLetter(entity.extra);
+        return "H" + x + "," + y + "," + this.dirLettersPacked([entity.extra]);
       case "mine":
         return "N" + x + "," + y;
       case "statue":
-        return "T" + x + "," + y + "," + (entity.extra || entity.type ? 1 : 0);
+        return "T" + x + "," + y + "," + (this.statueIsCracked(entity.extra, entity.type) ? 1 : 0);
       case "chess":
         return (
           "F" +
@@ -214,7 +282,11 @@ window.ultraPlaceCodec = {
     for (let i = 1; i < codes.length; i++) {
       try {
         const ent = this.parseEntity(codes[i]);
-        if (ent) out.push(ent);
+        if (Array.isArray(ent)) {
+          for (let j = 0; j < ent.length; j++) out.push(ent[j]);
+        } else if (ent) {
+          out.push(ent);
+        }
       } catch (_err) {}
     }
     return out;
@@ -222,14 +294,39 @@ window.ultraPlaceCodec = {
   exportLevel: function (width, height, pixelList) {
     const parts = [width + "x" + height];
     const list = pixelList || [];
+    const shieldAt = {};
+    const shieldOrder = [];
     for (let i = 0; i < list.length; i++) {
-      const token = this.exportEntity(list[i]);
+      const e = list[i];
+      if (e && e.category === "shield") {
+        const key = e.x + "," + e.y;
+        if (!shieldAt[key]) {
+          shieldAt[key] = { x: e.x, y: e.y, dirs: [] };
+          shieldOrder.push(key);
+        }
+        if (e.extra) shieldAt[key].dirs.push(e.extra);
+        continue;
+      }
+      const token = this.exportEntity(e);
       if (token) parts.push(token);
+    }
+    for (let s = 0; s < shieldOrder.length; s++) {
+      const cell = shieldAt[shieldOrder[s]];
+      const packed = this.dirLettersPacked(cell.dirs);
+      if (packed) parts.push("H" + cell.x + "," + cell.y + "," + packed);
     }
     return parts.join(" ");
   },
 };
 /* ULTRA_PLACE_CODEC_END */
+
+window.ultraPlaceStatueIsCracked = function (extra, type) {
+  if (window.ultraPlaceCodec && typeof window.ultraPlaceCodec.statueIsCracked === "function") {
+    return window.ultraPlaceCodec.statueIsCracked(extra, type);
+  }
+  const v = extra === undefined || extra === null || extra === "" ? type : extra;
+  return v === true || v === 1 || v === "1";
+};
 
 window.ULTRA_CHESS_PLACE = [
   { color: "b", piece: "bishop", key: "bbishop", url: "https://i.postimg.cc/NG8bwZw7/bb.png" },
@@ -281,88 +378,150 @@ window.ultraPlacePuddingEntries = function () {
   return out;
 };
 
-window.ultraPlaceDrawCrop = function (img, frame, size, rotateDeg) {
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  ctx.imageSmoothingEnabled = false;
-  if (rotateDeg) {
-    ctx.translate(size / 2, size / 2);
-    ctx.rotate((rotateDeg * Math.PI) / 180);
-    ctx.translate(-size / 2, -size / 2);
-  }
-  const sw = img.naturalWidth && img.naturalHeight ? Math.min(size, img.naturalHeight) : size;
-  ctx.drawImage(img, frame * sw, 0, sw, sw, 0, 0, size, size);
-  return canvas.toDataURL("image/png");
+window.ultraPlaceSpritePos = function (frames, frame, axis) {
+  frames = Math.max(1, frames | 0);
+  frame = Math.max(0, Math.min(frames - 1, frame | 0));
+  const size =
+    axis === "y" ? "100% " + frames * 100 + "%" : frames * 100 + "% 100%";
+  const pct = frames <= 1 ? 0 : (frame / (frames - 1)) * 100;
+  const pos = axis === "y" ? "0 " + pct.toFixed(4) + "%" : pct.toFixed(4) + "% 0";
+  return { size: size, pos: pos };
 };
 
-window.ultraPlaceSetImgSrc = function (el, src, opts) {
-  opts = opts || {};
-  if (!opts.frame && !opts.rotate && !opts.compose) {
-    el.src = src;
-    return;
-  }
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.onload = function () {
-    try {
-      if (opts.compose === "cracks") {
-        const cracks = new Image();
-        cracks.crossOrigin = "anonymous";
-        cracks.onload = function () {
-          const canvas = document.createElement("canvas");
-          canvas.width = 128;
-          canvas.height = 128;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, 128, 128);
-          const sw = cracks.naturalHeight || 128;
-          ctx.drawImage(cracks, 0, 0, sw, sw, 0, 0, 128, 128);
-          el.src = canvas.toDataURL("image/png");
-        };
-        cracks.src = opts.overlay;
-        return;
-      }
-      if (opts.compose === "shield") {
-        const canvas = document.createElement("canvas");
-        canvas.width = 128;
-        canvas.height = 128;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, 128, 128);
-        ctx.fillStyle = "#1a237e";
-        const t = 18;
-        if (opts.dir === "UP") ctx.fillRect(20, 8, 88, t);
-        if (opts.dir === "DOWN") ctx.fillRect(20, 102, 88, t);
-        if (opts.dir === "LEFT") ctx.fillRect(8, 20, t, 88);
-        if (opts.dir === "RIGHT") ctx.fillRect(102, 20, t, 88);
-        el.src = canvas.toDataURL("image/png");
-        return;
-      }
-      el.src = window.ultraPlaceDrawCrop(img, opts.frame || 0, 128, opts.rotate || 0);
-    } catch (_e) {
-      el.src = src;
-    }
-  };
-  img.onerror = function () {
-    el.src = src;
-  };
-  img.src = src;
+window.ultraPlaceArrowIcon = function (dir) {
+  const cache = (window.__ultraPlaceArrowIcons = window.__ultraPlaceArrowIcons || {});
+  if (cache[dir]) return cache[dir];
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 128;
+  const ctx = c.getContext("2d");
+  ctx.translate(64, 64);
+  if (dir === "UP") ctx.rotate(-Math.PI / 2);
+  else if (dir === "DOWN") ctx.rotate(Math.PI / 2);
+  else if (dir === "LEFT") ctx.rotate(Math.PI);
+  ctx.strokeStyle = "#EA7E0B";
+  ctx.lineWidth = 14;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-36, -32);
+  ctx.lineTo(40, 0);
+  ctx.lineTo(-36, 32);
+  ctx.stroke();
+  cache[dir] = c.toDataURL("image/png");
+  return cache[dir];
 };
 
-window.ultraPlaceOptionHtml = function (src, category, type, extra, title) {
+window.ultraPlaceShieldIcon = function (dir) {
+  const cache = (window.__ultraPlaceShieldIcons = window.__ultraPlaceShieldIcons || {});
+  if (cache[dir]) return cache[dir];
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 128;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#E53935";
+  ctx.beginPath();
+  ctx.arc(64, 64, 36, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#43A047";
+  ctx.lineWidth = 16;
+  ctx.lineCap = "butt";
+  ctx.beginPath();
+  if (dir === "UP") {
+    ctx.moveTo(28, 22);
+    ctx.lineTo(100, 22);
+  } else if (dir === "DOWN") {
+    ctx.moveTo(28, 106);
+    ctx.lineTo(100, 106);
+  } else if (dir === "LEFT") {
+    ctx.moveTo(22, 28);
+    ctx.lineTo(22, 100);
+  } else {
+    ctx.moveTo(106, 28);
+    ctx.lineTo(106, 100);
+  }
+  ctx.stroke();
+  cache[dir] = c.toDataURL("image/png");
+  return cache[dir];
+};
+
+window.ultraPlacePoisonSrc = function () {
+  const fruits = window.new_fruit || [];
+  for (let i = 0; i < fruits.length; i++) {
+    const f = fruits[i];
+    if (!f || !window.ultraPlaceIsSkullFruit(f)) continue;
+    const n = f.Normal || "";
+    if (!n) break;
+    return n.indexOf("http") === 0 ? n : window.FNBX + n;
+  }
+  return window.FNBX + "snake_arcade/v12/trophy_10.png";
+};
+
+window.ultraPlaceEraseIcon = function () {
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">' +
+    '<rect width="64" height="64" rx="10" fill="#37474f"/>' +
+    '<path fill="#ef9a9a" d="M16 38l20-20 12 12-20 20z"/>' +
+    '<path fill="#90caf9" d="M36 18l8 8-8 8-8-8z"/>' +
+    '<path fill="#eceff1" d="M16 50h32v4H16z"/>' +
+    "</svg>";
+  return "data:image/svg+xml," + encodeURIComponent(svg);
+};
+
+window.ultraPlaceOptionHtml = function (category, type, extra, title, visual) {
+  visual = visual || {};
   const extraAttr = extra === undefined || extra === null ? "" : ' data-extra="' + extra + '"';
-  return (
-    '<img class="place-option" draggable="false" src="' +
-    src +
-    '" data-type="' +
+  const attrs =
+    ' class="place-option" draggable="false" data-type="' +
     type +
     '" data-category="' +
     category +
     '"' +
     extraAttr +
-    (title ? ' title="' + title + '"' : "") +
-    ">"
-  );
+    (title ? ' title="' + title + '"' : "");
+  if (visual.kind === "sprite") {
+    const sp = window.ultraPlaceSpritePos(visual.frames, visual.frame, visual.axis);
+    const rot = visual.rotate ? "transform:rotate(" + visual.rotate + "deg);" : "";
+    return (
+      "<div" +
+      attrs +
+      ' style="background-image:url(\'' +
+      visual.src +
+      "');background-repeat:no-repeat;background-size:" +
+      sp.size +
+      ";background-position:" +
+      sp.pos +
+      ";" +
+      rot +
+      '"></div>'
+    );
+  }
+  if (visual.kind === "overlay") {
+    const ov = window.ultraPlaceSpritePos(
+      visual.overlayFrames,
+      visual.overlayFrame,
+      visual.overlayAxis || "x"
+    );
+    const rot = visual.rotate ? "transform:rotate(" + visual.rotate + "deg);" : "";
+    return (
+      "<div" +
+      attrs +
+      ' style="position:relative;background-image:url(\'' +
+      visual.src +
+      "');background-repeat:no-repeat;background-size:contain;background-position:center;" +
+      rot +
+      '"><span class="ultra-place-overlay" style="background-image:url(\'' +
+      visual.overlay +
+      "');background-repeat:no-repeat;background-size:" +
+      ov.size +
+      ";background-position:" +
+      ov.pos +
+      ';"></span></div>'
+    );
+  }
+  const src = visual.src || visual.dataUrl || "";
+  const rot = visual.rotate ? ' style="transform:rotate(' + visual.rotate + 'deg)"' : "";
+  return "<img" + attrs + ' src="' + src + '"' + rot + ">";
 };
 
 window.ultraPlaceTabDefs = function () {
@@ -381,13 +540,9 @@ window.ultraPlaceBuildGridHtml = function (tabId) {
     let html = "";
     for (let i = 0; i < 24; i++) {
       const n = i < 10 ? "0" + i : String(i);
-      html += window.ultraPlaceOptionHtml(
-        fnbx + "snake_arcade/v18/apple_" + n + ".png",
-        "apple",
-        i,
-        "",
-        "Fruit " + i
-      );
+      html += window.ultraPlaceOptionHtml("apple", i, "", "Fruit " + i, {
+        src: fnbx + "snake_arcade/v18/apple_" + n + ".png",
+      });
     }
     return html;
   }
@@ -399,189 +554,119 @@ window.ultraPlaceBuildGridHtml = function (tabId) {
     return entries
       .map(function (e) {
         const src = e.fruit.Normal || e.fruit.Real || "";
-        return window.ultraPlaceOptionHtml(src, "apple", e.type, "", "Pudding fruit");
+        return window.ultraPlaceOptionHtml("apple", e.type, "", "Pudding fruit", { src: src });
       })
       .join("");
   }
   if (tabId === "objects") {
-    const tiles = [
-      { src: fnbx + "snake_arcade/v22/trophy_01.png", cat: "wall", type: -1, extra: "", title: "Wall" },
-      { src: fnbx + "snake_arcade/v4/box.png", cat: "box", type: -1, extra: "", title: "Sokobox", frame: 0 },
-      {
-        src: "https://i.postimg.cc/x11nt4Pb/box-distinct-soko-goals.png",
-        cat: "goal",
-        type: -1,
-        extra: "",
-        title: "Sokogoal",
-      },
-      { src: fnbx + "snake_arcade/v21/trophy_19.png", cat: "bridge", type: -1, extra: "", title: "Bridge" },
-      { src: fnbx + "snake_arcade/v20/trophy_18.png", cat: "gate", type: -1, extra: "h", title: "Gate H" },
-      {
-        src: fnbx + "snake_arcade/v20/trophy_18.png",
-        cat: "gate",
-        type: -1,
-        extra: "v",
-        title: "Gate V",
-        rotate: 90,
-      },
-      {
-        src: "https://i.postimg.cc/prstgqbL/poison-skull.png",
-        cat: "poison",
-        type: -1,
-        extra: "",
-        title: "Poison",
-      },
-      { src: fnbx + "snake_arcade/v17/trophy_15.png", cat: "arrow", type: -1, extra: "UP", title: "Arrow up" },
-      {
-        src: fnbx + "snake_arcade/v17/trophy_15.png",
-        cat: "arrow",
-        type: -1,
-        extra: "RIGHT",
-        title: "Arrow right",
-        rotate: 90,
-      },
-      {
-        src: fnbx + "snake_arcade/v17/trophy_15.png",
-        cat: "arrow",
-        type: -1,
-        extra: "DOWN",
-        title: "Arrow down",
-        rotate: 180,
-      },
-      {
-        src: fnbx + "snake_arcade/v17/trophy_15.png",
-        cat: "arrow",
-        type: -1,
-        extra: "LEFT",
-        title: "Arrow left",
-        rotate: 270,
-      },
-      {
-        src: fnbx + "snake_arcade/v18/apple_00.png",
-        cat: "shield",
-        type: -1,
-        extra: "UP",
-        title: "Shield up",
-        compose: "shield",
-        dir: "UP",
-      },
-      {
-        src: fnbx + "snake_arcade/v18/apple_00.png",
-        cat: "shield",
-        type: -1,
-        extra: "RIGHT",
-        title: "Shield right",
-        compose: "shield",
-        dir: "RIGHT",
-      },
-      {
-        src: fnbx + "snake_arcade/v18/apple_00.png",
-        cat: "shield",
-        type: -1,
-        extra: "DOWN",
-        title: "Shield down",
-        compose: "shield",
-        dir: "DOWN",
-      },
-      {
-        src: fnbx + "snake_arcade/v18/apple_00.png",
-        cat: "shield",
-        type: -1,
-        extra: "LEFT",
-        title: "Shield left",
-        compose: "shield",
-        dir: "LEFT",
-      },
-      { src: fnbx + "snake_arcade/mine.png", cat: "mine", type: -1, extra: "", title: "Mine", frame: 0 },
-      { src: fnbx + "snake_arcade/v16/trophy_13.png", cat: "statue", type: 0, extra: 0, title: "Statue" },
-      {
-        src: fnbx + "snake_arcade/v16/trophy_13.png",
-        cat: "statue",
-        type: 1,
-        extra: 1,
-        title: "Cracked statue",
-        compose: "cracks",
-        overlay: fnbx + "snake_arcade/cracks.png",
-      },
-    ];
-    return tiles
-      .map(function (t) {
-        return window.ultraPlaceOptionHtml(t.src, t.cat, t.type, t.extra, t.title);
-      })
-      .join("");
+    const box = fnbx + "snake_arcade/v4/box.png";
+    const dirs = ["UP", "RIGHT", "DOWN", "LEFT"];
+    let html = "";
+    html += window.ultraPlaceOptionHtml("erase", -1, "", "Erase", {
+      dataUrl: window.ultraPlaceEraseIcon(),
+    });
+    html += window.ultraPlaceOptionHtml("wall", -1, "", "Wall", {
+      src: fnbx + "snake_arcade/v22/trophy_01.png",
+    });
+    html += window.ultraPlaceOptionHtml("box", -1, "", "Sokobox", {
+      kind: "sprite",
+      src: box,
+      frames: 8,
+      frame: 0,
+      axis: "x",
+    });
+    html += window.ultraPlaceOptionHtml("goal", -1, "", "Sokogoal", {
+      kind: "sprite",
+      src: box,
+      frames: 8,
+      frame: 2,
+      axis: "x",
+    });
+    html += window.ultraPlaceOptionHtml("bridge", -1, "", "Bridge", {
+      src: fnbx + "snake_arcade/v22/trophy_20.png",
+    });
+    html += window.ultraPlaceOptionHtml("gate", -1, "h", "Gate H", {
+      src: fnbx + "snake_arcade/v21/trophy_19.png",
+    });
+    html += window.ultraPlaceOptionHtml("gate", -1, "v", "Gate V", {
+      src: fnbx + "snake_arcade/v21/trophy_19.png",
+      rotate: 90,
+    });
+    html += window.ultraPlaceOptionHtml("poison", -1, "", "Poison", {
+      src: window.ultraPlacePoisonSrc(),
+    });
+    dirs.forEach(function (d) {
+      html += window.ultraPlaceOptionHtml("arrow", -1, d, "Arrow " + d.toLowerCase(), {
+        dataUrl: window.ultraPlaceArrowIcon(d),
+      });
+    });
+    dirs.forEach(function (d) {
+      html += window.ultraPlaceOptionHtml("shield", -1, d, "Shield " + d.toLowerCase(), {
+        dataUrl: window.ultraPlaceShieldIcon(d),
+      });
+    });
+    html += window.ultraPlaceOptionHtml("mine", -1, "", "Mine", {
+      kind: "sprite",
+      src: fnbx + "snake_arcade/mine.png",
+      frames: 10,
+      frame: 9,
+      axis: "y",
+    });
+    html += window.ultraPlaceOptionHtml("statue", 0, 0, "Statue", {
+      src: fnbx + "snake_arcade/v16/trophy_13.png",
+    });
+    html += window.ultraPlaceOptionHtml("statue", 1, 1, "Cracked statue", {
+      kind: "overlay",
+      src: fnbx + "snake_arcade/v16/trophy_13.png",
+      overlay: fnbx + "snake_arcade/cracks.png",
+      overlayFrames: 4,
+      overlayFrame: 0,
+      overlayAxis: "x",
+    });
+    return html;
   }
   if (tabId === "key") {
+    const keys = fnbx + "snake_arcade/v19/key_types.png";
+    const blocks = fnbx + "snake_arcade/v19/key_types_dark.png";
     let html = '<div class="ultra-place-row-label">Keys</div><div class="ultra-place-key-row">';
-    for (let i = 0; i < 5; i++) {
-      html += window.ultraPlaceOptionHtml(
-        fnbx + "snake_arcade/v19/key_types.png",
-        "key",
-        i,
-        "",
-        "Key " + i
-      );
+    for (let i = 0; i < 24; i++) {
+      html += window.ultraPlaceOptionHtml("key", i, "", "Key " + i, {
+        kind: "sprite",
+        src: keys,
+        frames: 24,
+        frame: i,
+        axis: "x",
+      });
     }
     html += '</div><div class="ultra-place-row-label">Blocks</div><div class="ultra-place-key-row">';
-    for (let j = 0; j < 5; j++) {
-      html += window.ultraPlaceOptionHtml(
-        fnbx + "snake_arcade/v19/key_types_dark.png",
-        "keyblock",
-        j,
-        "",
-        "Keyblock " + j
-      );
+    for (let j = 0; j < 24; j++) {
+      html += window.ultraPlaceOptionHtml("keyblock", j, "", "Keyblock " + j, {
+        kind: "sprite",
+        src: blocks,
+        frames: 24,
+        frame: j,
+        axis: "x",
+      });
     }
     html += "</div>";
     return html;
   }
   if (tabId === "chess") {
+    if (typeof window.injectChessFruits === "function") window.injectChessFruits();
     return window.ULTRA_CHESS_PLACE.map(function (p) {
-      return window.ultraPlaceOptionHtml(p.url, "chess", -1, p.color + p.piece, p.color + " " + p.piece);
+      return window.ultraPlaceOptionHtml(
+        "chess",
+        window[p.color + p.piece] != null ? window[p.color + p.piece] : -1,
+        p.color + p.piece,
+        p.color + " " + p.piece,
+        { src: p.url }
+      );
     }).join("");
   }
   return "";
 };
 
-window.ultraPlaceEnhanceIcons = function (root) {
-  if (!root) return;
-  const fnbx = window.FNBX;
-  const imgs = root.querySelectorAll("img.place-option");
-  imgs.forEach(function (img) {
-    const cat = img.dataset.category;
-    const extra = img.dataset.extra;
-    if (cat === "box") window.ultraPlaceSetImgSrc(img, fnbx + "snake_arcade/v4/box.png", { frame: 0 });
-    if (cat === "mine") window.ultraPlaceSetImgSrc(img, fnbx + "snake_arcade/mine.png", { frame: 0 });
-    if (cat === "gate" && extra === "v") {
-      window.ultraPlaceSetImgSrc(img, fnbx + "snake_arcade/v20/trophy_18.png", { rotate: 90 });
-    }
-    if (cat === "arrow") {
-      const rot = extra === "RIGHT" ? 90 : extra === "DOWN" ? 180 : extra === "LEFT" ? 270 : 0;
-      window.ultraPlaceSetImgSrc(img, fnbx + "snake_arcade/v17/trophy_15.png", { rotate: rot });
-    }
-    if (cat === "shield") {
-      window.ultraPlaceSetImgSrc(img, fnbx + "snake_arcade/v18/apple_00.png", {
-        compose: "shield",
-        dir: extra,
-      });
-    }
-    if (cat === "statue" && String(extra) === "1") {
-      window.ultraPlaceSetImgSrc(img, fnbx + "snake_arcade/v16/trophy_13.png", {
-        compose: "cracks",
-        overlay: fnbx + "snake_arcade/cracks.png",
-      });
-    }
-    if (cat === "key") {
-      window.ultraPlaceSetImgSrc(img, fnbx + "snake_arcade/v19/key_types.png", {
-        frame: parseInt(img.dataset.type, 10) || 0,
-      });
-    }
-    if (cat === "keyblock") {
-      window.ultraPlaceSetImgSrc(img, fnbx + "snake_arcade/v19/key_types_dark.png", {
-        frame: parseInt(img.dataset.type, 10) || 0,
-      });
-    }
-  });
-};
+window.ultraPlaceEnhanceIcons = function () {};
 
 window.ultraPlaceSelectOption = function (el) {
   if (!el) return;
@@ -593,6 +678,11 @@ window.ultraPlaceSelectOption = function (el) {
     type: isFinite(type) ? type : 0,
     extra: extra,
   };
+  if (category === "statue") {
+    const cracked = window.ultraPlaceStatueIsCracked(extra, window.mousePlaceMode.type);
+    window.mousePlaceMode.extra = cracked ? 1 : 0;
+    window.mousePlaceMode.type = cracked ? 1 : 0;
+  }
   if (category === "apple") {
     window.ultraPlaceFruitType = window.mousePlaceMode.type;
   }
@@ -601,20 +691,19 @@ window.ultraPlaceSelectOption = function (el) {
     const piece = extra.slice(1);
     window.mousePlaceMode.ChessColor = color;
     window.mousePlaceMode.ChessPiece = piece;
+    if (typeof window.injectChessFruits === "function") window.injectChessFruits();
     if (window[color + piece] != null) window.mousePlaceMode.type = window[color + piece];
   }
   const panel = document.getElementById("place-panel");
   if (panel) {
     panel.querySelectorAll(".place-option").forEach(function (img) {
-      img.style.filter = "grayscale(100%)";
+      img.style.filter = "";
       img.classList.remove("ultra-place-on");
     });
   }
-  el.style.filter = "grayscale(0%)";
+  el.style.filter = "";
   el.classList.add("ultra-place-on");
-  window.ultraCustomBrushOverride = null;
-  if (window.customPresetManager) window.customPresetManager.brush = "place";
-  window.ultraSyncCustomBrushChip();
+  window.ultraSetCustomBrush(category === "erase" ? "erase" : "place");
 };
 
 window.ultraPlaceShowTab = function (tabId) {
@@ -650,7 +739,8 @@ window.ultraPlaceShowTab = function (tabId) {
   if (match) window.ultraPlaceSelectOption(match);
   else {
     grid.querySelectorAll(".place-option").forEach(function (img) {
-      img.style.filter = "grayscale(100%)";
+      img.style.filter = "";
+      img.classList.remove("ultra-place-on");
     });
   }
 };
@@ -698,7 +788,11 @@ window.ultraPlaceToolLabel = function (mode) {
     arrow: "Arrow " + extra,
     shield: "Shield " + extra,
     mine: "Mine",
-    statue: extra == 1 || mode.type === 1 ? "Statue cracked" : "Statue",
+    statue: (typeof window.ultraPlaceStatueIsCracked === "function"
+      ? window.ultraPlaceStatueIsCracked(mode.extra, mode.type)
+      : mode.extra === 1 || mode.extra === "1" || mode.type === 1 || mode.type === "1")
+      ? "Statue cracked"
+      : "Statue",
     key: "Key " + (mode.type || 0),
     keyblock: "Keyblock " + (mode.type || 0),
     chess: "Chess " + extra,
@@ -708,49 +802,89 @@ window.ultraPlaceToolLabel = function (mode) {
   return names[cat] || cat;
 };
 
+window.ultraSetCustomBrush = function (kind) {
+  if (kind === "place" || !kind) {
+    window.ultraCustomBrushOverride = null;
+    if (window.customPresetManager) window.customPresetManager.brush = "place";
+  } else {
+    window.ultraCustomBrushOverride = kind;
+    if (window.customPresetManager) window.customPresetManager.brush = kind;
+  }
+  window.ultraSyncCustomBrushChip();
+};
+
 window.ultraSyncCustomBrushChip = function () {
-  const chip = document.getElementById("ultra-custom-current");
-  if (!chip) return;
+  const status = document.getElementById("ultra-custom-status");
   const override = window.ultraCustomBrushOverride;
-  if (override === "erase") chip.textContent = "Erase";
-  else if (override === "snakehead") chip.textContent = "Snake Start";
-  else chip.textContent = window.ultraPlaceToolLabel();
-  document.querySelectorAll(".ultra-custom-chip").forEach(function (el) {
+  if (status) {
+    if (override === "erase") status.textContent = "Click cells to delete";
+    else if (override === "snakehead") status.textContent = "Click a cell for snake start";
+    else status.textContent = window.ultraPlaceToolLabel();
+  }
+  document.querySelectorAll("#ultra-custom-tools .ultra-custom-chip").forEach(function (el) {
     el.classList.toggle("ultra-custom-chip-on", el.dataset.customBrush === (override || "place"));
   });
 };
 
 window.ultraInstallCustomPicker = function () {
+  const panel = document.getElementById("custom-panel");
   const brush = document.getElementById("custom-brush");
-  if (!brush || brush.dataset.ultraPlace === "1") return;
+  if (!panel || !brush || brush.dataset.ultraPlace === "1") return;
   brush.dataset.ultraPlace = "1";
   brush.style.display = "none";
-  const label = brush.previousSibling;
-  if (label && label.nodeType === 1 && /Brush/i.test(label.textContent || "")) {
-    label.style.display = "none";
+  const brushLabel = panel.querySelector('label[for="custom-brush"]');
+  if (brushLabel) brushLabel.style.display = "none";
+  panel.querySelectorAll("br").forEach(function (br) {
+    br.remove();
+  });
+
+  const header = panel.querySelector(":scope > div");
+  if (!header) return;
+
+  const actions = document.createElement("div");
+  actions.id = "ultra-custom-actions";
+  ["custom-import", "custom-export", "custom-clear", "custom-refresh"].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (el) actions.appendChild(el);
+  });
+  header.insertBefore(actions, header.firstChild);
+
+  const size = document.getElementById("custom-map-size");
+  const sizeLabel = panel.querySelector('label[for="custom-map-size"]');
+  if (size && sizeLabel) {
+    const row = document.createElement("div");
+    row.className = "ultra-custom-field";
+    sizeLabel.textContent = "Map size";
+    row.appendChild(sizeLabel);
+    row.appendChild(size);
+    header.insertBefore(row, actions.nextSibling);
   }
-  const wrap = document.createElement("div");
-  wrap.id = "ultra-custom-tools";
-  wrap.innerHTML =
-    '<div id="ultra-custom-current" class="ultra-place-chip">Fruit 0</div>' +
-    '<button type="button" class="ultra-custom-chip" data-custom-brush="place">Place tool</button>' +
-    '<button type="button" class="ultra-custom-chip" data-custom-brush="snakehead">Snake Start</button>' +
-    '<button type="button" class="ultra-custom-chip" data-custom-brush="erase">Erase</button>';
-  brush.parentNode.insertBefore(wrap, brush);
-  wrap.querySelectorAll(".ultra-custom-chip").forEach(function (btn) {
+
+  const tools = document.createElement("div");
+  tools.id = "ultra-custom-tools";
+  tools.innerHTML =
+    '<div class="ultra-custom-modes">' +
+    '<button type="button" class="ultra-custom-chip" data-custom-brush="place">Paint</button>' +
+    '<button type="button" class="ultra-custom-chip" data-custom-brush="snakehead">Start</button>' +
+    '<button type="button" class="ultra-custom-chip" data-custom-brush="erase">Erase</button>' +
+    "</div>" +
+    '<div id="ultra-custom-status" class="ultra-custom-status"></div>';
+  const sizeRow = header.querySelector(".ultra-custom-field");
+  header.insertBefore(tools, sizeRow ? sizeRow.nextSibling : actions.nextSibling);
+
+  const intro = header.querySelector("p");
+  if (intro) {
+    intro.className = "ultra-custom-hint";
+    intro.textContent = "Pick an object on the right, then click the grid. Right-click erases.";
+    header.appendChild(intro);
+  }
+
+  tools.querySelectorAll(".ultra-custom-chip").forEach(function (btn) {
     btn.addEventListener("click", function () {
-      const kind = this.dataset.customBrush;
-      if (kind === "place") {
-        window.ultraCustomBrushOverride = null;
-        if (window.customPresetManager) window.customPresetManager.brush = "place";
-      } else {
-        window.ultraCustomBrushOverride = kind;
-        if (window.customPresetManager) window.customPresetManager.brush = kind;
-      }
-      window.ultraSyncCustomBrushChip();
+      window.ultraSetCustomBrush(this.dataset.customBrush);
     });
   });
-  window.ultraSyncCustomBrushChip();
+  window.ultraSetCustomBrush("place");
 };
 
 window.ultraInstallCustomSizes = function () {
@@ -790,12 +924,15 @@ window.ultraPlaceDrawEntity = function (ctx, x, y, w, h, category, type, extra) 
     gate: extra === "v" ? "E|" : "E-",
     poison: "P",
     mine: "N",
-    statue: extra == 1 || type === 1 ? "T*" : "T",
+    statue: (typeof window.ultraPlaceStatueIsCracked === "function"
+      ? window.ultraPlaceStatueIsCracked(extra, type)
+      : extra === 1 || extra === "1" || type === 1 || type === "1")
+      ? "T*"
+      : "T",
     key: "K",
     keyblock: "L",
     chess: "F",
     arrow: extra === "DOWN" ? "v" : extra === "LEFT" ? "<" : extra === "RIGHT" ? ">" : "^",
-    shield: extra === "DOWN" ? "_" : extra === "LEFT" ? "[" : extra === "RIGHT" ? "]" : "-",
   };
   const g = glyphMap[category];
   if (g && w >= 6) {
@@ -805,6 +942,35 @@ window.ultraPlaceDrawEntity = function (ctx, x, y, w, h, category, type, extra) 
     ctx.textBaseline = "middle";
     ctx.fillText(g, x + w / 2, y + h / 2);
   }
+};
+
+window.ultraPlaceDrawShieldBars = function (ctx, x, y, w, h, dirs) {
+  const list = dirs || [];
+  if (!list.length) return;
+  ctx.save();
+  ctx.strokeStyle = "#1B5E20";
+  ctx.lineWidth = Math.max(2, Math.round(Math.min(w, h) * 0.18));
+  ctx.lineCap = "butt";
+  const inset = ctx.lineWidth / 2;
+  for (let i = 0; i < list.length; i++) {
+    const dir = list[i];
+    ctx.beginPath();
+    if (dir === "UP") {
+      ctx.moveTo(x + inset, y + inset);
+      ctx.lineTo(x + w - inset, y + inset);
+    } else if (dir === "DOWN") {
+      ctx.moveTo(x + inset, y + h - inset);
+      ctx.lineTo(x + w - inset, y + h - inset);
+    } else if (dir === "LEFT") {
+      ctx.moveTo(x + inset, y + inset);
+      ctx.lineTo(x + inset, y + h - inset);
+    } else if (dir === "RIGHT") {
+      ctx.moveTo(x + w - inset, y + inset);
+      ctx.lineTo(x + w - inset, y + h - inset);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
 };
 
 window.ultraCustomHasAppleAt = function (list, x, y) {
@@ -847,8 +1013,31 @@ window.ultraWrapCustomManager = function () {
       }
     }
     for (let k of this.pixelList) {
+      if (k.category === "shield") continue;
       this.drawEntity(k.x * tileWidth, k.y * tileHeight, tileWidth, tileHeight, k.category, k.type, k.extra);
     }
+    const bars = {};
+    for (let s = 0; s < this.pixelList.length; s++) {
+      const e = this.pixelList[s];
+      if (!e || e.category !== "shield") continue;
+      const key = e.x + "," + e.y;
+      if (!bars[key]) bars[key] = { x: e.x, y: e.y, dirs: [] };
+      if (e.extra) bars[key].dirs.push(e.extra);
+    }
+    Object.keys(bars).forEach(function (key) {
+      const cell = bars[key];
+      if (!window.ultraCustomHasAppleAt(this.pixelList, cell.x, cell.y)) {
+        this.drawEntity(cell.x * tileWidth, cell.y * tileHeight, tileWidth, tileHeight, "apple", 0, "");
+      }
+      window.ultraPlaceDrawShieldBars(
+        this.ctx,
+        cell.x * tileWidth,
+        cell.y * tileHeight,
+        tileWidth,
+        tileHeight,
+        cell.dirs
+      );
+    }, this);
   };
 
   mgr.removeAtCoord = function (boardX, boardY) {
@@ -884,7 +1073,8 @@ window.ultraWrapCustomManager = function () {
     }
 
     const override = window.ultraCustomBrushOverride || this.brush;
-    if (isErase || override === "erase") {
+    const mode = window.mousePlaceMode || { category: "apple", type: 0 };
+    if (isErase || override === "erase" || mode.category === "erase") {
       this.removeAtCoord(boardXCoord, boardYCoord);
       this.draw();
       return;
@@ -896,12 +1086,14 @@ window.ultraWrapCustomManager = function () {
       this.draw();
       return;
     }
-
-    const mode = window.mousePlaceMode || { category: "apple", type: 0 };
     if (mode.category === "shield") {
       if (!window.ultraCustomHasAppleAt(this.pixelList, boardXCoord, boardYCoord)) {
-        this.draw();
-        return;
+        this.pixelList.push({
+          x: boardXCoord,
+          y: boardYCoord,
+          category: "apple",
+          type: window.ultraPlaceFruitType || 0,
+        });
       }
       const dir = mode.extra || "UP";
       let found = -1;
@@ -939,6 +1131,13 @@ window.ultraWrapCustomManager = function () {
       return;
     }
 
+    const keepShields =
+      mode.category === "apple" || mode.category === "poison" || mode.category === "chess";
+    const savedShields = keepShields
+      ? this.pixelList.filter(function (e) {
+          return e.category === "shield" && e.x === boardXCoord && e.y === boardYCoord;
+        })
+      : [];
     this.removeAtCoord(boardXCoord, boardYCoord);
     const ent = {
       x: boardXCoord,
@@ -948,6 +1147,10 @@ window.ultraWrapCustomManager = function () {
       extra: mode.extra,
     };
     if (mode.category === "apple") ent.type = mode.type || 0;
+    if (mode.category === "statue") {
+      ent.extra = window.ultraPlaceStatueIsCracked(mode.extra, mode.type) ? 1 : 0;
+      ent.type = ent.extra;
+    }
     if (mode.category === "poison") {
       ent.type = window.ultraPlaceFruitType || 0;
     }
@@ -958,6 +1161,7 @@ window.ultraWrapCustomManager = function () {
       ent.type = mode.type;
     }
     this.pixelList.push(ent);
+    for (let sh = 0; sh < savedShields.length; sh++) this.pixelList.push(savedShields[sh]);
     this.draw();
   };
 
@@ -1030,16 +1234,66 @@ window.ultraCaptureAppleOffsetFromBoard = function () {
   } catch (_e) {}
 };
 
+window.ultraChessSnakeIsPiece = function () {
+  const s = window.head_state;
+  return !!(s && s !== "OPEN" && s !== "NONE");
+};
+
 window.ultraEnsureChessMode = function () {
   if (window.CHESS_MODE == null) return;
   if (typeof window.ensureGameMode === "function") window.ensureGameMode(window.CHESS_MODE);
   try {
     const settings = window.wholeSnakeObject && window.wholeSnakeObject.settings;
-    if (settings && settings.ub === 22) {
+    const chessId = window.CHESS_MODE;
+    if (!settings) {
+      window.CurrentModeNum = chessId;
+      return;
+    }
+    const blended =
+      settings.ub === 22 ||
+      !!(settings.Qa && settings.Lc && typeof settings.Lc.has === "function" && settings.Lc.has(chessId));
+    if (blended) {
+      window.CurrentModeNum = 22;
       window.chess_blending = true;
       if (typeof window.correct_chess_selection === "function") window.correct_chess_selection();
+    } else {
+      window.CurrentModeNum = chessId;
+    }
+  } catch (_e) {
+    window.CurrentModeNum = window.CHESS_MODE;
+  }
+};
+
+window.ultraSyncChessPlaceState = function () {
+  try {
+    const mgr = typeof window.ultraAppleManager === "function" ? window.ultraAppleManager() : null;
+    const apples =
+      (mgr && mgr.ka) ||
+      (window.wholeSnakeObject && window.wholeSnakeObject.wa && window.wholeSnakeObject.wa.ka) ||
+      window.appleArray;
+    if (apples) window.appleArray = apples;
+    const game = window.__remixGame || window.megaWholeSnakeObject || window.wholeSnakeObject;
+    if (game && game.oa) {
+      if (game.oa.ka) window.head_pos = game.oa.ka;
+      if (game.oa.direction) window.head_dir = game.oa.direction;
     }
   } catch (_e) {}
+  const apples = window.appleArray;
+  if (!apples || !apples.length) return;
+  const field = window.chess_shield_field || "nba";
+  const locked = window.ultraChessSnakeIsPiece();
+  for (let i = 0; i < apples.length; i++) {
+    const a = apples[i];
+    if (!a || !a.isPiece) continue;
+    if (locked) {
+      const dirs = new Set(["UP", "DOWN", "LEFT", "RIGHT"]);
+      a[field] = dirs;
+      a.nba = dirs;
+    } else {
+      a[field] = undefined;
+      a.nba = undefined;
+    }
+  }
 };
 
 window.ultraPlaceAppend = function (code, snippet) {
@@ -1049,12 +1303,29 @@ window.ultraPlaceAppend = function (code, snippet) {
 };
 
 window.ultraPlaceCapture = function (code, re, idx, label) {
-  const m = code.match(re);
-  if (!m) {
+  const idxN = idx == null ? 1 : idx;
+  function hit(regex) {
+    try {
+      const m = code.match(regex);
+      return m ? m[idxN] : null;
+    } catch (_e) {
+      return null;
+    }
+  }
+  let found = hit(re);
+  if (!found && re instanceof RegExp) {
+    found = hit(
+      new RegExp(
+        re.source.replace(/\\n\?/g, "\\s*").replace(/=/g, "\\s*=\\s*"),
+        re.flags
+      )
+    );
+  }
+  if (!found) {
     console.error("UltraPlace: failed to capture " + label);
     return null;
   }
-  return m[idx == null ? 1 : idx];
+  return found;
 };
 
 window.UltraPlace.alterSnakeCode = function (code) {
@@ -1121,7 +1392,7 @@ window.UltraPlace.alterSnakeCode = function (code) {
   );
   const arrowContainer = window.ultraPlaceCapture(
     code,
-    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,this\.ka,this\.Ja\.bind\(this\)\);this\.[$a-zA-Z0-9_]{0,8}=new [$a-zA-Z0-9_]{0,8}\(this\.settings,this\.ka,this\.Ja\.bind\(this\)\)/,
+    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\s*this\.ka,\s*this\.Ja\.bind\(this\)\);\s*this\.[$a-zA-Z0-9_]{0,8}=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\s*this\.ka,\s*this\.Ja\.bind\(this\)\)/,
     1,
     "arrows"
   );
@@ -1139,13 +1410,13 @@ window.UltraPlace.alterSnakeCode = function (code) {
   );
   const statueContainer = window.ultraPlaceCapture(
     code,
-    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\n?this\.ka,this\.oa,this\.hb,this\.Ca\)/,
+    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\s*this\.ka,\s*this\.oa,\s*this\.hb,\s*this\.Ca\)/,
     1,
     "statues"
   );
   const mineContainer = window.ultraPlaceCapture(
     code,
-    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\n?this\.ka,this\.oa,this\.wa,this\.hb,this\.Aa/,
+    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\s*this\.ka,\s*this\.oa,\s*this\.wa,\s*this\.hb,\s*this\.Aa/,
     1,
     "mines"
   );
@@ -1177,7 +1448,7 @@ window.UltraPlace.alterSnakeCode = function (code) {
   ) || "d_";
   const bridgeColor = window.ultraPlaceCapture(
     code,
-    /([$a-zA-Z0-9_]{0,8})=function\(a,b\)\{return j3E\[a\.settings\.wa===10/,
+    /([$a-zA-Z0-9_]{1,8})\s*=\s*function\s*\(\s*a\s*,\s*b\s*\)\s*\{\s*return\s+[$a-zA-Z0-9_]{1,8}\s*\[\s*a\.settings\.wa\s*===\s*10/,
     1,
     "bridgeColor"
   );
@@ -1237,6 +1508,11 @@ window.UltraPlace.alterSnakeCode = function (code) {
     "$1if(window.disableStatueBodyPlant)return;$2",
     "statues"
   );
+  patchFn(
+    /([$a-zA-Z0-9_]{0,8}=function\(a\)\{)(var b=a\.wa\.ka,c=!1;for\(let d of a\.oa\.keys\(\))/,
+    "$1if(window.disableStatueBodyPlant)return;$2",
+    "statueCrumble"
+  );
 
   const keyResetRe =
     /reset\(\)\{this\.keys=\[\];if\(([$a-zA-Z0-9_]{0,8})\(this\.settings,8\)\)\{/;
@@ -1272,32 +1548,77 @@ window.UltraPlace.alterSnakeCode = function (code) {
 
   globalThis.ultraAppleList = function() {
     const game = window.wholeSnakeObject;
-    if(!game || !game.${n.appleHolder}) return [];
-    return game.${n.appleHolder}.${n.appleArr} || [];
+    if(!game) return [];
+    const holder = game.${n.appleHolder} || game.wa;
+    if(!holder) return [];
+    return holder.${n.appleArr} || holder.ka || [];
+  };
+
+  globalThis.ultraApplePos = function(apple) {
+    if(!apple) return null;
+    if(apple.pos && isFinite(apple.pos.x) && isFinite(apple.pos.y)) return apple.pos;
+    const named = window.applePosProperty && apple[window.applePosProperty];
+    if(named && isFinite(named.x) && isFinite(named.y)) return named;
+    return apple.pos || named || null;
   };
 
   globalThis.ultraFindAppleAt = function(x, y) {
-    x = Math.round(x); y = Math.round(y);
     const apples = ultraAppleList();
-    for(let i=0;i<apples.length;i++) {
-      const p = apples[i] && apples[i][window.applePosProperty || 'pos'];
-      if(p && p.x === x && p.y === y) return apples[i];
+    const spots = ultraAppleSearchSpots(x, y);
+    for(let s=0;s<spots.length;s++) {
+      const sx = spots[s].x, sy = spots[s].y;
+      for(let i=0;i<apples.length;i++) {
+        const p = ultraApplePos(apples[i]);
+        if(p && Math.round(Number(p.x)) === sx && Math.round(Number(p.y)) === sy) return apples[i];
+      }
     }
     return null;
   };
 
+  globalThis.ultraAppleSearchSpots = function(x, y) {
+    const spots = [{x: Math.round(Number(x)), y: Math.round(Number(y))}];
+    try {
+      const off = typeof window.getAppleSpawnPointOffset === 'function' ? window.getAppleSpawnPointOffset() : null;
+      if(off && (off.x || off.y)) {
+        spots.push({x: Math.round(Number(x) - off.x), y: Math.round(Number(y) - off.y)});
+        spots.push({x: Math.round(Number(x) + off.x), y: Math.round(Number(y) + off.y)});
+      }
+    } catch(_e) {}
+    return spots;
+  };
+
   globalThis.ultraRemoveAppleAt = function(x, y) {
-    x = Math.round(x); y = Math.round(y);
     const apples = ultraAppleList();
+    const spots = ultraAppleSearchSpots(x, y);
     for(let i=apples.length-1;i>=0;i--) {
-      const p = apples[i] && apples[i][window.applePosProperty || 'pos'];
-      if(p && p.x === x && p.y === y) apples.splice(i,1);
+      const p = ultraApplePos(apples[i]);
+      if(!p) continue;
+      const px = Math.round(Number(p.x)), py = Math.round(Number(p.y));
+      for(let s=0;s<spots.length;s++) {
+        if(px === spots[s].x && py === spots[s].y) { apples.splice(i,1); break; }
+      }
     }
   };
 
-  globalThis.emptyArrows = function() {
+  globalThis.ultraArrowManager = function() {
     const game = window.wholeSnakeObject;
-    if(game && game.${n.arrowContainer} && typeof game.${n.arrowContainer}.reset === 'function') game.${n.arrowContainer}.reset();
+    if(!game) return null;
+    const named = ${n.arrowContainer ? JSON.stringify(n.arrowContainer) : "null"};
+    const byName = named && game[named];
+    function isArrows(v) {
+      const cell = v && Array.isArray(v.ka) && v.ka[0] && v.ka[0][0];
+      return !!(cell && typeof cell.direction === 'string');
+    }
+    if(isArrows(byName)) return byName;
+    const keys = Object.keys(game);
+    for(let i=0;i<keys.length;i++) {
+      if(isArrows(game[keys[i]])) return game[keys[i]];
+    }
+    return byName || null;
+  };
+  globalThis.emptyArrows = function() {
+    const arrows = ultraArrowManager();
+    if(arrows && typeof arrows.reset === 'function') arrows.reset();
   };
   globalThis.emptyGates = function() {
     const game = window.wholeSnakeObject;
@@ -1307,20 +1628,45 @@ window.UltraPlace.alterSnakeCode = function (code) {
     const game = window.wholeSnakeObject;
     if(game && game.${n.bridgeContainer} && typeof game.${n.bridgeContainer}.reset === 'function') game.${n.bridgeContainer}.reset();
   };
-  globalThis.emptyMines = function() {
+  globalThis.ultraMineManager = function() {
     const game = window.wholeSnakeObject;
-    if(game && game.${n.mineContainer} && typeof game.${n.mineContainer}.reset === 'function') game.${n.mineContainer}.reset();
+    if(!game) return null;
+    const named = ${n.mineContainer ? JSON.stringify(n.mineContainer) : "null"};
+    const byName = named && game[named];
+    if(byName && byName.oa instanceof Set) return byName;
+    const keys = Object.keys(game);
+    for(let i=0;i<keys.length;i++) {
+      const v = game[keys[i]];
+      if(v && v !== game && v.oa instanceof Set && v.Aa instanceof Set && v.wa instanceof Set) return v;
+    }
+    return byName || null;
+  };
+  globalThis.emptyMines = function() {
+    const ma = ultraMineManager();
+    if(ma && typeof ma.reset === 'function') ma.reset();
+    else if(ma && ma.oa && typeof ma.oa.clear === 'function') ma.oa.clear();
+  };
+  globalThis.ultraStatueManager = function() {
+    const game = window.wholeSnakeObject;
+    if(!game) return null;
+    const named = ${n.statueContainer ? JSON.stringify(n.statueContainer) : "null"};
+    const byName = named && game[named];
+    if(byName && byName.oa instanceof Map) return byName;
+    const keys = Object.keys(game);
+    for(let i=0;i<keys.length;i++) {
+      const v = game[keys[i]];
+      if(v && v.oa instanceof Map && v.Ca instanceof Set && typeof v.Ba === 'number') return v;
+    }
+    return byName || null;
   };
   globalThis.emptyStatues = function() {
     const game = window.wholeSnakeObject;
-    if(!game || !game.${n.statueContainer}) return;
-    const ya = game.${n.statueContainer};
-    if(ya.oa) {
-      for(const st of ya.oa.values()) {
-        if(st && st.pos && ${n.delWall}) ${n.delWall}(game.${n.wallContainer}, st.pos);
-      }
-      ya.oa.clear();
+    const ya = ultraStatueManager();
+    if(!game || !ya || !ya.oa) return;
+    for(const st of ya.oa.values()) {
+      if(st && st.pos && ${n.delWall}) ${n.delWall}(game.${n.wallContainer}, st.pos);
     }
+    ya.oa.clear();
   };
   globalThis.emptyKeys = function() {
     const game = window.wholeSnakeObject;
@@ -1396,25 +1742,29 @@ window.UltraPlace.alterSnakeCode = function (code) {
         if(p && Math.round(p.x) === boardX && Math.round(p.y) === boardY) goals.delete(g);
       }
     }
-    if(game.${n.arrowContainer} && game.${n.arrowContainer}.ka && game.${n.arrowContainer}.ka[boardY] && game.${n.arrowContainer}.ka[boardY][boardX]) {
-      const cell = game.${n.arrowContainer}.ka[boardY][boardX];
-      cell.direction = 'NONE';
-      cell.wm = false;
+    if(ultraArrowManager && ultraArrowManager()) {
+      const grid = ultraArrowManager().ka;
+      if(grid && grid[boardY] && grid[boardY][boardX]) {
+        grid[boardY][boardX].direction = 'NONE';
+        grid[boardY][boardX].wm = false;
+      }
     }
     if(game.${n.bridgeContainer} && game.${n.bridgeContainer}.oa && game.${n.bridgeContainer}.oa[boardY]) {
       game.${n.bridgeContainer}.oa[boardY][boardX] = null;
     }
-    if(game.${n.mineContainer} && game.${n.mineContainer}.oa) {
-      for(const m of Array.from(game.${n.mineContainer}.oa)) {
-        if(m.pos && m.pos.x === boardX && m.pos.y === boardY) game.${n.mineContainer}.oa.delete(m);
+    if(ultraMineManager && ultraMineManager()) {
+      const mines = ultraMineManager().oa;
+      for(const m of Array.from(mines)) {
+        if(m.pos && m.pos.x === boardX && m.pos.y === boardY) mines.delete(m);
       }
     }
-    if(game.${n.statueContainer} && game.${n.statueContainer}.oa) {
+    if(ultraStatueManager && ultraStatueManager()) {
+      const ya = ultraStatueManager();
       const key = ${n.serialCoord} ? ${n.serialCoord}(new ${n.coordCtor}(boardX, boardY)) : (boardX << 16 | boardY);
-      const st = game.${n.statueContainer}.oa.get(key);
+      const st = ya.oa && ya.oa.get(key);
       if(st) {
         if(${n.delWall}) ${n.delWall}(game.${n.wallContainer}, new ${n.coordCtor}(boardX, boardY));
-        game.${n.statueContainer}.oa.delete(key);
+        ya.oa.delete(key);
       }
     }
     if(game.${n.keyContainer} && game.${n.keyContainer}.keys) {
@@ -1441,20 +1791,45 @@ window.UltraPlace.alterSnakeCode = function (code) {
   globalThis.placeSokogoal = function(x,y) {
     window.ensureGameMode(9);
     x = Math.round(x); y = Math.round(y);
+    const soko = window.wholeSnakeObject && window.wholeSnakeObject.${n.sokoContainer};
+    if(!soko) return;
     const coord = new ${n.coordCtor}(x,y);
-    ${n.addGoal}(window.wholeSnakeObject.${n.sokoContainer}, coord, 0);
+    const set = soko.${n.sokoGoalSet};
+    const have = set && typeof set.size === 'number' ? set.size : 0;
+    if(typeof ${n.addGoal} === 'function') ${n.addGoal}(soko, coord, have + 1);
+    if(set && set.size === have && typeof set.add === 'function') set.add(coord);
   };
   globalThis.placeArrow = function(x,y,dir) {
     window.ensureGameMode(16);
     x = Math.round(x); y = Math.round(y);
-    ${n.addArrow}(window.wholeSnakeObject.${n.arrowContainer}, dir || 'UP', new ${n.coordCtor}(x,y));
+    if(window.ultraPlaceCodec && dir) dir = window.ultraPlaceCodec.dirFromLetter(dir) || dir;
+    dir = dir || 'UP';
+    const arrows = ultraArrowManager();
+    if(!arrows || !arrows.ka || !arrows.ka[y] || !arrows.ka[y][x]) return;
+    if(typeof ${n.addArrow} === 'function') ${n.addArrow}(arrows, dir, new ${n.coordCtor}(x,y));
+    const cell = arrows.ka[y][x];
+    cell.direction = dir;
+    cell.wm = false;
+    cell.Lh = true;
+    if(!cell.color) cell.color = '#4E7CF6';
   };
   globalThis.placeGate = function(x,y,vertical) {
     window.ensureGameMode(19);
     x = Math.round(x); y = Math.round(y);
     const size = ultraBoardSize();
     if(x+1 >= size.width || y+1 >= size.height || x < 0 || y < 0) return;
-    ${n.addGate}(window.wholeSnakeObject.${n.gateContainer}, new ${n.coordCtor}(x,y), !!vertical, false);
+    const qa = window.wholeSnakeObject.${n.gateContainer};
+    ${n.addGate}(qa, new ${n.coordCtor}(x,y), !!vertical, false);
+    // Native addGate always sets wm:true (spawn-in). Show the gate while paused.
+    if(qa && Array.isArray(qa.pfa)) {
+      for(let i = qa.pfa.length - 1; i >= 0; i--) {
+        const g = qa.pfa[i];
+        if(g && g.Upa && g.Upa.x === x && g.Upa.y === y) {
+          g.wm = false;
+          break;
+        }
+      }
+    }
   };
   globalThis.placeBridge = function(x,y) {
     window.ensureGameMode(20);
@@ -1462,25 +1837,64 @@ window.UltraPlace.alterSnakeCode = function (code) {
     const ga = window.wholeSnakeObject.${n.bridgeContainer};
     if(!ga || !ga.oa[y]) return;
     const col = ${n.bridgeColor} ? ${n.bridgeColor}(ga, false) : '#e68f1b';
-    ga.oa[y][x] = {wm:true, color:col, Lh:!${n.modeCheck}(window.wholeSnakeObject.settings, 11)};
+    // wm:false so the tile is full-size while the board is paused.
+    ga.oa[y][x] = {wm:false, color:col, Lh:!${n.modeCheck}(window.wholeSnakeObject.settings, 11)};
   };
   globalThis.placeMine = function(x,y) {
     window.ensureGameMode(12);
     x = Math.round(x); y = Math.round(y);
-    const ma = window.wholeSnakeObject.${n.mineContainer};
-    ma.oa.add({pos:new ${n.coordCtor}(x,y), X1a:-1, xL:0, Lh:!${n.modeCheck}(window.wholeSnakeObject.settings, 11)});
+    const game = window.wholeSnakeObject;
+    const ma = ultraMineManager();
+    if(!game || !ma) return;
+    if(!(ma.oa instanceof Set)) ma.oa = new Set();
+    for(const m of Array.from(ma.oa)) {
+      if(m && m.pos && m.pos.x === x && m.pos.y === y) ma.oa.delete(m);
+    }
+    // xL:2 so the flag is visible while the board is paused.
+    ma.oa.add({
+      pos: new ${n.coordCtor}(x,y),
+      X1a: -1,
+      xL: 2,
+      Lh: !${n.modeCheck}(game.settings, 11)
+    });
   };
   globalThis.placeStatue = function(x,y,cracked) {
     window.ensureGameMode(13);
     x = Math.round(x); y = Math.round(y);
+    const game = window.wholeSnakeObject;
+    const st = ultraStatueManager();
+    if(!game || !st) return;
+    if(!(st.oa instanceof Map)) st.oa = new Map();
     const coord = new ${n.coordCtor}(x,y);
-    const obj = {pos:coord, wm:true, m0:false, Lh:true, WQ:{pdb:!!cracked, O0b:0, xBb:-1, color:'#90A4AE', type:1, angle:0, tBc:0, sBc:0}};
-    ${n.addStatue}(window.wholeSnakeObject.${n.statueContainer}, coord, obj);
+    const obj = {
+      pos: coord,
+      wm: false,
+      m0: false,
+      Lh: true,
+      WQ: {
+        pdb: (typeof window.ultraPlaceStatueIsCracked === 'function')
+          ? window.ultraPlaceStatueIsCracked(cracked)
+          : (cracked === true || cracked === 1 || cracked === '1'),
+        O0b: 0,
+        xBb: -1,
+        color: '#90A4AE',
+        type: 1,
+        angle: 0,
+        tBc: 0,
+        sBc: 0
+      }
+    };
+    if(typeof ${n.addStatue} === 'function') ${n.addStatue}(st, coord, obj);
+    else {
+      const key = ${n.serialCoord} ? ${n.serialCoord}(coord) : (x << 16 | y);
+      st.oa.set(key, obj);
+      if(typeof ${n.addWall} === 'function') ${n.addWall}(game.${n.wallContainer}, coord, obj);
+    }
   };
   globalThis.placeKey = function(x,y,type) {
     window.ensureGameMode(8);
     x = Math.round(x); y = Math.round(y);
-    type = Math.max(0, Math.min(4, type|0));
+    type = Math.max(0, Math.min(23, type|0));
     const coord = new ${n.coordCtor}(x,y);
     window.wholeSnakeObject.${n.keyContainer}.keys.push({pos:coord, r7a:coord.clone ? coord.clone() : new ${n.coordCtor}(x,y), xL:0, type:type, wm:false, Lh:true});
     ultraPairKeysAndBlocks();
@@ -1488,29 +1902,52 @@ window.UltraPlace.alterSnakeCode = function (code) {
   globalThis.placeKeyblock = function(x,y,type) {
     window.ensureGameMode(8);
     x = Math.round(x); y = Math.round(y);
-    type = Math.max(0, Math.min(4, type|0));
+    type = Math.max(0, Math.min(23, type|0));
     const coord = new ${n.coordCtor}(x,y);
     ${n.addWall}(window.wholeSnakeObject.${n.wallContainer}, coord, {pos:coord, wm:false, yNa:type, m0:false, Lh:!${n.modeCheck}(window.wholeSnakeObject.settings, 11)});
     ultraPairKeysAndBlocks();
   };
   globalThis.placePoison = function(x,y,type) {
     window.ensureGameMode(10);
-    if(type === undefined || type === null || type < 0) type = window.ultraPlaceFruitType || 0;
+    if(!(type >= 0)) type = window.ultraPlaceFruitType || 0;
     window.placeApple(x,y,type, undefined, {Oka:true});
   };
-  globalThis.placeShield = function(x,y,dir) {
+  globalThis.placeShield = function(x,y,dir,opts) {
     window.ensureGameMode(15);
-    const apple = ultraFindAppleAt(x,y);
-    if(!apple) return;
+    if(window.ultraPlaceCodec && dir) dir = window.ultraPlaceCodec.dirFromLetter(dir) || dir;
+    dir = dir || 'UP';
+    const addOnly = !!(opts && opts.add);
     const field = window.chess_shield_field || 'nba';
-    if(!(apple[field] instanceof Set)) apple[field] = new Set();
-    if(apple[field].has(dir)) apple[field].delete(dir);
-    else apple[field].add(dir);
+    let apple = ultraFindAppleAt(x,y);
+    const created = !apple;
+    if(!apple) {
+      const dirs = new Set();
+      const props = {nba: dirs, wm: false};
+      props[field] = dirs;
+      window.placeApple(x,y, window.ultraPlaceFruitType || 0, undefined, props);
+      apple = ultraFindAppleAt(x,y) || ultraAppleList().slice(-1)[0];
+    }
+    if(!apple) return;
+    apple.wm = false;
+    const next = new Set();
+    const cur = apple[field] || apple.nba;
+    if(cur && typeof cur.forEach === 'function') cur.forEach(function(d){ next.add(d); });
+    apple[field] = next;
+    apple.nba = next;
+    if(!addOnly && !created && next.has(dir)) next.delete(dir);
+    else next.add(dir);
   };
   globalThis.placeChessPiece = function(x,y,color,piece,type) {
     window.ultraEnsureChessMode();
-    if(type == null && color && piece && window[color + piece] != null) type = window[color + piece];
+    if(typeof window.injectChessFruits === 'function') window.injectChessFruits();
+    if((!color || !piece) && window.mousePlaceMode && window.mousePlaceMode.extra) {
+      color = color || String(window.mousePlaceMode.extra).charAt(0);
+      piece = piece || String(window.mousePlaceMode.extra).slice(1);
+    }
+    if(!(type >= 0) && color && piece && window[color + piece] != null) type = window[color + piece];
+    if(!(type >= 0)) return;
     window.placeApple(x,y,type, undefined, {isPiece:true, ChessPiece:piece, ChessColor:color});
+    if(typeof window.ultraSyncChessPlaceState === "function") window.ultraSyncChessPlaceState();
   };
   `
   );
@@ -1548,6 +1985,7 @@ window.ultraWrapBlitAndClick = function () {
             window.placeSokobox(p.x, p.y);
             break;
           case "snakehead":
+          case "erase":
             break;
           case "goal":
             if (typeof window.placeSokogoal === "function") window.placeSokogoal(p.x, p.y);
@@ -1565,13 +2003,18 @@ window.ultraWrapBlitAndClick = function () {
             if (typeof window.placeArrow === "function") window.placeArrow(p.x, p.y, p.extra || "UP");
             break;
           case "shield":
-            if (typeof window.placeShield === "function") window.placeShield(ax, ay, p.extra || "UP");
             break;
           case "mine":
             if (typeof window.placeMine === "function") window.placeMine(p.x, p.y);
             break;
           case "statue":
-            if (typeof window.placeStatue === "function") window.placeStatue(p.x, p.y, !!(p.extra || p.type));
+            if (typeof window.placeStatue === "function") {
+              window.placeStatue(
+                p.x,
+                p.y,
+                window.ultraPlaceStatueIsCracked ? window.ultraPlaceStatueIsCracked(p.extra, p.type) : p.extra === 1 || p.type === 1
+              );
+            }
             break;
           case "key":
             if (typeof window.placeKey === "function") window.placeKey(p.x, p.y, p.type);
@@ -1588,6 +2031,23 @@ window.ultraWrapBlitAndClick = function () {
             throw Error("Unrecognised category!");
         }
       }
+      if (typeof window.placeShield === "function") {
+        for (let s = 0; s < pixelList.length; s++) {
+          const p = pixelList[s];
+          if (!p || p.category !== "shield") continue;
+          const ax = p.x + offsetX;
+          const ay = p.y + offsetY;
+          const packed = window.ultraPlaceCodec
+            ? window.ultraPlaceCodec.dirsFromCode(p.extra)
+            : p.extra
+            ? [p.extra]
+            : ["UP"];
+          const dirs = packed.length ? packed : [p.extra || "UP"];
+          for (let d = 0; d < dirs.length; d++) {
+            window.placeShield(ax, ay, dirs[d], { add: true });
+          }
+        }
+      }
       if (typeof window.ultraPairKeysAndBlocks === "function") window.ultraPairKeysAndBlocks();
       if (typeof window.retallyAllPlacedApples === "function") window.retallyAllPlacedApples();
     };
@@ -1598,9 +2058,10 @@ window.ultraWrapBlitAndClick = function () {
     const origClick = window.placeAppleAtMouse;
     window.placeAppleAtMouse = function (event) {
       const mode = window.mousePlaceMode || {};
-      const simple = mode.category === "apple" || mode.category === "wall" || mode.category === "box";
-      if (simple && !mode.category) return origClick(event);
-      const canvasEl = window.gameCanvasElMakePattern;
+      const canvasEl =
+        window.gameCanvasElMakePattern ||
+        document.getElementsByClassName("cer0Bd")[0];
+      if (canvasEl && !window.gameCanvasElMakePattern) window.gameCanvasElMakePattern = canvasEl;
       if (!canvasEl || !window.wholeSnakeObject || !window.tileWidth) {
         return origClick(event);
       }
@@ -1623,58 +2084,89 @@ window.ultraWrapBlitAndClick = function () {
       const appleX = boardX + spawnOffset.x;
       const appleY = boardY + spawnOffset.y;
 
-      if (mode.category === "shield") {
-        window.placeShield(appleX, appleY, mode.extra || "UP");
-        return;
-      }
+      try {
+        if (mode.category === "erase") {
+          if (typeof window.ultraEmptyCell === "function") window.ultraEmptyCell(boardX, boardY, appleX, appleY);
+          return;
+        }
 
-      if (typeof window.ultraEmptyCell === "function") window.ultraEmptyCell(boardX, boardY, appleX, appleY);
+        if (mode.category === "shield") {
+          window.placeShield(appleX, appleY, mode.extra || "UP");
+          return;
+        }
 
-      switch (mode.category) {
-        case "apple":
-          window.placeApple(appleX, appleY, mode.type);
-          break;
-        case "wall":
-          window.placeWall(gameCoordX, gameCoordY, true);
-          break;
-        case "box":
-          window.placeSokobox(gameCoordX, gameCoordY);
-          break;
-        case "goal":
-          window.placeSokogoal(boardX, boardY);
-          break;
-        case "bridge":
-          window.placeBridge(boardX, boardY);
-          break;
-        case "gate":
-          window.placeGate(boardX, boardY, mode.extra === "v");
-          break;
-        case "poison":
-          window.placePoison(appleX, appleY, window.ultraPlaceFruitType || 0);
-          break;
-        case "arrow":
-          window.placeArrow(boardX, boardY, mode.extra || "UP");
-          break;
-        case "mine":
-          window.placeMine(boardX, boardY);
-          break;
-        case "statue":
-          window.placeStatue(boardX, boardY, !!(mode.extra || mode.type));
-          break;
-        case "key":
-          window.placeKey(boardX, boardY, mode.type);
-          break;
-        case "keyblock":
-          window.placeKeyblock(boardX, boardY, mode.type);
-          break;
-        case "chess":
-          window.placeChessPiece(appleX, appleY, mode.ChessColor, mode.ChessPiece, mode.type);
-          break;
-        default:
-          origClick(event);
+        if (typeof window.ultraEmptyCell === "function") window.ultraEmptyCell(boardX, boardY, appleX, appleY);
+
+        switch (mode.category) {
+          case "apple":
+            window.placeApple(appleX, appleY, mode.type);
+            break;
+          case "wall":
+            window.placeWall(gameCoordX, gameCoordY, true);
+            break;
+          case "box":
+            window.placeSokobox(gameCoordX, gameCoordY);
+            break;
+          case "goal":
+            window.placeSokogoal(boardX, boardY);
+            break;
+          case "bridge":
+            window.placeBridge(boardX, boardY);
+            break;
+          case "gate":
+            window.placeGate(boardX, boardY, mode.extra === "v");
+            break;
+          case "poison":
+            window.placePoison(appleX, appleY, window.ultraPlaceFruitType || 0);
+            break;
+          case "arrow":
+            window.placeArrow(boardX, boardY, mode.extra || "UP");
+            break;
+          case "mine":
+            window.placeMine(boardX, boardY);
+            break;
+          case "statue":
+            window.placeStatue(
+              boardX,
+              boardY,
+              window.ultraPlaceStatueIsCracked
+                ? window.ultraPlaceStatueIsCracked(mode.extra, mode.type)
+                : mode.extra === 1 || mode.type === 1
+            );
+            break;
+          case "key":
+            window.placeKey(boardX, boardY, mode.type);
+            break;
+          case "keyblock":
+            window.placeKeyblock(boardX, boardY, mode.type);
+            break;
+          case "chess": {
+            let color = mode.ChessColor;
+            let piece = mode.ChessPiece;
+            if ((!color || !piece) && mode.extra) {
+              color = String(mode.extra).charAt(0);
+              piece = String(mode.extra).slice(1);
+            }
+            window.placeChessPiece(appleX, appleY, color, piece, mode.type);
+            break;
+          }
+          default:
+            origClick(event);
+        }
+      } catch (err) {
+        console.error("RemixUltra: board place failed", mode && mode.category, err);
       }
     };
     window.placeAppleAtMouse.__ultraPlace = true;
+    const canvas =
+      window.gameCanvasElMakePattern ||
+      document.getElementsByClassName("cer0Bd")[0];
+    if (canvas) {
+      window.gameCanvasElMakePattern = canvas;
+      canvas.removeEventListener("mousedown", origClick);
+      canvas.removeEventListener("mousedown", window.placeAppleAtMouse);
+      canvas.addEventListener("mousedown", window.placeAppleAtMouse);
+    }
   }
 };
 

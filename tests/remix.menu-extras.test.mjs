@@ -306,4 +306,102 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
       await h.close();
     }
   });
+
+  it("Pudding Settings Setup can show/hide Visibility", async () => {
+    const { launchHarness } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 26, headless: true });
+    try {
+      await h.page.waitForFunction(
+        () =>
+          !!document.getElementById("settings-popup-pudding") &&
+          typeof window.remixOrganizeSettings === "function",
+        null,
+        { timeout: 60000 }
+      );
+      const probe = await h.page.evaluate(() => {
+        window.remixOrganizeSettings();
+        if (typeof window.BootstrapShow === "function") window.BootstrapShow();
+        document.getElementById("ultra-settings-tab-stats").click();
+        const stats = document.getElementById("ultra-settings-page-stats");
+        const chooser = document.getElementById("stat-chooser");
+        const chooserH = chooser && chooser.getBoundingClientRect().height;
+        document.getElementById("ultra-settings-tab-setup").click();
+        const setup = document.getElementById("ultra-settings-page-setup");
+        const play = document.getElementById("ultra-settings-page-play");
+        const visBtn = document.getElementById("remix-visibility-settings");
+        const vis = document.getElementById("delete-stuff-popup");
+        const setupResets = setup
+          ? [...setup.querySelectorAll('[id="ResetKeybind"]')]
+          : [];
+        const speedinfoReset = document.querySelector(
+          "#speedinfo-popup-pudding [id='ResetKeybind']"
+        );
+        window.button_color = "#111111";
+        if (typeof window.remixApplyThemeColors === "function") {
+          window.remixApplyThemeColors();
+        }
+        const resetBtn = setupResets[0];
+        const resetCs = resetBtn && getComputedStyle(resetBtn);
+        const onTab = document.querySelector("#ultra-settings-pager .ultra-settings-tab.ultra-tab-on");
+        const tabCs = onTab && getComputedStyle(onTab);
+        window.remixSetVisibilityOpen(false);
+        const visBtnBox = visBtn && visBtn.getBoundingClientRect();
+        const setupBox = setup && setup.getBoundingClientRect();
+        const before = !!(vis && vis.hidden);
+        const labelBefore = visBtn && visBtn.textContent;
+        if (visBtn) visBtn.click();
+        const shown = !!(vis && vis.hidden === false);
+        const labelShown = visBtn && visBtn.textContent;
+        if (visBtn) visBtn.click();
+        const hiddenAgain = !!(vis && vis.hidden);
+        const timerBtn = document.getElementById("TimerSettings");
+        if (timerBtn) timerBtn.click();
+        else if (typeof window.editTimer === "function") window.editTimer();
+        const pager = document.getElementById("ultra-settings-pager");
+        const playTab = document.getElementById("ultra-settings-tab-play");
+        const settingsBox = document.getElementById("settings-popup-pudding");
+        return {
+          visBtnFirst: setup && setup.firstElementChild === visBtn,
+          playSkull: !!(play && play.querySelector("#SkullPoisonFruit")),
+          chooserInStats: !!(stats && stats.querySelector("#stat-chooser")),
+          before,
+          labelBefore,
+          shown,
+          labelShown,
+          hiddenAgain,
+          chooserH,
+          visBtnW: visBtnBox && visBtnBox.width,
+          setupW: setupBox && setupBox.width,
+          setupResetCount: setupResets.length,
+          speedinfoKeep: !!speedinfoReset,
+          resetBg: resetCs && resetCs.backgroundColor,
+          tabBg: tabCs && tabCs.backgroundColor,
+          timerOpen: !!document.getElementById("edit-box"),
+          pagerDisplay: pager ? getComputedStyle(pager).display : null,
+          playTabDisplay: playTab ? getComputedStyle(playTab).display : null,
+          settingsDisplay: settingsBox ? getComputedStyle(settingsBox).display : null,
+        };
+      });
+      assert.equal(probe.visBtnFirst, true, JSON.stringify(probe));
+      assert.equal(probe.playSkull, true, JSON.stringify(probe));
+      assert.equal(probe.chooserInStats, true, JSON.stringify(probe));
+      assert.equal(probe.before, true, JSON.stringify(probe));
+      assert.equal(probe.labelBefore, "Show Visibility settings", JSON.stringify(probe));
+      assert.equal(probe.shown, true, JSON.stringify(probe));
+      assert.equal(probe.labelShown, "Hide Visibility settings", JSON.stringify(probe));
+      assert.equal(probe.hiddenAgain, true, JSON.stringify(probe));
+      assert.ok(probe.chooserH >= 34 && probe.chooserH <= 40, JSON.stringify(probe));
+      assert.ok(probe.visBtnW >= probe.setupW - 4, JSON.stringify(probe));
+      assert.equal(probe.setupResetCount, 1, JSON.stringify(probe));
+      assert.match(String(probe.resetBg), /rgb\(\s*17,\s*17,\s*17\s*\)/, JSON.stringify(probe));
+      assert.match(String(probe.tabBg), /rgb\(\s*17,\s*17,\s*17\s*\)/, JSON.stringify(probe));
+      assert.equal(probe.timerOpen, true, JSON.stringify(probe));
+      assert.notEqual(probe.pagerDisplay, "none", JSON.stringify(probe));
+      assert.notEqual(probe.playTabDisplay, "none", JSON.stringify(probe));
+      assert.notEqual(probe.settingsDisplay, "none", JSON.stringify(probe));
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
 });

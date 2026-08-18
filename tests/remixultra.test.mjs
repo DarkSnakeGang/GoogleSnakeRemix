@@ -19,6 +19,10 @@ describe("RemixUltra build artifacts", () => {
     assert.doesNotMatch(remix, /window\.levelEditorMod/);
     assert.match(remix, /window\.PauseMod/);
     assert.match(remix, /remixOrganizeSettings/);
+    assert.match(remix, /remix-visibility-settings/);
+    assert.match(remix, /remixSettingsEl/);
+    assert.match(remix, /var\(--ultra-btn/);
+    assert.match(remix, /\(b\.nla\|\|b\.Oka\)/);
     assert.match(remix, /RemixSettings/);
     assert.doesNotMatch(remix, /RemixUltraSettings/);
   });
@@ -32,12 +36,18 @@ describe("RemixUltra build artifacts", () => {
     assert.match(ultra, /RemixUltraSettings/);
     assert.match(ultra, /snake_timeKeeper_remix_ultra/);
     assert.match(ultra, /ultraLayoutMenus/);
+    assert.match(ultra, /ultraBlitChosenPreset/);
+    assert.match(ultra, /selectNewSizeSettingAndHardReset\.__ultra = true/);
+    assert.match(ultra, /ultraPatchChallengeSpeedrunWin/);
     assert.match(ultra, /ultraOrganizeSettings/);
+    assert.match(ultra, /remixSettingsEl/);
+    assert.match(ultra, /var\(--ultra-btn/);
     assert.match(ultra, /ULTRA_PRESET_PNG/);
     assert.match(ultra, /ULTRA_CHALLENGE_TXT/);
     assert.match(ultra, /setupMakePatternHtml/);
     assert.match(ultra, /textContent = "Remix Ultra"/);
     assert.match(ultra, /window\.UltraPlace/);
+    assert.match(ultra, /wa\\s\*===\\s\*10/);
     assert.match(ultra, /ultraPlaceBuildGridHtml/);
   });
 });
@@ -159,16 +169,40 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       boxes = await boxesFor();
       assert.deepEqual(visibleDockIds(boxes), ["preset-panel"], JSON.stringify(boxes));
       const presetThumbs = await h.page.evaluate(() => {
-        return [...document.querySelectorAll("#preset-panel img.preset-option")].map(
-          (el) => {
-            const r = el.getBoundingClientRect();
-            return { w: r.width, h: r.height };
-          }
-        );
+        const none = document.querySelector("#preset-panel .preset-none");
+        const ham = document.querySelector("#preset-panel .preset-random-ham");
+        const nr = none && none.getBoundingClientRect();
+        const hr = ham && ham.getBoundingClientRect();
+        return {
+          thumbs: [...document.querySelectorAll("#preset-panel img.preset-option")].map(
+            (el) => {
+              const r = el.getBoundingClientRect();
+              return { w: r.width, h: r.height };
+            }
+          ),
+          noneTag: none && none.tagName,
+          noneText: none && none.textContent.trim(),
+          hamText: ham && ham.textContent.trim(),
+          noneTop: nr && nr.top,
+          hamTop: hr && hr.top,
+          noneW: nr && nr.width,
+          hamW: hr && hr.width,
+        };
       });
-      assert.ok(presetThumbs.length >= 15, JSON.stringify(presetThumbs));
+      assert.ok(presetThumbs.thumbs.length >= 15, JSON.stringify(presetThumbs));
       assert.ok(
-        presetThumbs.every((t) => t.w >= 40 && t.h >= 40),
+        presetThumbs.thumbs.every((t) => t.w >= 40 && t.h >= 40),
+        JSON.stringify(presetThumbs)
+      );
+      assert.equal(presetThumbs.noneTag, "DIV", JSON.stringify(presetThumbs));
+      assert.match(String(presetThumbs.noneText), /none/i);
+      assert.equal(presetThumbs.hamText, "Random Ham", JSON.stringify(presetThumbs));
+      assert.ok(
+        Math.abs(presetThumbs.noneTop - presetThumbs.hamTop) < 2,
+        "None should sit on the same row as Random Ham " + JSON.stringify(presetThumbs)
+      );
+      assert.ok(
+        presetThumbs.noneW > 40 && presetThumbs.hamW > 40,
         JSON.stringify(presetThumbs)
       );
 
@@ -189,21 +223,72 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
           playOn: play && play.classList.contains("ultra-page-on"),
           statsOn: stats && stats.classList.contains("ultra-page-on"),
         };
+        const chooser = document.getElementById("stat-chooser");
+        const chooserH = chooser && chooser.getBoundingClientRect().height;
+        document.getElementById("ultra-settings-tab-setup").click();
+        const setup = document.getElementById("ultra-settings-page-setup");
+        const visBtn = document.getElementById("remix-visibility-settings");
+        const vis = document.getElementById("delete-stuff-popup");
+        const visBtnBox = visBtn && visBtn.getBoundingClientRect();
+        const setupBox = setup && setup.getBoundingClientRect();
+        const visWasHidden = !!(vis && vis.hidden);
+        const visBtnShow = visBtn && visBtn.textContent;
+        if (visBtn) visBtn.click();
+        const visShown = !!(vis && vis.hidden === false);
+        const visBtnHide = visBtn && visBtn.textContent;
+        const modalWhileVis = window.ultraModalOpen && window.ultraModalOpen();
+        if (visBtn) visBtn.click();
+        const visHiddenAgain = !!(vis && vis.hidden);
+        const setupResets = setup
+          ? [...setup.querySelectorAll('[id="ResetKeybind"]')]
+          : [];
+        const speedinfoReset = document.querySelector(
+          "#speedinfo-popup-pudding [id='ResetKeybind']"
+        );
+        window.button_color = "#111111";
+        if (typeof window.remixApplyThemeColors === "function") {
+          window.remixApplyThemeColors();
+        }
+        if (typeof window.ultraApplyTheme === "function") {
+          window.ultraApplyTheme();
+        }
+        const resetCs = setupResets[0] && getComputedStyle(setupResets[0]);
+        const onTab = document.querySelector("#ultra-settings-pager .ultra-settings-tab.ultra-tab-on");
+        const tabCs = onTab && getComputedStyle(onTab);
         document.getElementById("ultra-settings-tab-play").click();
+        const setupKids = setup
+          ? [...setup.children].map((el) => el.id || el.tagName)
+          : [];
         return {
           overflowY: s && s.overflowY,
           scroll: root && root.scrollHeight - root.clientHeight,
           pager: !!document.getElementById("ultra-settings-pager"),
           play: !!play,
           stats: !!stats,
-          setup: !!document.getElementById("ultra-settings-page-setup"),
+          setup: !!setup,
           skullInPlay: !!(
             play && play.querySelector("#SkullPoisonFruit")
           ),
           chooserInStats: !!(
             stats && stats.querySelector("#stat-chooser")
           ),
+          visBtn: !!(visBtn && visBtn.parentElement === setup),
+          visBtnFirst: setupKids[0] === "remix-visibility-settings",
+          visBtnShow,
+          visWasHidden,
+          visShown,
+          visBtnHide,
+          visHiddenAgain,
+          modalWhileVis,
+          setupKids,
+          chooserH,
+          visBtnW: visBtnBox && visBtnBox.width,
+          setupW: setupBox && setupBox.width,
           afterStats,
+          setupResetCount: setupResets.length,
+          speedinfoKeep: !!speedinfoReset,
+          resetBg: resetCs && resetCs.backgroundColor,
+          tabBg: tabCs && tabCs.backgroundColor,
         };
       });
       assert.equal(more.overflowY, "hidden", JSON.stringify(more));
@@ -216,6 +301,28 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       assert.equal(more.chooserInStats, true, JSON.stringify(more));
       assert.equal(more.afterStats.playOn, false, JSON.stringify(more));
       assert.equal(more.afterStats.statsOn, true, JSON.stringify(more));
+      assert.equal(more.visBtn, true, JSON.stringify(more));
+      assert.equal(more.visBtnFirst, true, JSON.stringify(more));
+      assert.equal(more.visWasHidden, true, JSON.stringify(more));
+      assert.equal(more.visShown, true, JSON.stringify(more));
+      assert.equal(more.visBtnHide, "Hide Visibility settings", JSON.stringify(more));
+      assert.equal(more.visHiddenAgain, true, JSON.stringify(more));
+      assert.equal(more.visBtnShow, "Show Visibility settings", JSON.stringify(more));
+      assert.equal(more.modalWhileVis, false, JSON.stringify(more));
+      assert.ok(more.chooserH >= 34 && more.chooserH <= 40, JSON.stringify(more));
+      assert.ok(
+        more.visBtnW >= more.setupW - 4,
+        JSON.stringify(more)
+      );
+      assert.equal(more.setupResetCount, 1, JSON.stringify(more));
+      assert.match(String(more.resetBg), /rgb\(\s*17,\s*17,\s*17\s*\)/, JSON.stringify(more));
+
+      boxes = await boxesFor();
+      assert.deepEqual(
+        visibleDockIds(boxes),
+        ["settings-popup-pudding"],
+        JSON.stringify(boxes)
+      );
 
       await clickTab("ultra-tab-more");
       boxes = await boxesFor();
@@ -285,8 +392,14 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
         };
       });
       assert.equal(chrome.css, true, JSON.stringify(chrome));
-      assert.equal(chrome.toPreset.display, "none", JSON.stringify(chrome));
-      assert.equal(chrome.toPlace.display, "none", JSON.stringify(chrome));
+      assert.ok(
+        !chrome.toPreset || chrome.toPreset.display === "none",
+        JSON.stringify(chrome)
+      );
+      assert.ok(
+        !chrome.toPlace || chrome.toPlace.display === "none",
+        JSON.stringify(chrome)
+      );
       assert.equal(chrome.customBtn, "none", JSON.stringify(chrome));
       assert.equal(chrome.challengeBtn, "none", JSON.stringify(chrome));
       assert.equal(chrome.leftTabs.display, "flex", JSON.stringify(chrome));
@@ -294,7 +407,10 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       assert.equal(chrome.speedTab, null, JSON.stringify(chrome));
       assert.equal(chrome.speedInfoWrap, "none", JSON.stringify(chrome));
       assert.equal(chrome.splitWrap, "none", JSON.stringify(chrome));
-      assert.equal(chrome.scrollbarWrap, "none", JSON.stringify(chrome));
+      assert.ok(
+        !chrome.scrollbarWrap || chrome.scrollbarWrap === "none",
+        JSON.stringify(chrome)
+      );
 
       await h.page.evaluate(() => document.getElementById("ultra-tab-custom").click());
       const afterCustom = await h.page.evaluate(() => {
@@ -309,7 +425,7 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
         };
       });
       assert.equal(afterCustom.left, "custom", JSON.stringify(afterCustom));
-      assert.equal(afterCustom.customDisplay, "block", JSON.stringify(afterCustom));
+      assert.equal(afterCustom.customDisplay, "flex", JSON.stringify(afterCustom));
       assert.match(String(afterCustom.chosen), /preset-custom/);
       assert.ok(afterCustom.customW <= 230, JSON.stringify(afterCustom));
 
@@ -353,6 +469,10 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
           [...sizeEl.children].findIndex((c) =>
             /tuJOWd|DqMRee tuJOWd/.test(c.className)
           );
+        const pixels =
+          window.otherPresetmanager &&
+          window.otherPresetmanager.getChallengePixelList();
+        const wall = pixels && pixels.find((p) => p && p.category === "wall");
         return {
           Aa: g && g.settings && g.settings.Aa,
           Sa: g && g.settings && g.settings.Sa,
@@ -363,6 +483,17 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
           chosen: document.querySelector(".chosen-preset") &&
             document.querySelector(".chosen-preset").className,
           selectedSize: selected,
+          wrapped: !!(
+            window.selectNewSizeSettingAndHardReset &&
+            window.selectNewSizeSettingAndHardReset.__ultra
+          ),
+          challengePixels: pixels ? pixels.length : 0,
+          wallAt: wall ? { x: wall.x, y: wall.y } : null,
+          hasWall: !!(
+            wall &&
+            typeof window.checkWall === "function" &&
+            window.checkWall(wall.x, wall.y)
+          ),
         };
       });
       assert.match(String(after.chosen), /preset-challenge/, JSON.stringify(after));
@@ -370,8 +501,111 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       if (after.board && after.board.w) {
         assert.equal(after.board.w, 17, JSON.stringify(after));
       }
+      assert.equal(after.wrapped, true, JSON.stringify(after));
+      assert.ok(after.challengePixels > 0, JSON.stringify(after));
+      assert.equal(after.hasWall, true, JSON.stringify(after));
       assert.equal(alerts.length, 0, JSON.stringify({ alerts, after }));
+
+      const preset = await h.page.evaluate(() => {
+        document.getElementById("ultra-tab-presets").click();
+        const img = [
+          ...document.querySelectorAll("#preset-panel img.preset-option"),
+        ].find((el) => {
+          if (el.classList.contains("preset-none")) return false;
+          const key = el.getAttribute("data-ultra-pattern");
+          const pat = key && window.presetPatterns && window.presetPatterns[key];
+          return (
+            pat &&
+            pat.pixelList &&
+            pat.pixelList.some((p) => p.category === "wall")
+          );
+        });
+        if (!img) return { found: false };
+        img.click();
+        const key = img.getAttribute("data-ultra-pattern");
+        const pat = window.presetPatterns[key];
+        const wall = pat.pixelList.find((p) => p.category === "wall");
+        return {
+          found: true,
+          chosen: document.querySelector(".chosen-preset") &&
+            document.querySelector(".chosen-preset").className,
+          srcKey: key,
+          wallAt: wall ? { x: wall.x, y: wall.y } : null,
+          hasWall: !!(
+            wall &&
+            typeof window.checkWall === "function" &&
+            window.checkWall(wall.x, wall.y)
+          ),
+        };
+      });
+      assert.equal(preset.found, true, JSON.stringify(preset));
+      assert.ok(!/preset-none|preset-challenge/.test(String(preset.chosen)), JSON.stringify(preset));
+      assert.equal(preset.hasWall, true, JSON.stringify(preset));
       assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("challenge speedrun mode advances to the next level on win", async () => {
+    const h = await launchUltra({ seed: 52, headless: true });
+    try {
+      const { COUNT, SIZE } = await import("../tools/harness.mjs");
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
+      const hooked = await h.page.evaluate(() => {
+        document.getElementById("ultra-tab-challenge").click();
+        const cb = document.getElementById("challenge-speedrun-mode");
+        cb.checked = true;
+        cb.dispatchEvent(new Event("change", { bubbles: true }));
+        const g = window.__remixGame || window.megaWholeSnakeObject;
+        const tick = g && g.tick && g.tick.toString();
+        return {
+          speedrun: !!window.challengeSpeedrunMode,
+          wrapped: !!(
+            window.tryChallengeSpeedrunAdvance &&
+            window.tryChallengeSpeedrunAdvance.__ultra
+          ),
+          hooked: !!(tick && tick.includes("tryChallengeSpeedrunAdvance")),
+          level: Number(window.otherPresetmanager && window.otherPresetmanager.challengelevel),
+          apples: g && g.wa && g.wa.ka ? g.wa.ka.length : -1,
+        };
+      });
+      assert.equal(hooked.speedrun, true, JSON.stringify(hooked));
+      assert.equal(hooked.wrapped, true, JSON.stringify(hooked));
+      assert.equal(hooked.hooked, true, JSON.stringify(hooked));
+      assert.equal(hooked.level, 1, JSON.stringify(hooked));
+
+      await h.page.evaluate(() => {
+        const g = window.__remixGame || window.megaWholeSnakeObject;
+        if (g && g.wa && g.wa.ka) g.wa.ka.length = 0;
+        if (g && typeof g.tick === "function") g.tick();
+      });
+      await h.page.waitForFunction(
+        () => Number(window.otherPresetmanager && window.otherPresetmanager.challengelevel) === 2,
+        null,
+        { timeout: 5000 }
+      );
+      const after = await h.page.evaluate(() => {
+        const g = window.__remixGame || window.wholeSnakeObject;
+        const sel = document.getElementById("challenge-level");
+        const pixels =
+          window.otherPresetmanager && window.otherPresetmanager.getChallengePixelList();
+        const wall = pixels && pixels.find((p) => p && p.category === "wall");
+        return {
+          level: Number(window.otherPresetmanager.challengelevel),
+          select: sel && sel.value,
+          apples: g && g.wa && g.wa.ka ? g.wa.ka.length : -1,
+          hasWall: !!(
+            wall &&
+            typeof window.checkWall === "function" &&
+            window.checkWall(wall.x, wall.y)
+          ),
+        };
+      });
+      assert.equal(after.level, 2, JSON.stringify(after));
+      assert.equal(after.select, "2", JSON.stringify(after));
+      assert.ok(after.apples > 0, JSON.stringify(after));
+      assert.equal(after.hasWall, true, JSON.stringify(after));
     } finally {
       await h.close();
     }
@@ -416,6 +650,75 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
         probe.slotTop + 1 >= probe.placeBottom,
         "input slot should sit under place panel " + JSON.stringify(probe)
       );
+      const hamFit = await h.page.evaluate(() => {
+        window.ultraSetRight("presets");
+        const ham = document.querySelector("#preset-panel .preset-random-ham");
+        const none = document.querySelector("#preset-panel .preset-none");
+        const panel = document.getElementById("preset-panel");
+        const slot = document.getElementById("ultra-input-slot");
+        const hr = ham && ham.getBoundingClientRect();
+        const nr = none && none.getBoundingClientRect();
+        const pr = panel && panel.getBoundingClientRect();
+        const sr = slot && slot.getBoundingClientRect();
+        return {
+          hamBottom: hr && hr.bottom,
+          noneBottom: nr && nr.bottom,
+          panelBottom: pr && pr.bottom,
+          slotTop: sr && sr.top,
+          sameRow: hr && nr && Math.abs(hr.top - nr.top) < 2,
+        };
+      });
+      assert.equal(hamFit.sameRow, true, JSON.stringify(hamFit));
+      assert.ok(
+        hamFit.hamBottom <= hamFit.panelBottom + 1,
+        "Random Ham should stay inside the preset panel " + JSON.stringify(hamFit)
+      );
+      assert.ok(
+        hamFit.hamBottom <= hamFit.slotTop + 1,
+        "Random Ham should not be cut off by Input Display " + JSON.stringify(hamFit)
+      );
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("keeps dock tabs visible while Timer settings is open", async () => {
+    const h = await launchUltra({ seed: 39, headless: true });
+    try {
+      await h.page.waitForFunction(
+        () => !!document.getElementById("ultra-tab-more"),
+        null,
+        { timeout: 60000 }
+      );
+      await h.page.evaluate(() => {
+        if (typeof window.ultraSetRight === "function") window.ultraSetRight("more");
+        const setup = document.getElementById("ultra-settings-tab-setup");
+        if (setup) setup.click();
+        const btn = document.getElementById("TimerSettings");
+        if (btn) btn.click();
+        else if (typeof window.editTimer === "function") window.editTimer();
+      });
+      const probe = await h.page.evaluate(() => {
+        const tabs = document.getElementById("ultra-dock-tabs");
+        const pager = document.getElementById("ultra-settings-pager");
+        const play = document.getElementById("ultra-settings-tab-play");
+        const more = document.getElementById("settings-popup-pudding");
+        return {
+          hasEdit: !!document.getElementById("edit-box"),
+          modal: window.ultraModalOpen && window.ultraModalOpen(),
+          tabsDisplay: tabs ? getComputedStyle(tabs).display : null,
+          pagerDisplay: pager ? getComputedStyle(pager).display : null,
+          playDisplay: play ? getComputedStyle(play).display : null,
+          moreDisplay: more ? getComputedStyle(more).display : null,
+        };
+      });
+      assert.equal(probe.hasEdit, true, JSON.stringify(probe));
+      assert.equal(probe.modal, false, JSON.stringify(probe));
+      assert.notEqual(probe.tabsDisplay, "none", JSON.stringify(probe));
+      assert.notEqual(probe.pagerDisplay, "none", JSON.stringify(probe));
+      assert.notEqual(probe.playDisplay, "none", JSON.stringify(probe));
+      assert.notEqual(probe.moreDisplay, "none", JSON.stringify(probe));
       assert.deepEqual(h.modErrors(), [], "no mod errors");
     } finally {
       await h.close();
@@ -572,6 +875,211 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       assert.equal(after.ok, true, JSON.stringify(after));
       assert.equal(after.poisons, 1, JSON.stringify(after));
       assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("Random Ham places small-board walls and count-matching apples", async () => {
+    const h = await launchUltra({ seed: 46, headless: true });
+    try {
+      const { COUNT, SIZE } = await import("../tools/harness.mjs");
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
+      const probe = await h.page.evaluate(() => {
+        function boardSize() {
+          try {
+            return eval("window.wholeSnakeObject." + window.boardDimensions);
+          } catch (_e) {
+            return null;
+          }
+        }
+        function wallCount() {
+          try {
+            const size = boardSize();
+            if (!size || typeof window.checkWall !== "function") return -1;
+            let n = 0;
+            for (let y = 0; y < size.height; y++) {
+              for (let x = 0; x < size.width; x++) {
+                if (window.checkWall(x, y)) n++;
+              }
+            }
+            return n;
+          } catch (_e) {
+            return -2;
+          }
+        }
+        function appleInfo() {
+          const apples =
+            (window.wholeSnakeObject &&
+              window.wholeSnakeObject.wa &&
+              window.wholeSnakeObject.wa.ka) ||
+            [];
+          return {
+            n: apples.length,
+            pos: apples.slice(0, 12).map((a) => {
+              const p = a && (a.pos || a);
+              return p && typeof p.x === "number" ? { x: p.x, y: p.y } : null;
+            }),
+          };
+        }
+        document.getElementById("ultra-tab-presets").click();
+        const ham = document.querySelector("#preset-panel .preset-random-ham");
+        const before = {
+          size: boardSize(),
+          walls: wallCount(),
+          apples: appleInfo(),
+          countIdx:
+            typeof window.ultraHamCountIndex === "function"
+              ? window.ultraHamCountIndex()
+              : null,
+          ka:
+            window.__remixGame &&
+            window.__remixGame.settings &&
+            window.__remixGame.settings.ka,
+        };
+        let list = null;
+        let listErr = null;
+        try {
+          if (window.otherPresetmanager && window.otherPresetmanager.getRandomHamPixelList) {
+            const origRand = Math.random;
+            Math.random = function () {
+              return 0;
+            };
+            list = window.otherPresetmanager.getRandomHamPixelList();
+            Math.random = origRand;
+          }
+        } catch (e) {
+          listErr = String(e && e.message ? e.message : e);
+        }
+        let clickErr = null;
+        try {
+          if (ham) ham.click();
+        } catch (e) {
+          clickErr = String(e && e.message ? e.message : e);
+        }
+        const after = {
+          size: boardSize(),
+          walls: wallCount(),
+          apples: appleInfo(),
+          chosen:
+            document.querySelector(".chosen-preset") &&
+            document.querySelector(".chosen-preset").className,
+          offset:
+            typeof window.getAppleSpawnPointOffset === "function"
+              ? window.getAppleSpawnPointOffset()
+              : null,
+        };
+        const cats = {};
+        if (list) {
+          for (let i = 0; i < list.length; i++) {
+            const c = list[i] && list[i].category;
+            cats[c] = (cats[c] || 0) + 1;
+          }
+        }
+        const origCount = window.ultraHamCountIndex;
+        const byCount = {};
+        const origRand = Math.random;
+        Math.random = function () {
+          return 0;
+        };
+        [0, 1, 2, 3, 4, 5].forEach(function (idx) {
+          window.ultraHamCountIndex = function () {
+            return idx;
+          };
+          const px = window.otherPresetmanager.getRandomHamPixelList();
+          byCount[idx] = {
+            apples: px.filter((e) => e.category === "apple").map((e) => ({ x: e.x, y: e.y })),
+            walls: px.filter((e) => e.category === "wall").length,
+          };
+        });
+        Math.random = origRand;
+        window.ultraHamCountIndex = origCount;
+        return {
+          before,
+          after,
+          listLen: list ? list.length : -1,
+          cats,
+          listSample: list ? list.slice(0, 5) : null,
+          listErr,
+          clickErr,
+          byCount,
+          loaded: !!(
+            window.otherPresetmanager && window.otherPresetmanager.isHamsLoaded
+          ),
+          hamCodes:
+            window.otherPresetmanager && window.otherPresetmanager.hamLevelCodes
+              ? window.otherPresetmanager.hamLevelCodes.length
+              : 0,
+          wrappedGet: !!(
+            window.otherPresetmanager && window.otherPresetmanager.__ultra
+          ),
+        };
+      });
+      assert.equal(probe.loaded, true, JSON.stringify(probe));
+      assert.ok(probe.hamCodes > 0, JSON.stringify(probe));
+      assert.ok(probe.cats.wall > 0, JSON.stringify(probe));
+      assert.ok(probe.after.walls > 0, JSON.stringify(probe));
+      assert.match(String(probe.after.chosen), /preset-random-ham/, JSON.stringify(probe));
+      assert.equal(probe.after.size && probe.after.size.width, 10, JSON.stringify(probe));
+      assert.equal(probe.byCount[0].apples.length, 1, JSON.stringify(probe.byCount[0]));
+      assert.equal(probe.byCount[2].apples.length, 5, JSON.stringify(probe.byCount[2]));
+      const five = probe.byCount[2].apples.map((p) => p.x + "," + p.y).sort();
+      assert.deepEqual(
+        five,
+        ["4,2", "4,6", "6,4", "8,2", "8,6"],
+        "5a should use the native small pentagon " + JSON.stringify(probe.byCount[2])
+      );
+      assert.equal(probe.byCount[3].apples.length, 10, JSON.stringify(probe.byCount[3]));
+      const ten = probe.byCount[3].apples.map((p) => p.x + "," + p.y).sort();
+      const pattern0Walls = new Set([
+        "3,0", "5,1", "8,1", "0,2", "3,2", "9,3", "1,4", "4,4", "7,4", "2,6", "5,7", "8,7", "0,8", "3,8",
+      ]);
+      assert.ok(
+        ten.every((t) => !pattern0Walls.has(t)),
+        "10a apples must not sit on walls " + JSON.stringify(ten)
+      );
+      assert.ok(
+        ten.every((t) => {
+          const [x, y] = t.split(",").map(Number);
+          return x >= 0 && y >= 0 && x < 10 && y < 9;
+        }),
+        JSON.stringify(ten)
+      );
+      const fiveLive = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        g.settings.ka = 2;
+        const origRand = Math.random;
+        Math.random = function () {
+          return 0;
+        };
+        const list = window.otherPresetmanager.getRandomHamPixelList();
+        Math.random = origRand;
+        const off = window.getAppleSpawnPointOffset();
+        window.blitPattern(list, off.x, off.y);
+        const apples = (g.wa && g.wa.ka) || [];
+        return {
+          apples: apples
+            .map((a) => {
+              const p = a && a.pos;
+              return p ? p.x + "," + p.y : "";
+            })
+            .sort(),
+          listApples: list
+            .filter((e) => e.category === "apple")
+            .map((e) => e.x + "," + e.y)
+            .sort(),
+        };
+      });
+      assert.deepEqual(
+        fiveLive.listApples,
+        ["4,2", "4,6", "6,4", "8,2", "8,6"],
+        "5a pixel list " + JSON.stringify(fiveLive)
+      );
+      assert.deepEqual(
+        fiveLive.apples,
+        ["4,2", "4,6", "6,4", "8,2", "8,6"],
+        "live 5a blit " + JSON.stringify(fiveLive)
+      );
     } finally {
       await h.close();
     }

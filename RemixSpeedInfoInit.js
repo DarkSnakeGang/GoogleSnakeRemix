@@ -547,6 +547,45 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     }
   };
 
+  window.remixSyncTimerChrome = function remixSyncTimerChrome() {
+    const box = document.getElementById("edit-box");
+    const open = !!(box && box.offsetWidth > 0);
+    const ids = [
+      "ultra-dock-tabs",
+      "ultra-left-dock-tabs",
+      "settings-popup-pudding",
+    ];
+    ids.forEach(function (id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (open) {
+        if (el.dataset.remixZ == null) el.dataset.remixZ = el.style.zIndex || "";
+        el.style.zIndex = "999995";
+      } else if (el.dataset.remixZ != null) {
+        el.style.zIndex = el.dataset.remixZ;
+        delete el.dataset.remixZ;
+      }
+    });
+    const bd = document.getElementById("edit-box-backdrop");
+    if (bd) bd.style.zIndex = "999990";
+    if (box && open) box.style.zIndex = "1000000";
+  };
+
+  window.remixBindTimerChromeClose = function remixBindTimerChromeClose() {
+    const box = document.getElementById("edit-box");
+    if (!box || box.__remixChromeClose) return;
+    box.__remixChromeClose = true;
+    function afterClose() {
+      setTimeout(function () {
+        window.remixSyncTimerChrome();
+      }, 0);
+    }
+    const bd = document.getElementById("edit-box-backdrop");
+    const close = document.getElementById("close-box");
+    if (bd) bd.addEventListener("click", afterClose);
+    if (close) close.addEventListener("click", afterClose);
+  };
+
   if (
     typeof window.editTimer === "function" &&
     !window.editTimer.__remixModes
@@ -559,7 +598,9 @@ window.RemixSpeedInfo.runCodeBefore = function () {
         window.remixEnsureTimerEditModes();
         const countSel = document.querySelector("#edit-count .sel");
         if (countSel) countSel.click();
+        window.remixBindTimerChromeClose();
       }
+      window.remixSyncTimerChrome();
     };
     window.editTimer.__remixModes = true;
   }

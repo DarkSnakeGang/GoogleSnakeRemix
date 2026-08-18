@@ -10442,14 +10442,32 @@ window.ChessMod.alterSnakeCode = function (code) {
   // Visibility gates fruit drawing on one checkbox for everything that is not
   // poison. Split pieces out of that branch so the Chess Pieces row applies.
   // Both the normal and the twin/infinity mirrored draw carry the same guard.
-  let fruitGate =
-    "(window.visiFullPass || (b.Oka ? window.checkboxes.checkboxStatuses.poison : window.checkboxes.checkboxStatuses.fruit))";
-  if (code.includes(fruitGate)) {
+  // MorePudding currently marks poison as (b.nla||b.Oka); older builds used b.Oka.
+  const fruit = "window.checkboxes.checkboxStatuses.fruit";
+  const pieces =
+    "(b.isPiece ? window.checkboxes.checkboxStatuses.chessPieces : window.checkboxes.checkboxStatuses.fruit)";
+  const poisonMarks = ["(b.nla||b.Oka)", "b.Oka"];
+  let fruitGatePatched = false;
+  for (let i = 0; i < poisonMarks.length; i++) {
+    const from =
+      "(window.visiFullPass || (" +
+      poisonMarks[i] +
+      " ? window.checkboxes.checkboxStatuses.poison : " +
+      fruit +
+      "))";
+    if (!code.includes(from)) continue;
     code = code.replaceAll(
-      fruitGate,
-      "(window.visiFullPass || (b.Oka ? window.checkboxes.checkboxStatuses.poison : (b.isPiece ? window.checkboxes.checkboxStatuses.chessPieces : window.checkboxes.checkboxStatuses.fruit)))"
+      from,
+      "(window.visiFullPass || (" +
+        poisonMarks[i] +
+        " ? window.checkboxes.checkboxStatuses.poison : " +
+        pieces +
+        "))"
     );
-  } else {
+    fruitGatePatched = true;
+    break;
+  }
+  if (!fruitGatePatched) {
     console.error("ChessMod: failed to find Visibility fruit gate for chess pieces");
   }
 
@@ -13404,6 +13422,45 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     }
   };
 
+  window.remixSyncTimerChrome = function remixSyncTimerChrome() {
+    const box = document.getElementById("edit-box");
+    const open = !!(box && box.offsetWidth > 0);
+    const ids = [
+      "ultra-dock-tabs",
+      "ultra-left-dock-tabs",
+      "settings-popup-pudding",
+    ];
+    ids.forEach(function (id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (open) {
+        if (el.dataset.remixZ == null) el.dataset.remixZ = el.style.zIndex || "";
+        el.style.zIndex = "999995";
+      } else if (el.dataset.remixZ != null) {
+        el.style.zIndex = el.dataset.remixZ;
+        delete el.dataset.remixZ;
+      }
+    });
+    const bd = document.getElementById("edit-box-backdrop");
+    if (bd) bd.style.zIndex = "999990";
+    if (box && open) box.style.zIndex = "1000000";
+  };
+
+  window.remixBindTimerChromeClose = function remixBindTimerChromeClose() {
+    const box = document.getElementById("edit-box");
+    if (!box || box.__remixChromeClose) return;
+    box.__remixChromeClose = true;
+    function afterClose() {
+      setTimeout(function () {
+        window.remixSyncTimerChrome();
+      }, 0);
+    }
+    const bd = document.getElementById("edit-box-backdrop");
+    const close = document.getElementById("close-box");
+    if (bd) bd.addEventListener("click", afterClose);
+    if (close) close.addEventListener("click", afterClose);
+  };
+
   if (
     typeof window.editTimer === "function" &&
     !window.editTimer.__remixModes
@@ -13416,7 +13473,9 @@ window.RemixSpeedInfo.runCodeBefore = function () {
         window.remixEnsureTimerEditModes();
         const countSel = document.querySelector("#edit-count .sel");
         if (countSel) countSel.click();
+        window.remixBindTimerChromeClose();
       }
+      window.remixSyncTimerChrome();
     };
     window.editTimer.__remixModes = true;
   }
@@ -13488,7 +13547,6 @@ window.RemixSpeedInfo.runCodeAfter = function () {
     window.SpeedInfoUpdate().catch(function () {});
   }
 };
-
 window.REMIX_SIZE_ICONS = {"Micro.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAAAXNSR0IArs4c6QAAA95JREFUeF7tnDFuE1EQhmcRkCYRkSiIqdyAYkhpahqugCyukAP4ED5AroAsrkBDjcuAI2hc4VAgOUqaAMqiGCxRJJF2Z8bZnflSZ97u/71P/z7biQvhJzWBInV6wgsCJJcAARAgOYHk8WkABEhOIHl8GgABkhNIHp8GQIDkBJLHpwEQIDmB5PFpAARITiB5fBoAAZITSB6fBkCA5ASSx6cBECA5geTxaQAESE4geXwaAAGSE0genwZAgOQEksenARAgOYHk8WkABEhOIHl8GgABkhNIHp8GQIDkBJLHpwEQIDmB5PFpAARITiB5fBoAAZpNYKe73X25/+StFOWelLLZ7Lv9d3eFnElZHH44+PrmeLaYNfmeG98Ag1H/o4j0mwzxhnubjIeTF02+9zYIUF4C7DzekO0Hd2uwLOROUS/mRXl56eXlK/0sTn7L/Nv5cmY8nNS7eKUr1v/lRt/cZazBqL/cgV5vUzqdjfpJ1zg5n5/LdHqGABbMEcCC4vVr0AAOfGkAQ6g0gCHMK5aiARz40gCGUGkAQ5g0gC/M1eo0gCFnGsAQJg3gC5MGcOBLAzhA/W9JXgU48OUMYAiVBjCEyRnAFyZnAAe+NIAD1DaeAZ4/25JHO/d9aRit/v34p3z6fLpcjY+DlVBXDYAASpDXjLfmVQACIACPAAcHaAAHqJwBDKFyBjCE2eb3ATgD+IjAI8CBK48AQ6g8Agxh8gjwhblanQYw5EwDGMKkAXxh0gAOfGkAB6h8GOQLlTOAIV8+DjaE2eYzAP8c6iNCa94IQgAE4N/DHRygARyg8lfBhlA5BBrC5BDoC3O1Og1gyJkGMIRJA/jCpAEc+NIADlDb+FYw7wP4iMDLQAeuHAINofIIMITJIdAXJodAB76rBvj7VbH3al1B91Wx1S+5OPnFV8VWx3b1xGDUn4rIrtV6a17naDyc9NZ8zUqXa/wh8GF3a/fV/tN3IsVepWS3/svl4fuDL69/zE6Pbv1WbriBxgvQZHgR7g0BIuyiIgMCKOBFGEWACLuoyIAACngRRhEgwi4qMiCAAl6EUQSIsIuKDAiggBdhFAEi7KIiAwIo4EUYRYAIu6jIgAAKeBFGESDCLioyIIACXoRRBIiwi4oMCKCAF2EUASLsoiIDAijgRRhFgAi7qMiAAAp4EUYRIMIuKjIggAJehFEEiLCLigwIoIAXYRQBIuyiIgMCKOBFGEWACLuoyIAACngRRhEgwi4qMiCAAl6EUQSIsIuKDAiggBdhFAEi7KIiAwIo4EUYRYAIu6jIgAAKeBFGESDCLioyIIACXoRRBIiwi4oMfwCz/uCQE2ccogAAAABJRU5ErkJggg==","Tiny.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAAAXNSR0IArs4c6QAABAdJREFUeF7tnU1SU1EQhfuGlE5iGX8WABtQJNmHjsIQ3YETyJAwDEzcgTBMRrqPBNENwAL8iWUmWuFdC7AsoKCK5L6+9br6Y0q67+lzvur73iAQhB/XDgTX0zO8AIBzCAAAAJw74Hx8NgAAOHfA+fhsAABw7oDz8dkAAODcAefjswEAwLkDzsdnAwCAcwecj88GAIByHOj0WxshhNdRpBlEVsvpSpfLDkSRoyAyiTHuD7vjgzLcKWUDdPba2yFKrwxB9LibAzFIb7g52rnbp2//VDIA63vtlxLlQ6oQ6hdwIMirwebo4wKV/0vSAei3jiWE5RQR1C7oQIwng+54ZcHq87J0AHbb8bKAej1Io7GUomnu2lqoSa2WPMpc5xZFlCIWc9Wkfng6PZXZ7IrdMtgaJQ2eVHw20Po1AJrNuqytPUydlfobHDg8/CmTyezKbwDAESoA4Cjsm0YFAADgCvDMABvAc/oiAgAAwBXgmQE2gOf0uQKcpw8AAMAV4JwBAAAA3gI8M8AG8Jw+D4HO0wcAAOAKcM4AAAAAbwGeGWADeE6fh0Dn6QMAAHAFOGcAAACAtwDPDLABPKfPQ6Dz9K0A8PjRPVl98YC0FBw4+vRLvv/4U+3vBj59cl+ePW8ojE/LL5+n8vXbbwDwigIAeE3+39wAAABcAZ4ZYAN4Tl9EAAAAuAI8M8AG8Jw+V4Dz9AEAALgCnDMAAADAW4BnBtgAntPnIdB5+gAAAFwBzhkAAADgLcAzA2wAz+nzEOg8fQAAAK4A5wwAAADwFuCZATaA5/R5CHSevhUA+HKoHqgmvhzKfw7VA4A/EKHnrYnOAGAiJj2RAKDnrYnOAGAiJj2RAKDnrYnOAGAiJj2RAKDnrYnOAGAiJj2RAKDnrYnOAGAiJj2RAKDnrYnOAGAiJj2RAKDnrYnOAGAiJj2RAKDnrYnOAGAiJj2RAKDnrYnOAGAiJj2RAKDnrYnOAGAiJj2RAKDnrYnOAGAiJj2RAKDnrYnOAGAiJj2RAKDnrYnOAGAiJj2RAKDnrYnOJgCo14M0GktZDa2FmtRqIeuZRRGliEXWM6fTU5nN4pUzB1ujpMGTis+UrPdbxxLCclYnOOzCgRhPBt3xSoodyQB09trbIUovRQS1izkQg/SGm6OdxaovqpIBON8Cu633IuF1ihBq53Ug7g+2xm/mrbr++VIAOGva6bc2JMi7IKGZKor62x2IEicS5e2wOz4ow6fSAChDDD3yOwAA+T2v1IkAUKk48osBgPyeV+pEAKhUHPnFAEB+zyt1IgBUKo78YgAgv+eVOhEAKhVHfjEAkN/zSp0IAJWKI78YAMjveaVOBIBKxZFfDADk97xSJwJApeLILwYA8nteqRP/Apk8ua6B+meGAAAAAElFTkSuQmCC","Super Big.png":"data:image/png;base64,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","Too Big.png":"data:image/png;base64,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","Humongous.png":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAAAXNSR0IArs4c6QAAIABJREFUeF7tfcm2HNeV3Y1MFMn6AQuApq5PKJEcsvfMIrSKaCTP7PoIi9TAVPkjanloAg/SKlAeeZEgxaGbX7CnbPQFFilkhNfZzTkn8uV7AEjFgCSwtETgvciMiHtPs88+zZ3Gsz8/6hWYftRv/+zlxzMB+JELwTMBeCYAP/IV+JG//jML8EwALl+Bd6//4p+nafmHMcbzY4y//ZGv1/fl9f/fGOPrZZl+/9sv/uUfL3voSy3Aez+98ccxxivfl7d+9pwnV+Cz9z9/8OpFa3OhALz30xv/NMb4j88W9QexAv/5/c8f/PrUm1wmAH8ZY1z5Qbz+s5d49P7nD/7maQVgebZuP5wVeP/zByeV/TILcE4Avr763hhjHsuyG7tpHot4pGVZxm5MY5nGiA9N+L9YPF4xj2nc2X2Cv8dP4vcnpQsfHGNZJn6cHxhnyytjjjtMy1jm+PFuLHHtNMZu4ffv8hsX/Zv3ur17OKaFzxaXxOf0aGOZ4j56krhnPP/RNXfn18e0489xf1zHL8N7T/Es8c68L75j5gLcnh7WveJ3sXa7MaY5/i8+r+fBesRn4h3xLePeeEPPO43dsvAeflq9S3z5cqCQTjs925jH81+F917/+asIwJ+vv4eHmWMRYlEOy9jtl3E47MZut4w5FlQLxRWfxzLz2tvTJyc3F1fFpuQ+1KZ44+4+eo0vuZ+0Eec1MzZyDsGEgMZaYlfG7fEpL9b3x0ZhE7B6+rHV4MQ1H8yvlUCHsEE4ZwjBQYKH24Ukxv94c9zwzvQJb4sNk/hPFMZp1s9CkUKQ4+e4hhp0trzB97ASTRQEqB3WmQoQ60vhoIDGGrzw1fvbCMDX198d0zyNEHBsuLRmlgXgmtIaHKAd8VJcrNvjk5XGda3EyuUiyYq0Tbk3YhOoI2EJ9rI01DP+nBsa30OB3MceTGPcGp9gYXKVYEG4R9wsWSVdQw3W+u3GuLe8jt0Kqwchm2MDuKsQXmy6JWwaO1mL+EkIALWzBBDPGrsfigFxnccUEhkCJCmN77y/ezNelu8WG6znirXm99HazGEB8PsQhFj7MZ7/ciMB+ObaeyMewApmS58WX+vGhdUDSgHuSBP9Qmut1P7INsM04vPcuBCA2BMoWeyxtJvKEgIZmyJ1niigNNPzuD3+yA1rPieejxrDhZylQV1tfM0H43UsamheuBk5u3FYxtjvlzH/JTaPm5y6r5e8Mx5KOHnz2PLYryYPsopUgHgXbOoY4/782phlPfFJvDzfjcK9jOUQ18fVtHb4/Rjjha9+u5EFuPouV5IqkH+4nPH/5dyXKTTGmhHmMCgF+b22ufbz+LyUmHrtDRrj3ggtBDgQhpDF4I+4uKEBMo/4MK5d4HrS2vhx+CTWYQOWtekJcz/N497y1tjt6Fam8PewDrQ08YZy9xI4bi4EcCzjZtxb++O0G13VBOuIX8rsQ63CEsgani2vF+6QyOyAGyiGZSD1XfG9sojPf7mlAAA48Y8NqLZAPwjAUqDM738nXIAcInzWkVbS3NFthA5AKwXe7o/X9crNZMdN8eXSHj2Pv9ZW6fYSrofaEYYjni0+N+/msQsNkzshKAs/O8Zht4zpMI2xX8a9+Q2KI9yZLRAFDCthROm/hxYeaJHu7D6FmyFIrHtZXRKApjjKVY1lnE1vcn1x64MsFcFjfBdeX8IfImF3HM/1wp+2EoDr71Eqac/Wf1Iz6hfNrY+b88fQGBrT/uH6e/hDXJObzwU5272xvle6SwqbhcmYwAIZ33xrephmYpl3Y9kd4HOhgPTq+m4CK0YbofHcpntTCEBzIZYwCI7+kcBXdhAYKYBv3FvvZzQogY2f2yvJ3qUZD0W4P94YMx6Nvp07LoHYHcay29ElViwmpQwQuJUAXKMLoH6XX7PJo4pxtbi4Cc/GO+PjsQPc9WLy0bvGFbjxt1Pa7i0hALQ8hbcKeZQIpT9IU30rzPAKAlDToUlhZkKpHP7JhHbpPotwDK8UwhZRhp+t20AJoZTAVgURiGPi+PzKe5bf5jZaILl295aIfCTSEjC4DkUbwER4MQXAMkYBUv92KwvwzbXfyHsyFGHYIwxyZBDSH8cn5tDEjxH/TuFP6bX5gtDGGSYMfhVAhivljT2bGBMX0Kfm2xGthC0sPJB+hHvTuL08lNUyepdWyXvw+WtnujCFlw9ffA73NAMmaCLXrefS3t6MCKSbd2CGRVGMvqSMiJEPLU+EgcA0FcEkjk2QW0gmwdCYxvNbhYHfwAXEQ0mNtXgkbvQm0Kbz19xcRMiccx+lyQ1YEA0LTCEkMr70yzc2aSVsMrU2sOF6qCrmF+yG6h3s4yuoTPGEAIQg0Qqft2yWH2AIiazlI0LQCj/K8yNqia/Dc/mPN5r/vQvBK7zNK32PWjOuta0L3/qFrUBghIG4taVWG2Q/bHxw6ppbUxAyoenGEHylcqkMsRj8yiZr4wIEWtsZHta69s3nw5kR40U3l48VtBRXeM7nBleBhyHIqqcKFtL4w1tAXuNSiwTAGJHPpw3IGahpo2067RIFNKhMYQEi8jltJcQpSrbW4DJeY1MeYIXfHJZhrQmoChlrjXQNtUGk7RyLCBVoWEL6tQsB2IlA4jVn0+uigGnWsUTSIrNgdkcwuQKGscYRBi5xv3hwkDSN/m3ooDTZG02RCzDm0OzYshVKtz+3mHLv+M7S3LxvWUqEOt0ipldbEPraqqbp18UmhfJdmxUJBdlOABwFhIRXDNK4fWIDgp31NbeXj1segDF6CUupdCD0RXx43CO+BxjAG6vVWGl+WlF9q/HJmMUE8lksBHYnBVO5C2QtQyX1JyjZQUo2LVWzPjbJF1mkW4sE4Ei7TZLF52kRzzNRYQG6g+jmkkIcFLIjJjsaLs5mPEBggIxdQuMjXhYyyyiHAi/Br2tgihuThrjam6I3FeaV2QyHsBuHZR73p7cSqJFIobcuYTN9K1QvtjIeJBjIHrH4OQkqygExvqaFyJWf6AKOLRtesQHNUxYphOZW4B5/We6mIxUkQYgrnKwiPAFBdG8X4WdYQvMcUizR3aLd4DTTH8maPPfFRlTw19fek/8jE0atod/1i1r7zcv7moiJ+S4d9MXfxaHi4Q90Ep0di5h4ektkShrUihJOCBs1nAt3ezAW51IXKePgvlyCNl7C4/cBC7kSNtOVcjWXWCQA0K7d8hkMpOMPaTJEo5FjMcmzCx4giCBFW9YnLPslEZBEYTMXcOP6S3aH2Ebw40hkcGOZKaNmAZkCGlDCw4xnjqBs7AoD0JhQQMr8TePW+JjfgzSqgR4XA3ghLJGwY35S4Aq+tDjmpxakWxAg8gBx+z20ldSwn9TvaD6eLkFsnjN3xvBHNLpRYlLn4rZBYIk0C1YymMt4+L2zhkjHW/m55nSsY/y3r/53uTH97a+SDr5x7aW1/mbSxyyEfDs2qXiC+GexeUn4J9e90hI7O5P8weZFUkVGB8wd5EDmEbeKLJ0cTAokGTSCONlGSQndQLdaTjyJE2iWLcw4VbTCNJJ5BLAQAmXnnONHSgYEVrguiiRDv7XbInAtZbGcxn8jbNZjppWN51h2s/gUWjjQ7kFt++IxjQ+//J8bCcD1lwpFi6BIk3/EZjF5WqwZGDWB5cagKvwSJ+R9apFY/PXW/DAtCQsfGHVgYXckj2jyKwQkUl6YVrUJtSgYc7SsJdXJsNChKv14CSiZL3ICOySLwnQjh+N7GOQvg368uYgktxLWMyHEtJIZa4aZgZmw4QDEhisWWoiSlpF5AiaXGEY/+PJ/bSUAL6+KFJKtQY4Sat82wWCHGs+MXjPtaUIbKXjEABqt31w+UuzPZHsWkIjP521jSfYUhHmWYOzH2V6VNbpN+RbtVALBqvrpFolATl5A93GCywLjt4JcSfDiaX4Xbu8Sa5NyYIMpmx4CcGv5SMombkSug5/pdDxD3LAkIlPHh19tZQGuvayEhWJ2wmYxf/sK1WIbQkPFsIZfvzd9ewEIOhfCsEcaj+Zb4SZF3c/BEBIKCWFTCPkUwuZNtPAlBtDmRxUQZL05Q26KxYBkV0Qw8c52+b1GwtZGUDVlklYs1m0aN+ePAhnCtk/TXiZJoBnrayDutLusyTLGh5tZgBCAZtYnVl5kTI9wJtg+4EIWJ7B0aRpn38EC3B4fjTHv4f+cO0gAJgFghCELZNrXlTXfWgCWJHOIvtfwtMRANmKmdUKd4NLdz3lrUw5e9Ypp1ElyQfAUJQDgpfuswsvEDHSG+oZpPPjyf2zkAn7ykmoWLG1i9pxLEU4KBpfhnBjCIFSCzPm2GCD8oU0guO+iYgtgdWBXwaYTSRl8ei8ucDdrC+CaQnHtdP2sc0y8oUjnIH+terUw0vfD6mVIunZ/jHiUlZQFCSLKJBHcXkb5rPzhr8vhVGbA7Ca/78EXG7mAt6+9SN2KVYqaqFjVfWS4DmMP9F04IKsnpLkFxp4uCiCdG9pQ/EGFP/LCEED5yqrzxbLeVybxvAAkZKF5vcBK3J4/zVrDJSxxxOt+FkUVxJQidSzl8zLO9m9dKACr5znW1yCRxJtQIFifYAsnyN9C4h40L+PBdlHAy7kYkXcODiBicFoqJWlyq4TWpVKxEd+GB4gXvz0FoXL0R6wZtIAmp+2o/h6boGISeqIuROuU82kBGOOd5SOWvMvLZ2m6aFgxIKQnUOQZ/yWh9bvJWcwnudf6GmRPBfdWyStTWipuZSmcwlcB2u0EIHgAWH/Vn6VZRnlCS16p7g3WQnXuAYgEdy5iCy9iFG8urOzNfoF4X+CjeYwrk/6+xuQQjGUa91MAWgGlFdYy5VCtC4mUKti8sC4VIB5UIVzl3S5xo0lm3R5zGHYBT2ZtepQUoa+TV37McmwURyanGgCVZ3zwxUYY4O1rL4nxY7LHD1ThDMuq2Hzh6iA+PphAK6nRE/77+JxCxMRMAxfjxbu7hIxuJRZ+IFKQb52isuaNZALz/jIEp5B55Q24afDF2mFWHzv+5nslV99q/gwVAXwNmx8bAq+F5J354UBcBUvT8xZrd+PagrCC3ofNBOAGQKCMYRIcXAhHRlgQlFm5PJuamzHxEa/+JFlFaGGSIQX2KAShtmxAQeQhyhiMWQsD04GkXNqoO/5vtOqKCfwkk1su7yveR5IUG6TULlPRfOesYygXXd/1GJcUmURaMa5l6pM+p+i/aifiAtHfm0UBP//JzyqvjvhUfIB5brW82C+xaCfKwJhWPVUzIDWShssiHNUV3EJSRWniKOwMt6IcrL16LzTtWhkuIF3OrFDuVCRg9VlZpDFuIhwT1wGoYxbORBfzEbxGiiBqGDzABdaGFHBRSskBSJ1uReSTZr6ni+0Km/DBJRoLjA3DwGsvJmKGaYvN2B+ijhqbzPDM0AU9L2zcACf/ZhZfmll70soi8+IXmVwYHWhJr7OnRiMKkAaSQpapzWCkkUoCltgDFQchHscuRk9AL2Sx5WsbEcKDLimabhSyNOyK9zY5BgXyP2xCdXFEASon42fWKWoKW7lgKqJr5rbkAa69pBX0i3ArQUPCH7OBk0GBkkEiKc5CABxvXVA3eLq2MGjRT05urt3CGi0LYCgsPFtYX19FG1mKkv75XM6+VTqRCZTIooahqov88+ZMqLUy3Sgpv8TaYGNVU0HhrDQ70tgIKUmmiSFo/lbvmWyr7zuNB19tBAKfrCpYQtG6dOLd+EIVb3dOvuCL6wLXJreqgrV5qVYUvCSGVlvK5whN4obESrkr19pTgKpvXIYzAK/q0LHxsPmqmqaTggT+IrQ4/f+R6QZ2cVFIswC6/gxl4WXWATMAf6ISyIGps4nqXdRnN6sHiIIQe30lQvkOKvS4rHoWOX2jFBeGsFVHZrJ5cYCHqgtEq7RQkLV5pVnd4sjGOkIJH56WJz/ciJ8ML3toVaiNfQFKvbZqZ1QEqRLYYLSnc+MjtFwy60LJx6Y7vvtUWVgvCaPnotQ7CkG+wfUTyB+4MWzDmsCvT3QGpUIcdQYlayXNQULHLBl85cWVuGuTW2QOMUBVxXBt0wYWXdzKte6gLq82Fx3LF2nlibKws2FN9Da3Kh1V5zjl65CPAHWgJ+Ey091Dm1VZWKSSoxwdVrSBiIq3MjT07xNOLhtWBX999V31/aU1T0zQkRYtASXWKB3mMF9AGyJf2d+y/SYLKKJLJsMefKncjMIj38tLxYJUak0Mpihg+nhAxU0p+4YOnQs6npI9jM84z+GIKFK68c7uHm01AxZkZi25TqDSWrtYdESTTYnsYgzk6IJwvj+h//a5rdrDv776a+UCXD9nQSACrdIrZ86qETrapGiB176QbFZ7OzdpWmujRl7FJFkk5KIMAE4a+OwOXq3TNNgaZqS+3tyuUO6scWjrglWkseVWLMzGsvlfWwJ8va+a0RfApA+poXRbfQ2MZPtzo5qoOpImtDr1IhA23vBeBkSCstMYGxaFRm8g25vof7ovdS5AvXcyX2kB0BhyPoY9VYkLaKdSqdBeakMqi9StQr7VRrZQC2Y47ivJMW2KIQ8mTtrCZxyfPn8wjQ2LQ/BlRbZPpktCVSc0lcwHN+X27lMVazQyT3jPvS8l+vLxElfWMvLhlHVnYsm+37ixwpvESc99+Z+O/cb4q9QEfo3m0AlTMmJGkOMrwjeZKwSD8ziggJHGLRYOAyJOAKFjk7vyElpIjGnJKuTgHCT4ApMxmoaNkgZrcjYxIgZzCfJXBLHJATRLdqSVrLKJ2QTEAOFTmAnlZ0Ipo18fDZuGsbq/ewvS7WUbW90vi2Zb7QKzw9x13tekMt5AzyEnKZ7CuBbiI2u6rQXwRI50SlVcGXToPB3GbhfmSeZW1OWd8UcKgEW+aSVSKKe0UtxGhEQeS+MCPNYb0hLNmFF0EJvYJ4SMEXMJqlawkicOuRMQ6rnKCtDksC/Ai8/iTgxqSLfDrD3KMWz+hYxvhQUwFkLIX2Gd8YO/C1vdKH+Xo0uUuWyqIUjM09dTOh9uYbPGkD9f45AoByU9u5eQr8pUJL9crDDFK19/pJXHvpJrSZcRAuAakJzfI8vCJVWNnLJjdNn0mZjTc8HmUnFNtrCwg7pWIDY2ggMvxjhE/SVMsCoC3EWEH6ohFmaagubBWC3sKNPcIhFvssp/8U9XUHUfD6HRM7oknsmChrbHNJ77YiMX8GePiFERos2Yre8u0D800rlt/jcW5JcCgTkf4AKTm1qgvYn/fDBzTg+NCjdpt6f4ER/VMComl0j6hHZFUyq/8/zmkog7r5V0N4w2IgqQMRv77AAmJsD/i9Ofpz2nh6FcPZ6JINCevW9ukUPNNXkR9csQgFPmPUGmGELmFJrL3xYE/lpkjtc45vYpTasRcfJQqZcWzjsxMw+4TU/7GK1MPz3FmBbNCJJ+5kSmJF5hjwUnJHxwHzGdLLj8DlZrc4+RkgF5Lw6Pe3P8WnkwYh6CUG5SNK3uygXIAtwcAQKN+gyHmxvsVvCEAHRBoYtv5XD4XnVmuS5A77ldGBhEkBo2pSICHqEJrSBEIMm963Et5uXAql9ucldaqR2yP7R/5oBHWoTeXZ1hYsN2BmKnNvdJtPLuIXgAW5nWPW5hPN4l0RRxv2ACLxQAy4Pk0WDY/gpt6SfMu8fudUyYQyQkbBuCwEYFr6kAomJYXoZDHmRoLUM4ZmVof7EG2eSe08ppjLvAACr6cGGFiy17G5mbdwyIkIPofPzFJvcis3xvfmXMcCeyIiIe18/pxeCu2iJzQsgTWgATSFKQYCBPmfeUG/sHkWl152VsZwGuvaugxbdTXK9BipknsH+KpIUQM6Z1qUzLK/REWhmhmEqrrPKZGDnXtMnSNE4Fo7lc8fGXmNwLBSAwQE7mVLSCymDNKxQ/4Rxjz5HkfIAj825AS7PeAiP0WpKqZi+lQ7umOa6DaFPKiDkqUtlQAN5zSCx/ZEGofB5T3Oqc7ZoYaDxZsifzg94UZMZcG5/fWT61IstKr7pA46kswAmzDCrYMw+a5YKFU4m4Kb7iF/iQmFLantebm6bQbkTaDJcJH8goIDfWsapZRYFeWJtGyDGgmcZmRNANdAaV8UvpPZLwU9eEGe9Fj72ekLjQVe5uPiqjFnTu09yr+9O7KEb1LjTC/tjX4BHq98QrbEw1bhHuMu0jGFR5+LyRbuiaQMf8lJ8GBvszVKsD3rVmK2vJvcYAPtUccm7iyTK2qwf4LgKQjJpemi5V1Tg5bpMvm4lNaR7GvNhUnhK2SwAV3McafZza+vYzw0tp8fIwzXLKkZB/8ggXYBtWBesdGcS3J2k1Cb5lM+98Z15DLW8SkteLlxAR5efbrjv4O1iAs/EqCxlcudS2xWvTzWUHU2EBpHYK6R4TUjVAFR26JNEfo/3nrAQ1m+lk1T/aLHSyKJVxTSvHZzxjkKa8kzWaaNJL/Y7MeybP7Cby4x19OyPhKIUB6oZ9AXIBjwlhVsyUwhwXSDqG7u1d3iBc2hbFC7cat6ZW8G6Wm42XoHDzwufe3YUFWGv1Y0xAXh/Pc8d1DHo274fRPazYBfwGqoIl1T2GJxfSCmBccqZ7xH052UReRsWhPpPhOKPKqzyBNeYDbFQSBhdgbWiS6ekUl/lK1OdLiquIQ5qlaoZ1lU+lTxFO9YTKZeGkw6MmeN9JAOaH6Dzq1HRCXtCeEqckJCrjmVNGGzdgocZjokq5jb1rViCGamUNhIo+vb5rv1+FpSFk8X1/2Kw1TAIQr5zxu9X2hJ71a9IcdtPfwyBWR8h4Z+IQV6NPzvz8JSZ3tdF6LmKA72IBGo8g98WqX/6D72g1t8byjuTzm70Rd8FqKYeA3kA9o37eGUxjjcwDpP0gPsj0tr5is/kAv7iuARHHvHrblE7hUlCYWIkKWQMi/NzvfVQeva6Pp6RlOGVNuIxSPkLLrCf8jhgg5UdmBf/2rEL5rPTxKo5BSlfjaVKzszQhk1vuAO9yEsKBWkZVNTEN3aqZ8Rj0w0ucWwJ84yGXy/jwy81mBLUw0GtxyaYgJyPF9kaYrk1z/5gGiaCe2R0s33OJyaWir9EyaeSyLk/q/31d8AjHBSq2UxWoVuYSo9tlcdwMk8689yKoYQbLqFa2HiGSwOLmopi2o2cVOFeaWhGFhPDB1hNCVj6o+UEfrtTz7944DF0+Moe0BBd3yGBc+jLGL3ee+X+5yfVC58YEjYyJm/rzuEjgBA/A8XYKxzieUXbNM/yqFSyBnVKaPOrGCaNm9aTBzml4b60scYt3xkOF+6aW47c5Cg1FtRQKTmaxl4uv/sNXG84Ist+70A/KOoGvaL4SEzfxoO2FsvhSqd7U7ji1oQTj9p6FnRwPe7HJRWHJ6hrVE67UvkiU/HF23sispcDY/RTRC1ZwVbxSoG/VwIq5SG4M4bu4zA0CpdoyRpaOClRhtFtGtIbNY89qI+fIU0DLyrkJBfS4rvvwTxsNiGAU8AR+sF3jM32OBcAVOZFBQmMnjmXpwTIXPRJMUVvH+h+xA1AV9uIRfIuNw4RxFoc4VAIZcxIEnjBHKRH1HIHG8/OsDKNFqeLAlXhxddjUeXd6k9VCosc95BFPqD2Ecwp5R6GJppViznA7bELrWUNg+OzMKUS4G/9lDiTWe7POoLevvZwt2ukHXccGxVwXc/Zr7s8scKBl4HUdyoRKpNWIBcxRLLEY0R2sMrO4z6qyuO2PNLkKLl1RfBRdnBOIE7/XTCASQUoyYZYw8US3FWW6oxzN/Q6aD6D5hU4AlWgV6sc4OJ0GRiEXFazq52h7x2kqmoFoF4uaRDk41ywEV7BZd3AMinR7hLcygUvblGqhkMYuY/zXw+vQcqsPTXX6CYhGHIG23x3GIerg3e++8Pg1Xku1cXjpIYs8b0hs21FGBtGHYy5hwSNDnxCx2EZtThtPE1aqLmw2JWk+hjbMfrJ62DP/s2SnvrbS5Zhqx9NIuk361fQwvCDnLIlu4HE6vbK6GbdcgA1HxMACyI/3Qc9eUBnio2u4cR88eg0CwBZSmUmFN9ComOuAI9ES2+p0LQ1qEtFiDel212nm6vhx9BFz99887wFWNVQGiE0srKboLQxTrF48nQnoc7t430LoKNbAc/IKuD0N0iCEo2rwRBPhAhwN57rqZTyap7HfzeP29Fk9d9tc4wyePCZt0KJ4bTakgqM7WKVJIY0+UlWalS1dugbLpo3z+Xuul5vn0HKZU41RrUofqwolHieOyWynluDldzC5bsfudQLWOmKPdZh0ot+qEvMqJXNZWLgfpnHr3MDaBKdvQ42JO2gl2Ml5b3pTBz9xL1nZPI9DvLtOG/VpqyEU+71mDMZBm5H/6Jat0FezFKUsfrq4/WZMYFgA1sfT3pbmWwKar0QEUEaNo1o8VLL5UDjs6nhN5bNJx5AozgomCK6C02yQ1EC1BIo+cyAmk+xfG49iczp7toJt/AffpRxcPPp+92i8M3/GukdUIUspAWYoFP6EM3YZ+cwRgsZMhIOOz3WX4DQOGHccw6d1CNUjWocrVzhTIZ4W7yxZ6utYCESnsxYazBkBf/jTRmFgdAfzobz1Hl3uGj01amXhR/0+28M7es/avl5HQ82mq+HG8NSwPlDB1cYKgWN3lexLFC4sEKNeT25cFpiUFjHEc/8/hbePmYuNuwIsMo953o9dbK47+FAhRBN+RSeT3I6+xOamKfbr01D8vLmx+ME0qo7BGT8h/9aWDqvoCENCHD97YbPeQHQGiW3LEmk2fZcWFf2bcbELJHXypadpJxj3iBWQYsvYYwAzg7twqmAR2RzP0C9jKFkOCaTPHOrzAt6JfL75iIN4exf4+V1iUWEiqiLHMh73DnC62x/G4bAf+x2PbgMmDPCGo9w4xDH8f7g2lKlPUQpPBjPFW7wHxEDCzcOfq1PaZyTfXd7g+dcdGdqVpVhVLyJJOIrTZo0h2R7emiErs3daK71xQW1ic5vmYXGg6MQKLmvT6qolL0auviWZLxtaAAAWo0lEQVQM4KAnFpobQSNcPEDPvaOyJkbNa3NlRo4cgJtKzod48bF7y6tZjALzDK6BAGx+xHG4V65wgoc5ibjmMBO7YGiVf+OKaKH6yAbmBstt7TQDKaIXuyW8ZwsnFVtVF3240LHXyJktm0OvtlPDLjC5kHcUflBbMSRqmjXynWuf5WA++An2O7dReNkIM8bMvlW1bwYJGuPCo2bp/bMe11qzLCNSyRlyikXMX2dFLfFzDl00qo55v9MbbAdLrUPDtoZHxknlEw+RhkAK6IVQ7+OdP8sj3WK0/P6w5xg7uCz5LbEjtATL2B14kjgKWbIrtGQWot6aQTwXAGsK5YoBERt1Bn1zjfMBDHZF/dQ8IBeEIgOIgCdz6TjAkVjYVBDBZO9sybagRih50LS3txdBuqRMhhaj6bwigaCDQ9h9xMV244qQVXIIGnDlaAWFFaZmlzixTOXZO/Yckq6K53OpF5tD3TMYCD9O9w5rgW6oPJiiGv9g7UDrc7zc6hphfExWVb+hOYIaAmF6uJvNGpyx2YgYCMAlJpeayM3HHE9EitS3m6MoVdf3OeyDL8W72Kyo7UuoOwcuKh7OYWCOrWI9Ap2F0MEvK+yalvGrsAAx41e5eAyTFJuE0fLzHqCOfptTRy0cBKCvj0Oc9hl+H6Erkz885oFWiniTLpDH5hD5xbTPUvRiMIwR6l5GinUNaij94SWG1HsWc4FCNumI87BtjebQrU4OxaFRCfjWJhf4w2FwUpQ8CyN+TDpXANKgyzSiQirP99vjkGcnVUMLFQXkqZPU7tCcML3Rsxd/4JtjolZo6p7MedTWMYGkPH10NwfATEGQC+lC4kmjMWhyvJJCbyKHXD79cvwsNN5bxxwHm0VvLX9MYViVxBs1JwY6JQAaEWPXky5PG6CNYNTis5QovJu5AJ4a5qKG9Xw9zu5lQqMnZ+DZl2W8g5m7sTicKVjhj9yFDnPGxoevBG3MZb2HE7TEr+CD/DyAmAkYqR3McWjq/gDhuBNI3BTyqoduBa/XQmI5xb2rT5+39r3ZkJqkkEApASKF4OZ0gQC0W19U7ZyziTL3LyYJ1qWsDNY8rF68AejzZTy/1bFxPjdwldaV1mfoXyZiZRpvHT5K/MDRbvEtex71IjuWCm5XIIDHcjJKHhYMqJhTwp0RDCOJ148TtkDikGP/1Z6bUCVcbX5R7w7uVLNBDqaTRBTA1rAsVwfRp5heoNZFnxRUkvi/jNLupsFprA1kV6yXzIFsrOsYEvQpN+JpYA6hk/6GJaAZ264zKA6OlLFzZLUq5Gwdws0fYJNvxdx9jJYvk4sVzRIhg6Qqe0ZcreNbTc2mf1YfvoMsnEou043YPPLvAcTMqXdzCy1yfTrvR/yZNFKSXZgPYHALRtDjYKiF9vcQhyx5Z5YuClmIT9fWRkrcrKDwS2ud45Sw1gOSK++VtQV2+C0Xhyhgo4Mj4/BoKqLDJubHGQIdNM1K5kir43XGKVgiW/uCI9sVQ2VcyNH8o5QeJ2/QVHZWjLSyPEKSL3BFyw6hWfwJDPBdJoTcnT1rWNO64o5yKWABIvYz+cCWxBwBi1pGk1Td2iSO0rV4VAqJjQLqGGDaGUbj7XNCu6yPxtYUtKISbQYC8/RwaRA5codE5sVNylACzPrTAihw9AAoxeX2q6fi+LiVR81TQXsCRIyCfHFx+UbmO46JW2n/U84IWl7RtpD0iQIszj8iGwCmI/Mi8odw02pMPbI2FxXNmvZ26TfPLBYbqvi+FKBZHghYp84DA/xWIlb/+esMibr6LrmJoENNZcbYlHhh9NA7EpBZkoLEBejuEVnRh+HQlbRYhqHCahhyjmttpdRIkAh6w3ooW1RawpePuQR2My7meKopYY5AHOLqoAqc5AXOoBeoWJEpGJHQIQiuqq5Uc75mcyHrBhNPCKH8qISaopzWIv8FdlIEW7iArUAgBkWKxKKfjVqmyIRqSpc5OdG7bg2PR4vqWj56Bkz8F4Yurad3VlqZzjmigF6DU+6gIc5V5bd+riPc854CLnJglJD8CsE1yFXV/dWsYM8klHA7Qe3WcW0S14V2yp3Jpru79vfCWoBgpX498YKTxtf9hKab+dz1OwuCN2ezMJAuwNuo1EvzeyzocELEpeq8nsegdS8nc2GJclybvt7uQ6VV+ZYVM4e2c2YvvzkRgoHBbodxrfasT2Jt6IQrO+kwsMK1ygk7B4osYll/KWlYgE8vnX7GcghT5q3BRARUWlRZPo0DblwMDcIOVLRtwzJe+OqftnEBN67qzCDct/w7pRHlj2W6V4Og2SXDcKwxV09Ypo3zc7TLXmdXH9kHr7pj0lBGHiFGzJGPJF6Jvx/GBPBmsUkJyjOOaJ3ChVzSF9DqIY/dVtwwBz6Xb1Q4u572FecuHI+Dcfqcnu7yMXrHFdobdgfzvACTHT0BY6WzklO/S0h8dnCJZg+Czwls+0GAKR/a0D7TGiqzFJwrYSCCxf4AM34UvgGw0ZTj0lZfmN3DR8MgkE3MYZA9DpFTEmY5dluoCsYpKdJMVwGbMMki0KCffX6weI4YcBnY5TKQ3BdcmuV12K4q+OrPuJgqm0rDK7dezaGcX89ZktTZs0lsXmcwKqt0sQQsOj7+6Irj4oocRZ9CR0G4G1O+hFsAFtMy9VRsC+jlTCC6gSEw6Mmiztj7GESugaBcZBwfj3m/hTN8Xcwb9Eg9Y/jINwBT6frbGKypMvEjkExLVodoiVmRDG9aFfxihrxUnzjONcIAneerzc3zA3R+b2zE/ThDL/88qfbzAzd9ejg2l9pCk2sULdLByYgkqwJARi3BnJipYKO+C9R0IfLaam4k2tJsVY5ODDk3naPho9jLD6Y3xt65CbCXOnkUbiiSZSoJWyYMobxyRUfSRU2gTgzhVDBx/UY6rVOJaIViZOHZ7NSwt8MCiDGDEQXlyXYl18Rl3Z4QLGR6t4zfTbERx3THZaa/fvcOSCTDfKZSHXOS4qW1qQyDXE9QuTi4qXHl2UyiWEBS5NQWMSm1PL6RE795ZjE3Ay+UolYRhvLxjt2jkml6DcxnbK6JqV7ig3OGddhTWCdmHFlXwAEROqq+lQUVBHeha8MHku7N+gL+7b96EVk2HOSMjJ5q+zsCN0Hq5I4yf7/fvfXtLUDkEfRpd7+o+jpRZYV2tAxkGyOCcD6/4wPRvw0tuNUu8gw5AHqaUFDiLABTv7HlFaF4MENy9skUcsRtfBcIJHU+FX2RhnvttJSwqhmDnrR2Of5BSZgs8GZnB9+4+rOBydzxkqplo/nnsWWMyZaQj7EL9yDzFNL9+/2/0RY6/BMB/zgjsEzjnThKnRheB1MJfWREFqYzNoXVNA414hPBIeT0WJzszXH3ZA2Luq15PCplV5/Cnd3HNdsHIS6tGCehKfEj4qr7+7jqbHlVNQJtsnhrXgZCYnZrFdrFcyN81VnMdQaBt7iVscEg+ewACuZ2fQFX/34smInr7EmYrChvHuPKI5Y7oZgzyCEUV+g49ThEMQ5StgPOlerB80WSMI1/OPx35bxtACkINJF8FjwTzvzLXcUm35uphXE16vZ3e5ahq4tH20n3ZMSuRzmM6ExmX0C8D/CZFRH0LJlAW5tm/PB9HDFXxWRuLFwPgPQXlkmPD/O8wnTrcp7uDqzRtWoQzJa1sEgPvtyoLPzn1382do+WcdCRMDDHqOB1ZEBWGr7twETG2HNzDAK/DQ9w81GMaXG1EfsNYrOm5YBn2eH0DJVzm1hRWxUOm3AhqkHIYUdLtleVMYyXhDoEWFVBwAD7KGWrU7oSecZ3RO0COnu8VSKQZBE/mF5TlT90nX0SJs4gTWrwPIqhQyS6ADiSItAj5sLfGvatAHW33Yygt3/yEl56/yhIEm8uX45/YlGE0QVOXZH7u52igJUV0CpY/XIdzRbxe9meRR9e5xL7WBr5UoVF1i78NLpzdq+zTlDNnjjEYlmQ0LkSXTqgbg3lGlEEQd6N21OcHax6X1HWAKEoIhUCEC0bX534NELfhQWlWTvV3h0VwcrxJ9WfBtFDMfxuLCL0dWxHcy/9+Ws2mw/w82svrY+K0WI6yaLtPEpXcOPO2rSuFYt4ZOjk3Vf+AM0dzcHmHOLERdTeLPS0r8GJH68W+waXJCsVtPXeB0A4pe2x8xTmcBM4bwDCF66uCKTM2woAq4qxkTfkPhj7lTE3WMz31FQN8/wsBJ7HnR15AHj7PDNQk1BR9MKCW9LWtIh4t3kaD/601ZSw6y+d95XQysOYAvmFVKrfz1SqTdN9Hfx0Xjq62HSvV/jg1nx0AKPxY0JqNWi4WSVDhujPixPHVLPviiKceyQixZocCx9H4VwpexbvgDH32H+p7zGFoWJTFjU5ZcXnQQhaQz0ycxihHpQGdlzpadQZEsyGT4kDs2GZTB4kaWYQbfAh8G0APMb4cCsMcOP6iwIjSnH2yFt8djXLtsOjgAFqYBKcX1YCrZR9/Q9tZA5dzt8yI0dtOmLx9BnqRVgADYjAhb2in3GFyaRDFJeiiCQaLKK6SCndyAVU2ZOZp7WhSg/om3OT2NLGsDLqBzgEAtkLTgxxPcEhshO0SAw1OeU8D5RsTKQDb4gj3IJp7mpN2WxG0NvXX6p6dg9sTFtolCw/neXV3CAWORr56K9eOL5NwxIrOp/n7x1trDNL2P9K0PFrNF0r6FbMKPZ9Fx1obdeVLSiiVuGtOIghBCj6/P7dlRCAwioMRst6pEWDpVfeXpYoogBPSEF3D37N/oL9FJvO6R74ZO+pkADkz9Oqtt4C10Dq8wGSnc948MVGUcCNqy+rrq/WFMCs1bJl/gKbUiVcOAdP1bJ5NHfzjeftQLmAm8snTpMrs1IxW5ZoZwcoGUFsGlq0Ixcg0ywB4EnjWnUzDNL4/BqUY43xK/hi3Q870oZCZS+bvk6fIagMC0AmEBFHLx3XzuIqPEpMADF49nlDUchiwRPnnc9M+E/hJ0CAZZCb2CwbGGcGscc9i7dKeps5RgCIHfDok2nEeQH9D97FQnIUf1Nha4jOuYGL+F5x5JUQIKmiMmprz+04s9ju0ouW578opyALscra6mFxZpA4A/T1awJItH0H48UK5IgqQqstnxQAnFgmy7Y23d60NtXEE8BgR6IaOQZNc4Pl7NbRhAVRA6sSomx6ZhAqguqBEMYc+LLuiyuEHv2BHgnDEzwvPKApi0roRo7demTVbOodMlM+dKWLSNx8aQEaCxJJPd7GJutQq8wnpACsq2yQTZQLcd8gj3KvimD3Bdj6szOI1ovt4QZtCtfkPuC7Hf6m98s353QRM5aqOy14WgrIpuk6fTW+YdOqYE+88rPL4NZJ2lkzz4XIg5StDadKsGE6iZDAumXSyPjBwx6bdJQ7bDVzWsnWvOIBU7Te7Ang9tRditmvknRvRYSRVf8gDJjfkamgPCoumkVDGeJUM1o9m58CiGm6JfjuWfDJ4PF0PjGEz6vpI8cRiL6doSLDzTi86vmtjo3rNYFIptoM6yVpHZj2BEmik7Tiue8s0SjZsIOBj1SePfJ0GwUNuHg2h/55w2QI3XqGzQGGzbkZtbXT4sphzKoOuay7tvuvLAC5Ano2FqGCDIu/tyISPjEjIBwb55Y0P7TK6o2PIHxy8dUauYz76oYiClCmUYOlIcJ6bfck4jqVhW1WFs6jYwVMGsBLkGpclfitDktgfb4VolX9KqHCFmwWYdjce8N5kPJxBBbarNCndRX7QroKFWZm7oKbm2cfh9Ap7qZZEPECpM+4nmFkt0kKbwMHzRz+6FlHfj0PavBBWdw/p3arZJ0FTCaK1FKvxpmzXTuxVGY+J4trYbISqmlGLMmGAsD5AGjAzImfKYoZm0NTurWOQU86NczPmtjNBhkVMcyKkU6tPniOmbUP9dsr6lIxBzdeoLOdqYMjX/Q7MnoyOebl42MZizU/LauGaeNJ5pSP7u8B2JbjbhwV8Z0rlnGYpiNuHSOp2MTX2VKFC1iDUr6bo6wkO91Q4/ffsjcQM4JMZtiX0/PQDALzRau3fa2SH1lYkaLr/aLTACjzKVzlK73ILJGW7RGCT79YK7e2TpoYGhjAnEHnCIxNiLOMVfrYV5qc+wCg6idEL6JTsmtXwZuXgMRVPLdYv+lxvkkw9DNEYqpG09i0h+CtNByug1VM+aUttew8QSzPZjOCvrmu+QDeI61ozctXxgvJl9jRR0gfh8WIg5RhYhMlVyzOPdC/5TNzKaO6VsWVWXTh7Fupl6SjtsALclNl4T5ckWGz6wErCQTLJgvSSSnM+22b2zUa2wH+XZGBU9ESRZbC06owhPffY9ODcIoLe7lX7W0eHZtFpbIsLv/uLXT4brwBLOdmB0d+E2Gg6vxMtnihQ/tZ26ASccQ4nJwUv7uzq6nbYoSYf9fGJ3njPn+RGiEYsQmJnNP2FuJvitdqFrmYQSJ1XSV+WodNNLUOKtdQ+wxgjNueJjn7I5kmNvDL0nWFbzwrkVbRNRSCyYK7ChibvwTTGPUTedgVN9dzhqrkjrnkZBAdMm7KA1wwIKKQr1eJuwTSSD4XR6lX5C6SqBU84k2IrFtwhe/JknJ8V9ug1c5Wj2aWeDuVzO2jeTAgYxEjf55fabq2vAln/ktAXJsngSFMLFiBu+TwzJgy2ngAAdFQBoI/PfyRdDqjSR7A9QICp+oRYEGu6Wi+mw/LjL9vxgN8fe031fMvLeLp3c3/aXGSvdKJIETEJeqkj5vAtBp9m39TTv3sHe+lIqEiDEGG8LgG+8gIEW/G6eFdbroAFLIoF24hwYSSnYTviLnzpregVVAi5Szuea4bqmcUu6E5xglhAXzQResnMEBc9dO4XzJB8obNod9c/41MpbJx0gyaIuWqlRvIbB95Qg58FrKv6h3x6hKMzCnYcCo+jpCIK8sfZAGF3QHkTwjeiqWzCG960PTaspvR0cY3baQh0ux9DYq0i9Cc/35/x+HuXM42sYnTSUBx2dAkEVIPzv7JwgkueuHh0QJ+ObdAmg+BlqsFanRylUrw3GZEUB8QAf+tkEBa7hfpgNgceE0Kbd2uDXQ5NUtaOXDDQZNDYk6PUsnOLRx32TSOgJqokGt3pIUZYPipCM9M3WbfWovb695yT6hFa9lsmXIgARBFukngj6hjQNmYZvm3/EYqQ3qbsntxA973eHMFR+sWTZLqr9uBQA+IgHb1cZd1uofyMUUNSxrQKQsz7yLOrskoomPJV0uKGFTlkCihXTNvtuwd5VVuiFoFEGg/mxA+O0qo7Z1k8uIGKIwzfDWmlhFMHwjdzE/unaIc4QCMxlPdXypFIpxVVmX101inrJ+wz8vMo6X4fM6EcGvZblJoDYioAscWeCXQsmuvOooY2MgzeEERy/V7pApxtAoeg0uPa6I4A/tkNs7ds8rIZ3VpJZ3t0rvPr1DsaMMgwMIuBpdmFOMLRNBhUofch/d5RUqJiCkgXEISINARRA8HeVd5dPVWpBvA0TiDJXR5QwNNRxOmsuXJjCG2FoDucp/9/fu1At9mQshfYgzu9+s1nz3tBSvw6P3PH/zNqd8dRdJ1ybvXf/HP07T8h2dL+oNYgc/e//xBlEef+3OhAMSV7/30xv8ZY/zrH8QS/Hhf4v++//mDv7vo9S8VgPiQLMG/b5zHj3cpv19vvizL9F9++8W//ONlj/1YAfh+vfOzp33aFXgmAE+7Yj+w658JwA9sQ5/2dZ4JwNOu2A/s+mcC8APb0Kd9nWcC8LQr9gO7/v8DC5OErGFJ/lUAAAAASUVORK5CYII=","Way Too Big.png":"data:image/png;base64,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"};
 
 window.remixInlineCspMenuIcons = function remixInlineCspMenuIcons() {
@@ -13640,7 +13698,7 @@ window.remixInjectSettingsCss = function remixInjectSettingsCss() {
   color: #fff;
 }
 .ultra-settings-tab.ultra-tab-on {
-  background: #1155CC;
+  background: var(--ultra-btn, #1155CC) !important;
   color: #fff;
 }
 .ultra-settings-page {
@@ -13650,6 +13708,22 @@ window.remixInjectSettingsCss = function remixInjectSettingsCss() {
 }
 .ultra-settings-page.ultra-page-on {
   display: block;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  scrollbar-width: none;
+}
+.ultra-settings-page.ultra-page-on::-webkit-scrollbar {
+  display: none;
+}
+#settings-popup-pudding {
+  flex-direction: column;
+  padding: 8px !important;
+  box-sizing: border-box !important;
+}
+#settings-popup-pudding > span {
+  flex-shrink: 0;
+  font-size: 13px;
 }
 #settings-popup-pudding .form-check,
 #settings-popup-pudding .form-check-inline {
@@ -13682,25 +13756,144 @@ label[for="RemoveScrollbar"] {
   margin: 0 !important;
   flex-shrink: 0;
 }
+#settings-popup-pudding .form-check-label {
+  margin: 3px !important;
+  color: #fff !important;
+  font-family: Roboto, Arial, sans-serif !important;
+}
+#settings-popup-pudding .btn {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 5px 0 !important;
+  border-radius: 8px !important;
+  background: var(--ultra-btn, #1155CC) !important;
+  color: #fff !important;
+  border: none !important;
+  font-size: 12px !important;
+}
 #stat-chooser {
   width: 100% !important;
   box-sizing: border-box;
   display: block !important;
+  min-height: 36px !important;
+  height: 36px !important;
+  line-height: 20px !important;
+  padding: 8px 10px !important;
   margin: 4px 0 8px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  font-size: 13px !important;
+  color: #fff !important;
+  background-color: var(--ultra-btn, #1155CC) !important;
 }
 #black-dice-settings {
   margin: 8px 0 0 !important;
   padding: 6px 8px !important;
   border-radius: 8px !important;
 }
+#black-dice-settings input {
+  width: 4.4em !important;
+}
 `;
   document.head.appendChild(style);
 };
 
-window.remixSettingsWrap = function remixSettingsWrap(id) {
-  const el = document.getElementById(id);
+window.remixApplyThemeColors = function remixApplyThemeColors() {
+  const btn = window.button_color || "#1155CC";
+  const bar = window.real_topbar_color || "#4a752c";
+  const root = document.documentElement;
+  if (!root || !root.style) return;
+  root.style.setProperty("--ultra-btn", btn);
+  root.style.setProperty("--ultra-bar", bar);
+  if (typeof window.remixPaintSettingsTabs === "function") {
+    window.remixPaintSettingsTabs();
+  }
+};
+
+window.remixPaintSettingsTabs = function remixPaintSettingsTabs() {
+  const btn = window.button_color || "#1155CC";
+  document.querySelectorAll(".ultra-settings-tab").forEach(function (el) {
+    const on = el.classList.contains("ultra-tab-on");
+    const color = on ? btn : "rgba(0,0,0,0.22)";
+    el.style.setProperty("background", color, "important");
+    el.style.setProperty("background-color", color, "important");
+  });
+};
+
+window.remixHookSetTheme = function remixHookSetTheme() {
+  window.remixApplyThemeColors();
+  if (typeof window.setTheme !== "function" || window.setTheme.__remixTheme) return;
+  const orig = window.setTheme;
+  window.setTheme = function () {
+    try {
+      return orig.apply(this, arguments);
+    } finally {
+      window.remixApplyThemeColors();
+    }
+  };
+  window.setTheme.__remixTheme = true;
+};
+
+window.remixSettingsEl = function remixSettingsEl(id, root) {
+  const scope = root || document.getElementById("settings-popup-pudding");
+  if (scope && typeof scope.querySelector === "function") {
+    return scope.querySelector("#" + id);
+  }
+  return document.getElementById(id);
+};
+
+window.remixSettingsWrap = function remixSettingsWrap(id, root) {
+  const el = window.remixSettingsEl(id, root);
   if (!el) return null;
   return el.closest(".form-check") || el;
+};
+
+window.remixBindResetKeyButtons = function remixBindResetKeyButtons() {
+  let keybinds = {};
+  try {
+    keybinds = JSON.parse(localStorage.getItem("keybinds")) || {};
+  } catch (_e) {}
+  if (!keybinds.resetKey) keybinds.resetKey = "Shift";
+  Array.from(document.querySelectorAll('[id="ResetKeybind"]')).forEach(function (button) {
+    let el = button;
+    if (!el.__remixResetBound) {
+      const fresh = el.cloneNode(true);
+      if (el.parentNode) el.parentNode.replaceChild(fresh, el);
+      el = fresh;
+      el.__remixResetBound = true;
+      el.addEventListener("click", function () {
+        Array.from(document.querySelectorAll('[id="ResetKeybind"]')).forEach(function (b) {
+          b.textContent = "Press any key...";
+        });
+        const handler = function (e) {
+          keybinds.resetKey = e.key;
+          try {
+            localStorage.setItem("keybinds", JSON.stringify(keybinds));
+          } catch (_err) {}
+          Array.from(document.querySelectorAll('[id="ResetKeybind"]')).forEach(function (b) {
+            b.textContent = "Reset Key: " + e.key;
+          });
+          document.removeEventListener("keydown", handler);
+        };
+        document.addEventListener("keydown", handler);
+      });
+    }
+    if (el.textContent !== "Press any key...") {
+      el.textContent = "Reset Key: " + keybinds.resetKey;
+    }
+  });
+};
+
+window.remixHookResetKeyMake = function remixHookResetKeyMake() {
+  if (!window.ResetKey || typeof window.ResetKey.make !== "function") return;
+  if (window.ResetKey.make.__remix) return;
+  const orig = window.ResetKey.make;
+  window.ResetKey.make = function () {
+    orig.apply(this, arguments);
+    window.remixBindResetKeyButtons();
+  };
+  window.ResetKey.make.__remix = true;
 };
 
 window.remixHideSettingsNode = function remixHideSettingsNode(el, bin) {
@@ -13719,6 +13912,84 @@ window.remixShowSettingsPage = function remixShowSettingsPage(id) {
     if (page) page.classList.toggle("ultra-page-on", pageId === id);
     if (tab) tab.classList.toggle("ultra-tab-on", pageId === id);
   });
+  if (typeof window.remixPaintSettingsTabs === "function") {
+    window.remixPaintSettingsTabs();
+  }
+};
+
+window.remixVisibilityPopup = function remixVisibilityPopup() {
+  return document.getElementById("delete-stuff-popup");
+};
+
+window.remixVisibilityIsOpen = function remixVisibilityIsOpen() {
+  const el = window.remixVisibilityPopup();
+  if (!el) return false;
+  if (el.hidden) return false;
+  const s = getComputedStyle(el);
+  return s.display !== "none" && s.visibility !== "hidden";
+};
+
+window.remixSyncVisibilityButton = function remixSyncVisibilityButton() {
+  const btn = document.getElementById("remix-visibility-settings");
+  if (!btn) return;
+  btn.textContent = window.remixVisibilityIsOpen()
+    ? "Hide Visibility settings"
+    : "Show Visibility settings";
+};
+
+window.remixSetVisibilityOpen = function remixSetVisibilityOpen(open) {
+  const el = window.remixVisibilityPopup();
+  if (!el) return;
+  el.hidden = !open;
+  window.remixSyncVisibilityButton();
+};
+
+window.remixToggleVisibilitySettings = function remixToggleVisibilitySettings() {
+  window.remixSetVisibilityOpen(!window.remixVisibilityIsOpen());
+};
+
+window.remixEnsureVisibilityButton = function remixEnsureVisibilityButton(setup) {
+  if (!setup) return;
+  let btn = document.getElementById("remix-visibility-settings");
+  if (!btn) {
+    btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "remix-visibility-settings";
+    btn.className = "btn";
+    btn.addEventListener("click", function () {
+      window.remixToggleVisibilitySettings();
+    });
+  }
+  if (setup.firstChild !== btn) setup.insertBefore(btn, setup.firstChild);
+  window.remixSyncVisibilityButton();
+  const popup = window.remixVisibilityPopup();
+  if (popup && !popup.__remixVisObs) {
+    const obs = new MutationObserver(function () {
+      window.remixSyncVisibilityButton();
+    });
+    obs.observe(popup, { attributes: true, attributeFilter: ["hidden", "style"] });
+    popup.__remixVisObs = true;
+  }
+};
+
+window.remixEnsureSettingsFlex = function remixEnsureSettingsFlex() {
+  const root = document.getElementById("settings-popup-pudding");
+  if (root && root.style.display !== "none" && root.style.visibility !== "hidden") {
+    root.style.display = "flex";
+    root.style.flexDirection = "column";
+  }
+  if (typeof window.BootstrapShow === "function" && !window.__remixBootstrapFlex) {
+    const orig = window.BootstrapShow;
+    window.BootstrapShow = function () {
+      orig.apply(this, arguments);
+      const box = document.getElementById("settings-popup-pudding");
+      if (box) {
+        box.style.display = "flex";
+        box.style.flexDirection = "column";
+      }
+    };
+    window.__remixBootstrapFlex = true;
+  }
 };
 
 window.remixOrganizeSettings = function remixOrganizeSettings() {
@@ -13739,12 +14010,12 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     root.appendChild(bin);
   }
 
-  window.remixHideSettingsNode(window.remixSettingsWrap("AlwaysOnTimeKeeper"), bin);
-  window.remixHideSettingsNode(window.remixSettingsWrap("ShowSplitPanel"), bin);
-  window.remixHideSettingsNode(window.remixSettingsWrap("RemoveScrollbar"), bin);
-  window.remixHideSettingsNode(document.getElementById("ScrollLeftBtn"), bin);
-  window.remixHideSettingsNode(document.getElementById("settings-close"), bin);
-  window.remixHideSettingsNode(document.getElementById("snakePride"), bin);
+  window.remixHideSettingsNode(window.remixSettingsWrap("AlwaysOnTimeKeeper", root), bin);
+  window.remixHideSettingsNode(window.remixSettingsWrap("ShowSplitPanel", root), bin);
+  window.remixHideSettingsNode(window.remixSettingsWrap("RemoveScrollbar", root), bin);
+  window.remixHideSettingsNode(window.remixSettingsEl("ScrollLeftBtn", root), bin);
+  window.remixHideSettingsNode(window.remixSettingsEl("settings-close", root), bin);
+  window.remixHideSettingsNode(window.remixSettingsEl("snakePride", root), bin);
   Array.from(root.querySelectorAll(":scope > br")).forEach(function (el) {
     window.remixHideSettingsNode(el, bin);
   });
@@ -13792,11 +14063,11 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     "EatThemeRandomizer",
     "DisableRandom",
   ].forEach(function (id) {
-    const el = window.remixSettingsWrap(id);
+    const el = window.remixSettingsWrap(id, root);
     if (el && el.parentElement !== play) play.appendChild(el);
   });
   ["stat-chooser", "edit-stat", "reset-stats"].forEach(function (id) {
-    const el = document.getElementById(id);
+    const el = window.remixSettingsEl(id, root);
     if (el && el.parentElement !== stats) stats.appendChild(el);
   });
   [
@@ -13806,9 +14077,40 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     "CustomBowlFruits",
     "black-dice-settings",
   ].forEach(function (id) {
-    const el = window.remixSettingsWrap(id) || document.getElementById(id);
+    const el = window.remixSettingsWrap(id, root) || window.remixSettingsEl(id, root);
     if (el && el.parentElement !== setup) setup.appendChild(el);
   });
+  const keepIds = {
+    "ultra-settings-hidden": 1,
+    "ultra-settings-pager": 1,
+    "ultra-settings-page-play": 1,
+    "ultra-settings-page-stats": 1,
+    "ultra-settings-page-setup": 1,
+  };
+  Array.from(root.children).forEach(function (el) {
+    if (el.tagName === "SPAN") return;
+    if (keepIds[el.id]) return;
+    if (el.id) {
+      const already =
+        play.querySelector("#" + el.id) ||
+        stats.querySelector("#" + el.id) ||
+        setup.querySelector("#" + el.id);
+      if (already) {
+        window.remixHideSettingsNode(el, bin);
+        return;
+      }
+    }
+    setup.appendChild(el);
+  });
+  const extraResets = setup.querySelectorAll('[id="ResetKeybind"]');
+  for (let i = 1; i < extraResets.length; i++) {
+    window.remixHideSettingsNode(extraResets[i], bin);
+  }
+  window.remixEnsureVisibilityButton(setup);
+  window.remixEnsureSettingsFlex();
+  window.remixHookSetTheme();
+  window.remixHookResetKeyMake();
+  window.remixBindResetKeyButtons();
 
   window.remixShowSettingsPage(
     window.__remixSettingsPage || window.__ultraSettingsPage || "play"
@@ -13880,6 +14182,8 @@ window.RemixMod.runCodeBefore = function () {
   };
 
   window.remixBaseRunCodeBefore();
+  window.remixHookSetTheme();
+  window.remixHookResetKeyMake();
   if (typeof window.remixInlineCspMenuIcons === "function") {
     window.remixInlineCspMenuIcons();
   }
@@ -13924,6 +14228,8 @@ window.RemixMod.runCodeAfter = function () {
   window.BurgerMod.runCodeAfter && window.BurgerMod.runCodeAfter();
   window.RemixSpeedInfo.runCodeAfter && window.RemixSpeedInfo.runCodeAfter();
   window.PauseMod.runCodeAfter && window.PauseMod.runCodeAfter();
+  window.remixHookSetTheme();
+  window.remixHookResetKeyMake();
   window.remixOrganizeSettings();
   setTimeout(function () {
     window.remixOrganizeSettings();
@@ -13939,7 +14245,6 @@ window.RemixMod.runCodeAfter = function () {
     parent.insertBefore(modIndicator, canvasNode);
   }
 };
-
 window.levelEditorMod = {};
 
 ////////////////////////////////////////////////////////////////////
@@ -15573,7 +15878,7 @@ window.ULTRA_PLACE_SIZES = [
 
 window.ultraPlaceCodec = {
   sizes: window.ULTRA_PLACE_SIZES,
-  // Export letters: Yx,y Cx,y Ex,y,h Ex,y,v Px,y Vx,y,U Hx,y,U Nx,y Tx,y,0 Fx,y,bB Kx,y,t Lx,y,t
+  // Export letters: Yx,y Cx,y Ex,y,h Ex,y,v Px,y Vx,y,U Hx,y,ULDR Nx,y Tx,y,0 Fx,y,bB Kx,y,t Lx,y,t
   appleOffsetForSize: function (w, h) {
     if (w === 17 && h === 15) return { x: -12, y: -7 };
     if (w === 10 && h === 9) return { x: -7, y: -4 };
@@ -15608,6 +15913,69 @@ window.ultraPlaceCodec = {
     if (d === "LEFT") return "L";
     if (d === "RIGHT") return "R";
     return d.charAt(0) || "U";
+  },
+  statueIsCracked: function (extra, type) {
+    const v = extra === undefined || extra === null || extra === "" ? type : extra;
+    return v === true || v === 1 || v === "1";
+  },
+  dirsFromCode: function (raw) {
+    const t = String(raw || "").toUpperCase();
+    if (!t) return [];
+    const dirs = [];
+    let i = 0;
+    while (i < t.length) {
+      const ch = t.charAt(i);
+      if (t.indexOf("DOWN", i) === i) {
+        dirs.push("DOWN");
+        i += 4;
+      } else if (t.indexOf("LEFT", i) === i) {
+        dirs.push("LEFT");
+        i += 4;
+      } else if (t.indexOf("RIGHT", i) === i) {
+        dirs.push("RIGHT");
+        i += 5;
+      } else if (t.indexOf("UP", i) === i) {
+        dirs.push("UP");
+        i += 2;
+      } else if (ch === "U") {
+        dirs.push("UP");
+        i += 1;
+      } else if (ch === "D") {
+        dirs.push("DOWN");
+        i += 1;
+      } else if (ch === "L") {
+        dirs.push("LEFT");
+        i += 1;
+      } else if (ch === "R") {
+        dirs.push("RIGHT");
+        i += 1;
+      } else {
+        i += 1;
+      }
+    }
+    const seen = {};
+    const out = [];
+    for (let n = 0; n < dirs.length; n++) {
+      if (!seen[dirs[n]]) {
+        seen[dirs[n]] = true;
+        out.push(dirs[n]);
+      }
+    }
+    return out;
+  },
+  dirLettersPacked: function (dirs) {
+    const order = ["UP", "DOWN", "LEFT", "RIGHT"];
+    const seen = {};
+    const list = dirs || [];
+    for (let i = 0; i < list.length; i++) {
+      const full = this.dirFromLetter(list[i]) || this.dirFromLetter(this.dirLetter(list[i]));
+      if (full) seen[full] = true;
+    }
+    let packed = "";
+    for (let j = 0; j < order.length; j++) {
+      if (seen[order[j]]) packed += this.dirLetter(order[j]);
+    }
+    return packed;
   },
   chessFromCode: function (raw) {
     const t = String(raw || "");
@@ -15667,9 +16035,14 @@ window.ultraPlaceCodec = {
         return { x: x, y: y, category: "arrow", type: -1, extra: dir };
       }
       case "H": {
-        const dir = this.dirFromLetter(parts[2]);
-        if (!dir) return null;
-        return { x: x, y: y, category: "shield", type: -1, extra: dir };
+        const dirs = this.dirsFromCode(parts.slice(2).join(","));
+        if (!dirs.length) return null;
+        if (dirs.length === 1) {
+          return { x: x, y: y, category: "shield", type: -1, extra: dirs[0] };
+        }
+        return dirs.map(function (dir) {
+          return { x: x, y: y, category: "shield", type: -1, extra: dir };
+        });
       }
       case "N":
         return { x: x, y: y, category: "mine", type: -1 };
@@ -15693,13 +16066,13 @@ window.ultraPlaceCodec = {
       case "K": {
         let type = parseInt(parts[2], 10);
         if (!isFinite(type)) type = 0;
-        type = Math.max(0, Math.min(4, type));
+        type = Math.max(0, Math.min(23, type));
         return { x: x, y: y, category: "key", type: type };
       }
       case "L": {
         let type = parseInt(parts[2], 10);
         if (!isFinite(type)) type = 0;
-        type = Math.max(0, Math.min(4, type));
+        type = Math.max(0, Math.min(23, type));
         return { x: x, y: y, category: "keyblock", type: type };
       }
       default:
@@ -15730,11 +16103,11 @@ window.ultraPlaceCodec = {
       case "arrow":
         return "V" + x + "," + y + "," + this.dirLetter(entity.extra);
       case "shield":
-        return "H" + x + "," + y + "," + this.dirLetter(entity.extra);
+        return "H" + x + "," + y + "," + this.dirLettersPacked([entity.extra]);
       case "mine":
         return "N" + x + "," + y;
       case "statue":
-        return "T" + x + "," + y + "," + (entity.extra || entity.type ? 1 : 0);
+        return "T" + x + "," + y + "," + (this.statueIsCracked(entity.extra, entity.type) ? 1 : 0);
       case "chess":
         return (
           "F" +
@@ -15762,7 +16135,11 @@ window.ultraPlaceCodec = {
     for (let i = 1; i < codes.length; i++) {
       try {
         const ent = this.parseEntity(codes[i]);
-        if (ent) out.push(ent);
+        if (Array.isArray(ent)) {
+          for (let j = 0; j < ent.length; j++) out.push(ent[j]);
+        } else if (ent) {
+          out.push(ent);
+        }
       } catch (_err) {}
     }
     return out;
@@ -15770,14 +16147,39 @@ window.ultraPlaceCodec = {
   exportLevel: function (width, height, pixelList) {
     const parts = [width + "x" + height];
     const list = pixelList || [];
+    const shieldAt = {};
+    const shieldOrder = [];
     for (let i = 0; i < list.length; i++) {
-      const token = this.exportEntity(list[i]);
+      const e = list[i];
+      if (e && e.category === "shield") {
+        const key = e.x + "," + e.y;
+        if (!shieldAt[key]) {
+          shieldAt[key] = { x: e.x, y: e.y, dirs: [] };
+          shieldOrder.push(key);
+        }
+        if (e.extra) shieldAt[key].dirs.push(e.extra);
+        continue;
+      }
+      const token = this.exportEntity(e);
       if (token) parts.push(token);
+    }
+    for (let s = 0; s < shieldOrder.length; s++) {
+      const cell = shieldAt[shieldOrder[s]];
+      const packed = this.dirLettersPacked(cell.dirs);
+      if (packed) parts.push("H" + cell.x + "," + cell.y + "," + packed);
     }
     return parts.join(" ");
   },
 };
 /* ULTRA_PLACE_CODEC_END */
+
+window.ultraPlaceStatueIsCracked = function (extra, type) {
+  if (window.ultraPlaceCodec && typeof window.ultraPlaceCodec.statueIsCracked === "function") {
+    return window.ultraPlaceCodec.statueIsCracked(extra, type);
+  }
+  const v = extra === undefined || extra === null || extra === "" ? type : extra;
+  return v === true || v === 1 || v === "1";
+};
 
 window.ULTRA_CHESS_PLACE = [
   { color: "b", piece: "bishop", key: "bbishop", url: "https://i.postimg.cc/NG8bwZw7/bb.png" },
@@ -15829,88 +16231,150 @@ window.ultraPlacePuddingEntries = function () {
   return out;
 };
 
-window.ultraPlaceDrawCrop = function (img, frame, size, rotateDeg) {
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  ctx.imageSmoothingEnabled = false;
-  if (rotateDeg) {
-    ctx.translate(size / 2, size / 2);
-    ctx.rotate((rotateDeg * Math.PI) / 180);
-    ctx.translate(-size / 2, -size / 2);
-  }
-  const sw = img.naturalWidth && img.naturalHeight ? Math.min(size, img.naturalHeight) : size;
-  ctx.drawImage(img, frame * sw, 0, sw, sw, 0, 0, size, size);
-  return canvas.toDataURL("image/png");
+window.ultraPlaceSpritePos = function (frames, frame, axis) {
+  frames = Math.max(1, frames | 0);
+  frame = Math.max(0, Math.min(frames - 1, frame | 0));
+  const size =
+    axis === "y" ? "100% " + frames * 100 + "%" : frames * 100 + "% 100%";
+  const pct = frames <= 1 ? 0 : (frame / (frames - 1)) * 100;
+  const pos = axis === "y" ? "0 " + pct.toFixed(4) + "%" : pct.toFixed(4) + "% 0";
+  return { size: size, pos: pos };
 };
 
-window.ultraPlaceSetImgSrc = function (el, src, opts) {
-  opts = opts || {};
-  if (!opts.frame && !opts.rotate && !opts.compose) {
-    el.src = src;
-    return;
-  }
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.onload = function () {
-    try {
-      if (opts.compose === "cracks") {
-        const cracks = new Image();
-        cracks.crossOrigin = "anonymous";
-        cracks.onload = function () {
-          const canvas = document.createElement("canvas");
-          canvas.width = 128;
-          canvas.height = 128;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, 128, 128);
-          const sw = cracks.naturalHeight || 128;
-          ctx.drawImage(cracks, 0, 0, sw, sw, 0, 0, 128, 128);
-          el.src = canvas.toDataURL("image/png");
-        };
-        cracks.src = opts.overlay;
-        return;
-      }
-      if (opts.compose === "shield") {
-        const canvas = document.createElement("canvas");
-        canvas.width = 128;
-        canvas.height = 128;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, 128, 128);
-        ctx.fillStyle = "#1a237e";
-        const t = 18;
-        if (opts.dir === "UP") ctx.fillRect(20, 8, 88, t);
-        if (opts.dir === "DOWN") ctx.fillRect(20, 102, 88, t);
-        if (opts.dir === "LEFT") ctx.fillRect(8, 20, t, 88);
-        if (opts.dir === "RIGHT") ctx.fillRect(102, 20, t, 88);
-        el.src = canvas.toDataURL("image/png");
-        return;
-      }
-      el.src = window.ultraPlaceDrawCrop(img, opts.frame || 0, 128, opts.rotate || 0);
-    } catch (_e) {
-      el.src = src;
-    }
-  };
-  img.onerror = function () {
-    el.src = src;
-  };
-  img.src = src;
+window.ultraPlaceArrowIcon = function (dir) {
+  const cache = (window.__ultraPlaceArrowIcons = window.__ultraPlaceArrowIcons || {});
+  if (cache[dir]) return cache[dir];
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 128;
+  const ctx = c.getContext("2d");
+  ctx.translate(64, 64);
+  if (dir === "UP") ctx.rotate(-Math.PI / 2);
+  else if (dir === "DOWN") ctx.rotate(Math.PI / 2);
+  else if (dir === "LEFT") ctx.rotate(Math.PI);
+  ctx.strokeStyle = "#EA7E0B";
+  ctx.lineWidth = 14;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-36, -32);
+  ctx.lineTo(40, 0);
+  ctx.lineTo(-36, 32);
+  ctx.stroke();
+  cache[dir] = c.toDataURL("image/png");
+  return cache[dir];
 };
 
-window.ultraPlaceOptionHtml = function (src, category, type, extra, title) {
+window.ultraPlaceShieldIcon = function (dir) {
+  const cache = (window.__ultraPlaceShieldIcons = window.__ultraPlaceShieldIcons || {});
+  if (cache[dir]) return cache[dir];
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 128;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#E53935";
+  ctx.beginPath();
+  ctx.arc(64, 64, 36, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#43A047";
+  ctx.lineWidth = 16;
+  ctx.lineCap = "butt";
+  ctx.beginPath();
+  if (dir === "UP") {
+    ctx.moveTo(28, 22);
+    ctx.lineTo(100, 22);
+  } else if (dir === "DOWN") {
+    ctx.moveTo(28, 106);
+    ctx.lineTo(100, 106);
+  } else if (dir === "LEFT") {
+    ctx.moveTo(22, 28);
+    ctx.lineTo(22, 100);
+  } else {
+    ctx.moveTo(106, 28);
+    ctx.lineTo(106, 100);
+  }
+  ctx.stroke();
+  cache[dir] = c.toDataURL("image/png");
+  return cache[dir];
+};
+
+window.ultraPlacePoisonSrc = function () {
+  const fruits = window.new_fruit || [];
+  for (let i = 0; i < fruits.length; i++) {
+    const f = fruits[i];
+    if (!f || !window.ultraPlaceIsSkullFruit(f)) continue;
+    const n = f.Normal || "";
+    if (!n) break;
+    return n.indexOf("http") === 0 ? n : window.FNBX + n;
+  }
+  return window.FNBX + "snake_arcade/v12/trophy_10.png";
+};
+
+window.ultraPlaceEraseIcon = function () {
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">' +
+    '<rect width="64" height="64" rx="10" fill="#37474f"/>' +
+    '<path fill="#ef9a9a" d="M16 38l20-20 12 12-20 20z"/>' +
+    '<path fill="#90caf9" d="M36 18l8 8-8 8-8-8z"/>' +
+    '<path fill="#eceff1" d="M16 50h32v4H16z"/>' +
+    "</svg>";
+  return "data:image/svg+xml," + encodeURIComponent(svg);
+};
+
+window.ultraPlaceOptionHtml = function (category, type, extra, title, visual) {
+  visual = visual || {};
   const extraAttr = extra === undefined || extra === null ? "" : ' data-extra="' + extra + '"';
-  return (
-    '<img class="place-option" draggable="false" src="' +
-    src +
-    '" data-type="' +
+  const attrs =
+    ' class="place-option" draggable="false" data-type="' +
     type +
     '" data-category="' +
     category +
     '"' +
     extraAttr +
-    (title ? ' title="' + title + '"' : "") +
-    ">"
-  );
+    (title ? ' title="' + title + '"' : "");
+  if (visual.kind === "sprite") {
+    const sp = window.ultraPlaceSpritePos(visual.frames, visual.frame, visual.axis);
+    const rot = visual.rotate ? "transform:rotate(" + visual.rotate + "deg);" : "";
+    return (
+      "<div" +
+      attrs +
+      ' style="background-image:url(\'' +
+      visual.src +
+      "');background-repeat:no-repeat;background-size:" +
+      sp.size +
+      ";background-position:" +
+      sp.pos +
+      ";" +
+      rot +
+      '"></div>'
+    );
+  }
+  if (visual.kind === "overlay") {
+    const ov = window.ultraPlaceSpritePos(
+      visual.overlayFrames,
+      visual.overlayFrame,
+      visual.overlayAxis || "x"
+    );
+    const rot = visual.rotate ? "transform:rotate(" + visual.rotate + "deg);" : "";
+    return (
+      "<div" +
+      attrs +
+      ' style="position:relative;background-image:url(\'' +
+      visual.src +
+      "');background-repeat:no-repeat;background-size:contain;background-position:center;" +
+      rot +
+      '"><span class="ultra-place-overlay" style="background-image:url(\'' +
+      visual.overlay +
+      "');background-repeat:no-repeat;background-size:" +
+      ov.size +
+      ";background-position:" +
+      ov.pos +
+      ';"></span></div>'
+    );
+  }
+  const src = visual.src || visual.dataUrl || "";
+  const rot = visual.rotate ? ' style="transform:rotate(' + visual.rotate + 'deg)"' : "";
+  return "<img" + attrs + ' src="' + src + '"' + rot + ">";
 };
 
 window.ultraPlaceTabDefs = function () {
@@ -15929,13 +16393,9 @@ window.ultraPlaceBuildGridHtml = function (tabId) {
     let html = "";
     for (let i = 0; i < 24; i++) {
       const n = i < 10 ? "0" + i : String(i);
-      html += window.ultraPlaceOptionHtml(
-        fnbx + "snake_arcade/v18/apple_" + n + ".png",
-        "apple",
-        i,
-        "",
-        "Fruit " + i
-      );
+      html += window.ultraPlaceOptionHtml("apple", i, "", "Fruit " + i, {
+        src: fnbx + "snake_arcade/v18/apple_" + n + ".png",
+      });
     }
     return html;
   }
@@ -15947,189 +16407,119 @@ window.ultraPlaceBuildGridHtml = function (tabId) {
     return entries
       .map(function (e) {
         const src = e.fruit.Normal || e.fruit.Real || "";
-        return window.ultraPlaceOptionHtml(src, "apple", e.type, "", "Pudding fruit");
+        return window.ultraPlaceOptionHtml("apple", e.type, "", "Pudding fruit", { src: src });
       })
       .join("");
   }
   if (tabId === "objects") {
-    const tiles = [
-      { src: fnbx + "snake_arcade/v22/trophy_01.png", cat: "wall", type: -1, extra: "", title: "Wall" },
-      { src: fnbx + "snake_arcade/v4/box.png", cat: "box", type: -1, extra: "", title: "Sokobox", frame: 0 },
-      {
-        src: "https://i.postimg.cc/x11nt4Pb/box-distinct-soko-goals.png",
-        cat: "goal",
-        type: -1,
-        extra: "",
-        title: "Sokogoal",
-      },
-      { src: fnbx + "snake_arcade/v21/trophy_19.png", cat: "bridge", type: -1, extra: "", title: "Bridge" },
-      { src: fnbx + "snake_arcade/v20/trophy_18.png", cat: "gate", type: -1, extra: "h", title: "Gate H" },
-      {
-        src: fnbx + "snake_arcade/v20/trophy_18.png",
-        cat: "gate",
-        type: -1,
-        extra: "v",
-        title: "Gate V",
-        rotate: 90,
-      },
-      {
-        src: "https://i.postimg.cc/prstgqbL/poison-skull.png",
-        cat: "poison",
-        type: -1,
-        extra: "",
-        title: "Poison",
-      },
-      { src: fnbx + "snake_arcade/v17/trophy_15.png", cat: "arrow", type: -1, extra: "UP", title: "Arrow up" },
-      {
-        src: fnbx + "snake_arcade/v17/trophy_15.png",
-        cat: "arrow",
-        type: -1,
-        extra: "RIGHT",
-        title: "Arrow right",
-        rotate: 90,
-      },
-      {
-        src: fnbx + "snake_arcade/v17/trophy_15.png",
-        cat: "arrow",
-        type: -1,
-        extra: "DOWN",
-        title: "Arrow down",
-        rotate: 180,
-      },
-      {
-        src: fnbx + "snake_arcade/v17/trophy_15.png",
-        cat: "arrow",
-        type: -1,
-        extra: "LEFT",
-        title: "Arrow left",
-        rotate: 270,
-      },
-      {
-        src: fnbx + "snake_arcade/v18/apple_00.png",
-        cat: "shield",
-        type: -1,
-        extra: "UP",
-        title: "Shield up",
-        compose: "shield",
-        dir: "UP",
-      },
-      {
-        src: fnbx + "snake_arcade/v18/apple_00.png",
-        cat: "shield",
-        type: -1,
-        extra: "RIGHT",
-        title: "Shield right",
-        compose: "shield",
-        dir: "RIGHT",
-      },
-      {
-        src: fnbx + "snake_arcade/v18/apple_00.png",
-        cat: "shield",
-        type: -1,
-        extra: "DOWN",
-        title: "Shield down",
-        compose: "shield",
-        dir: "DOWN",
-      },
-      {
-        src: fnbx + "snake_arcade/v18/apple_00.png",
-        cat: "shield",
-        type: -1,
-        extra: "LEFT",
-        title: "Shield left",
-        compose: "shield",
-        dir: "LEFT",
-      },
-      { src: fnbx + "snake_arcade/mine.png", cat: "mine", type: -1, extra: "", title: "Mine", frame: 0 },
-      { src: fnbx + "snake_arcade/v16/trophy_13.png", cat: "statue", type: 0, extra: 0, title: "Statue" },
-      {
-        src: fnbx + "snake_arcade/v16/trophy_13.png",
-        cat: "statue",
-        type: 1,
-        extra: 1,
-        title: "Cracked statue",
-        compose: "cracks",
-        overlay: fnbx + "snake_arcade/cracks.png",
-      },
-    ];
-    return tiles
-      .map(function (t) {
-        return window.ultraPlaceOptionHtml(t.src, t.cat, t.type, t.extra, t.title);
-      })
-      .join("");
+    const box = fnbx + "snake_arcade/v4/box.png";
+    const dirs = ["UP", "RIGHT", "DOWN", "LEFT"];
+    let html = "";
+    html += window.ultraPlaceOptionHtml("erase", -1, "", "Erase", {
+      dataUrl: window.ultraPlaceEraseIcon(),
+    });
+    html += window.ultraPlaceOptionHtml("wall", -1, "", "Wall", {
+      src: fnbx + "snake_arcade/v22/trophy_01.png",
+    });
+    html += window.ultraPlaceOptionHtml("box", -1, "", "Sokobox", {
+      kind: "sprite",
+      src: box,
+      frames: 8,
+      frame: 0,
+      axis: "x",
+    });
+    html += window.ultraPlaceOptionHtml("goal", -1, "", "Sokogoal", {
+      kind: "sprite",
+      src: box,
+      frames: 8,
+      frame: 2,
+      axis: "x",
+    });
+    html += window.ultraPlaceOptionHtml("bridge", -1, "", "Bridge", {
+      src: fnbx + "snake_arcade/v22/trophy_20.png",
+    });
+    html += window.ultraPlaceOptionHtml("gate", -1, "h", "Gate H", {
+      src: fnbx + "snake_arcade/v21/trophy_19.png",
+    });
+    html += window.ultraPlaceOptionHtml("gate", -1, "v", "Gate V", {
+      src: fnbx + "snake_arcade/v21/trophy_19.png",
+      rotate: 90,
+    });
+    html += window.ultraPlaceOptionHtml("poison", -1, "", "Poison", {
+      src: window.ultraPlacePoisonSrc(),
+    });
+    dirs.forEach(function (d) {
+      html += window.ultraPlaceOptionHtml("arrow", -1, d, "Arrow " + d.toLowerCase(), {
+        dataUrl: window.ultraPlaceArrowIcon(d),
+      });
+    });
+    dirs.forEach(function (d) {
+      html += window.ultraPlaceOptionHtml("shield", -1, d, "Shield " + d.toLowerCase(), {
+        dataUrl: window.ultraPlaceShieldIcon(d),
+      });
+    });
+    html += window.ultraPlaceOptionHtml("mine", -1, "", "Mine", {
+      kind: "sprite",
+      src: fnbx + "snake_arcade/mine.png",
+      frames: 10,
+      frame: 9,
+      axis: "y",
+    });
+    html += window.ultraPlaceOptionHtml("statue", 0, 0, "Statue", {
+      src: fnbx + "snake_arcade/v16/trophy_13.png",
+    });
+    html += window.ultraPlaceOptionHtml("statue", 1, 1, "Cracked statue", {
+      kind: "overlay",
+      src: fnbx + "snake_arcade/v16/trophy_13.png",
+      overlay: fnbx + "snake_arcade/cracks.png",
+      overlayFrames: 4,
+      overlayFrame: 0,
+      overlayAxis: "x",
+    });
+    return html;
   }
   if (tabId === "key") {
+    const keys = fnbx + "snake_arcade/v19/key_types.png";
+    const blocks = fnbx + "snake_arcade/v19/key_types_dark.png";
     let html = '<div class="ultra-place-row-label">Keys</div><div class="ultra-place-key-row">';
-    for (let i = 0; i < 5; i++) {
-      html += window.ultraPlaceOptionHtml(
-        fnbx + "snake_arcade/v19/key_types.png",
-        "key",
-        i,
-        "",
-        "Key " + i
-      );
+    for (let i = 0; i < 24; i++) {
+      html += window.ultraPlaceOptionHtml("key", i, "", "Key " + i, {
+        kind: "sprite",
+        src: keys,
+        frames: 24,
+        frame: i,
+        axis: "x",
+      });
     }
     html += '</div><div class="ultra-place-row-label">Blocks</div><div class="ultra-place-key-row">';
-    for (let j = 0; j < 5; j++) {
-      html += window.ultraPlaceOptionHtml(
-        fnbx + "snake_arcade/v19/key_types_dark.png",
-        "keyblock",
-        j,
-        "",
-        "Keyblock " + j
-      );
+    for (let j = 0; j < 24; j++) {
+      html += window.ultraPlaceOptionHtml("keyblock", j, "", "Keyblock " + j, {
+        kind: "sprite",
+        src: blocks,
+        frames: 24,
+        frame: j,
+        axis: "x",
+      });
     }
     html += "</div>";
     return html;
   }
   if (tabId === "chess") {
+    if (typeof window.injectChessFruits === "function") window.injectChessFruits();
     return window.ULTRA_CHESS_PLACE.map(function (p) {
-      return window.ultraPlaceOptionHtml(p.url, "chess", -1, p.color + p.piece, p.color + " " + p.piece);
+      return window.ultraPlaceOptionHtml(
+        "chess",
+        window[p.color + p.piece] != null ? window[p.color + p.piece] : -1,
+        p.color + p.piece,
+        p.color + " " + p.piece,
+        { src: p.url }
+      );
     }).join("");
   }
   return "";
 };
 
-window.ultraPlaceEnhanceIcons = function (root) {
-  if (!root) return;
-  const fnbx = window.FNBX;
-  const imgs = root.querySelectorAll("img.place-option");
-  imgs.forEach(function (img) {
-    const cat = img.dataset.category;
-    const extra = img.dataset.extra;
-    if (cat === "box") window.ultraPlaceSetImgSrc(img, fnbx + "snake_arcade/v4/box.png", { frame: 0 });
-    if (cat === "mine") window.ultraPlaceSetImgSrc(img, fnbx + "snake_arcade/mine.png", { frame: 0 });
-    if (cat === "gate" && extra === "v") {
-      window.ultraPlaceSetImgSrc(img, fnbx + "snake_arcade/v20/trophy_18.png", { rotate: 90 });
-    }
-    if (cat === "arrow") {
-      const rot = extra === "RIGHT" ? 90 : extra === "DOWN" ? 180 : extra === "LEFT" ? 270 : 0;
-      window.ultraPlaceSetImgSrc(img, fnbx + "snake_arcade/v17/trophy_15.png", { rotate: rot });
-    }
-    if (cat === "shield") {
-      window.ultraPlaceSetImgSrc(img, fnbx + "snake_arcade/v18/apple_00.png", {
-        compose: "shield",
-        dir: extra,
-      });
-    }
-    if (cat === "statue" && String(extra) === "1") {
-      window.ultraPlaceSetImgSrc(img, fnbx + "snake_arcade/v16/trophy_13.png", {
-        compose: "cracks",
-        overlay: fnbx + "snake_arcade/cracks.png",
-      });
-    }
-    if (cat === "key") {
-      window.ultraPlaceSetImgSrc(img, fnbx + "snake_arcade/v19/key_types.png", {
-        frame: parseInt(img.dataset.type, 10) || 0,
-      });
-    }
-    if (cat === "keyblock") {
-      window.ultraPlaceSetImgSrc(img, fnbx + "snake_arcade/v19/key_types_dark.png", {
-        frame: parseInt(img.dataset.type, 10) || 0,
-      });
-    }
-  });
-};
+window.ultraPlaceEnhanceIcons = function () {};
 
 window.ultraPlaceSelectOption = function (el) {
   if (!el) return;
@@ -16141,6 +16531,11 @@ window.ultraPlaceSelectOption = function (el) {
     type: isFinite(type) ? type : 0,
     extra: extra,
   };
+  if (category === "statue") {
+    const cracked = window.ultraPlaceStatueIsCracked(extra, window.mousePlaceMode.type);
+    window.mousePlaceMode.extra = cracked ? 1 : 0;
+    window.mousePlaceMode.type = cracked ? 1 : 0;
+  }
   if (category === "apple") {
     window.ultraPlaceFruitType = window.mousePlaceMode.type;
   }
@@ -16149,20 +16544,19 @@ window.ultraPlaceSelectOption = function (el) {
     const piece = extra.slice(1);
     window.mousePlaceMode.ChessColor = color;
     window.mousePlaceMode.ChessPiece = piece;
+    if (typeof window.injectChessFruits === "function") window.injectChessFruits();
     if (window[color + piece] != null) window.mousePlaceMode.type = window[color + piece];
   }
   const panel = document.getElementById("place-panel");
   if (panel) {
     panel.querySelectorAll(".place-option").forEach(function (img) {
-      img.style.filter = "grayscale(100%)";
+      img.style.filter = "";
       img.classList.remove("ultra-place-on");
     });
   }
-  el.style.filter = "grayscale(0%)";
+  el.style.filter = "";
   el.classList.add("ultra-place-on");
-  window.ultraCustomBrushOverride = null;
-  if (window.customPresetManager) window.customPresetManager.brush = "place";
-  window.ultraSyncCustomBrushChip();
+  window.ultraSetCustomBrush(category === "erase" ? "erase" : "place");
 };
 
 window.ultraPlaceShowTab = function (tabId) {
@@ -16198,7 +16592,8 @@ window.ultraPlaceShowTab = function (tabId) {
   if (match) window.ultraPlaceSelectOption(match);
   else {
     grid.querySelectorAll(".place-option").forEach(function (img) {
-      img.style.filter = "grayscale(100%)";
+      img.style.filter = "";
+      img.classList.remove("ultra-place-on");
     });
   }
 };
@@ -16246,7 +16641,11 @@ window.ultraPlaceToolLabel = function (mode) {
     arrow: "Arrow " + extra,
     shield: "Shield " + extra,
     mine: "Mine",
-    statue: extra == 1 || mode.type === 1 ? "Statue cracked" : "Statue",
+    statue: (typeof window.ultraPlaceStatueIsCracked === "function"
+      ? window.ultraPlaceStatueIsCracked(mode.extra, mode.type)
+      : mode.extra === 1 || mode.extra === "1" || mode.type === 1 || mode.type === "1")
+      ? "Statue cracked"
+      : "Statue",
     key: "Key " + (mode.type || 0),
     keyblock: "Keyblock " + (mode.type || 0),
     chess: "Chess " + extra,
@@ -16256,49 +16655,89 @@ window.ultraPlaceToolLabel = function (mode) {
   return names[cat] || cat;
 };
 
+window.ultraSetCustomBrush = function (kind) {
+  if (kind === "place" || !kind) {
+    window.ultraCustomBrushOverride = null;
+    if (window.customPresetManager) window.customPresetManager.brush = "place";
+  } else {
+    window.ultraCustomBrushOverride = kind;
+    if (window.customPresetManager) window.customPresetManager.brush = kind;
+  }
+  window.ultraSyncCustomBrushChip();
+};
+
 window.ultraSyncCustomBrushChip = function () {
-  const chip = document.getElementById("ultra-custom-current");
-  if (!chip) return;
+  const status = document.getElementById("ultra-custom-status");
   const override = window.ultraCustomBrushOverride;
-  if (override === "erase") chip.textContent = "Erase";
-  else if (override === "snakehead") chip.textContent = "Snake Start";
-  else chip.textContent = window.ultraPlaceToolLabel();
-  document.querySelectorAll(".ultra-custom-chip").forEach(function (el) {
+  if (status) {
+    if (override === "erase") status.textContent = "Click cells to delete";
+    else if (override === "snakehead") status.textContent = "Click a cell for snake start";
+    else status.textContent = window.ultraPlaceToolLabel();
+  }
+  document.querySelectorAll("#ultra-custom-tools .ultra-custom-chip").forEach(function (el) {
     el.classList.toggle("ultra-custom-chip-on", el.dataset.customBrush === (override || "place"));
   });
 };
 
 window.ultraInstallCustomPicker = function () {
+  const panel = document.getElementById("custom-panel");
   const brush = document.getElementById("custom-brush");
-  if (!brush || brush.dataset.ultraPlace === "1") return;
+  if (!panel || !brush || brush.dataset.ultraPlace === "1") return;
   brush.dataset.ultraPlace = "1";
   brush.style.display = "none";
-  const label = brush.previousSibling;
-  if (label && label.nodeType === 1 && /Brush/i.test(label.textContent || "")) {
-    label.style.display = "none";
+  const brushLabel = panel.querySelector('label[for="custom-brush"]');
+  if (brushLabel) brushLabel.style.display = "none";
+  panel.querySelectorAll("br").forEach(function (br) {
+    br.remove();
+  });
+
+  const header = panel.querySelector(":scope > div");
+  if (!header) return;
+
+  const actions = document.createElement("div");
+  actions.id = "ultra-custom-actions";
+  ["custom-import", "custom-export", "custom-clear", "custom-refresh"].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (el) actions.appendChild(el);
+  });
+  header.insertBefore(actions, header.firstChild);
+
+  const size = document.getElementById("custom-map-size");
+  const sizeLabel = panel.querySelector('label[for="custom-map-size"]');
+  if (size && sizeLabel) {
+    const row = document.createElement("div");
+    row.className = "ultra-custom-field";
+    sizeLabel.textContent = "Map size";
+    row.appendChild(sizeLabel);
+    row.appendChild(size);
+    header.insertBefore(row, actions.nextSibling);
   }
-  const wrap = document.createElement("div");
-  wrap.id = "ultra-custom-tools";
-  wrap.innerHTML =
-    '<div id="ultra-custom-current" class="ultra-place-chip">Fruit 0</div>' +
-    '<button type="button" class="ultra-custom-chip" data-custom-brush="place">Place tool</button>' +
-    '<button type="button" class="ultra-custom-chip" data-custom-brush="snakehead">Snake Start</button>' +
-    '<button type="button" class="ultra-custom-chip" data-custom-brush="erase">Erase</button>';
-  brush.parentNode.insertBefore(wrap, brush);
-  wrap.querySelectorAll(".ultra-custom-chip").forEach(function (btn) {
+
+  const tools = document.createElement("div");
+  tools.id = "ultra-custom-tools";
+  tools.innerHTML =
+    '<div class="ultra-custom-modes">' +
+    '<button type="button" class="ultra-custom-chip" data-custom-brush="place">Paint</button>' +
+    '<button type="button" class="ultra-custom-chip" data-custom-brush="snakehead">Start</button>' +
+    '<button type="button" class="ultra-custom-chip" data-custom-brush="erase">Erase</button>' +
+    "</div>" +
+    '<div id="ultra-custom-status" class="ultra-custom-status"></div>';
+  const sizeRow = header.querySelector(".ultra-custom-field");
+  header.insertBefore(tools, sizeRow ? sizeRow.nextSibling : actions.nextSibling);
+
+  const intro = header.querySelector("p");
+  if (intro) {
+    intro.className = "ultra-custom-hint";
+    intro.textContent = "Pick an object on the right, then click the grid. Right-click erases.";
+    header.appendChild(intro);
+  }
+
+  tools.querySelectorAll(".ultra-custom-chip").forEach(function (btn) {
     btn.addEventListener("click", function () {
-      const kind = this.dataset.customBrush;
-      if (kind === "place") {
-        window.ultraCustomBrushOverride = null;
-        if (window.customPresetManager) window.customPresetManager.brush = "place";
-      } else {
-        window.ultraCustomBrushOverride = kind;
-        if (window.customPresetManager) window.customPresetManager.brush = kind;
-      }
-      window.ultraSyncCustomBrushChip();
+      window.ultraSetCustomBrush(this.dataset.customBrush);
     });
   });
-  window.ultraSyncCustomBrushChip();
+  window.ultraSetCustomBrush("place");
 };
 
 window.ultraInstallCustomSizes = function () {
@@ -16338,12 +16777,15 @@ window.ultraPlaceDrawEntity = function (ctx, x, y, w, h, category, type, extra) 
     gate: extra === "v" ? "E|" : "E-",
     poison: "P",
     mine: "N",
-    statue: extra == 1 || type === 1 ? "T*" : "T",
+    statue: (typeof window.ultraPlaceStatueIsCracked === "function"
+      ? window.ultraPlaceStatueIsCracked(extra, type)
+      : extra === 1 || extra === "1" || type === 1 || type === "1")
+      ? "T*"
+      : "T",
     key: "K",
     keyblock: "L",
     chess: "F",
     arrow: extra === "DOWN" ? "v" : extra === "LEFT" ? "<" : extra === "RIGHT" ? ">" : "^",
-    shield: extra === "DOWN" ? "_" : extra === "LEFT" ? "[" : extra === "RIGHT" ? "]" : "-",
   };
   const g = glyphMap[category];
   if (g && w >= 6) {
@@ -16353,6 +16795,35 @@ window.ultraPlaceDrawEntity = function (ctx, x, y, w, h, category, type, extra) 
     ctx.textBaseline = "middle";
     ctx.fillText(g, x + w / 2, y + h / 2);
   }
+};
+
+window.ultraPlaceDrawShieldBars = function (ctx, x, y, w, h, dirs) {
+  const list = dirs || [];
+  if (!list.length) return;
+  ctx.save();
+  ctx.strokeStyle = "#1B5E20";
+  ctx.lineWidth = Math.max(2, Math.round(Math.min(w, h) * 0.18));
+  ctx.lineCap = "butt";
+  const inset = ctx.lineWidth / 2;
+  for (let i = 0; i < list.length; i++) {
+    const dir = list[i];
+    ctx.beginPath();
+    if (dir === "UP") {
+      ctx.moveTo(x + inset, y + inset);
+      ctx.lineTo(x + w - inset, y + inset);
+    } else if (dir === "DOWN") {
+      ctx.moveTo(x + inset, y + h - inset);
+      ctx.lineTo(x + w - inset, y + h - inset);
+    } else if (dir === "LEFT") {
+      ctx.moveTo(x + inset, y + inset);
+      ctx.lineTo(x + inset, y + h - inset);
+    } else if (dir === "RIGHT") {
+      ctx.moveTo(x + w - inset, y + inset);
+      ctx.lineTo(x + w - inset, y + h - inset);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
 };
 
 window.ultraCustomHasAppleAt = function (list, x, y) {
@@ -16395,8 +16866,31 @@ window.ultraWrapCustomManager = function () {
       }
     }
     for (let k of this.pixelList) {
+      if (k.category === "shield") continue;
       this.drawEntity(k.x * tileWidth, k.y * tileHeight, tileWidth, tileHeight, k.category, k.type, k.extra);
     }
+    const bars = {};
+    for (let s = 0; s < this.pixelList.length; s++) {
+      const e = this.pixelList[s];
+      if (!e || e.category !== "shield") continue;
+      const key = e.x + "," + e.y;
+      if (!bars[key]) bars[key] = { x: e.x, y: e.y, dirs: [] };
+      if (e.extra) bars[key].dirs.push(e.extra);
+    }
+    Object.keys(bars).forEach(function (key) {
+      const cell = bars[key];
+      if (!window.ultraCustomHasAppleAt(this.pixelList, cell.x, cell.y)) {
+        this.drawEntity(cell.x * tileWidth, cell.y * tileHeight, tileWidth, tileHeight, "apple", 0, "");
+      }
+      window.ultraPlaceDrawShieldBars(
+        this.ctx,
+        cell.x * tileWidth,
+        cell.y * tileHeight,
+        tileWidth,
+        tileHeight,
+        cell.dirs
+      );
+    }, this);
   };
 
   mgr.removeAtCoord = function (boardX, boardY) {
@@ -16432,7 +16926,8 @@ window.ultraWrapCustomManager = function () {
     }
 
     const override = window.ultraCustomBrushOverride || this.brush;
-    if (isErase || override === "erase") {
+    const mode = window.mousePlaceMode || { category: "apple", type: 0 };
+    if (isErase || override === "erase" || mode.category === "erase") {
       this.removeAtCoord(boardXCoord, boardYCoord);
       this.draw();
       return;
@@ -16444,12 +16939,14 @@ window.ultraWrapCustomManager = function () {
       this.draw();
       return;
     }
-
-    const mode = window.mousePlaceMode || { category: "apple", type: 0 };
     if (mode.category === "shield") {
       if (!window.ultraCustomHasAppleAt(this.pixelList, boardXCoord, boardYCoord)) {
-        this.draw();
-        return;
+        this.pixelList.push({
+          x: boardXCoord,
+          y: boardYCoord,
+          category: "apple",
+          type: window.ultraPlaceFruitType || 0,
+        });
       }
       const dir = mode.extra || "UP";
       let found = -1;
@@ -16487,6 +16984,13 @@ window.ultraWrapCustomManager = function () {
       return;
     }
 
+    const keepShields =
+      mode.category === "apple" || mode.category === "poison" || mode.category === "chess";
+    const savedShields = keepShields
+      ? this.pixelList.filter(function (e) {
+          return e.category === "shield" && e.x === boardXCoord && e.y === boardYCoord;
+        })
+      : [];
     this.removeAtCoord(boardXCoord, boardYCoord);
     const ent = {
       x: boardXCoord,
@@ -16496,6 +17000,10 @@ window.ultraWrapCustomManager = function () {
       extra: mode.extra,
     };
     if (mode.category === "apple") ent.type = mode.type || 0;
+    if (mode.category === "statue") {
+      ent.extra = window.ultraPlaceStatueIsCracked(mode.extra, mode.type) ? 1 : 0;
+      ent.type = ent.extra;
+    }
     if (mode.category === "poison") {
       ent.type = window.ultraPlaceFruitType || 0;
     }
@@ -16506,6 +17014,7 @@ window.ultraWrapCustomManager = function () {
       ent.type = mode.type;
     }
     this.pixelList.push(ent);
+    for (let sh = 0; sh < savedShields.length; sh++) this.pixelList.push(savedShields[sh]);
     this.draw();
   };
 
@@ -16578,16 +17087,66 @@ window.ultraCaptureAppleOffsetFromBoard = function () {
   } catch (_e) {}
 };
 
+window.ultraChessSnakeIsPiece = function () {
+  const s = window.head_state;
+  return !!(s && s !== "OPEN" && s !== "NONE");
+};
+
 window.ultraEnsureChessMode = function () {
   if (window.CHESS_MODE == null) return;
   if (typeof window.ensureGameMode === "function") window.ensureGameMode(window.CHESS_MODE);
   try {
     const settings = window.wholeSnakeObject && window.wholeSnakeObject.settings;
-    if (settings && settings.ub === 22) {
+    const chessId = window.CHESS_MODE;
+    if (!settings) {
+      window.CurrentModeNum = chessId;
+      return;
+    }
+    const blended =
+      settings.ub === 22 ||
+      !!(settings.Qa && settings.Lc && typeof settings.Lc.has === "function" && settings.Lc.has(chessId));
+    if (blended) {
+      window.CurrentModeNum = 22;
       window.chess_blending = true;
       if (typeof window.correct_chess_selection === "function") window.correct_chess_selection();
+    } else {
+      window.CurrentModeNum = chessId;
+    }
+  } catch (_e) {
+    window.CurrentModeNum = window.CHESS_MODE;
+  }
+};
+
+window.ultraSyncChessPlaceState = function () {
+  try {
+    const mgr = typeof window.ultraAppleManager === "function" ? window.ultraAppleManager() : null;
+    const apples =
+      (mgr && mgr.ka) ||
+      (window.wholeSnakeObject && window.wholeSnakeObject.wa && window.wholeSnakeObject.wa.ka) ||
+      window.appleArray;
+    if (apples) window.appleArray = apples;
+    const game = window.__remixGame || window.megaWholeSnakeObject || window.wholeSnakeObject;
+    if (game && game.oa) {
+      if (game.oa.ka) window.head_pos = game.oa.ka;
+      if (game.oa.direction) window.head_dir = game.oa.direction;
     }
   } catch (_e) {}
+  const apples = window.appleArray;
+  if (!apples || !apples.length) return;
+  const field = window.chess_shield_field || "nba";
+  const locked = window.ultraChessSnakeIsPiece();
+  for (let i = 0; i < apples.length; i++) {
+    const a = apples[i];
+    if (!a || !a.isPiece) continue;
+    if (locked) {
+      const dirs = new Set(["UP", "DOWN", "LEFT", "RIGHT"]);
+      a[field] = dirs;
+      a.nba = dirs;
+    } else {
+      a[field] = undefined;
+      a.nba = undefined;
+    }
+  }
 };
 
 window.ultraPlaceAppend = function (code, snippet) {
@@ -16597,12 +17156,29 @@ window.ultraPlaceAppend = function (code, snippet) {
 };
 
 window.ultraPlaceCapture = function (code, re, idx, label) {
-  const m = code.match(re);
-  if (!m) {
+  const idxN = idx == null ? 1 : idx;
+  function hit(regex) {
+    try {
+      const m = code.match(regex);
+      return m ? m[idxN] : null;
+    } catch (_e) {
+      return null;
+    }
+  }
+  let found = hit(re);
+  if (!found && re instanceof RegExp) {
+    found = hit(
+      new RegExp(
+        re.source.replace(/\\n\?/g, "\\s*").replace(/=/g, "\\s*=\\s*"),
+        re.flags
+      )
+    );
+  }
+  if (!found) {
     console.error("UltraPlace: failed to capture " + label);
     return null;
   }
-  return m[idx == null ? 1 : idx];
+  return found;
 };
 
 window.UltraPlace.alterSnakeCode = function (code) {
@@ -16669,7 +17245,7 @@ window.UltraPlace.alterSnakeCode = function (code) {
   );
   const arrowContainer = window.ultraPlaceCapture(
     code,
-    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,this\.ka,this\.Ja\.bind\(this\)\);this\.[$a-zA-Z0-9_]{0,8}=new [$a-zA-Z0-9_]{0,8}\(this\.settings,this\.ka,this\.Ja\.bind\(this\)\)/,
+    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\s*this\.ka,\s*this\.Ja\.bind\(this\)\);\s*this\.[$a-zA-Z0-9_]{0,8}=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\s*this\.ka,\s*this\.Ja\.bind\(this\)\)/,
     1,
     "arrows"
   );
@@ -16687,13 +17263,13 @@ window.UltraPlace.alterSnakeCode = function (code) {
   );
   const statueContainer = window.ultraPlaceCapture(
     code,
-    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\n?this\.ka,this\.oa,this\.hb,this\.Ca\)/,
+    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\s*this\.ka,\s*this\.oa,\s*this\.hb,\s*this\.Ca\)/,
     1,
     "statues"
   );
   const mineContainer = window.ultraPlaceCapture(
     code,
-    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\n?this\.ka,this\.oa,this\.wa,this\.hb,this\.Aa/,
+    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\s*this\.ka,\s*this\.oa,\s*this\.wa,\s*this\.hb,\s*this\.Aa/,
     1,
     "mines"
   );
@@ -16725,7 +17301,7 @@ window.UltraPlace.alterSnakeCode = function (code) {
   ) || "d_";
   const bridgeColor = window.ultraPlaceCapture(
     code,
-    /([$a-zA-Z0-9_]{0,8})=function\(a,b\)\{return j3E\[a\.settings\.wa===10/,
+    /([$a-zA-Z0-9_]{1,8})\s*=\s*function\s*\(\s*a\s*,\s*b\s*\)\s*\{\s*return\s+[$a-zA-Z0-9_]{1,8}\s*\[\s*a\.settings\.wa\s*===\s*10/,
     1,
     "bridgeColor"
   );
@@ -16785,6 +17361,11 @@ window.UltraPlace.alterSnakeCode = function (code) {
     "$1if(window.disableStatueBodyPlant)return;$2",
     "statues"
   );
+  patchFn(
+    /([$a-zA-Z0-9_]{0,8}=function\(a\)\{)(var b=a\.wa\.ka,c=!1;for\(let d of a\.oa\.keys\(\))/,
+    "$1if(window.disableStatueBodyPlant)return;$2",
+    "statueCrumble"
+  );
 
   const keyResetRe =
     /reset\(\)\{this\.keys=\[\];if\(([$a-zA-Z0-9_]{0,8})\(this\.settings,8\)\)\{/;
@@ -16820,32 +17401,77 @@ window.UltraPlace.alterSnakeCode = function (code) {
 
   globalThis.ultraAppleList = function() {
     const game = window.wholeSnakeObject;
-    if(!game || !game.${n.appleHolder}) return [];
-    return game.${n.appleHolder}.${n.appleArr} || [];
+    if(!game) return [];
+    const holder = game.${n.appleHolder} || game.wa;
+    if(!holder) return [];
+    return holder.${n.appleArr} || holder.ka || [];
+  };
+
+  globalThis.ultraApplePos = function(apple) {
+    if(!apple) return null;
+    if(apple.pos && isFinite(apple.pos.x) && isFinite(apple.pos.y)) return apple.pos;
+    const named = window.applePosProperty && apple[window.applePosProperty];
+    if(named && isFinite(named.x) && isFinite(named.y)) return named;
+    return apple.pos || named || null;
   };
 
   globalThis.ultraFindAppleAt = function(x, y) {
-    x = Math.round(x); y = Math.round(y);
     const apples = ultraAppleList();
-    for(let i=0;i<apples.length;i++) {
-      const p = apples[i] && apples[i][window.applePosProperty || 'pos'];
-      if(p && p.x === x && p.y === y) return apples[i];
+    const spots = ultraAppleSearchSpots(x, y);
+    for(let s=0;s<spots.length;s++) {
+      const sx = spots[s].x, sy = spots[s].y;
+      for(let i=0;i<apples.length;i++) {
+        const p = ultraApplePos(apples[i]);
+        if(p && Math.round(Number(p.x)) === sx && Math.round(Number(p.y)) === sy) return apples[i];
+      }
     }
     return null;
   };
 
+  globalThis.ultraAppleSearchSpots = function(x, y) {
+    const spots = [{x: Math.round(Number(x)), y: Math.round(Number(y))}];
+    try {
+      const off = typeof window.getAppleSpawnPointOffset === 'function' ? window.getAppleSpawnPointOffset() : null;
+      if(off && (off.x || off.y)) {
+        spots.push({x: Math.round(Number(x) - off.x), y: Math.round(Number(y) - off.y)});
+        spots.push({x: Math.round(Number(x) + off.x), y: Math.round(Number(y) + off.y)});
+      }
+    } catch(_e) {}
+    return spots;
+  };
+
   globalThis.ultraRemoveAppleAt = function(x, y) {
-    x = Math.round(x); y = Math.round(y);
     const apples = ultraAppleList();
+    const spots = ultraAppleSearchSpots(x, y);
     for(let i=apples.length-1;i>=0;i--) {
-      const p = apples[i] && apples[i][window.applePosProperty || 'pos'];
-      if(p && p.x === x && p.y === y) apples.splice(i,1);
+      const p = ultraApplePos(apples[i]);
+      if(!p) continue;
+      const px = Math.round(Number(p.x)), py = Math.round(Number(p.y));
+      for(let s=0;s<spots.length;s++) {
+        if(px === spots[s].x && py === spots[s].y) { apples.splice(i,1); break; }
+      }
     }
   };
 
-  globalThis.emptyArrows = function() {
+  globalThis.ultraArrowManager = function() {
     const game = window.wholeSnakeObject;
-    if(game && game.${n.arrowContainer} && typeof game.${n.arrowContainer}.reset === 'function') game.${n.arrowContainer}.reset();
+    if(!game) return null;
+    const named = ${n.arrowContainer ? JSON.stringify(n.arrowContainer) : "null"};
+    const byName = named && game[named];
+    function isArrows(v) {
+      const cell = v && Array.isArray(v.ka) && v.ka[0] && v.ka[0][0];
+      return !!(cell && typeof cell.direction === 'string');
+    }
+    if(isArrows(byName)) return byName;
+    const keys = Object.keys(game);
+    for(let i=0;i<keys.length;i++) {
+      if(isArrows(game[keys[i]])) return game[keys[i]];
+    }
+    return byName || null;
+  };
+  globalThis.emptyArrows = function() {
+    const arrows = ultraArrowManager();
+    if(arrows && typeof arrows.reset === 'function') arrows.reset();
   };
   globalThis.emptyGates = function() {
     const game = window.wholeSnakeObject;
@@ -16855,20 +17481,45 @@ window.UltraPlace.alterSnakeCode = function (code) {
     const game = window.wholeSnakeObject;
     if(game && game.${n.bridgeContainer} && typeof game.${n.bridgeContainer}.reset === 'function') game.${n.bridgeContainer}.reset();
   };
-  globalThis.emptyMines = function() {
+  globalThis.ultraMineManager = function() {
     const game = window.wholeSnakeObject;
-    if(game && game.${n.mineContainer} && typeof game.${n.mineContainer}.reset === 'function') game.${n.mineContainer}.reset();
+    if(!game) return null;
+    const named = ${n.mineContainer ? JSON.stringify(n.mineContainer) : "null"};
+    const byName = named && game[named];
+    if(byName && byName.oa instanceof Set) return byName;
+    const keys = Object.keys(game);
+    for(let i=0;i<keys.length;i++) {
+      const v = game[keys[i]];
+      if(v && v !== game && v.oa instanceof Set && v.Aa instanceof Set && v.wa instanceof Set) return v;
+    }
+    return byName || null;
+  };
+  globalThis.emptyMines = function() {
+    const ma = ultraMineManager();
+    if(ma && typeof ma.reset === 'function') ma.reset();
+    else if(ma && ma.oa && typeof ma.oa.clear === 'function') ma.oa.clear();
+  };
+  globalThis.ultraStatueManager = function() {
+    const game = window.wholeSnakeObject;
+    if(!game) return null;
+    const named = ${n.statueContainer ? JSON.stringify(n.statueContainer) : "null"};
+    const byName = named && game[named];
+    if(byName && byName.oa instanceof Map) return byName;
+    const keys = Object.keys(game);
+    for(let i=0;i<keys.length;i++) {
+      const v = game[keys[i]];
+      if(v && v.oa instanceof Map && v.Ca instanceof Set && typeof v.Ba === 'number') return v;
+    }
+    return byName || null;
   };
   globalThis.emptyStatues = function() {
     const game = window.wholeSnakeObject;
-    if(!game || !game.${n.statueContainer}) return;
-    const ya = game.${n.statueContainer};
-    if(ya.oa) {
-      for(const st of ya.oa.values()) {
-        if(st && st.pos && ${n.delWall}) ${n.delWall}(game.${n.wallContainer}, st.pos);
-      }
-      ya.oa.clear();
+    const ya = ultraStatueManager();
+    if(!game || !ya || !ya.oa) return;
+    for(const st of ya.oa.values()) {
+      if(st && st.pos && ${n.delWall}) ${n.delWall}(game.${n.wallContainer}, st.pos);
     }
+    ya.oa.clear();
   };
   globalThis.emptyKeys = function() {
     const game = window.wholeSnakeObject;
@@ -16944,25 +17595,29 @@ window.UltraPlace.alterSnakeCode = function (code) {
         if(p && Math.round(p.x) === boardX && Math.round(p.y) === boardY) goals.delete(g);
       }
     }
-    if(game.${n.arrowContainer} && game.${n.arrowContainer}.ka && game.${n.arrowContainer}.ka[boardY] && game.${n.arrowContainer}.ka[boardY][boardX]) {
-      const cell = game.${n.arrowContainer}.ka[boardY][boardX];
-      cell.direction = 'NONE';
-      cell.wm = false;
+    if(ultraArrowManager && ultraArrowManager()) {
+      const grid = ultraArrowManager().ka;
+      if(grid && grid[boardY] && grid[boardY][boardX]) {
+        grid[boardY][boardX].direction = 'NONE';
+        grid[boardY][boardX].wm = false;
+      }
     }
     if(game.${n.bridgeContainer} && game.${n.bridgeContainer}.oa && game.${n.bridgeContainer}.oa[boardY]) {
       game.${n.bridgeContainer}.oa[boardY][boardX] = null;
     }
-    if(game.${n.mineContainer} && game.${n.mineContainer}.oa) {
-      for(const m of Array.from(game.${n.mineContainer}.oa)) {
-        if(m.pos && m.pos.x === boardX && m.pos.y === boardY) game.${n.mineContainer}.oa.delete(m);
+    if(ultraMineManager && ultraMineManager()) {
+      const mines = ultraMineManager().oa;
+      for(const m of Array.from(mines)) {
+        if(m.pos && m.pos.x === boardX && m.pos.y === boardY) mines.delete(m);
       }
     }
-    if(game.${n.statueContainer} && game.${n.statueContainer}.oa) {
+    if(ultraStatueManager && ultraStatueManager()) {
+      const ya = ultraStatueManager();
       const key = ${n.serialCoord} ? ${n.serialCoord}(new ${n.coordCtor}(boardX, boardY)) : (boardX << 16 | boardY);
-      const st = game.${n.statueContainer}.oa.get(key);
+      const st = ya.oa && ya.oa.get(key);
       if(st) {
         if(${n.delWall}) ${n.delWall}(game.${n.wallContainer}, new ${n.coordCtor}(boardX, boardY));
-        game.${n.statueContainer}.oa.delete(key);
+        ya.oa.delete(key);
       }
     }
     if(game.${n.keyContainer} && game.${n.keyContainer}.keys) {
@@ -16989,20 +17644,45 @@ window.UltraPlace.alterSnakeCode = function (code) {
   globalThis.placeSokogoal = function(x,y) {
     window.ensureGameMode(9);
     x = Math.round(x); y = Math.round(y);
+    const soko = window.wholeSnakeObject && window.wholeSnakeObject.${n.sokoContainer};
+    if(!soko) return;
     const coord = new ${n.coordCtor}(x,y);
-    ${n.addGoal}(window.wholeSnakeObject.${n.sokoContainer}, coord, 0);
+    const set = soko.${n.sokoGoalSet};
+    const have = set && typeof set.size === 'number' ? set.size : 0;
+    if(typeof ${n.addGoal} === 'function') ${n.addGoal}(soko, coord, have + 1);
+    if(set && set.size === have && typeof set.add === 'function') set.add(coord);
   };
   globalThis.placeArrow = function(x,y,dir) {
     window.ensureGameMode(16);
     x = Math.round(x); y = Math.round(y);
-    ${n.addArrow}(window.wholeSnakeObject.${n.arrowContainer}, dir || 'UP', new ${n.coordCtor}(x,y));
+    if(window.ultraPlaceCodec && dir) dir = window.ultraPlaceCodec.dirFromLetter(dir) || dir;
+    dir = dir || 'UP';
+    const arrows = ultraArrowManager();
+    if(!arrows || !arrows.ka || !arrows.ka[y] || !arrows.ka[y][x]) return;
+    if(typeof ${n.addArrow} === 'function') ${n.addArrow}(arrows, dir, new ${n.coordCtor}(x,y));
+    const cell = arrows.ka[y][x];
+    cell.direction = dir;
+    cell.wm = false;
+    cell.Lh = true;
+    if(!cell.color) cell.color = '#4E7CF6';
   };
   globalThis.placeGate = function(x,y,vertical) {
     window.ensureGameMode(19);
     x = Math.round(x); y = Math.round(y);
     const size = ultraBoardSize();
     if(x+1 >= size.width || y+1 >= size.height || x < 0 || y < 0) return;
-    ${n.addGate}(window.wholeSnakeObject.${n.gateContainer}, new ${n.coordCtor}(x,y), !!vertical, false);
+    const qa = window.wholeSnakeObject.${n.gateContainer};
+    ${n.addGate}(qa, new ${n.coordCtor}(x,y), !!vertical, false);
+    // Native addGate always sets wm:true (spawn-in). Show the gate while paused.
+    if(qa && Array.isArray(qa.pfa)) {
+      for(let i = qa.pfa.length - 1; i >= 0; i--) {
+        const g = qa.pfa[i];
+        if(g && g.Upa && g.Upa.x === x && g.Upa.y === y) {
+          g.wm = false;
+          break;
+        }
+      }
+    }
   };
   globalThis.placeBridge = function(x,y) {
     window.ensureGameMode(20);
@@ -17010,25 +17690,64 @@ window.UltraPlace.alterSnakeCode = function (code) {
     const ga = window.wholeSnakeObject.${n.bridgeContainer};
     if(!ga || !ga.oa[y]) return;
     const col = ${n.bridgeColor} ? ${n.bridgeColor}(ga, false) : '#e68f1b';
-    ga.oa[y][x] = {wm:true, color:col, Lh:!${n.modeCheck}(window.wholeSnakeObject.settings, 11)};
+    // wm:false so the tile is full-size while the board is paused.
+    ga.oa[y][x] = {wm:false, color:col, Lh:!${n.modeCheck}(window.wholeSnakeObject.settings, 11)};
   };
   globalThis.placeMine = function(x,y) {
     window.ensureGameMode(12);
     x = Math.round(x); y = Math.round(y);
-    const ma = window.wholeSnakeObject.${n.mineContainer};
-    ma.oa.add({pos:new ${n.coordCtor}(x,y), X1a:-1, xL:0, Lh:!${n.modeCheck}(window.wholeSnakeObject.settings, 11)});
+    const game = window.wholeSnakeObject;
+    const ma = ultraMineManager();
+    if(!game || !ma) return;
+    if(!(ma.oa instanceof Set)) ma.oa = new Set();
+    for(const m of Array.from(ma.oa)) {
+      if(m && m.pos && m.pos.x === x && m.pos.y === y) ma.oa.delete(m);
+    }
+    // xL:2 so the flag is visible while the board is paused.
+    ma.oa.add({
+      pos: new ${n.coordCtor}(x,y),
+      X1a: -1,
+      xL: 2,
+      Lh: !${n.modeCheck}(game.settings, 11)
+    });
   };
   globalThis.placeStatue = function(x,y,cracked) {
     window.ensureGameMode(13);
     x = Math.round(x); y = Math.round(y);
+    const game = window.wholeSnakeObject;
+    const st = ultraStatueManager();
+    if(!game || !st) return;
+    if(!(st.oa instanceof Map)) st.oa = new Map();
     const coord = new ${n.coordCtor}(x,y);
-    const obj = {pos:coord, wm:true, m0:false, Lh:true, WQ:{pdb:!!cracked, O0b:0, xBb:-1, color:'#90A4AE', type:1, angle:0, tBc:0, sBc:0}};
-    ${n.addStatue}(window.wholeSnakeObject.${n.statueContainer}, coord, obj);
+    const obj = {
+      pos: coord,
+      wm: false,
+      m0: false,
+      Lh: true,
+      WQ: {
+        pdb: (typeof window.ultraPlaceStatueIsCracked === 'function')
+          ? window.ultraPlaceStatueIsCracked(cracked)
+          : (cracked === true || cracked === 1 || cracked === '1'),
+        O0b: 0,
+        xBb: -1,
+        color: '#90A4AE',
+        type: 1,
+        angle: 0,
+        tBc: 0,
+        sBc: 0
+      }
+    };
+    if(typeof ${n.addStatue} === 'function') ${n.addStatue}(st, coord, obj);
+    else {
+      const key = ${n.serialCoord} ? ${n.serialCoord}(coord) : (x << 16 | y);
+      st.oa.set(key, obj);
+      if(typeof ${n.addWall} === 'function') ${n.addWall}(game.${n.wallContainer}, coord, obj);
+    }
   };
   globalThis.placeKey = function(x,y,type) {
     window.ensureGameMode(8);
     x = Math.round(x); y = Math.round(y);
-    type = Math.max(0, Math.min(4, type|0));
+    type = Math.max(0, Math.min(23, type|0));
     const coord = new ${n.coordCtor}(x,y);
     window.wholeSnakeObject.${n.keyContainer}.keys.push({pos:coord, r7a:coord.clone ? coord.clone() : new ${n.coordCtor}(x,y), xL:0, type:type, wm:false, Lh:true});
     ultraPairKeysAndBlocks();
@@ -17036,29 +17755,52 @@ window.UltraPlace.alterSnakeCode = function (code) {
   globalThis.placeKeyblock = function(x,y,type) {
     window.ensureGameMode(8);
     x = Math.round(x); y = Math.round(y);
-    type = Math.max(0, Math.min(4, type|0));
+    type = Math.max(0, Math.min(23, type|0));
     const coord = new ${n.coordCtor}(x,y);
     ${n.addWall}(window.wholeSnakeObject.${n.wallContainer}, coord, {pos:coord, wm:false, yNa:type, m0:false, Lh:!${n.modeCheck}(window.wholeSnakeObject.settings, 11)});
     ultraPairKeysAndBlocks();
   };
   globalThis.placePoison = function(x,y,type) {
     window.ensureGameMode(10);
-    if(type === undefined || type === null || type < 0) type = window.ultraPlaceFruitType || 0;
+    if(!(type >= 0)) type = window.ultraPlaceFruitType || 0;
     window.placeApple(x,y,type, undefined, {Oka:true});
   };
-  globalThis.placeShield = function(x,y,dir) {
+  globalThis.placeShield = function(x,y,dir,opts) {
     window.ensureGameMode(15);
-    const apple = ultraFindAppleAt(x,y);
-    if(!apple) return;
+    if(window.ultraPlaceCodec && dir) dir = window.ultraPlaceCodec.dirFromLetter(dir) || dir;
+    dir = dir || 'UP';
+    const addOnly = !!(opts && opts.add);
     const field = window.chess_shield_field || 'nba';
-    if(!(apple[field] instanceof Set)) apple[field] = new Set();
-    if(apple[field].has(dir)) apple[field].delete(dir);
-    else apple[field].add(dir);
+    let apple = ultraFindAppleAt(x,y);
+    const created = !apple;
+    if(!apple) {
+      const dirs = new Set();
+      const props = {nba: dirs, wm: false};
+      props[field] = dirs;
+      window.placeApple(x,y, window.ultraPlaceFruitType || 0, undefined, props);
+      apple = ultraFindAppleAt(x,y) || ultraAppleList().slice(-1)[0];
+    }
+    if(!apple) return;
+    apple.wm = false;
+    const next = new Set();
+    const cur = apple[field] || apple.nba;
+    if(cur && typeof cur.forEach === 'function') cur.forEach(function(d){ next.add(d); });
+    apple[field] = next;
+    apple.nba = next;
+    if(!addOnly && !created && next.has(dir)) next.delete(dir);
+    else next.add(dir);
   };
   globalThis.placeChessPiece = function(x,y,color,piece,type) {
     window.ultraEnsureChessMode();
-    if(type == null && color && piece && window[color + piece] != null) type = window[color + piece];
+    if(typeof window.injectChessFruits === 'function') window.injectChessFruits();
+    if((!color || !piece) && window.mousePlaceMode && window.mousePlaceMode.extra) {
+      color = color || String(window.mousePlaceMode.extra).charAt(0);
+      piece = piece || String(window.mousePlaceMode.extra).slice(1);
+    }
+    if(!(type >= 0) && color && piece && window[color + piece] != null) type = window[color + piece];
+    if(!(type >= 0)) return;
     window.placeApple(x,y,type, undefined, {isPiece:true, ChessPiece:piece, ChessColor:color});
+    if(typeof window.ultraSyncChessPlaceState === "function") window.ultraSyncChessPlaceState();
   };
   `
   );
@@ -17096,6 +17838,7 @@ window.ultraWrapBlitAndClick = function () {
             window.placeSokobox(p.x, p.y);
             break;
           case "snakehead":
+          case "erase":
             break;
           case "goal":
             if (typeof window.placeSokogoal === "function") window.placeSokogoal(p.x, p.y);
@@ -17113,13 +17856,18 @@ window.ultraWrapBlitAndClick = function () {
             if (typeof window.placeArrow === "function") window.placeArrow(p.x, p.y, p.extra || "UP");
             break;
           case "shield":
-            if (typeof window.placeShield === "function") window.placeShield(ax, ay, p.extra || "UP");
             break;
           case "mine":
             if (typeof window.placeMine === "function") window.placeMine(p.x, p.y);
             break;
           case "statue":
-            if (typeof window.placeStatue === "function") window.placeStatue(p.x, p.y, !!(p.extra || p.type));
+            if (typeof window.placeStatue === "function") {
+              window.placeStatue(
+                p.x,
+                p.y,
+                window.ultraPlaceStatueIsCracked ? window.ultraPlaceStatueIsCracked(p.extra, p.type) : p.extra === 1 || p.type === 1
+              );
+            }
             break;
           case "key":
             if (typeof window.placeKey === "function") window.placeKey(p.x, p.y, p.type);
@@ -17136,6 +17884,23 @@ window.ultraWrapBlitAndClick = function () {
             throw Error("Unrecognised category!");
         }
       }
+      if (typeof window.placeShield === "function") {
+        for (let s = 0; s < pixelList.length; s++) {
+          const p = pixelList[s];
+          if (!p || p.category !== "shield") continue;
+          const ax = p.x + offsetX;
+          const ay = p.y + offsetY;
+          const packed = window.ultraPlaceCodec
+            ? window.ultraPlaceCodec.dirsFromCode(p.extra)
+            : p.extra
+            ? [p.extra]
+            : ["UP"];
+          const dirs = packed.length ? packed : [p.extra || "UP"];
+          for (let d = 0; d < dirs.length; d++) {
+            window.placeShield(ax, ay, dirs[d], { add: true });
+          }
+        }
+      }
       if (typeof window.ultraPairKeysAndBlocks === "function") window.ultraPairKeysAndBlocks();
       if (typeof window.retallyAllPlacedApples === "function") window.retallyAllPlacedApples();
     };
@@ -17146,9 +17911,10 @@ window.ultraWrapBlitAndClick = function () {
     const origClick = window.placeAppleAtMouse;
     window.placeAppleAtMouse = function (event) {
       const mode = window.mousePlaceMode || {};
-      const simple = mode.category === "apple" || mode.category === "wall" || mode.category === "box";
-      if (simple && !mode.category) return origClick(event);
-      const canvasEl = window.gameCanvasElMakePattern;
+      const canvasEl =
+        window.gameCanvasElMakePattern ||
+        document.getElementsByClassName("cer0Bd")[0];
+      if (canvasEl && !window.gameCanvasElMakePattern) window.gameCanvasElMakePattern = canvasEl;
       if (!canvasEl || !window.wholeSnakeObject || !window.tileWidth) {
         return origClick(event);
       }
@@ -17171,58 +17937,89 @@ window.ultraWrapBlitAndClick = function () {
       const appleX = boardX + spawnOffset.x;
       const appleY = boardY + spawnOffset.y;
 
-      if (mode.category === "shield") {
-        window.placeShield(appleX, appleY, mode.extra || "UP");
-        return;
-      }
+      try {
+        if (mode.category === "erase") {
+          if (typeof window.ultraEmptyCell === "function") window.ultraEmptyCell(boardX, boardY, appleX, appleY);
+          return;
+        }
 
-      if (typeof window.ultraEmptyCell === "function") window.ultraEmptyCell(boardX, boardY, appleX, appleY);
+        if (mode.category === "shield") {
+          window.placeShield(appleX, appleY, mode.extra || "UP");
+          return;
+        }
 
-      switch (mode.category) {
-        case "apple":
-          window.placeApple(appleX, appleY, mode.type);
-          break;
-        case "wall":
-          window.placeWall(gameCoordX, gameCoordY, true);
-          break;
-        case "box":
-          window.placeSokobox(gameCoordX, gameCoordY);
-          break;
-        case "goal":
-          window.placeSokogoal(boardX, boardY);
-          break;
-        case "bridge":
-          window.placeBridge(boardX, boardY);
-          break;
-        case "gate":
-          window.placeGate(boardX, boardY, mode.extra === "v");
-          break;
-        case "poison":
-          window.placePoison(appleX, appleY, window.ultraPlaceFruitType || 0);
-          break;
-        case "arrow":
-          window.placeArrow(boardX, boardY, mode.extra || "UP");
-          break;
-        case "mine":
-          window.placeMine(boardX, boardY);
-          break;
-        case "statue":
-          window.placeStatue(boardX, boardY, !!(mode.extra || mode.type));
-          break;
-        case "key":
-          window.placeKey(boardX, boardY, mode.type);
-          break;
-        case "keyblock":
-          window.placeKeyblock(boardX, boardY, mode.type);
-          break;
-        case "chess":
-          window.placeChessPiece(appleX, appleY, mode.ChessColor, mode.ChessPiece, mode.type);
-          break;
-        default:
-          origClick(event);
+        if (typeof window.ultraEmptyCell === "function") window.ultraEmptyCell(boardX, boardY, appleX, appleY);
+
+        switch (mode.category) {
+          case "apple":
+            window.placeApple(appleX, appleY, mode.type);
+            break;
+          case "wall":
+            window.placeWall(gameCoordX, gameCoordY, true);
+            break;
+          case "box":
+            window.placeSokobox(gameCoordX, gameCoordY);
+            break;
+          case "goal":
+            window.placeSokogoal(boardX, boardY);
+            break;
+          case "bridge":
+            window.placeBridge(boardX, boardY);
+            break;
+          case "gate":
+            window.placeGate(boardX, boardY, mode.extra === "v");
+            break;
+          case "poison":
+            window.placePoison(appleX, appleY, window.ultraPlaceFruitType || 0);
+            break;
+          case "arrow":
+            window.placeArrow(boardX, boardY, mode.extra || "UP");
+            break;
+          case "mine":
+            window.placeMine(boardX, boardY);
+            break;
+          case "statue":
+            window.placeStatue(
+              boardX,
+              boardY,
+              window.ultraPlaceStatueIsCracked
+                ? window.ultraPlaceStatueIsCracked(mode.extra, mode.type)
+                : mode.extra === 1 || mode.type === 1
+            );
+            break;
+          case "key":
+            window.placeKey(boardX, boardY, mode.type);
+            break;
+          case "keyblock":
+            window.placeKeyblock(boardX, boardY, mode.type);
+            break;
+          case "chess": {
+            let color = mode.ChessColor;
+            let piece = mode.ChessPiece;
+            if ((!color || !piece) && mode.extra) {
+              color = String(mode.extra).charAt(0);
+              piece = String(mode.extra).slice(1);
+            }
+            window.placeChessPiece(appleX, appleY, color, piece, mode.type);
+            break;
+          }
+          default:
+            origClick(event);
+        }
+      } catch (err) {
+        console.error("RemixUltra: board place failed", mode && mode.category, err);
       }
     };
     window.placeAppleAtMouse.__ultraPlace = true;
+    const canvas =
+      window.gameCanvasElMakePattern ||
+      document.getElementsByClassName("cer0Bd")[0];
+    if (canvas) {
+      window.gameCanvasElMakePattern = canvas;
+      canvas.removeEventListener("mousedown", origClick);
+      canvas.removeEventListener("mousedown", window.placeAppleAtMouse);
+      canvas.addEventListener("mousedown", window.placeAppleAtMouse);
+    }
   }
 };
 
@@ -17234,7 +18031,6 @@ window.UltraPlace.runCodeAfter = function () {
   window.ultraWrapAppleOffset();
   window.ultraWrapBlitAndClick();
 };
-
 window.RemixUltraMod = {};
 
 window.REMIX_ULTRA_SETTINGS_KEY = "RemixUltraSettings";
@@ -17309,10 +18105,6 @@ window.ultraElShown = function ultraElShown(el) {
 window.ultraModalOpen = function ultraModalOpen() {
   if (window.portalPairsPanelVisible) return true;
   if (window.timeKeeper && window.timeKeeper.dialogActive) return true;
-  const edit = document.getElementById("edit-box");
-  if (edit && edit.offsetWidth > 0 && window.ultraElShown(edit)) return true;
-  const vis = document.getElementById("delete-stuff-popup");
-  if (vis && vis.hidden === false && vis.offsetWidth > 0) return true;
   const exp = document.getElementById("custom-export-dialogue-container");
   if (exp && exp.style.display === "block") return true;
   const tk = document.getElementById("timeKeeperDialog");
@@ -17413,10 +18205,10 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
 #place-panel, #preset-panel {
   width: 220px !important;
   overflow: hidden !important;
-  padding: 8px 4px 6px !important;
+  padding: 10px 10px 12px !important;
   align-content: start !important;
   justify-content: space-evenly !important;
-  gap: 6px 0 !important;
+  gap: 8px 8px !important;
 }
 #place-panel {
   grid-template-columns: 1fr !important;
@@ -17446,17 +18238,18 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
 }
 #ultra-place-grid {
   display: grid;
-  grid-template-columns: repeat(4, 48px);
-  justify-content: space-evenly;
-  gap: 4px 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  justify-content: stretch;
+  gap: 6px;
   overflow: auto;
   min-height: 0;
   scrollbar-width: none;
+  padding: 0;
 }
 #ultra-place-grid::-webkit-scrollbar { display: none; }
 #place-panel[data-ultra-place-cols="5"] #ultra-place-grid,
 #ultra-place-grid .ultra-place-key-row {
-  grid-template-columns: repeat(5, 38px);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 #place-panel[data-ultra-place-cols="5"] #ultra-place-grid {
   display: block;
@@ -17468,62 +18261,103 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
 }
 #ultra-place-grid .ultra-place-key-row {
   display: grid;
-  justify-content: space-evenly;
-  gap: 4px 0;
+  justify-content: stretch;
+  gap: 4px;
   margin-bottom: 6px;
+  padding: 0;
 }
 #place-panel[data-ultra-place-cols="6"] #ultra-place-grid {
-  grid-template-columns: repeat(6, 32px);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
-#place-panel[data-ultra-place-cols="5"] #ultra-place-grid img.place-option {
-  width: 38px !important;
-  height: 38px !important;
-  max-width: 38px !important;
+#place-panel[data-ultra-place-cols="5"] #ultra-place-grid .place-option,
+#place-panel[data-ultra-place-cols="6"] #ultra-place-grid .place-option {
+  width: 100% !important;
+  height: auto !important;
+  max-width: none !important;
 }
-#place-panel[data-ultra-place-cols="6"] #ultra-place-grid img.place-option {
-  width: 32px !important;
-  height: 32px !important;
-  max-width: 32px !important;
-}
-.ultra-place-chip, .ultra-custom-chip {
-  display: inline-block;
-  font-size: 11px;
-  padding: 4px 8px;
-  margin: 2px 4px 6px 0;
+.ultra-custom-chip {
+  display: block;
+  font-size: 12px;
+  padding: 6px 2px;
+  margin: 0;
   border-radius: 8px;
   border: none;
   background: rgba(0,0,0,0.22);
   color: #fff;
   cursor: pointer;
+  font-family: Roboto, Arial, sans-serif;
 }
-.ultra-custom-chip-on, #ultra-custom-current {
+.ultra-custom-chip-on {
   background: var(--ultra-btn, #1155CC);
 }
 #preset-panel {
-  grid-template-columns: repeat(3, 56px) !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  overflow: hidden;
 }
-#place-panel img.place-option {
-  width: 48px !important;
-  height: 48px !important;
-  max-width: 48px !important;
+#place-panel .place-option {
+  width: 100% !important;
+  height: auto !important;
+  max-width: none !important;
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  display: block;
+  overflow: hidden;
+  position: relative;
+  background-color: rgba(0,0,0,0.18);
+  background-clip: padding-box;
+  background-repeat: no-repeat;
+  border-radius: 6px;
+  cursor: pointer;
+  image-rendering: pixelated;
   object-fit: contain !important;
+  filter: none !important;
+  opacity: 0.8;
+  outline: none;
+}
+#place-panel .place-option.ultra-place-on {
+  opacity: 1;
+  z-index: 3;
+  outline: 2px solid #fff !important;
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 4px #1a73e8;
+  background-color: rgba(26, 115, 232, 0.42);
+}
+#place-panel[data-ultra-place-cols="5"] .place-option.ultra-place-on,
+#place-panel[data-ultra-place-cols="6"] .place-option.ultra-place-on {
+  box-shadow: inset 0 0 0 3px #1a73e8;
+}
+#place-panel .place-option .ultra-place-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
 }
 #preset-panel img.preset-option {
-  width: 56px !important;
-  height: 56px !important;
-  max-width: 56px !important;
+  width: 100% !important;
+  height: auto !important;
+  max-width: none !important;
+  aspect-ratio: 1;
   object-fit: contain !important;
   background: rgba(0,0,0,0.18);
   image-rendering: pixelated;
+  grid-column: span 2;
 }
+#preset-panel .preset-none,
 #preset-panel .preset-random-ham {
-  grid-column: 1 / -1 !important;
+  grid-column: span 3 !important;
   width: auto !important;
   max-width: none !important;
   height: 32px !important;
   line-height: 32px !important;
   margin-top: 4px !important;
   font-size: 13px !important;
+  text-align: center;
+  cursor: pointer;
+  color: #fff;
+  background-color: var(--ultra-btn, #2d3f76) !important;
+  font-family: Roboto, Arial, sans-serif !important;
+  white-space: nowrap;
+  overflow: hidden;
 }
 #custom-panel, #challenge-panel {
   width: 220px !important;
@@ -17531,8 +18365,13 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   padding: 8px !important;
   color: #fff !important;
 }
+#custom-panel {
+  display: flex;
+  flex-direction: column;
+}
 #custom-panel > div {
   padding: 0 !important;
+  flex-shrink: 0;
 }
 #settings-popup-pudding {
   overflow: hidden !important;
@@ -17565,86 +18404,14 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   color: #fff;
 }
 .ultra-settings-tab.ultra-tab-on {
-  background: var(--ultra-btn, #1155CC);
+  background: var(--ultra-btn, #1155CC) !important;
   color: #fff;
 }
-.ultra-settings-page {
-  display: none;
-  overflow: hidden;
-  min-height: 0;
-}
-.ultra-settings-page.ultra-page-on {
-  display: block;
-}
-#settings-popup-pudding .form-check,
-#settings-popup-pudding .form-check-inline {
-  display: flex !important;
-  align-items: center;
-  width: 100%;
-  box-sizing: border-box;
-  margin: 4px 0 !important;
-  margin-right: 0 !important;
-  padding: 0 !important;
-  gap: 4px;
-}
-#ultra-settings-hidden,
-#ultra-settings-hidden .form-check,
-#ultra-settings-hidden .form-check-inline,
-#settings-popup-pudding .form-check.ultra-hide,
-#settings-popup-pudding .form-check-inline.ultra-hide,
-#settings-popup-pudding .ultra-hide,
-#AlwaysOnTimeKeeper,
-label[for="AlwaysOnTimeKeeper"],
-#ShowSplitPanel,
-label[for="ShowSplitPanel"],
-#RemoveScrollbar,
-label[for="RemoveScrollbar"] {
-  display: none !important;
-}
-#settings-popup-pudding .form-check-input {
-  float: none !important;
-  position: static !important;
-  margin: 0 !important;
-  flex-shrink: 0;
-}
-#settings-popup-pudding .form-check-label {
-  margin: 3px !important;
-  color: #fff !important;
-  font-family: Roboto, Arial, sans-serif !important;
-}
 #settings-popup-pudding .btn {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  margin: 5px 0 !important;
-  border-radius: 8px !important;
   background: var(--ultra-btn, #1155CC) !important;
-  color: #fff !important;
-  border: none !important;
-  font-size: 12px !important;
 }
 #stat-chooser {
-  width: 100% !important;
-  box-sizing: border-box;
-  display: block !important;
-  min-height: 36px !important;
-  height: 36px !important;
-  line-height: 20px !important;
-  padding: 8px 10px !important;
-  margin: 4px 0 8px !important;
-  border-radius: 8px !important;
-  border: none !important;
-  font-size: 13px !important;
-  color: #fff !important;
   background-color: var(--ultra-btn, #1155CC) !important;
-}
-#black-dice-settings {
-  margin: 8px 0 0 !important;
-  padding: 6px 8px !important;
-  border-radius: 8px !important;
-}
-#black-dice-settings input {
-  width: 4.4em !important;
 }
 #split-panel-pudding,
 #split-panel-list {
@@ -17670,14 +18437,19 @@ label[for="RemoveScrollbar"] {
   font-size: 12px !important;
   line-height: 1.35;
 }
-#custom-panel button, #challenge-panel button,
-#custom-import, #custom-export, #custom-clear, #custom-refresh {
-  padding: 5px 7px !important;
-  font-size: 11px !important;
-  margin: 2px 4px 6px 0 !important;
+#ultra-custom-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 0 0 8px;
 }
-#custom-panel button, #challenge-panel button,
+#ultra-custom-actions button,
+#challenge-panel button,
 #custom-import, #custom-export, #custom-clear, #custom-refresh {
+  padding: 6px 4px !important;
+  font-size: 11px !important;
+  margin: 0 !important;
+  width: 100%;
   border-radius: 8px !important;
   background: var(--ultra-btn, #1155CC) !important;
   color: #fff !important;
@@ -17685,10 +18457,49 @@ label[for="RemoveScrollbar"] {
   font-family: Roboto, Arial, sans-serif !important;
 }
 #custom-clear { background: #b41111 !important; }
-#custom-map-size, #custom-brush, #challenge-level {
+.ultra-custom-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+.ultra-custom-field label {
+  flex: 0 0 auto;
+  margin: 0 !important;
+  font-size: 12px !important;
+}
+.ultra-custom-field select,
+#custom-map-size, #challenge-level {
+  flex: 1;
+  min-width: 0;
   border-radius: 8px !important;
   border: none !important;
   padding: 4px 8px;
+}
+#ultra-custom-tools {
+  margin: 0 0 4px;
+}
+.ultra-custom-modes {
+  display: flex;
+  gap: 4px;
+}
+.ultra-custom-modes .ultra-custom-chip {
+  flex: 1;
+}
+.ultra-custom-status {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.3;
+  min-height: 1.3em;
+  opacity: 0.92;
+}
+#custom-panel .ultra-custom-hint {
+  font-size: 11px !important;
+  opacity: 0.8;
+  margin: 8px 0 0 !important;
+}
+#custom-brush, label[for="custom-brush"] {
+  display: none !important;
 }
 #link-to-preset, #link-to-place {
   display: none !important;
@@ -17701,8 +18512,12 @@ label[for="RemoveScrollbar"] {
   border-radius: 8px;
 }
 .chosen-preset {
-  outline: 3px solid #ffe566 !important;
+  outline: 2px solid #fff !important;
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 4px #1a73e8;
   border-radius: 8px;
+  z-index: 3;
+  position: relative;
 }
 #ultra-input-slot {
   position: absolute;
@@ -17819,7 +18634,8 @@ window.ultraLayoutMenus = function ultraLayoutMenus() {
     if (more) {
       window.ultraFitRightPanel(more);
       if (right === "more") {
-        more.style.display = "block";
+        more.style.display = "flex";
+        more.style.flexDirection = "column";
         more.style.visibility = "visible";
       } else {
         more.style.display = "none";
@@ -17842,7 +18658,7 @@ window.ultraLayoutMenus = function ultraLayoutMenus() {
 
     const left = window.ultraDock.left;
     const leftH = window.ultraDockH - window.ultraDockTabH + "px";
-    window.ultraSetPanelDisplay(custom, left === "custom", "block");
+    window.ultraSetPanelDisplay(custom, left === "custom", "flex");
     window.ultraSetPanelDisplay(challenge, left === "challenge", "block");
     if (custom) custom.style.height = leftH;
     if (challenge) challenge.style.height = leftH;
@@ -17905,22 +18721,36 @@ window.ultraSetLeft = function ultraSetLeft(tab) {
   window.ultraLayoutMenus();
 };
 
+window.ultraClearChosenPresets = function ultraClearChosenPresets() {
+  const panel = document.getElementById("preset-panel");
+  if (!panel) return;
+  panel.querySelectorAll(".preset-option").forEach(function (c) {
+    c.classList.remove("chosen-preset");
+  });
+};
+
 window.ultraSelectPresetKind = function ultraSelectPresetKind(kind, forceReset) {
   const panel = document.getElementById("preset-panel");
   if (!panel) return;
   const el = panel.querySelector(".preset-" + kind);
   if (!el) return;
   const already = el.classList.contains("chosen-preset");
-  Array.from(panel.children).forEach(function (c) {
-    c.classList.remove("chosen-preset");
-  });
+  window.ultraClearChosenPresets();
   el.classList.add("chosen-preset");
   if (!window.megaWholeSnakeObject && !window.__remixGame) return;
   if (kind === "challenge") {
+    const sel = document.getElementById("challenge-level");
+    if (sel && window.otherPresetmanager) {
+      window.otherPresetmanager.challengelevel = Number(sel.value) || 1;
+    }
     window.selectNewSizeSettingAndHardReset(0);
+    window.ultraBlitChosenPreset();
     return;
   }
-  if (!already || forceReset) window.ultraHardResetBoard();
+  if (!already || forceReset) {
+    window.ultraHardResetBoard();
+    window.ultraBlitChosenPreset();
+  }
 };
 
 window.ultraOpenLeft = function ultraOpenLeft(tab) {
@@ -17955,23 +18785,56 @@ window.ultraSetSizeSetting = function ultraSetSizeSetting(sizeIndex) {
   }
 };
 
-window.ultraResetBoard = function ultraResetBoard() {
-  const g = window.__remixGame || window.megaWholeSnakeObject;
+window.ultraGetResetMenu = function ultraGetResetMenu(host) {
+  if (!host) return null;
+  if (host.menu && typeof host.menu === "object") return host.menu;
   try {
-    const fn = window.fullResetFuncName;
-    if (g && fn && typeof g[fn] === "function") {
-      try {
-        if (g.menu) g.menu.visible = true;
-      } catch (_m) {}
-      g[fn]();
-      try {
-        if (g.menu) g.menu.visible = false;
-      } catch (_m2) {}
-      return;
+    for (const k in host) {
+      const v = host[k];
+      if (
+        v &&
+        typeof v === "object" &&
+        typeof v.isVisible === "function"
+      ) {
+        return v;
+      }
     }
   } catch (_e) {}
+  return null;
+};
+
+window.ultraResetBoard = function ultraResetBoard() {
+  const fn = window.fullResetFuncName;
+  const mega = window.megaWholeSnakeObject;
+  const inner = window.wholeSnakeObject || window.__remixGame;
+  const hosts = [];
+  if (mega) hosts.push(mega);
+  if (inner && inner !== mega) hosts.push(inner);
+  for (let i = 0; i < hosts.length; i++) {
+    const host = hosts[i];
+    if (!fn || typeof host[fn] !== "function") continue;
+    const menu =
+      window.ultraGetResetMenu(host) ||
+      window.ultraGetResetMenu(mega) ||
+      (inner && inner.menu) ||
+      null;
+    try {
+      if (menu) menu.visible = true;
+    } catch (_m) {}
+    try {
+      host[fn]();
+      try {
+        if (menu) menu.visible = false;
+      } catch (_m2) {}
+      return;
+    } catch (_e) {
+      try {
+        if (menu) menu.visible = false;
+      } catch (_m3) {}
+    }
+  }
   try {
-    if (g && g.wa && typeof g.wa.reset === "function") g.wa.reset();
+    if (inner && inner.wa && typeof inner.wa.reset === "function") inner.wa.reset();
   } catch (_e2) {}
 };
 
@@ -17980,19 +18843,71 @@ window.ultraHardResetBoard = function ultraHardResetBoard() {
 };
 
 window.ultraInstallSizeReset = function ultraInstallSizeReset() {
-  window.selectNewSizeSettingAndHardReset = function selectNewSizeSettingAndHardReset(
-    newSizeSetting
-  ) {
+  if (window.selectNewSizeSettingAndHardReset && window.selectNewSizeSettingAndHardReset.__ultra) return;
+  window.selectNewSizeSettingAndHardReset = function selectNewSizeSettingAndHardReset(newSizeSetting) {
     if (newSizeSetting != null) window.ultraSetSizeSetting(newSizeSetting);
     window.ultraResetBoard();
   };
+  window.selectNewSizeSettingAndHardReset.__ultra = true;
 };
 
-window.selectNewSizeSettingAndHardReset = function selectNewSizeSettingAndHardReset(
-  newSizeSetting
-) {
-  if (newSizeSetting != null) window.ultraSetSizeSetting(newSizeSetting);
-  window.ultraResetBoard();
+window.ultraPatchChallengeSpeedrunWin = function ultraPatchChallengeSpeedrunWin(code) {
+  if (
+    code.indexOf(
+      "tryChallengeSpeedrunAdvance&&window.tryChallengeSpeedrunAdvance(this)"
+    ) >= 0
+  ) {
+    return code;
+  }
+  const repl =
+    "if($1(this)===0){if(window.tryChallengeSpeedrunAdvance&&window.tryChallengeSpeedrunAdvance(this)){this.$4=this.$5=!0;}else{$2.WIN.play();$3this.$4=this.$5=!0;$6(this.menu,1400,this.$7);$8this.Mb=this.ticks}}else if";
+  const patterns = [
+    /if\(([$a-zA-Z0-9_]{0,8})\(this\)===0\)\{([$a-zA-Z0-9_]{0,8})\.WIN\.play\(\);(window\.timeKeeper\.gotAll\([^;]*?\),)?this\.([$a-zA-Z0-9_]{0,8})=this\.([$a-zA-Z0-9_]{0,8})=!0;([$a-zA-Z0-9_]{0,8})\(this\.menu,1400,this\.([$a-zA-Z0-9_]{0,8})\);([\s\S]*?)this\.Mb=this\.ticks\}else if/,
+    /if\(([$a-zA-Z0-9_]{0,8})\(this\)===0\)\{([$a-zA-Z0-9_]{0,8})\.WIN\.play\(\);([\s\S]{0,200}?)this\.([$a-zA-Z0-9_]{0,8})=this\.([$a-zA-Z0-9_]{0,8})=!0;([$a-zA-Z0-9_]{0,8})\(this\.menu,1400,this\.([$a-zA-Z0-9_]{0,8})\);([\s\S]*?)this\.Mb=this\.ticks\}else if/,
+  ];
+  for (let i = 0; i < patterns.length; i++) {
+    if (code.match(patterns[i])) {
+      return code.replace(patterns[i], repl);
+    }
+  }
+  console.error("RemixUltraMod: failed to patch challenge speedrun win path");
+  return code;
+};
+
+window.ultraInstallChallengeSpeedrun = function ultraInstallChallengeSpeedrun() {
+  const orig = window.tryChallengeSpeedrunAdvance;
+  if (typeof orig !== "function" || orig.__ultra) return;
+  window.tryChallengeSpeedrunAdvance = function (gameState) {
+    if (!window.challengeSpeedrunMode) return false;
+    const presetEl = document.getElementsByClassName("chosen-preset")[0];
+    if (!presetEl || !presetEl.classList.contains("preset-challenge")) return false;
+    const mgr = window.otherPresetmanager;
+    if (!mgr) return false;
+    const maxLevel = (mgr.challengeLevelCodes && mgr.challengeLevelCodes.length) || 20;
+    const currentLevel = Number(mgr.challengelevel) || 1;
+    if (currentLevel >= maxLevel) return false;
+    const nextLevel = currentLevel + 1;
+    mgr.challengelevel = nextLevel;
+    const levelSelect = document.getElementById("challenge-level");
+    if (levelSelect) levelSelect.value = String(nextLevel);
+    setTimeout(function () {
+      if (typeof window.selectNewSizeSettingAndHardReset === "function") {
+        window.selectNewSizeSettingAndHardReset(0);
+      }
+      if (typeof window.ultraBlitChosenPreset === "function") {
+        window.ultraBlitChosenPreset();
+      }
+    }, 0);
+    return true;
+  };
+  window.tryChallengeSpeedrunAdvance.__ultra = true;
+};
+
+window.ultraBlitChosenPreset = function ultraBlitChosenPreset() {
+  if (typeof window.blitSelectedPreset !== "function") return;
+  try {
+    window.blitSelectedPreset();
+  } catch (_e) {}
 };
 
 window.ultraInstallBlitGuard = function ultraInstallBlitGuard() {
@@ -18006,13 +18921,11 @@ window.ultraInstallBlitGuard = function ultraInstallBlitGuard() {
     }
     if (presetEl && presetEl.tagName === "IMG") {
       const key = presetEl.getAttribute("data-ultra-pattern");
-      if (
-        key &&
-        window.presetPatterns &&
-        window.presetPatterns[key] &&
-        !window.presetPatterns[presetEl.src]
-      ) {
-        window.presetPatterns[presetEl.src] = window.presetPatterns[key];
+      const src = presetEl.src || "";
+      const name = src.replace(window.rootUrl || "", "");
+      if (key && window.presetPatterns && window.presetPatterns[key]) {
+        window.presetPatterns[src] = window.presetPatterns[key];
+        window.presetPatterns[name] = window.presetPatterns[key];
       }
     }
     const origAlert = window.alert;
@@ -18031,8 +18944,7 @@ window.ultraInstallBlitGuard = function ultraInstallBlitGuard() {
     }
     if (tooSmall && !window.__ultraFixingSize) {
       window.__ultraFixingSize = true;
-      window.ultraSetSizeSetting(0);
-      window.ultraResetBoard();
+      window.selectNewSizeSettingAndHardReset(0);
       window.__ultraFixingSize = false;
     }
   };
@@ -18165,7 +19077,13 @@ window.ultraSyncLeNav = function ultraSyncLeNav() {
         "click",
         function (ev) {
           this.__ultraWasChosen = this.classList.contains("chosen-preset");
-          if (this.tagName === "IMG" && !this.classList.contains("preset-none")) {
+          if (this.classList.contains("preset-none")) {
+            ev.stopImmediatePropagation();
+            window.ultraSelectPresetKind("none", true);
+            window.ultraSetLeft(null);
+            return;
+          }
+          if (this.tagName === "IMG") {
             ev.stopImmediatePropagation();
             window.ultraApplyImagePreset(this);
           }
@@ -18184,6 +19102,7 @@ window.ultraSyncLeNav = function ultraSyncLeNav() {
         }
         if (this.__ultraWasChosen && this.tagName !== "IMG") {
           window.ultraHardResetBoard();
+          window.ultraBlitChosenPreset();
         }
       });
       el.__ultraBound = true;
@@ -18194,6 +19113,10 @@ window.ultraSyncLeNav = function ultraSyncLeNav() {
   if (challengeLevel && !challengeLevel.__ultraBound) {
     challengeLevel.addEventListener("change", function () {
       window.ultraSetLeft("challenge");
+      if (window.otherPresetmanager) {
+        window.otherPresetmanager.challengelevel = Number(this.value) || 1;
+      }
+      window.ultraBlitChosenPreset();
     });
     challengeLevel.__ultraBound = true;
   }
@@ -18346,14 +19269,6 @@ window.ultraWrapShowHide = function ultraWrapShowHide() {
     window.toggle_input_display.__ultra = true;
   }
 
-  const vis = document.getElementById("delete-stuff-popup");
-  if (vis && !vis.__ultraObs) {
-    const obs = new MutationObserver(function () {
-      window.ultraLayoutMenus();
-    });
-    obs.observe(vis, { attributes: true, attributeFilter: ["hidden", "style"] });
-    vis.__ultraObs = true;
-  }
   const exp = document.getElementById("custom-export-dialogue-container");
   if (exp && !exp.__ultraObs) {
     const obs = new MutationObserver(function () {
@@ -18396,11 +19311,19 @@ window.ultraAssignNewApples = function ultraAssignNewApples(added) {
   const mgr = window.ultraAppleManager();
   if (!mgr || !mgr.ka || !added || added <= 0) return;
   window.appleArray = mgr.ka;
-  if (window.isChessActive && window.isChessActive() && typeof window.chess_convert_new_apples === "function") {
-    window.chess_convert_new_apples(mgr, added);
+  const start = mgr.ka.length - added;
+  if (window.isChessActive && window.isChessActive() && typeof window.chess_assign_piece === "function") {
+    for (let i = start; i < mgr.ka.length; i++) {
+      const a = mgr.ka[i];
+      if (!a || a.isPiece || a.Oka || a.nba instanceof Set) continue;
+      window.chess_assign_piece(a);
+    }
+    if (typeof window.ultraSyncChessPlaceState === "function") {
+      window.ultraSyncChessPlaceState();
+    }
   }
   if (window.isBurgerActive && window.isBurgerActive() && typeof window.burger_assign_timer === "function") {
-    for (let i = mgr.ka.length - added; i < mgr.ka.length; i++) {
+    for (let i = start; i < mgr.ka.length; i++) {
       if (mgr.ka[i] && !mgr.ka[i].Oka) window.burger_assign_timer(mgr.ka[i]);
     }
   }
@@ -18567,16 +19490,18 @@ window.ultraPresetSizeIndex = function ultraPresetSizeIndex(el) {
 window.ultraApplyImagePreset = function ultraApplyImagePreset(el) {
   const panel = document.getElementById("preset-panel");
   if (!panel || !el) return;
-  Array.from(panel.children).forEach(function (c) {
-    c.classList.remove("chosen-preset");
-  });
+  window.ultraClearChosenPresets();
   el.classList.add("chosen-preset");
   const key = el.getAttribute("data-ultra-pattern");
+  const src = el.src || "";
+  const name = src.replace(window.rootUrl || "", "");
   if (key && window.presetPatterns && window.presetPatterns[key]) {
-    window.presetPatterns[el.src] = window.presetPatterns[key];
+    window.presetPatterns[src] = window.presetPatterns[key];
+    window.presetPatterns[name] = window.presetPatterns[key];
   }
   window.ultraSetLeft(null);
   window.selectNewSizeSettingAndHardReset(window.ultraPresetSizeIndex(el));
+  window.ultraBlitChosenPreset();
 };
 
 window.ultraPatchPresetLoads = function ultraPatchPresetLoads() {
@@ -18610,35 +19535,30 @@ window.ULTRA_HAM_W = 10;
 window.ULTRA_HAM_H = 9;
 window.ULTRA_HAM_MIDDLE = { x: 7, y: 4 };
 
-// Vanilla 10-apple start in spawn-relative coords (same offsets the game
-// passes to makeApple). On small, (4,0) is off the board and (-5,0) sits
-// on the snake's head; those are dropped when converting to tiles.
-window.ULTRA_TEN_APPLE_VANILLA = [
-  [-5, -4],
-  [-2, -4],
-  [1, -4],
-  [-5, 0],
-  [-2, 0],
-  [1, 0],
-  [-5, 4],
-  [-2, 4],
-  [1, 4],
-  [4, 0],
+// Native small-board apple starts (g7 spawn + the x shift the game applies when
+// size is Small). Ham is always 10x9, so these are board tiles, not standard-board offsets.
+window.ULTRA_HAM_SMALL_5 = [
+  { x: 4, y: 2 },
+  { x: 8, y: 2 },
+  { x: 6, y: 4 },
+  { x: 4, y: 6 },
+  { x: 8, y: 6 },
+];
+window.ULTRA_HAM_SMALL_10 = [
+  { x: 5, y: 4 },
+  { x: 3, y: 2 },
+  { x: 3, y: 6 },
+  { x: 7, y: 2 },
+  { x: 7, y: 6 },
+  { x: 1, y: 0 },
+  { x: 5, y: 0 },
+  { x: 9, y: 4 },
+  { x: 1, y: 8 },
+  { x: 5, y: 8 },
 ];
 
 window.ultraHamOffset = function ultraHamOffset() {
-  try {
-    if (typeof window.getAppleSpawnPointOffset === "function") {
-      const off = window.getAppleSpawnPointOffset();
-      if (off && typeof off.x === "number") return off;
-    }
-  } catch (_e) {}
   return { x: -7, y: -4 };
-};
-
-window.ultraVanillaToHamBoard = function ultraVanillaToHamBoard(vx, vy) {
-  const off = window.ultraHamOffset();
-  return { x: vx - off.x, y: vy - off.y };
 };
 
 window.ultraHamKey = function ultraHamKey(x, y) {
@@ -18739,40 +19659,9 @@ window.ultraHamWantSingleApple = function ultraHamWantSingleApple(count) {
 };
 
 window.ultraTenAppleBoardCoords = function ultraTenAppleBoardCoords() {
-  const pts = window.ULTRA_TEN_APPLE_VANILLA;
-  const out = [];
-  for (let i = 0; i < pts.length; i++) {
-    out.push(window.ultraVanillaToHamBoard(pts[i][0], pts[i][1]));
-  }
-  return out;
-};
-
-window.ultraNativeAppleBoardCoords = function ultraNativeAppleBoardCoords() {
-  const off = window.ultraHamOffset();
-  const pts = [];
-  try {
-    const g = window.__remixGame;
-    const apples = (g && g.wa && g.wa.ka) || window.appleArray || [];
-    for (let i = 0; i < apples.length; i++) {
-      const p = apples[i] && apples[i].pos;
-      if (!p || typeof p.x !== "number") continue;
-      pts.push({ x: p.x, y: p.y });
-    }
-  } catch (_e) {}
-  if (!pts.length) return [];
-  let spawnRel = false;
-  for (let i = 0; i < pts.length; i++) {
-    if (pts[i].x < 0 || pts[i].y < 0) {
-      spawnRel = true;
-      break;
-    }
-  }
-  if (spawnRel) {
-    return pts.map(function (p) {
-      return { x: p.x - off.x, y: p.y - off.y };
-    });
-  }
-  return pts;
+  return window.ULTRA_HAM_SMALL_10.map(function (p) {
+    return { x: p.x, y: p.y };
+  });
 };
 
 window.ultraHamFilterCoords = function ultraHamFilterCoords(coords, blocked) {
@@ -18840,7 +19729,7 @@ window.ultraHamAppleCoords = function ultraHamAppleCoords(walls) {
   const blocked = window.ultraHamBlockedSet(walls);
   const count = window.ultraHamCountIndex();
   const ten = window.ultraTenAppleBoardCoords();
-  const native = window.ultraNativeAppleBoardCoords();
+  const five = window.ULTRA_HAM_SMALL_5;
   const mid = window.ULTRA_HAM_MIDDLE;
 
   if (window.ultraHamWantSingleApple(count)) {
@@ -18855,43 +19744,20 @@ window.ultraHamAppleCoords = function ultraHamAppleCoords(walls) {
       for (let y = 0; y < window.ULTRA_HAM_H; y++) {
         for (let x = 0; x < window.ULTRA_HAM_W; x++) extra.push({ x: x, y: y });
       }
-      picked = window.ultraHamClosestToSnake(extra, 3, blocked);
+      picked = window.ultraHamClosestToSnake(ten.concat(extra), 3, blocked);
     }
     return picked;
   }
 
   if (count === 2) {
-    const five = [
-      [-5, -4],
-      [1, -4],
-      [-2, 0],
-      [-5, 4],
-      [1, 4],
-    ].map(function (p) {
-      return window.ultraVanillaToHamBoard(p[0], p[1]);
-    });
-    return window.ultraHamFilterCoords(five, blocked);
+    return window.ultraHamPlaceCount(five, blocked, 5);
   }
 
   if (count === 3) {
-    const intended = [];
-    const seen = Object.create(null);
-    function addIntended(list) {
-      if (!list) return;
-      for (let i = 0; i < list.length; i++) {
-        const p = list[i];
-        const k = window.ultraHamKey(p.x, p.y);
-        if (seen[k]) continue;
-        seen[k] = true;
-        intended.push({ x: p.x, y: p.y });
-      }
-    }
-    addIntended(native);
-    addIntended(ten);
-    return window.ultraHamPlaceCount(intended, blocked, 10);
+    return window.ultraHamPlaceCount(ten, blocked, 10);
   }
 
-  return window.ultraHamFilterCoords(native.length ? native : ten, blocked);
+  return window.ultraHamPlaceCount(five, blocked, 5);
 };
 
 window.ultraPatchLevelLoads = function ultraPatchLevelLoads() {
@@ -18906,7 +19772,11 @@ window.ultraPatchLevelLoads = function ultraPatchLevelLoads() {
     mgr.isChallengeLoaded = mgr.challengeLevelCodes.length > 0;
   }
   if (window.ULTRA_HAM_TXT) {
-    mgr.hamLevelCodes = String(window.ULTRA_HAM_TXT).split(/\r?\n/);
+    mgr.hamLevelCodes = String(window.ULTRA_HAM_TXT)
+      .split(/\r?\n/)
+      .filter(function (line) {
+        return line.trim().length > 0;
+      });
     mgr.isHamsLoaded = mgr.hamLevelCodes.length > 0;
   }
   const origGet = mgr.getChallengePixelList;
@@ -18917,11 +19787,13 @@ window.ultraPatchLevelLoads = function ultraPatchLevelLoads() {
   mgr.loadChallenge = function () {};
   mgr.loadRandomHams = function () {};
   mgr.getRandomHamPixelList = function () {
-    if (!this.isHamsLoaded || !this.hamLevelCodes || !this.hamLevelCodes.length) {
+    const codes = (this.hamLevelCodes || []).filter(function (line) {
+      return String(line || "").trim().length > 0;
+    });
+    if (!this.isHamsLoaded || !codes.length) {
       return [];
     }
-    const chosen =
-      this.hamLevelCodes[Math.floor(Math.random() * this.hamLevelCodes.length)];
+    const chosen = codes[Math.floor(Math.random() * codes.length)];
     const decoded = window.customPresetManager.getPixelListFromLevelCode(chosen);
     const walls = decoded.filter(function (e) {
       return e.category === "wall";
@@ -18942,6 +19814,7 @@ window.ultraPatchLevelLoads = function ultraPatchLevelLoads() {
 
 window.ultraFixPresetImages = function ultraFixPresetImages() {
   document.querySelectorAll("#preset-panel img.preset-option").forEach(function (img) {
+    if (img.classList.contains("preset-none")) return;
     const src = img.getAttribute("src") || img.src || "";
     const key = src.replace(window.rootUrl || "", "");
     if (key) img.setAttribute("data-ultra-pattern", key);
@@ -18954,6 +19827,27 @@ window.ultraFixPresetImages = function ultraFixPresetImages() {
   });
 };
 
+window.ultraInstallPresetNoneButton = function ultraInstallPresetNoneButton() {
+  const panel = document.getElementById("preset-panel");
+  if (!panel) return;
+  let none = panel.querySelector(".preset-none");
+  if (!none) return;
+  if (none.tagName === "IMG") {
+    const btn = document.createElement("div");
+    btn.className = none.className;
+    btn.textContent = "None";
+    none.replaceWith(btn);
+    none = btn;
+  } else if (!String(none.textContent || "").trim()) {
+    none.textContent = "None";
+  }
+  const ham = panel.querySelector(".preset-random-ham");
+  if (ham) {
+    ham.textContent = "Random Ham";
+    ham.before(none);
+  }
+};
+
 window.ultraShowSettingsPage = window.remixShowSettingsPage;
 window.ultraOrganizeSettings = window.remixOrganizeSettings;
 
@@ -18963,6 +19857,7 @@ window.ultraSetupLayout = function ultraSetupLayout() {
   window.ultraInjectThemeCss();
   window.ultraInjectTabStrip();
   window.ultraMoveInputDisplay();
+  window.ultraInstallPresetNoneButton();
   window.ultraSyncLeNav();
   window.ultraWrapShowHide();
   window.ultraDisableSpeedInfo();
@@ -19269,6 +20164,7 @@ window.RemixUltraMod.alterSnakeCode = function (code) {
     code = window.DiceCounts.alterSnakeCode(code);
     code = window.RemixSpeedInfo.alterSnakeCode(code);
     code = window.PauseMod.alterSnakeCode(code);
+    code = window.ultraPatchChallengeSpeedrunWin(code);
     return code;
   });
 };
@@ -19299,9 +20195,9 @@ window.RemixUltraMod.runCodeAfter = function () {
   window.ultraSetIndicator();
   window.ultraSetupLayout();
   window.ultraSetupGameplayHooks();
+  window.ultraInstallChallengeSpeedrun();
 };
 
 // Custom URL often keeps customModName as RemixMod. Alias so either name
 // runs the Ultra chain. Inner Remix methods live on window.__remixCore.
 window.RemixMod = window.RemixUltraMod;
-

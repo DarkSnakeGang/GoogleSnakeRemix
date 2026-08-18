@@ -39,7 +39,7 @@ More Pudding already bundles Pudding Mod, Visibility Mod and More Menu Mod and r
 
 **Settings isolation:** Remix persists to `RemixSettings` and `snake_timeKeeper_remix` (seeded once from Pudding’s keys if empty) so extra trophies/counts/speeds and Remix-only options never overwrite plain PuddingMod’s `PuddingSettings` / `snake_timeKeeper`.
 
-**Pudding Settings:** The sidebar uses **Play | Stats | Setup** tabs (same layout as Remix Ultra). Speed Info / split panel / scrollbar toggles stay hidden; Black Dice min/max live on Setup.
+**Pudding Settings:** The sidebar uses **Play | Stats | Setup** tabs (same layout and control sizes in Remix and Remix Ultra). Speed Info / split panel / scrollbar toggles stay hidden; Black Dice min/max live on Setup. Setup has a **Show / Hide Visibility settings** button for the Visibility overlay.
 
 **ModeRegistry:** Upstream TimeKeeper / SpeedInfo now use stable mode keys (`chess`, `wall+burger`, …). Remix registers Candy/Chess/Burger, detects Blender by `random.png` (not “last trophy”), and keeps blender mix keys in sync with the Remix blend toggles.
 
@@ -71,9 +71,13 @@ Settings are isolated to `RemixUltraSettings` and `snake_timeKeeper_remix_ultra`
 
 Menus share one right dock and one left dock with tabs (**Place | Presets | More** on the right, **Custom | Challenge | Splits** on the left) instead of stacking every 220px sidebar. Full-screen Pudding overlays hide the docks and restore the previous tab when closed. The canvas label is **Remix Ultra**.
 
-**Place tabs:** the right-hand Place dock has inner tabs **Original Fruit | Pudding Fruit | Objects | Key | Chess**. Original is vanilla apples `0–23`. Pudding lists More Pudding fruits (not chess pieces, goldens, or the skull). Objects cover wall, sokobox, sokogoal, bridge, both gate orientations, poison, arrows, shields, mines, and statues. Key is one tab with keys `0–4` over matching keyblocks. Chess plants an exact piece (`isPiece`, no random assign). Live clicks overwrite the cell. Shields only toggle a direction on fruit that already exists.
+**Presets / Challenge:** clicking a Presets thumbnail (or Random HAM) still hard-resets and immediately blits that pattern onto the board, same as Level Editor. Challenge lives on the left dock instead of the old CHALLENGE button; picking a level (and Speedrun mode) is unchanged, and the selected level applies on tab open and on dropdown change.
 
-**Custom codes** stay space-separated with no version header. Old `17x15 A11,7 W3,4 B5,5 S4,1` still imports (`A` is apple type 0). Export writes apple type and these extra letters: `Y` sokogoal, `C` bridge, `Ex,y,h|v` gate, `P` poison, `V` arrow, `H` shield on an existing apple, `N` mine, `Tx,y,0|1` statue, `Fx,y,bB` chess piece, `K` key, `L` keyblock. PNG presets are unchanged.
+**Place tabs:** the right-hand Place dock has inner tabs **Original Fruit | Pudding Fruit | Objects | Key | Chess**. Original is vanilla apples `0–23`. Pudding lists More Pudding fruits (not chess pieces, goldens, or the skull). Objects cover wall, sokobox, sokogoal, bridge, both gate orientations, poison (Normal skull, not Realism), arrows, shields, mines, and statues (cracked has the crack overlay). Key is one tab with keys `0–23` over matching keyblocks (the in-game `key_types` sheet). Chess plants an exact piece (`isPiece`, no random assign). Live clicks overwrite the cell. A shield click plants fruit if the cell is empty, then toggles that edge. Click other shield directions on the same fruit to keep several sides at once (native `nba` set).
+
+**Custom codes** stay space-separated with no version header. Old `17x15 A11,7 W3,4 B5,5 S4,1` still imports (`A` is apple type 0). Export writes apple type and these extra letters: `Y` sokogoal, `C` bridge, `Ex,y,h|v` gate, `P` poison, `V` arrow, `Hx,y,ULDR` shield sides on a fruit (`H5,5,U` or packed `H5,5,UL`), `N` mine, `Tx,y,0|1` statue, `Fx,y,bB` chess piece, `K` key, `L` keyblock. PNG presets are unchanged.
+
+**Custom brush:** the left Custom dock is the canvas, not a second palette. A **Paint | Start | Erase** row plus a status line is the whole tool UI. Paint uses whatever is selected in the right-hand Place dock. Start drops the snake spawn. Erase (and right-click) deletes. Import / Export / Clear / Refresh sit in a 2×2 grid above map size.
 
 **Custom map sizes** match More Menu `#size` 0–10: Standard 17×15, Small 10×9, Large 24×21, Micro 5×4, Tiny 7×6, Compact 12×11, Super 37×32, Too Big 64×56, Humongous 105×92, Way Too Big 168×147, Enormous 600×530.
 

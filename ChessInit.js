@@ -222,14 +222,32 @@ window.ChessMod.alterSnakeCode = function (code) {
   // Visibility gates fruit drawing on one checkbox for everything that is not
   // poison. Split pieces out of that branch so the Chess Pieces row applies.
   // Both the normal and the twin/infinity mirrored draw carry the same guard.
-  let fruitGate =
-    "(window.visiFullPass || (b.Oka ? window.checkboxes.checkboxStatuses.poison : window.checkboxes.checkboxStatuses.fruit))";
-  if (code.includes(fruitGate)) {
+  // MorePudding currently marks poison as (b.nla||b.Oka); older builds used b.Oka.
+  const fruit = "window.checkboxes.checkboxStatuses.fruit";
+  const pieces =
+    "(b.isPiece ? window.checkboxes.checkboxStatuses.chessPieces : window.checkboxes.checkboxStatuses.fruit)";
+  const poisonMarks = ["(b.nla||b.Oka)", "b.Oka"];
+  let fruitGatePatched = false;
+  for (let i = 0; i < poisonMarks.length; i++) {
+    const from =
+      "(window.visiFullPass || (" +
+      poisonMarks[i] +
+      " ? window.checkboxes.checkboxStatuses.poison : " +
+      fruit +
+      "))";
+    if (!code.includes(from)) continue;
     code = code.replaceAll(
-      fruitGate,
-      "(window.visiFullPass || (b.Oka ? window.checkboxes.checkboxStatuses.poison : (b.isPiece ? window.checkboxes.checkboxStatuses.chessPieces : window.checkboxes.checkboxStatuses.fruit)))"
+      from,
+      "(window.visiFullPass || (" +
+        poisonMarks[i] +
+        " ? window.checkboxes.checkboxStatuses.poison : " +
+        pieces +
+        "))"
     );
-  } else {
+    fruitGatePatched = true;
+    break;
+  }
+  if (!fruitGatePatched) {
     console.error("ChessMod: failed to find Visibility fruit gate for chess pieces");
   }
 
