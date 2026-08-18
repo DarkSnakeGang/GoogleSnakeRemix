@@ -555,12 +555,12 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       await h.start({ mode: "burger", count: COUNT.ONE, size: SIZE.NORMAL });
       const after = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const fresh = g.wa.ka.find((a) => a && !a.nla);
+        const fresh = g.wa.ka.find((a) => a && !a.Oka);
         if (!fresh) return { ok: false };
         fresh.burgerTimer = 1;
         fresh.burgerTimerMax = 20;
         g.tick();
-        const poisons = g.wa.ka.filter((a) => a.nla);
+        const poisons = g.wa.ka.filter((a) => a.Oka);
         return {
           ok: true,
           poisons: poisons.length,

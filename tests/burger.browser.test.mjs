@@ -7,7 +7,7 @@ async function eatFreshAhead(page) {
   return page.evaluate(() => {
     const g = window.__remixGame;
     const apples = g.wa.ka;
-    const fresh = apples.find((a) => a && !a.nla);
+    const fresh = apples.find((a) => a && !a.Oka);
     if (!fresh) return { ok: false, reason: "no fresh" };
 
     const head = g.oa.ka[0];
@@ -21,23 +21,23 @@ async function eatFreshAhead(page) {
     fresh.pos.x = next.x;
     fresh.pos.y = next.y;
 
-    const beforePoisons = apples.filter((a) => a.nla).length;
-    const beforeScore = g.Oh;
+    const beforePoisons = apples.filter((a) => a.Oka).length;
+    const beforeScore = g.Sh;
     const beforeLen = g.oa.Ta;
-    const beforeFresh = apples.filter((a) => !a.nla).length;
+    const beforeFresh = apples.filter((a) => !a.Oka).length;
 
     g.tick();
 
     return {
       ok: true,
       beforePoisons,
-      afterPoisons: g.wa.ka.filter((a) => a.nla).length,
+      afterPoisons: g.wa.ka.filter((a) => a.Oka).length,
       scoreBefore: beforeScore,
-      scoreAfter: g.Oh,
+      scoreAfter: g.Sh,
       lenBefore: beforeLen,
       lenAfter: g.oa.Ta,
       beforeFresh,
-      afterFresh: g.wa.ka.filter((a) => !a.nla).length,
+      afterFresh: g.wa.ka.filter((a) => !a.Oka).length,
       afterTotal: g.wa.ka.length,
       fruitsEaten: window.burger_fruits_eaten,
       ja: g.oa.Ja,
@@ -48,7 +48,7 @@ async function eatFreshAhead(page) {
 async function eatPoisonAhead(page) {
   return page.evaluate(() => {
     const g = window.__remixGame;
-    const poison = g.wa.ka.find((a) => a && a.nla);
+    const poison = g.wa.ka.find((a) => a && a.Oka);
     if (!poison) return { ok: false, reason: "no poison" };
 
     const head = g.oa.ka[0];
@@ -62,20 +62,20 @@ async function eatPoisonAhead(page) {
     poison.pos.x = next.x;
     poison.pos.y = next.y;
 
-    const beforeScore = g.Oh;
+    const beforeScore = g.Sh;
     const beforeLen = g.oa.Ta;
-    const beforePoisons = g.wa.ka.filter((a) => a.nla).length;
+    const beforePoisons = g.wa.ka.filter((a) => a.Oka).length;
 
     g.tick();
 
     return {
       ok: true,
       scoreBefore: beforeScore,
-      scoreAfter: g.Oh,
+      scoreAfter: g.Sh,
       lenBefore: beforeLen,
       lenAfter: g.oa.Ta,
       beforePoisons,
-      afterPoisons: g.wa.ka.filter((a) => a.nla).length,
+      afterPoisons: g.wa.ka.filter((a) => a.Oka).length,
       ja: g.oa.Ja,
     };
   });
@@ -103,7 +103,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         timers.every((t) => t === expected),
         `all timers === ${expected} (L=${L}): ` + JSON.stringify(timers)
       );
-      assert.ok(s.apples.every((a) => !a.nla));
+      assert.ok(s.apples.every((a) => !a.Oka));
     } finally {
       await h.close();
     }
@@ -126,7 +126,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
           if (typeof window.__uaF === "function") window.__uaF(g.wa);
           return {
             apples: g.wa.ka.length,
-            poisons: g.wa.ka.filter((a) => a.nla).length,
+            poisons: g.wa.ka.filter((a) => a.Oka).length,
           };
         });
         assert.equal(
@@ -154,8 +154,8 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       });
       await h.tick(1);
       const s = await h.state();
-      const poisons = s.apples.filter((a) => a.nla);
-      const fresh = s.apples.filter((a) => !a.nla);
+      const poisons = s.apples.filter((a) => a.Oka);
+      const fresh = s.apples.filter((a) => !a.Oka);
       assert.equal(poisons.length, 1, "expired fruit becomes poison");
       assert.equal(fresh.length, 1, "replacement fresh spawned");
       assert.equal(
@@ -171,6 +171,11 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         expected,
         "new fresh has length-based timer"
       );
+      assert.ok(
+        !(s.ja >= 8),
+        "expiry must not stun the snake: ja=" + s.ja
+      );
+      assert.equal(!!s.nj, false, "expiry must not false-win");
     } finally {
       await h.close();
     }
@@ -183,7 +188,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       await h.start({ mode: "burger", count: COUNT.THREE, size: SIZE.NORMAL });
       // Force one expire so a poison piles up; leave another fresh mid-timer.
       await h.page.evaluate(() => {
-        const fresh = window.__remixGame.wa.ka.filter((x) => !x.nla);
+        const fresh = window.__remixGame.wa.ka.filter((x) => !x.Oka);
         fresh[0].burgerTimer = 1;
         fresh[0].burgerTimerMax = 10;
         fresh[1].burgerTimer = 17;
@@ -193,10 +198,10 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       await h.tick(1);
       const mid = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const kept = g.wa.ka.find((a) => a && a._burgerKeep && !a.nla);
-        const poison = g.wa.ka.find((a) => a && a.nla);
+        const kept = g.wa.ka.find((a) => a && a._burgerKeep && !a.Oka);
+        const poison = g.wa.ka.find((a) => a && a.Oka);
         return {
-          poisons: g.wa.ka.filter((a) => a.nla).length,
+          poisons: g.wa.ka.filter((a) => a.Oka).length,
           keptTimer: kept ? kept.burgerTimer : null,
           poisonTimer: poison ? poison.burgerTimer : null,
           poisonMax: poison ? poison.burgerTimerMax : null,
@@ -212,7 +217,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
 
       const eat = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const fresh = g.wa.ka.find((a) => a && !a.nla && !a._burgerKeep);
+        const fresh = g.wa.ka.find((a) => a && !a.Oka && !a._burgerKeep);
         if (!fresh) return { ok: false, reason: "no non-kept fresh" };
         const head = g.oa.ka[0];
         const dir = g.oa.direction || "RIGHT";
@@ -223,15 +228,15 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         else if (dir === "DOWN") next.y += 1;
         fresh.pos.x = next.x;
         fresh.pos.y = next.y;
-        const scoreBefore = g.Oh;
-        const poisonsBefore = g.wa.ka.filter((a) => a.nla).length;
+        const scoreBefore = g.Sh;
+        const poisonsBefore = g.wa.ka.filter((a) => a.Oka).length;
         g.tick();
         return {
           ok: true,
           scoreBefore,
-          scoreAfter: g.Oh,
+          scoreAfter: g.Sh,
           poisonsBefore,
-          afterPoisons: g.wa.ka.filter((a) => a.nla).length,
+          afterPoisons: g.wa.ka.filter((a) => a.Oka).length,
         };
       });
       assert.equal(eat.ok, true, JSON.stringify(eat));
@@ -244,12 +249,12 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
 
       const after = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const kept = g.wa.ka.find((a) => a && a._burgerKeep && !a.nla);
-        const poison = g.wa.ka.find((a) => a && a.nla);
+        const kept = g.wa.ka.find((a) => a && a._burgerKeep && !a.Oka);
+        const poison = g.wa.ka.find((a) => a && a.Oka);
         return {
           keptTimer: kept ? kept.burgerTimer : null,
           poisonTimer: poison ? poison.burgerTimer : null,
-          timers: g.wa.ka.filter((a) => !a.nla).map((a) => a.burgerTimer),
+          timers: g.wa.ka.filter((a) => !a.Oka).map((a) => a.burgerTimer),
           length: g.oa.ka.length,
         };
       });
@@ -291,7 +296,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         );
         return {
           poisonTypes: window.__remixGame.wa.ka
-            .filter((a) => a.nla)
+            .filter((a) => a.Oka)
             .map((a) => a.type),
           skullType: window.burger_skull_type(),
           skullIsLast: skullIdx === fruits.length - 1,
@@ -340,14 +345,14 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         else if (dir === "UP") next.y -= 1;
         else if (dir === "DOWN") next.y += 1;
 
-        const fresh = g.wa.ka.find((a) => !a.nla);
+        const fresh = g.wa.ka.find((a) => !a.Oka);
         fresh.pos.x = next.x;
         fresh.pos.y = next.y;
 
         const before = {
           eatenIndex: g.wa.ka.indexOf(fresh),
-          poisons: g.wa.ka.filter((a) => a.nla).length,
-          score: g.Oh,
+          poisons: g.wa.ka.filter((a) => a.Oka).length,
+          score: g.Sh,
         };
         let error = null;
         try {
@@ -358,10 +363,10 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         return {
           before,
           error,
-          poisons: g.wa.ka.filter((a) => a.nla).length,
-          fresh: g.wa.ka.filter((a) => !a.nla).length,
+          poisons: g.wa.ka.filter((a) => a.Oka).length,
+          fresh: g.wa.ka.filter((a) => !a.Oka).length,
           holes: g.wa.ka.filter((a) => !a).length,
-          score: g.Oh,
+          score: g.Sh,
         };
       });
 
@@ -400,22 +405,22 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       });
       await h.tick(1);
       let s = await h.state();
-      assert.equal(s.apples.filter((a) => a.nla).length, 1);
-      assert.equal(s.apples.filter((a) => !a.nla).length, 1);
+      assert.equal(s.apples.filter((a) => a.Oka).length, 1);
+      assert.equal(s.apples.filter((a) => !a.Oka).length, 1);
 
       await h.page.evaluate(() => {
-        const p = window.__remixGame.wa.ka.find((a) => a.nla);
+        const p = window.__remixGame.wa.ka.find((a) => a.Oka);
         p.burgerTimer = 1;
       });
       await h.tick(1);
       s = await h.state();
       assert.equal(
-        s.apples.filter((a) => a.nla).length,
+        s.apples.filter((a) => a.Oka).length,
         0,
         "poison despawned when its timer hit zero"
       );
       assert.equal(
-        s.apples.filter((a) => !a.nla).length,
+        s.apples.filter((a) => !a.Oka).length,
         1,
         "fresh fruit left alone"
       );
@@ -464,19 +469,19 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         window.burger_find_spawn_pos = () => null;
         g.wa.ka.length = 1;
         const a = g.wa.ka[0];
-        a.nla = false;
+        a.Oka = false;
         a.burgerTimer = 1;
         a.burgerTimerMax = 5;
+        g.nj = false;
         g.lj = false;
-        g.ub = false;
         window.burger_tick_logic();
-        const won = !!(g.ub && g.lj);
-        const freshLeft = g.wa.ka.filter((x) => !x.nla).length;
+        const won = !!(g.nj || g.lj);
+        const freshLeft = g.wa.ka.filter((x) => !x.Oka).length;
         window.burger_find_spawn_pos = orig;
         return {
           won,
           freshLeft,
-          poison: g.wa.ka.filter((x) => x.nla).length,
+          poison: g.wa.ka.filter((x) => x.Oka).length,
           late: window.burger_late_game(g),
           WH: W * H,
         };
@@ -543,7 +548,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       assert.ok(s.apples.length >= 1);
       const diceExpected = 25 + s.snake.length;
       assert.ok(
-        s.apples.every((a) => !a.nla && a.burgerTimer === diceExpected),
+        s.apples.every((a) => !a.Oka && a.burgerTimer === diceExpected),
         "dice fresh have timers"
       );
     } finally {
@@ -565,7 +570,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         if (typeof window.__uaF === "function") window.__uaF(g.wa);
         return {
-          poisons: g.wa.ka.filter((a) => a.nla).length,
+          poisons: g.wa.ka.filter((a) => a.Oka).length,
           apples: g.wa.ka.length,
           seqs: g.wa.ka.map((a) => a.sequenceNumber),
           cur: g.wa.wa,
@@ -579,7 +584,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         const cur = g.wa.wa;
         const target = g.wa.ka.find(
-          (a) => a && !a.nla && a.sequenceNumber === cur
+          (a) => a && !a.Oka && a.sequenceNumber === cur
         );
         if (!target) return { ok: false, reason: "no current fresh", cur };
         const head = g.oa.ka[0];
@@ -597,10 +602,10 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
           ok: true,
           before,
           after: g.wa.wa,
-          score: g.Oh,
-          poisons: g.wa.ka.filter((a) => a.nla).length,
+          score: g.Sh,
+          poisons: g.wa.ka.filter((a) => a.Oka).length,
           openFresh: g.wa.ka.filter(
-            (a) => a && !a.nla && a.sequenceNumber === g.wa.wa
+            (a) => a && !a.Oka && a.sequenceNumber === g.wa.wa
           ).length,
         };
       });
@@ -639,7 +644,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         g.wa.reset();
         window.appleArray = g.wa.ka;
 
-        const piece = g.wa.ka.find((a) => a && a.isPiece && !a.nla);
+        const piece = g.wa.ka.find((a) => a && a.isPiece && !a.Oka);
         if (!piece) {
           return { ok: false, reason: "no piece after chess blender reset" };
         }
@@ -660,7 +665,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
           ok: true,
           wasPiece,
           isPiece: !!piece.isPiece,
-          nla: !!piece.nla,
+          Oka: !!piece.Oka,
           chessPiece: piece.ChessPiece,
           chessColor: piece.ChessColor,
           unlocked,
@@ -671,7 +676,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
 
       assert.equal(probe.ok, true, JSON.stringify(probe));
       assert.equal(probe.wasPiece, true, JSON.stringify(probe));
-      assert.equal(probe.nla, true, JSON.stringify(probe));
+      assert.equal(probe.Oka, true, JSON.stringify(probe));
       assert.equal(probe.isPiece, false, "poison must not stay a piece");
       assert.equal(probe.chessPiece, undefined, JSON.stringify(probe));
       assert.equal(probe.chessColor, undefined, JSON.stringify(probe));
