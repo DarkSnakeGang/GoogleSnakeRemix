@@ -180,6 +180,8 @@ describe("Ultra Place export / sizes", () => {
     assert.match(ultra, /wm: false/);
     assert.match(ultra, /ultraPlaceEraseIcon/);
     assert.match(ultra, /category === "erase"/);
+    assert.match(ultra, /ultraSyncChessPlaceState/);
+    assert.match(ultra, /window\.CurrentModeNum = chessId/);
     assert.doesNotMatch(fs.readFileSync(path.join(ROOT, "RemixMod.js"), "utf8"), /window\.UltraPlace/);
   });
 });
@@ -402,8 +404,14 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
             : [];
         const poison = apples.find((a) => a && a.Oka);
         const piece = apples.find((a) => a && a.isPiece);
+        const pieceShielded = !!(
+          piece &&
+          piece.nba &&
+          typeof piece.nba.has === "function" &&
+          piece.nba.size > 0
+        );
         const shielded = apples.find(
-          (a) => a && a.nba && a.nba.has && a.nba.has("UP") && a.nba.has("LEFT")
+          (a) => a && !a.isPiece && a.nba && a.nba.has && a.nba.has("UP") && a.nba.has("LEFT")
         );
         const walls =
           window.wholeSnakeObject && window.wholeSnakeObject.Ca && window.wholeSnakeObject.Ca.Aa
@@ -422,6 +430,8 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
           goals: goals && typeof goals.size === "number" ? goals.size : -1,
           isPiece: !!(piece && piece.isPiece),
           chessPiece: piece && piece.ChessPiece,
+          chessActive: !!(window.isChessActive && window.isChessActive()),
+          pieceShielded,
           shielded: !!shielded,
           statues: st && st.oa ? st.oa.size : -1,
         };
@@ -433,8 +443,79 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
       assert.ok(probe.goals >= 1, JSON.stringify(probe));
       assert.equal(probe.isPiece, true, JSON.stringify(probe));
       assert.equal(probe.chessPiece, "knight", JSON.stringify(probe));
+      assert.equal(probe.chessActive, true, JSON.stringify(probe));
+      assert.equal(probe.pieceShielded, false, JSON.stringify(probe));
       assert.equal(probe.shielded, true, JSON.stringify(probe));
       assert.ok(probe.statues >= 1, JSON.stringify(probe));
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("placed chess pieces follow chess mode and snake piece shields", async () => {
+    const h = await launchUltra({ seed: 50, headless: true });
+    try {
+      const { COUNT, SIZE } = await import("../tools/harness.mjs");
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
+      const probe = await h.page.evaluate(() => {
+        function shieldSize(a) {
+          return a && a.nba && typeof a.nba.size === "number" ? a.nba.size : 0;
+        }
+        const off =
+          typeof window.getAppleSpawnPointOffset === "function"
+            ? window.getAppleSpawnPointOffset()
+            : { x: -12, y: -7 };
+        const beforeActive = !!(window.isChessActive && window.isChessActive());
+        window.head_state = "OPEN";
+        window.placeChessPiece(2 + off.x, 3 + off.y, "w", "knight");
+        const apples =
+          window.wholeSnakeObject && window.wholeSnakeObject.wa && window.wholeSnakeObject.wa.ka
+            ? window.wholeSnakeObject.wa.ka
+            : [];
+        const openPiece = apples.find((a) => a && a.isPiece && a.ChessPiece === "knight");
+        const openShields = shieldSize(openPiece);
+        window.head_pos = openPiece && openPiece.pos ? [openPiece.pos] : window.head_pos;
+        window.appleArray = apples;
+        const eatingOpen = !!(window.chess_eating_piece && window.chess_eating_piece());
+
+        window.head_state = "rook";
+        window.head_color = "w";
+        window.placeChessPiece(4 + off.x, 5 + off.y, "b", "pawn");
+        const lockedPiece = apples.find((a) => a && a.isPiece && a.ChessPiece === "pawn");
+        const lockedShields = shieldSize(lockedPiece);
+
+        window.head_state = "OPEN";
+        if (typeof window.ultraSyncChessPlaceState === "function") {
+          window.ultraSyncChessPlaceState();
+        }
+
+        return {
+          beforeActive,
+          afterActive: !!(window.isChessActive && window.isChessActive()),
+          modeNum: window.CurrentModeNum,
+          chessMode: window.CHESS_MODE,
+          settingsMode:
+            window.wholeSnakeObject && window.wholeSnakeObject.settings
+              ? window.wholeSnakeObject.settings.ub
+              : null,
+          openPiece: !!(openPiece && openPiece.isPiece),
+          openShields,
+          eatingOpen,
+          lockedPiece: !!(lockedPiece && lockedPiece.isPiece),
+          lockedShields,
+          unlockedAgain: shieldSize(openPiece) === 0 && shieldSize(lockedPiece) === 0,
+        };
+      });
+      assert.equal(probe.beforeActive, false, JSON.stringify(probe));
+      assert.equal(probe.afterActive, true, JSON.stringify(probe));
+      assert.equal(probe.modeNum, probe.chessMode, JSON.stringify(probe));
+      assert.equal(probe.settingsMode, probe.chessMode, JSON.stringify(probe));
+      assert.equal(probe.openPiece, true, JSON.stringify(probe));
+      assert.equal(probe.openShields, 0, JSON.stringify(probe));
+      assert.equal(probe.eatingOpen, true, JSON.stringify(probe));
+      assert.equal(probe.lockedPiece, true, JSON.stringify(probe));
+      assert.equal(probe.lockedShields, 4, JSON.stringify(probe));
+      assert.equal(probe.unlockedAgain, true, JSON.stringify(probe));
     } finally {
       await h.close();
     }
@@ -780,6 +861,13 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
           applesAfter: apples.length,
           isPiece: !!(piece && piece.isPiece),
           chessPiece: piece && piece.ChessPiece,
+          chessActive: !!(window.isChessActive && window.isChessActive()),
+          pieceShielded: !!(
+            piece &&
+            piece.nba &&
+            typeof piece.nba.has === "function" &&
+            piece.nba.size > 0
+          ),
         };
       });
       assert.equal(probe.wrapped, true, JSON.stringify(probe));
@@ -789,6 +877,8 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
       assert.equal(probe.yNa, 7, JSON.stringify(probe));
       assert.equal(probe.isPiece, true, JSON.stringify(probe));
       assert.equal(probe.chessPiece, "knight", JSON.stringify(probe));
+      assert.equal(probe.chessActive, true, JSON.stringify(probe));
+      assert.equal(probe.pieceShielded, false, JSON.stringify(probe));
     } finally {
       await h.close();
     }

@@ -1234,16 +1234,66 @@ window.ultraCaptureAppleOffsetFromBoard = function () {
   } catch (_e) {}
 };
 
+window.ultraChessSnakeIsPiece = function () {
+  const s = window.head_state;
+  return !!(s && s !== "OPEN" && s !== "NONE");
+};
+
 window.ultraEnsureChessMode = function () {
   if (window.CHESS_MODE == null) return;
   if (typeof window.ensureGameMode === "function") window.ensureGameMode(window.CHESS_MODE);
   try {
     const settings = window.wholeSnakeObject && window.wholeSnakeObject.settings;
-    if (settings && settings.ub === 22) {
+    const chessId = window.CHESS_MODE;
+    if (!settings) {
+      window.CurrentModeNum = chessId;
+      return;
+    }
+    const blended =
+      settings.ub === 22 ||
+      !!(settings.Qa && settings.Lc && typeof settings.Lc.has === "function" && settings.Lc.has(chessId));
+    if (blended) {
+      window.CurrentModeNum = 22;
       window.chess_blending = true;
       if (typeof window.correct_chess_selection === "function") window.correct_chess_selection();
+    } else {
+      window.CurrentModeNum = chessId;
+    }
+  } catch (_e) {
+    window.CurrentModeNum = window.CHESS_MODE;
+  }
+};
+
+window.ultraSyncChessPlaceState = function () {
+  try {
+    const mgr = typeof window.ultraAppleManager === "function" ? window.ultraAppleManager() : null;
+    const apples =
+      (mgr && mgr.ka) ||
+      (window.wholeSnakeObject && window.wholeSnakeObject.wa && window.wholeSnakeObject.wa.ka) ||
+      window.appleArray;
+    if (apples) window.appleArray = apples;
+    const game = window.__remixGame || window.megaWholeSnakeObject || window.wholeSnakeObject;
+    if (game && game.oa) {
+      if (game.oa.ka) window.head_pos = game.oa.ka;
+      if (game.oa.direction) window.head_dir = game.oa.direction;
     }
   } catch (_e) {}
+  const apples = window.appleArray;
+  if (!apples || !apples.length) return;
+  const field = window.chess_shield_field || "nba";
+  const locked = window.ultraChessSnakeIsPiece();
+  for (let i = 0; i < apples.length; i++) {
+    const a = apples[i];
+    if (!a || !a.isPiece) continue;
+    if (locked) {
+      const dirs = new Set(["UP", "DOWN", "LEFT", "RIGHT"]);
+      a[field] = dirs;
+      a.nba = dirs;
+    } else {
+      a[field] = undefined;
+      a.nba = undefined;
+    }
+  }
 };
 
 window.ultraPlaceAppend = function (code, snippet) {
@@ -1897,6 +1947,7 @@ window.UltraPlace.alterSnakeCode = function (code) {
     if(!(type >= 0) && color && piece && window[color + piece] != null) type = window[color + piece];
     if(!(type >= 0)) return;
     window.placeApple(x,y,type, undefined, {isPiece:true, ChessPiece:piece, ChessColor:color});
+    if(typeof window.ultraSyncChessPlaceState === "function") window.ultraSyncChessPlaceState();
   };
   `
   );

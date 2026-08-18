@@ -1233,6 +1233,9 @@ window.ultraAssignNewApples = function ultraAssignNewApples(added) {
       if (!a || a.isPiece || a.Oka || a.nba instanceof Set) continue;
       window.chess_assign_piece(a);
     }
+    if (typeof window.ultraSyncChessPlaceState === "function") {
+      window.ultraSyncChessPlaceState();
+    }
   }
   if (window.isBurgerActive && window.isBurgerActive() && typeof window.burger_assign_timer === "function") {
     for (let i = start; i < mgr.ka.length; i++) {
