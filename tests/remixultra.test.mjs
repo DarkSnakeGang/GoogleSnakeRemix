@@ -38,6 +38,7 @@ describe("RemixUltra build artifacts", () => {
     assert.match(ultra, /ultraLayoutMenus/);
     assert.match(ultra, /ultraBlitChosenPreset/);
     assert.match(ultra, /selectNewSizeSettingAndHardReset\.__ultra = true/);
+    assert.match(ultra, /ultraPatchChallengeSpeedrunWin/);
     assert.match(ultra, /ultraOrganizeSettings/);
     assert.match(ultra, /remixSettingsEl/);
     assert.match(ultra, /var\(--ultra-btn/);
@@ -541,6 +542,70 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       assert.ok(!/preset-none|preset-challenge/.test(String(preset.chosen)), JSON.stringify(preset));
       assert.equal(preset.hasWall, true, JSON.stringify(preset));
       assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("challenge speedrun mode advances to the next level on win", async () => {
+    const h = await launchUltra({ seed: 52, headless: true });
+    try {
+      const { COUNT, SIZE } = await import("../tools/harness.mjs");
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
+      const hooked = await h.page.evaluate(() => {
+        document.getElementById("ultra-tab-challenge").click();
+        const cb = document.getElementById("challenge-speedrun-mode");
+        cb.checked = true;
+        cb.dispatchEvent(new Event("change", { bubbles: true }));
+        const g = window.__remixGame || window.megaWholeSnakeObject;
+        const tick = g && g.tick && g.tick.toString();
+        return {
+          speedrun: !!window.challengeSpeedrunMode,
+          wrapped: !!(
+            window.tryChallengeSpeedrunAdvance &&
+            window.tryChallengeSpeedrunAdvance.__ultra
+          ),
+          hooked: !!(tick && tick.includes("tryChallengeSpeedrunAdvance")),
+          level: Number(window.otherPresetmanager && window.otherPresetmanager.challengelevel),
+          apples: g && g.wa && g.wa.ka ? g.wa.ka.length : -1,
+        };
+      });
+      assert.equal(hooked.speedrun, true, JSON.stringify(hooked));
+      assert.equal(hooked.wrapped, true, JSON.stringify(hooked));
+      assert.equal(hooked.hooked, true, JSON.stringify(hooked));
+      assert.equal(hooked.level, 1, JSON.stringify(hooked));
+
+      await h.page.evaluate(() => {
+        const g = window.__remixGame || window.megaWholeSnakeObject;
+        if (g && g.wa && g.wa.ka) g.wa.ka.length = 0;
+        if (g && typeof g.tick === "function") g.tick();
+      });
+      await h.page.waitForFunction(
+        () => Number(window.otherPresetmanager && window.otherPresetmanager.challengelevel) === 2,
+        null,
+        { timeout: 5000 }
+      );
+      const after = await h.page.evaluate(() => {
+        const g = window.__remixGame || window.wholeSnakeObject;
+        const sel = document.getElementById("challenge-level");
+        const pixels =
+          window.otherPresetmanager && window.otherPresetmanager.getChallengePixelList();
+        const wall = pixels && pixels.find((p) => p && p.category === "wall");
+        return {
+          level: Number(window.otherPresetmanager.challengelevel),
+          select: sel && sel.value,
+          apples: g && g.wa && g.wa.ka ? g.wa.ka.length : -1,
+          hasWall: !!(
+            wall &&
+            typeof window.checkWall === "function" &&
+            window.checkWall(wall.x, wall.y)
+          ),
+        };
+      });
+      assert.equal(after.level, 2, JSON.stringify(after));
+      assert.equal(after.select, "2", JSON.stringify(after));
+      assert.ok(after.apples > 0, JSON.stringify(after));
+      assert.equal(after.hasWall, true, JSON.stringify(after));
     } finally {
       await h.close();
     }

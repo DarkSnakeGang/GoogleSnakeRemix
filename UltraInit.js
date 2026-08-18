@@ -818,6 +818,58 @@ window.ultraInstallSizeReset = function ultraInstallSizeReset() {
   window.selectNewSizeSettingAndHardReset.__ultra = true;
 };
 
+window.ultraPatchChallengeSpeedrunWin = function ultraPatchChallengeSpeedrunWin(code) {
+  if (
+    code.indexOf(
+      "tryChallengeSpeedrunAdvance&&window.tryChallengeSpeedrunAdvance(this)"
+    ) >= 0
+  ) {
+    return code;
+  }
+  const repl =
+    "if($1(this)===0){if(window.tryChallengeSpeedrunAdvance&&window.tryChallengeSpeedrunAdvance(this)){this.$4=this.$5=!0;}else{$2.WIN.play();$3this.$4=this.$5=!0;$6(this.menu,1400,this.$7);$8this.Mb=this.ticks}}else if";
+  const patterns = [
+    /if\(([$a-zA-Z0-9_]{0,8})\(this\)===0\)\{([$a-zA-Z0-9_]{0,8})\.WIN\.play\(\);(window\.timeKeeper\.gotAll\([^;]*?\),)?this\.([$a-zA-Z0-9_]{0,8})=this\.([$a-zA-Z0-9_]{0,8})=!0;([$a-zA-Z0-9_]{0,8})\(this\.menu,1400,this\.([$a-zA-Z0-9_]{0,8})\);([\s\S]*?)this\.Mb=this\.ticks\}else if/,
+    /if\(([$a-zA-Z0-9_]{0,8})\(this\)===0\)\{([$a-zA-Z0-9_]{0,8})\.WIN\.play\(\);([\s\S]{0,200}?)this\.([$a-zA-Z0-9_]{0,8})=this\.([$a-zA-Z0-9_]{0,8})=!0;([$a-zA-Z0-9_]{0,8})\(this\.menu,1400,this\.([$a-zA-Z0-9_]{0,8})\);([\s\S]*?)this\.Mb=this\.ticks\}else if/,
+  ];
+  for (let i = 0; i < patterns.length; i++) {
+    if (code.match(patterns[i])) {
+      return code.replace(patterns[i], repl);
+    }
+  }
+  console.error("RemixUltraMod: failed to patch challenge speedrun win path");
+  return code;
+};
+
+window.ultraInstallChallengeSpeedrun = function ultraInstallChallengeSpeedrun() {
+  const orig = window.tryChallengeSpeedrunAdvance;
+  if (typeof orig !== "function" || orig.__ultra) return;
+  window.tryChallengeSpeedrunAdvance = function (gameState) {
+    if (!window.challengeSpeedrunMode) return false;
+    const presetEl = document.getElementsByClassName("chosen-preset")[0];
+    if (!presetEl || !presetEl.classList.contains("preset-challenge")) return false;
+    const mgr = window.otherPresetmanager;
+    if (!mgr) return false;
+    const maxLevel = (mgr.challengeLevelCodes && mgr.challengeLevelCodes.length) || 20;
+    const currentLevel = Number(mgr.challengelevel) || 1;
+    if (currentLevel >= maxLevel) return false;
+    const nextLevel = currentLevel + 1;
+    mgr.challengelevel = nextLevel;
+    const levelSelect = document.getElementById("challenge-level");
+    if (levelSelect) levelSelect.value = String(nextLevel);
+    setTimeout(function () {
+      if (typeof window.selectNewSizeSettingAndHardReset === "function") {
+        window.selectNewSizeSettingAndHardReset(0);
+      }
+      if (typeof window.ultraBlitChosenPreset === "function") {
+        window.ultraBlitChosenPreset();
+      }
+    }, 0);
+    return true;
+  };
+  window.tryChallengeSpeedrunAdvance.__ultra = true;
+};
+
 window.ultraBlitChosenPreset = function ultraBlitChosenPreset() {
   if (typeof window.blitSelectedPreset !== "function") return;
   try {
@@ -2079,6 +2131,7 @@ window.RemixUltraMod.alterSnakeCode = function (code) {
     code = window.DiceCounts.alterSnakeCode(code);
     code = window.RemixSpeedInfo.alterSnakeCode(code);
     code = window.PauseMod.alterSnakeCode(code);
+    code = window.ultraPatchChallengeSpeedrunWin(code);
     return code;
   });
 };
@@ -2109,6 +2162,7 @@ window.RemixUltraMod.runCodeAfter = function () {
   window.ultraSetIndicator();
   window.ultraSetupLayout();
   window.ultraSetupGameplayHooks();
+  window.ultraInstallChallengeSpeedrun();
 };
 
 // Custom URL often keeps customModName as RemixMod. Alias so either name
