@@ -72,10 +72,6 @@ window.ultraElShown = function ultraElShown(el) {
 window.ultraModalOpen = function ultraModalOpen() {
   if (window.portalPairsPanelVisible) return true;
   if (window.timeKeeper && window.timeKeeper.dialogActive) return true;
-  const edit = document.getElementById("edit-box");
-  if (edit && edit.offsetWidth > 0 && window.ultraElShown(edit)) return true;
-  const vis = document.getElementById("delete-stuff-popup");
-  if (vis && vis.hidden === false && vis.offsetWidth > 0) return true;
   const exp = document.getElementById("custom-export-dialogue-container");
   if (exp && exp.style.display === "block") return true;
   const tk = document.getElementById("timeKeeperDialog");
@@ -176,10 +172,10 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
 #place-panel, #preset-panel {
   width: 220px !important;
   overflow: hidden !important;
-  padding: 8px 4px 6px !important;
+  padding: 10px 10px 12px !important;
   align-content: start !important;
   justify-content: space-evenly !important;
-  gap: 6px 0 !important;
+  gap: 8px 8px !important;
 }
 #place-panel {
   grid-template-columns: 1fr !important;
@@ -209,17 +205,18 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
 }
 #ultra-place-grid {
   display: grid;
-  grid-template-columns: repeat(4, 48px);
-  justify-content: space-evenly;
-  gap: 4px 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  justify-content: stretch;
+  gap: 6px;
   overflow: auto;
   min-height: 0;
   scrollbar-width: none;
+  padding: 0;
 }
 #ultra-place-grid::-webkit-scrollbar { display: none; }
 #place-panel[data-ultra-place-cols="5"] #ultra-place-grid,
 #ultra-place-grid .ultra-place-key-row {
-  grid-template-columns: repeat(5, 38px);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 #place-panel[data-ultra-place-cols="5"] #ultra-place-grid {
   display: block;
@@ -231,62 +228,103 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
 }
 #ultra-place-grid .ultra-place-key-row {
   display: grid;
-  justify-content: space-evenly;
-  gap: 4px 0;
+  justify-content: stretch;
+  gap: 4px;
   margin-bottom: 6px;
+  padding: 0;
 }
 #place-panel[data-ultra-place-cols="6"] #ultra-place-grid {
-  grid-template-columns: repeat(6, 32px);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
-#place-panel[data-ultra-place-cols="5"] #ultra-place-grid img.place-option {
-  width: 38px !important;
-  height: 38px !important;
-  max-width: 38px !important;
+#place-panel[data-ultra-place-cols="5"] #ultra-place-grid .place-option,
+#place-panel[data-ultra-place-cols="6"] #ultra-place-grid .place-option {
+  width: 100% !important;
+  height: auto !important;
+  max-width: none !important;
 }
-#place-panel[data-ultra-place-cols="6"] #ultra-place-grid img.place-option {
-  width: 32px !important;
-  height: 32px !important;
-  max-width: 32px !important;
-}
-.ultra-place-chip, .ultra-custom-chip {
-  display: inline-block;
-  font-size: 11px;
-  padding: 4px 8px;
-  margin: 2px 4px 6px 0;
+.ultra-custom-chip {
+  display: block;
+  font-size: 12px;
+  padding: 6px 2px;
+  margin: 0;
   border-radius: 8px;
   border: none;
   background: rgba(0,0,0,0.22);
   color: #fff;
   cursor: pointer;
+  font-family: Roboto, Arial, sans-serif;
 }
-.ultra-custom-chip-on, #ultra-custom-current {
+.ultra-custom-chip-on {
   background: var(--ultra-btn, #1155CC);
 }
 #preset-panel {
-  grid-template-columns: repeat(3, 56px) !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  overflow: hidden;
 }
-#place-panel img.place-option {
-  width: 48px !important;
-  height: 48px !important;
-  max-width: 48px !important;
+#place-panel .place-option {
+  width: 100% !important;
+  height: auto !important;
+  max-width: none !important;
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  display: block;
+  overflow: hidden;
+  position: relative;
+  background-color: rgba(0,0,0,0.18);
+  background-clip: padding-box;
+  background-repeat: no-repeat;
+  border-radius: 6px;
+  cursor: pointer;
+  image-rendering: pixelated;
   object-fit: contain !important;
+  filter: none !important;
+  opacity: 0.8;
+  outline: none;
+}
+#place-panel .place-option.ultra-place-on {
+  opacity: 1;
+  z-index: 3;
+  outline: 2px solid #fff !important;
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 4px #1a73e8;
+  background-color: rgba(26, 115, 232, 0.42);
+}
+#place-panel[data-ultra-place-cols="5"] .place-option.ultra-place-on,
+#place-panel[data-ultra-place-cols="6"] .place-option.ultra-place-on {
+  box-shadow: inset 0 0 0 3px #1a73e8;
+}
+#place-panel .place-option .ultra-place-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
 }
 #preset-panel img.preset-option {
-  width: 56px !important;
-  height: 56px !important;
-  max-width: 56px !important;
+  width: 100% !important;
+  height: auto !important;
+  max-width: none !important;
+  aspect-ratio: 1;
   object-fit: contain !important;
   background: rgba(0,0,0,0.18);
   image-rendering: pixelated;
+  grid-column: span 2;
 }
+#preset-panel .preset-none,
 #preset-panel .preset-random-ham {
-  grid-column: 1 / -1 !important;
+  grid-column: span 3 !important;
   width: auto !important;
   max-width: none !important;
   height: 32px !important;
   line-height: 32px !important;
   margin-top: 4px !important;
   font-size: 13px !important;
+  text-align: center;
+  cursor: pointer;
+  color: #fff;
+  background-color: var(--ultra-btn, #2d3f76) !important;
+  font-family: Roboto, Arial, sans-serif !important;
+  white-space: nowrap;
+  overflow: hidden;
 }
 #custom-panel, #challenge-panel {
   width: 220px !important;
@@ -294,8 +332,13 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   padding: 8px !important;
   color: #fff !important;
 }
+#custom-panel {
+  display: flex;
+  flex-direction: column;
+}
 #custom-panel > div {
   padding: 0 !important;
+  flex-shrink: 0;
 }
 #settings-popup-pudding {
   overflow: hidden !important;
@@ -328,86 +371,14 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   color: #fff;
 }
 .ultra-settings-tab.ultra-tab-on {
-  background: var(--ultra-btn, #1155CC);
+  background: var(--ultra-btn, #1155CC) !important;
   color: #fff;
 }
-.ultra-settings-page {
-  display: none;
-  overflow: hidden;
-  min-height: 0;
-}
-.ultra-settings-page.ultra-page-on {
-  display: block;
-}
-#settings-popup-pudding .form-check,
-#settings-popup-pudding .form-check-inline {
-  display: flex !important;
-  align-items: center;
-  width: 100%;
-  box-sizing: border-box;
-  margin: 4px 0 !important;
-  margin-right: 0 !important;
-  padding: 0 !important;
-  gap: 4px;
-}
-#ultra-settings-hidden,
-#ultra-settings-hidden .form-check,
-#ultra-settings-hidden .form-check-inline,
-#settings-popup-pudding .form-check.ultra-hide,
-#settings-popup-pudding .form-check-inline.ultra-hide,
-#settings-popup-pudding .ultra-hide,
-#AlwaysOnTimeKeeper,
-label[for="AlwaysOnTimeKeeper"],
-#ShowSplitPanel,
-label[for="ShowSplitPanel"],
-#RemoveScrollbar,
-label[for="RemoveScrollbar"] {
-  display: none !important;
-}
-#settings-popup-pudding .form-check-input {
-  float: none !important;
-  position: static !important;
-  margin: 0 !important;
-  flex-shrink: 0;
-}
-#settings-popup-pudding .form-check-label {
-  margin: 3px !important;
-  color: #fff !important;
-  font-family: Roboto, Arial, sans-serif !important;
-}
 #settings-popup-pudding .btn {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  margin: 5px 0 !important;
-  border-radius: 8px !important;
   background: var(--ultra-btn, #1155CC) !important;
-  color: #fff !important;
-  border: none !important;
-  font-size: 12px !important;
 }
 #stat-chooser {
-  width: 100% !important;
-  box-sizing: border-box;
-  display: block !important;
-  min-height: 36px !important;
-  height: 36px !important;
-  line-height: 20px !important;
-  padding: 8px 10px !important;
-  margin: 4px 0 8px !important;
-  border-radius: 8px !important;
-  border: none !important;
-  font-size: 13px !important;
-  color: #fff !important;
   background-color: var(--ultra-btn, #1155CC) !important;
-}
-#black-dice-settings {
-  margin: 8px 0 0 !important;
-  padding: 6px 8px !important;
-  border-radius: 8px !important;
-}
-#black-dice-settings input {
-  width: 4.4em !important;
 }
 #split-panel-pudding,
 #split-panel-list {
@@ -433,14 +404,19 @@ label[for="RemoveScrollbar"] {
   font-size: 12px !important;
   line-height: 1.35;
 }
-#custom-panel button, #challenge-panel button,
-#custom-import, #custom-export, #custom-clear, #custom-refresh {
-  padding: 5px 7px !important;
-  font-size: 11px !important;
-  margin: 2px 4px 6px 0 !important;
+#ultra-custom-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 0 0 8px;
 }
-#custom-panel button, #challenge-panel button,
+#ultra-custom-actions button,
+#challenge-panel button,
 #custom-import, #custom-export, #custom-clear, #custom-refresh {
+  padding: 6px 4px !important;
+  font-size: 11px !important;
+  margin: 0 !important;
+  width: 100%;
   border-radius: 8px !important;
   background: var(--ultra-btn, #1155CC) !important;
   color: #fff !important;
@@ -448,10 +424,49 @@ label[for="RemoveScrollbar"] {
   font-family: Roboto, Arial, sans-serif !important;
 }
 #custom-clear { background: #b41111 !important; }
-#custom-map-size, #custom-brush, #challenge-level {
+.ultra-custom-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+.ultra-custom-field label {
+  flex: 0 0 auto;
+  margin: 0 !important;
+  font-size: 12px !important;
+}
+.ultra-custom-field select,
+#custom-map-size, #challenge-level {
+  flex: 1;
+  min-width: 0;
   border-radius: 8px !important;
   border: none !important;
   padding: 4px 8px;
+}
+#ultra-custom-tools {
+  margin: 0 0 4px;
+}
+.ultra-custom-modes {
+  display: flex;
+  gap: 4px;
+}
+.ultra-custom-modes .ultra-custom-chip {
+  flex: 1;
+}
+.ultra-custom-status {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.3;
+  min-height: 1.3em;
+  opacity: 0.92;
+}
+#custom-panel .ultra-custom-hint {
+  font-size: 11px !important;
+  opacity: 0.8;
+  margin: 8px 0 0 !important;
+}
+#custom-brush, label[for="custom-brush"] {
+  display: none !important;
 }
 #link-to-preset, #link-to-place {
   display: none !important;
@@ -464,8 +479,12 @@ label[for="RemoveScrollbar"] {
   border-radius: 8px;
 }
 .chosen-preset {
-  outline: 3px solid #ffe566 !important;
+  outline: 2px solid #fff !important;
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 4px #1a73e8;
   border-radius: 8px;
+  z-index: 3;
+  position: relative;
 }
 #ultra-input-slot {
   position: absolute;
@@ -582,7 +601,8 @@ window.ultraLayoutMenus = function ultraLayoutMenus() {
     if (more) {
       window.ultraFitRightPanel(more);
       if (right === "more") {
-        more.style.display = "block";
+        more.style.display = "flex";
+        more.style.flexDirection = "column";
         more.style.visibility = "visible";
       } else {
         more.style.display = "none";
@@ -605,7 +625,7 @@ window.ultraLayoutMenus = function ultraLayoutMenus() {
 
     const left = window.ultraDock.left;
     const leftH = window.ultraDockH - window.ultraDockTabH + "px";
-    window.ultraSetPanelDisplay(custom, left === "custom", "block");
+    window.ultraSetPanelDisplay(custom, left === "custom", "flex");
     window.ultraSetPanelDisplay(challenge, left === "challenge", "block");
     if (custom) custom.style.height = leftH;
     if (challenge) challenge.style.height = leftH;
@@ -668,22 +688,36 @@ window.ultraSetLeft = function ultraSetLeft(tab) {
   window.ultraLayoutMenus();
 };
 
+window.ultraClearChosenPresets = function ultraClearChosenPresets() {
+  const panel = document.getElementById("preset-panel");
+  if (!panel) return;
+  panel.querySelectorAll(".preset-option").forEach(function (c) {
+    c.classList.remove("chosen-preset");
+  });
+};
+
 window.ultraSelectPresetKind = function ultraSelectPresetKind(kind, forceReset) {
   const panel = document.getElementById("preset-panel");
   if (!panel) return;
   const el = panel.querySelector(".preset-" + kind);
   if (!el) return;
   const already = el.classList.contains("chosen-preset");
-  Array.from(panel.children).forEach(function (c) {
-    c.classList.remove("chosen-preset");
-  });
+  window.ultraClearChosenPresets();
   el.classList.add("chosen-preset");
   if (!window.megaWholeSnakeObject && !window.__remixGame) return;
   if (kind === "challenge") {
+    const sel = document.getElementById("challenge-level");
+    if (sel && window.otherPresetmanager) {
+      window.otherPresetmanager.challengelevel = Number(sel.value) || 1;
+    }
     window.selectNewSizeSettingAndHardReset(0);
+    window.ultraBlitChosenPreset();
     return;
   }
-  if (!already || forceReset) window.ultraHardResetBoard();
+  if (!already || forceReset) {
+    window.ultraHardResetBoard();
+    window.ultraBlitChosenPreset();
+  }
 };
 
 window.ultraOpenLeft = function ultraOpenLeft(tab) {
@@ -718,23 +752,56 @@ window.ultraSetSizeSetting = function ultraSetSizeSetting(sizeIndex) {
   }
 };
 
-window.ultraResetBoard = function ultraResetBoard() {
-  const g = window.__remixGame || window.megaWholeSnakeObject;
+window.ultraGetResetMenu = function ultraGetResetMenu(host) {
+  if (!host) return null;
+  if (host.menu && typeof host.menu === "object") return host.menu;
   try {
-    const fn = window.fullResetFuncName;
-    if (g && fn && typeof g[fn] === "function") {
-      try {
-        if (g.menu) g.menu.visible = true;
-      } catch (_m) {}
-      g[fn]();
-      try {
-        if (g.menu) g.menu.visible = false;
-      } catch (_m2) {}
-      return;
+    for (const k in host) {
+      const v = host[k];
+      if (
+        v &&
+        typeof v === "object" &&
+        typeof v.isVisible === "function"
+      ) {
+        return v;
+      }
     }
   } catch (_e) {}
+  return null;
+};
+
+window.ultraResetBoard = function ultraResetBoard() {
+  const fn = window.fullResetFuncName;
+  const mega = window.megaWholeSnakeObject;
+  const inner = window.wholeSnakeObject || window.__remixGame;
+  const hosts = [];
+  if (mega) hosts.push(mega);
+  if (inner && inner !== mega) hosts.push(inner);
+  for (let i = 0; i < hosts.length; i++) {
+    const host = hosts[i];
+    if (!fn || typeof host[fn] !== "function") continue;
+    const menu =
+      window.ultraGetResetMenu(host) ||
+      window.ultraGetResetMenu(mega) ||
+      (inner && inner.menu) ||
+      null;
+    try {
+      if (menu) menu.visible = true;
+    } catch (_m) {}
+    try {
+      host[fn]();
+      try {
+        if (menu) menu.visible = false;
+      } catch (_m2) {}
+      return;
+    } catch (_e) {
+      try {
+        if (menu) menu.visible = false;
+      } catch (_m3) {}
+    }
+  }
   try {
-    if (g && g.wa && typeof g.wa.reset === "function") g.wa.reset();
+    if (inner && inner.wa && typeof inner.wa.reset === "function") inner.wa.reset();
   } catch (_e2) {}
 };
 
@@ -743,19 +810,19 @@ window.ultraHardResetBoard = function ultraHardResetBoard() {
 };
 
 window.ultraInstallSizeReset = function ultraInstallSizeReset() {
-  window.selectNewSizeSettingAndHardReset = function selectNewSizeSettingAndHardReset(
-    newSizeSetting
-  ) {
+  if (window.selectNewSizeSettingAndHardReset && window.selectNewSizeSettingAndHardReset.__ultra) return;
+  window.selectNewSizeSettingAndHardReset = function selectNewSizeSettingAndHardReset(newSizeSetting) {
     if (newSizeSetting != null) window.ultraSetSizeSetting(newSizeSetting);
     window.ultraResetBoard();
   };
+  window.selectNewSizeSettingAndHardReset.__ultra = true;
 };
 
-window.selectNewSizeSettingAndHardReset = function selectNewSizeSettingAndHardReset(
-  newSizeSetting
-) {
-  if (newSizeSetting != null) window.ultraSetSizeSetting(newSizeSetting);
-  window.ultraResetBoard();
+window.ultraBlitChosenPreset = function ultraBlitChosenPreset() {
+  if (typeof window.blitSelectedPreset !== "function") return;
+  try {
+    window.blitSelectedPreset();
+  } catch (_e) {}
 };
 
 window.ultraInstallBlitGuard = function ultraInstallBlitGuard() {
@@ -769,13 +836,11 @@ window.ultraInstallBlitGuard = function ultraInstallBlitGuard() {
     }
     if (presetEl && presetEl.tagName === "IMG") {
       const key = presetEl.getAttribute("data-ultra-pattern");
-      if (
-        key &&
-        window.presetPatterns &&
-        window.presetPatterns[key] &&
-        !window.presetPatterns[presetEl.src]
-      ) {
-        window.presetPatterns[presetEl.src] = window.presetPatterns[key];
+      const src = presetEl.src || "";
+      const name = src.replace(window.rootUrl || "", "");
+      if (key && window.presetPatterns && window.presetPatterns[key]) {
+        window.presetPatterns[src] = window.presetPatterns[key];
+        window.presetPatterns[name] = window.presetPatterns[key];
       }
     }
     const origAlert = window.alert;
@@ -794,8 +859,7 @@ window.ultraInstallBlitGuard = function ultraInstallBlitGuard() {
     }
     if (tooSmall && !window.__ultraFixingSize) {
       window.__ultraFixingSize = true;
-      window.ultraSetSizeSetting(0);
-      window.ultraResetBoard();
+      window.selectNewSizeSettingAndHardReset(0);
       window.__ultraFixingSize = false;
     }
   };
@@ -928,7 +992,13 @@ window.ultraSyncLeNav = function ultraSyncLeNav() {
         "click",
         function (ev) {
           this.__ultraWasChosen = this.classList.contains("chosen-preset");
-          if (this.tagName === "IMG" && !this.classList.contains("preset-none")) {
+          if (this.classList.contains("preset-none")) {
+            ev.stopImmediatePropagation();
+            window.ultraSelectPresetKind("none", true);
+            window.ultraSetLeft(null);
+            return;
+          }
+          if (this.tagName === "IMG") {
             ev.stopImmediatePropagation();
             window.ultraApplyImagePreset(this);
           }
@@ -947,6 +1017,7 @@ window.ultraSyncLeNav = function ultraSyncLeNav() {
         }
         if (this.__ultraWasChosen && this.tagName !== "IMG") {
           window.ultraHardResetBoard();
+          window.ultraBlitChosenPreset();
         }
       });
       el.__ultraBound = true;
@@ -957,6 +1028,10 @@ window.ultraSyncLeNav = function ultraSyncLeNav() {
   if (challengeLevel && !challengeLevel.__ultraBound) {
     challengeLevel.addEventListener("change", function () {
       window.ultraSetLeft("challenge");
+      if (window.otherPresetmanager) {
+        window.otherPresetmanager.challengelevel = Number(this.value) || 1;
+      }
+      window.ultraBlitChosenPreset();
     });
     challengeLevel.__ultraBound = true;
   }
@@ -1109,14 +1184,6 @@ window.ultraWrapShowHide = function ultraWrapShowHide() {
     window.toggle_input_display.__ultra = true;
   }
 
-  const vis = document.getElementById("delete-stuff-popup");
-  if (vis && !vis.__ultraObs) {
-    const obs = new MutationObserver(function () {
-      window.ultraLayoutMenus();
-    });
-    obs.observe(vis, { attributes: true, attributeFilter: ["hidden", "style"] });
-    vis.__ultraObs = true;
-  }
   const exp = document.getElementById("custom-export-dialogue-container");
   if (exp && !exp.__ultraObs) {
     const obs = new MutationObserver(function () {
@@ -1159,11 +1226,16 @@ window.ultraAssignNewApples = function ultraAssignNewApples(added) {
   const mgr = window.ultraAppleManager();
   if (!mgr || !mgr.ka || !added || added <= 0) return;
   window.appleArray = mgr.ka;
-  if (window.isChessActive && window.isChessActive() && typeof window.chess_convert_new_apples === "function") {
-    window.chess_convert_new_apples(mgr, added);
+  const start = mgr.ka.length - added;
+  if (window.isChessActive && window.isChessActive() && typeof window.chess_assign_piece === "function") {
+    for (let i = start; i < mgr.ka.length; i++) {
+      const a = mgr.ka[i];
+      if (!a || a.isPiece || a.Oka || a.nba instanceof Set) continue;
+      window.chess_assign_piece(a);
+    }
   }
   if (window.isBurgerActive && window.isBurgerActive() && typeof window.burger_assign_timer === "function") {
-    for (let i = mgr.ka.length - added; i < mgr.ka.length; i++) {
+    for (let i = start; i < mgr.ka.length; i++) {
       if (mgr.ka[i] && !mgr.ka[i].Oka) window.burger_assign_timer(mgr.ka[i]);
     }
   }
@@ -1330,16 +1402,18 @@ window.ultraPresetSizeIndex = function ultraPresetSizeIndex(el) {
 window.ultraApplyImagePreset = function ultraApplyImagePreset(el) {
   const panel = document.getElementById("preset-panel");
   if (!panel || !el) return;
-  Array.from(panel.children).forEach(function (c) {
-    c.classList.remove("chosen-preset");
-  });
+  window.ultraClearChosenPresets();
   el.classList.add("chosen-preset");
   const key = el.getAttribute("data-ultra-pattern");
+  const src = el.src || "";
+  const name = src.replace(window.rootUrl || "", "");
   if (key && window.presetPatterns && window.presetPatterns[key]) {
-    window.presetPatterns[el.src] = window.presetPatterns[key];
+    window.presetPatterns[src] = window.presetPatterns[key];
+    window.presetPatterns[name] = window.presetPatterns[key];
   }
   window.ultraSetLeft(null);
   window.selectNewSizeSettingAndHardReset(window.ultraPresetSizeIndex(el));
+  window.ultraBlitChosenPreset();
 };
 
 window.ultraPatchPresetLoads = function ultraPatchPresetLoads() {
@@ -1705,6 +1779,7 @@ window.ultraPatchLevelLoads = function ultraPatchLevelLoads() {
 
 window.ultraFixPresetImages = function ultraFixPresetImages() {
   document.querySelectorAll("#preset-panel img.preset-option").forEach(function (img) {
+    if (img.classList.contains("preset-none")) return;
     const src = img.getAttribute("src") || img.src || "";
     const key = src.replace(window.rootUrl || "", "");
     if (key) img.setAttribute("data-ultra-pattern", key);
@@ -1717,6 +1792,24 @@ window.ultraFixPresetImages = function ultraFixPresetImages() {
   });
 };
 
+window.ultraInstallPresetNoneButton = function ultraInstallPresetNoneButton() {
+  const panel = document.getElementById("preset-panel");
+  if (!panel) return;
+  let none = panel.querySelector(".preset-none");
+  if (!none) return;
+  if (none.tagName === "IMG") {
+    const btn = document.createElement("div");
+    btn.className = none.className;
+    btn.textContent = "None";
+    none.replaceWith(btn);
+    none = btn;
+  } else if (!String(none.textContent || "").trim()) {
+    none.textContent = "None";
+  }
+  const ham = panel.querySelector(".preset-random-ham");
+  if (ham) ham.before(none);
+};
+
 window.ultraShowSettingsPage = window.remixShowSettingsPage;
 window.ultraOrganizeSettings = window.remixOrganizeSettings;
 
@@ -1726,6 +1819,7 @@ window.ultraSetupLayout = function ultraSetupLayout() {
   window.ultraInjectThemeCss();
   window.ultraInjectTabStrip();
   window.ultraMoveInputDisplay();
+  window.ultraInstallPresetNoneButton();
   window.ultraSyncLeNav();
   window.ultraWrapShowHide();
   window.ultraDisableSpeedInfo();

@@ -313,6 +313,18 @@ describe("Remix SpeedInfo gate (browser)", { skip: !runBrowser }, () => {
             blenderEl && blenderEl.style.display !== "none" ? blenderEl.src : "",
           patched: !!window.editTimer.__remixModes,
           btnBound: !!btn.__remixEditBound,
+          pagerDisplay: (function () {
+            const el = document.getElementById("ultra-settings-pager");
+            return el ? getComputedStyle(el).display : null;
+          })(),
+          playTabDisplay: (function () {
+            const el = document.getElementById("ultra-settings-tab-play");
+            return el ? getComputedStyle(el).display : null;
+          })(),
+          settingsDisplay: (function () {
+            const el = document.getElementById("settings-popup-pudding");
+            return el ? getComputedStyle(el).display : null;
+          })(),
         };
       });
       assert.equal(probe.ok, true, JSON.stringify(probe));
@@ -328,6 +340,9 @@ describe("Remix SpeedInfo gate (browser)", { skip: !runBrowser }, () => {
       assert.equal(probe.blenderVisibleSrc, "", JSON.stringify(probe));
       assert.ok(probe.chessSrc.includes("bn.png") || probe.chessSrc.length > 0, JSON.stringify(probe));
       assert.ok(probe.burgerSrc.includes("burger") || probe.burgerSrc.length > 0, JSON.stringify(probe));
+      assert.notEqual(probe.pagerDisplay, "none", JSON.stringify(probe));
+      assert.notEqual(probe.playTabDisplay, "none", JSON.stringify(probe));
+      assert.notEqual(probe.settingsDisplay, "none", JSON.stringify(probe));
       assert.deepEqual(h.modErrors(), [], "no mod errors");
     } finally {
       await h.close();

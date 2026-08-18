@@ -58,6 +58,7 @@ const tests = [
   ["burger fruit drawImage", /this\.ka\.drawImage\(f,0,0,g,g,-d\/2,-d\/2,d,d\);/],
   ["burger g7", /g7=function\(a,b,c\)\{b=new _\.Od/],
   ["pause cond", /\(this\.[a-zA-Z0-9_$]{1,8}\.direction!=="NONE"\|\|[a-zA-Z0-9_$]{1,8}\(this\.[a-zA-Z0-9_$]{1,8}\)\)/],
+  ["place bridgeColor", /([$a-zA-Z0-9_]{1,8})=function\(a,b\)\{return [$a-zA-Z0-9_]{1,8}\[a\.settings\.wa===10/],
 ];
 
 let failed = 0;

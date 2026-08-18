@@ -66,7 +66,7 @@ window.remixInjectSettingsCss = function remixInjectSettingsCss() {
   color: #fff;
 }
 .ultra-settings-tab.ultra-tab-on {
-  background: #1155CC;
+  background: var(--ultra-btn, #1155CC) !important;
   color: #fff;
 }
 .ultra-settings-page {
@@ -76,6 +76,22 @@ window.remixInjectSettingsCss = function remixInjectSettingsCss() {
 }
 .ultra-settings-page.ultra-page-on {
   display: block;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  scrollbar-width: none;
+}
+.ultra-settings-page.ultra-page-on::-webkit-scrollbar {
+  display: none;
+}
+#settings-popup-pudding {
+  flex-direction: column;
+  padding: 8px !important;
+  box-sizing: border-box !important;
+}
+#settings-popup-pudding > span {
+  flex-shrink: 0;
+  font-size: 13px;
 }
 #settings-popup-pudding .form-check,
 #settings-popup-pudding .form-check-inline {
@@ -108,25 +124,144 @@ label[for="RemoveScrollbar"] {
   margin: 0 !important;
   flex-shrink: 0;
 }
+#settings-popup-pudding .form-check-label {
+  margin: 3px !important;
+  color: #fff !important;
+  font-family: Roboto, Arial, sans-serif !important;
+}
+#settings-popup-pudding .btn {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 5px 0 !important;
+  border-radius: 8px !important;
+  background: var(--ultra-btn, #1155CC) !important;
+  color: #fff !important;
+  border: none !important;
+  font-size: 12px !important;
+}
 #stat-chooser {
   width: 100% !important;
   box-sizing: border-box;
   display: block !important;
+  min-height: 36px !important;
+  height: 36px !important;
+  line-height: 20px !important;
+  padding: 8px 10px !important;
   margin: 4px 0 8px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  font-size: 13px !important;
+  color: #fff !important;
+  background-color: var(--ultra-btn, #1155CC) !important;
 }
 #black-dice-settings {
   margin: 8px 0 0 !important;
   padding: 6px 8px !important;
   border-radius: 8px !important;
 }
+#black-dice-settings input {
+  width: 4.4em !important;
+}
 `;
   document.head.appendChild(style);
 };
 
-window.remixSettingsWrap = function remixSettingsWrap(id) {
-  const el = document.getElementById(id);
+window.remixApplyThemeColors = function remixApplyThemeColors() {
+  const btn = window.button_color || "#1155CC";
+  const bar = window.real_topbar_color || "#4a752c";
+  const root = document.documentElement;
+  if (!root || !root.style) return;
+  root.style.setProperty("--ultra-btn", btn);
+  root.style.setProperty("--ultra-bar", bar);
+  if (typeof window.remixPaintSettingsTabs === "function") {
+    window.remixPaintSettingsTabs();
+  }
+};
+
+window.remixPaintSettingsTabs = function remixPaintSettingsTabs() {
+  const btn = window.button_color || "#1155CC";
+  document.querySelectorAll(".ultra-settings-tab").forEach(function (el) {
+    const on = el.classList.contains("ultra-tab-on");
+    const color = on ? btn : "rgba(0,0,0,0.22)";
+    el.style.setProperty("background", color, "important");
+    el.style.setProperty("background-color", color, "important");
+  });
+};
+
+window.remixHookSetTheme = function remixHookSetTheme() {
+  window.remixApplyThemeColors();
+  if (typeof window.setTheme !== "function" || window.setTheme.__remixTheme) return;
+  const orig = window.setTheme;
+  window.setTheme = function () {
+    try {
+      return orig.apply(this, arguments);
+    } finally {
+      window.remixApplyThemeColors();
+    }
+  };
+  window.setTheme.__remixTheme = true;
+};
+
+window.remixSettingsEl = function remixSettingsEl(id, root) {
+  const scope = root || document.getElementById("settings-popup-pudding");
+  if (scope && typeof scope.querySelector === "function") {
+    return scope.querySelector("#" + id);
+  }
+  return document.getElementById(id);
+};
+
+window.remixSettingsWrap = function remixSettingsWrap(id, root) {
+  const el = window.remixSettingsEl(id, root);
   if (!el) return null;
   return el.closest(".form-check") || el;
+};
+
+window.remixBindResetKeyButtons = function remixBindResetKeyButtons() {
+  let keybinds = {};
+  try {
+    keybinds = JSON.parse(localStorage.getItem("keybinds")) || {};
+  } catch (_e) {}
+  if (!keybinds.resetKey) keybinds.resetKey = "Shift";
+  Array.from(document.querySelectorAll('[id="ResetKeybind"]')).forEach(function (button) {
+    let el = button;
+    if (!el.__remixResetBound) {
+      const fresh = el.cloneNode(true);
+      if (el.parentNode) el.parentNode.replaceChild(fresh, el);
+      el = fresh;
+      el.__remixResetBound = true;
+      el.addEventListener("click", function () {
+        Array.from(document.querySelectorAll('[id="ResetKeybind"]')).forEach(function (b) {
+          b.textContent = "Press any key...";
+        });
+        const handler = function (e) {
+          keybinds.resetKey = e.key;
+          try {
+            localStorage.setItem("keybinds", JSON.stringify(keybinds));
+          } catch (_err) {}
+          Array.from(document.querySelectorAll('[id="ResetKeybind"]')).forEach(function (b) {
+            b.textContent = "Reset Key: " + e.key;
+          });
+          document.removeEventListener("keydown", handler);
+        };
+        document.addEventListener("keydown", handler);
+      });
+    }
+    if (el.textContent !== "Press any key...") {
+      el.textContent = "Reset Key: " + keybinds.resetKey;
+    }
+  });
+};
+
+window.remixHookResetKeyMake = function remixHookResetKeyMake() {
+  if (!window.ResetKey || typeof window.ResetKey.make !== "function") return;
+  if (window.ResetKey.make.__remix) return;
+  const orig = window.ResetKey.make;
+  window.ResetKey.make = function () {
+    orig.apply(this, arguments);
+    window.remixBindResetKeyButtons();
+  };
+  window.ResetKey.make.__remix = true;
 };
 
 window.remixHideSettingsNode = function remixHideSettingsNode(el, bin) {
@@ -145,6 +280,84 @@ window.remixShowSettingsPage = function remixShowSettingsPage(id) {
     if (page) page.classList.toggle("ultra-page-on", pageId === id);
     if (tab) tab.classList.toggle("ultra-tab-on", pageId === id);
   });
+  if (typeof window.remixPaintSettingsTabs === "function") {
+    window.remixPaintSettingsTabs();
+  }
+};
+
+window.remixVisibilityPopup = function remixVisibilityPopup() {
+  return document.getElementById("delete-stuff-popup");
+};
+
+window.remixVisibilityIsOpen = function remixVisibilityIsOpen() {
+  const el = window.remixVisibilityPopup();
+  if (!el) return false;
+  if (el.hidden) return false;
+  const s = getComputedStyle(el);
+  return s.display !== "none" && s.visibility !== "hidden";
+};
+
+window.remixSyncVisibilityButton = function remixSyncVisibilityButton() {
+  const btn = document.getElementById("remix-visibility-settings");
+  if (!btn) return;
+  btn.textContent = window.remixVisibilityIsOpen()
+    ? "Hide Visibility settings"
+    : "Show Visibility settings";
+};
+
+window.remixSetVisibilityOpen = function remixSetVisibilityOpen(open) {
+  const el = window.remixVisibilityPopup();
+  if (!el) return;
+  el.hidden = !open;
+  window.remixSyncVisibilityButton();
+};
+
+window.remixToggleVisibilitySettings = function remixToggleVisibilitySettings() {
+  window.remixSetVisibilityOpen(!window.remixVisibilityIsOpen());
+};
+
+window.remixEnsureVisibilityButton = function remixEnsureVisibilityButton(setup) {
+  if (!setup) return;
+  let btn = document.getElementById("remix-visibility-settings");
+  if (!btn) {
+    btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "remix-visibility-settings";
+    btn.className = "btn";
+    btn.addEventListener("click", function () {
+      window.remixToggleVisibilitySettings();
+    });
+  }
+  if (setup.firstChild !== btn) setup.insertBefore(btn, setup.firstChild);
+  window.remixSyncVisibilityButton();
+  const popup = window.remixVisibilityPopup();
+  if (popup && !popup.__remixVisObs) {
+    const obs = new MutationObserver(function () {
+      window.remixSyncVisibilityButton();
+    });
+    obs.observe(popup, { attributes: true, attributeFilter: ["hidden", "style"] });
+    popup.__remixVisObs = true;
+  }
+};
+
+window.remixEnsureSettingsFlex = function remixEnsureSettingsFlex() {
+  const root = document.getElementById("settings-popup-pudding");
+  if (root && root.style.display !== "none" && root.style.visibility !== "hidden") {
+    root.style.display = "flex";
+    root.style.flexDirection = "column";
+  }
+  if (typeof window.BootstrapShow === "function" && !window.__remixBootstrapFlex) {
+    const orig = window.BootstrapShow;
+    window.BootstrapShow = function () {
+      orig.apply(this, arguments);
+      const box = document.getElementById("settings-popup-pudding");
+      if (box) {
+        box.style.display = "flex";
+        box.style.flexDirection = "column";
+      }
+    };
+    window.__remixBootstrapFlex = true;
+  }
 };
 
 window.remixOrganizeSettings = function remixOrganizeSettings() {
@@ -165,12 +378,12 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     root.appendChild(bin);
   }
 
-  window.remixHideSettingsNode(window.remixSettingsWrap("AlwaysOnTimeKeeper"), bin);
-  window.remixHideSettingsNode(window.remixSettingsWrap("ShowSplitPanel"), bin);
-  window.remixHideSettingsNode(window.remixSettingsWrap("RemoveScrollbar"), bin);
-  window.remixHideSettingsNode(document.getElementById("ScrollLeftBtn"), bin);
-  window.remixHideSettingsNode(document.getElementById("settings-close"), bin);
-  window.remixHideSettingsNode(document.getElementById("snakePride"), bin);
+  window.remixHideSettingsNode(window.remixSettingsWrap("AlwaysOnTimeKeeper", root), bin);
+  window.remixHideSettingsNode(window.remixSettingsWrap("ShowSplitPanel", root), bin);
+  window.remixHideSettingsNode(window.remixSettingsWrap("RemoveScrollbar", root), bin);
+  window.remixHideSettingsNode(window.remixSettingsEl("ScrollLeftBtn", root), bin);
+  window.remixHideSettingsNode(window.remixSettingsEl("settings-close", root), bin);
+  window.remixHideSettingsNode(window.remixSettingsEl("snakePride", root), bin);
   Array.from(root.querySelectorAll(":scope > br")).forEach(function (el) {
     window.remixHideSettingsNode(el, bin);
   });
@@ -218,11 +431,11 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     "EatThemeRandomizer",
     "DisableRandom",
   ].forEach(function (id) {
-    const el = window.remixSettingsWrap(id);
+    const el = window.remixSettingsWrap(id, root);
     if (el && el.parentElement !== play) play.appendChild(el);
   });
   ["stat-chooser", "edit-stat", "reset-stats"].forEach(function (id) {
-    const el = document.getElementById(id);
+    const el = window.remixSettingsEl(id, root);
     if (el && el.parentElement !== stats) stats.appendChild(el);
   });
   [
@@ -232,9 +445,40 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     "CustomBowlFruits",
     "black-dice-settings",
   ].forEach(function (id) {
-    const el = window.remixSettingsWrap(id) || document.getElementById(id);
+    const el = window.remixSettingsWrap(id, root) || window.remixSettingsEl(id, root);
     if (el && el.parentElement !== setup) setup.appendChild(el);
   });
+  const keepIds = {
+    "ultra-settings-hidden": 1,
+    "ultra-settings-pager": 1,
+    "ultra-settings-page-play": 1,
+    "ultra-settings-page-stats": 1,
+    "ultra-settings-page-setup": 1,
+  };
+  Array.from(root.children).forEach(function (el) {
+    if (el.tagName === "SPAN") return;
+    if (keepIds[el.id]) return;
+    if (el.id) {
+      const already =
+        play.querySelector("#" + el.id) ||
+        stats.querySelector("#" + el.id) ||
+        setup.querySelector("#" + el.id);
+      if (already) {
+        window.remixHideSettingsNode(el, bin);
+        return;
+      }
+    }
+    setup.appendChild(el);
+  });
+  const extraResets = setup.querySelectorAll('[id="ResetKeybind"]');
+  for (let i = 1; i < extraResets.length; i++) {
+    window.remixHideSettingsNode(extraResets[i], bin);
+  }
+  window.remixEnsureVisibilityButton(setup);
+  window.remixEnsureSettingsFlex();
+  window.remixHookSetTheme();
+  window.remixHookResetKeyMake();
+  window.remixBindResetKeyButtons();
 
   window.remixShowSettingsPage(
     window.__remixSettingsPage || window.__ultraSettingsPage || "play"
@@ -306,6 +550,8 @@ window.RemixMod.runCodeBefore = function () {
   };
 
   window.remixBaseRunCodeBefore();
+  window.remixHookSetTheme();
+  window.remixHookResetKeyMake();
   if (typeof window.remixInlineCspMenuIcons === "function") {
     window.remixInlineCspMenuIcons();
   }
@@ -350,6 +596,8 @@ window.RemixMod.runCodeAfter = function () {
   window.BurgerMod.runCodeAfter && window.BurgerMod.runCodeAfter();
   window.RemixSpeedInfo.runCodeAfter && window.RemixSpeedInfo.runCodeAfter();
   window.PauseMod.runCodeAfter && window.PauseMod.runCodeAfter();
+  window.remixHookSetTheme();
+  window.remixHookResetKeyMake();
   window.remixOrganizeSettings();
   setTimeout(function () {
     window.remixOrganizeSettings();
