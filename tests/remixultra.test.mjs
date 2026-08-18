@@ -30,6 +30,8 @@ describe("RemixUltra build artifacts", () => {
     assert.doesNotMatch(remix, /RemixUltraSettings/);
     assert.doesNotMatch(remix, /UltraShieldedFruitSpawn/);
     assert.doesNotMatch(remix, /UltraMineModeSpawn/);
+    assert.doesNotMatch(remix, /UltraGateModeSpawn/);
+    assert.doesNotMatch(remix, /ultraEnsureModesSettingsPage/);
     assert.doesNotMatch(remix, /ultraInstallGameplayToggleUi/);
     assert.doesNotMatch(remix, /ultraPlaceWallEveryAppleToggle/);
   });
@@ -64,6 +66,11 @@ describe("RemixUltra build artifacts", () => {
     assert.match(ultra, /UltraWallModeSpawn/);
     assert.match(ultra, /UltraArrowTurnSpawn/);
     assert.match(ultra, /UltraMineModeSpawn/);
+    assert.match(ultra, /UltraGateModeSpawn/);
+    assert.match(ultra, /UltraBridgeModeSpawn/);
+    assert.match(ultra, /UltraStatueModeSpawn/);
+    assert.match(ultra, /ultraEnsureModesSettingsPage/);
+    assert.match(ultra, /ultra-pager-grid/);
     assert.match(ultra, /ultraBlockNativeArrowTurns/);
   });
 });
@@ -282,8 +289,20 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
           play: !!play,
           stats: !!stats,
           setup: !!setup,
+          modes: !!document.getElementById("ultra-settings-page-modes"),
+          modesTab: !!document.getElementById("ultra-settings-tab-modes"),
+          tabCount: document.querySelectorAll("#ultra-settings-pager .ultra-settings-tab").length,
+          pagerDisplay: document.getElementById("ultra-settings-pager") &&
+            getComputedStyle(document.getElementById("ultra-settings-pager")).display,
+          pagerGrid: document.getElementById("ultra-settings-pager") &&
+            document.getElementById("ultra-settings-pager").classList.contains("ultra-pager-grid"),
           skullInPlay: !!(
             play && play.querySelector("#SkullPoisonFruit")
+          ),
+          spawnInPlay: !!(play && play.querySelector("#UltraWallModeSpawn")),
+          spawnInModes: !!(
+            document.getElementById("ultra-settings-page-modes") &&
+            document.getElementById("ultra-settings-page-modes").querySelector("#UltraWallModeSpawn")
           ),
           chooserInStats: !!(
             stats && stats.querySelector("#stat-chooser")
@@ -313,7 +332,14 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       assert.equal(more.play, true, JSON.stringify(more));
       assert.equal(more.stats, true, JSON.stringify(more));
       assert.equal(more.setup, true, JSON.stringify(more));
+      assert.equal(more.modes, true, JSON.stringify(more));
+      assert.equal(more.modesTab, true, JSON.stringify(more));
+      assert.equal(more.tabCount, 4, JSON.stringify(more));
+      assert.equal(more.pagerDisplay, "grid", JSON.stringify(more));
+      assert.equal(more.pagerGrid, true, JSON.stringify(more));
       assert.equal(more.skullInPlay, true, JSON.stringify(more));
+      assert.equal(more.spawnInPlay, false, JSON.stringify(more));
+      assert.equal(more.spawnInModes, true, JSON.stringify(more));
       assert.equal(more.chooserInStats, true, JSON.stringify(more));
       assert.equal(more.afterStats.playOn, false, JSON.stringify(more));
       assert.equal(more.afterStats.statsOn, true, JSON.stringify(more));

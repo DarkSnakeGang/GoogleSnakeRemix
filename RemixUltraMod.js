@@ -13701,6 +13701,10 @@ window.remixInjectSettingsCss = function remixInjectSettingsCss() {
   flex-shrink: 0;
   margin: 6px 0 8px;
 }
+#ultra-settings-pager.ultra-pager-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
 .ultra-settings-tab {
   flex: 1;
   min-width: 0;
@@ -14007,11 +14011,13 @@ window.remixHideSettingsNode = function remixHideSettingsNode(el, bin) {
 window.remixShowSettingsPage = function remixShowSettingsPage(id) {
   window.__remixSettingsPage = id;
   window.__ultraSettingsPage = id;
-  ["play", "stats", "setup"].forEach(function (pageId) {
-    const page = document.getElementById("ultra-settings-page-" + pageId);
-    const tab = document.getElementById("ultra-settings-tab-" + pageId);
-    if (page) page.classList.toggle("ultra-page-on", pageId === id);
-    if (tab) tab.classList.toggle("ultra-tab-on", pageId === id);
+  document.querySelectorAll(".ultra-settings-page").forEach(function (page) {
+    const pageId = String(page.id || "").replace("ultra-settings-page-", "");
+    page.classList.toggle("ultra-page-on", pageId === id);
+  });
+  document.querySelectorAll(".ultra-settings-tab").forEach(function (tab) {
+    const pageId = String(tab.id || "").replace("ultra-settings-tab-", "");
+    tab.classList.toggle("ultra-tab-on", pageId === id);
   });
   if (typeof window.remixPaintSettingsTabs === "function") {
     window.remixPaintSettingsTabs();
@@ -14154,6 +14160,7 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
   const play = document.getElementById("ultra-settings-page-play");
   const stats = document.getElementById("ultra-settings-page-stats");
   const setup = document.getElementById("ultra-settings-page-setup");
+  const modes = document.getElementById("ultra-settings-page-modes");
   if (!play || !stats || !setup) return;
 
   [
@@ -14189,6 +14196,7 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     "ultra-settings-page-play": 1,
     "ultra-settings-page-stats": 1,
     "ultra-settings-page-setup": 1,
+    "ultra-settings-page-modes": 1,
   };
   Array.from(root.children).forEach(function (el) {
     if (el.tagName === "SPAN") return;
@@ -14197,7 +14205,8 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
       const already =
         play.querySelector("#" + el.id) ||
         stats.querySelector("#" + el.id) ||
-        setup.querySelector("#" + el.id);
+        setup.querySelector("#" + el.id) ||
+        (modes && modes.querySelector("#" + el.id));
       if (already) {
         window.remixHideSettingsNode(el, bin);
         return;
@@ -18510,6 +18519,10 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   flex-shrink: 0;
   margin: 6px 0 8px;
 }
+#ultra-settings-pager.ultra-pager-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
 .ultra-settings-tab {
   flex: 1;
   min-width: 0;
@@ -19972,6 +19985,7 @@ window.ultraOrganizeSettings = function ultraOrganizeSettings() {
   if (typeof window.remixOrganizeSettings === "function") {
     window.remixOrganizeSettings();
   }
+  window.ultraEnsureModesSettingsPage();
   window.ultraInstallGameplayToggleUi();
   window.ultraEnsureGameplayToggles();
   window.ultraPlaceWallEveryAppleToggle();
@@ -19986,8 +20000,14 @@ window.ultraEnsureGameplayToggles = function ultraEnsureGameplayToggles() {
   if (typeof s.UltraWallModeSpawn !== "boolean") s.UltraWallModeSpawn = false;
   if (typeof s.UltraArrowTurnSpawn !== "boolean") s.UltraArrowTurnSpawn = false;
   if (typeof s.UltraMineModeSpawn !== "boolean") s.UltraMineModeSpawn = false;
+  if (typeof s.UltraGateModeSpawn !== "boolean") s.UltraGateModeSpawn = false;
+  if (typeof s.UltraBridgeModeSpawn !== "boolean") s.UltraBridgeModeSpawn = false;
+  if (typeof s.UltraStatueModeSpawn !== "boolean") s.UltraStatueModeSpawn = false;
   window.disableWallMode = !s.UltraWallModeSpawn;
   window.disableMineMode = !s.UltraMineModeSpawn;
+  window.disableGateMode = !s.UltraGateModeSpawn;
+  window.disableBridgeMode = !s.UltraBridgeModeSpawn;
+  window.disableStatueBodyPlant = !s.UltraStatueModeSpawn;
 };
 
 window.ultraShouldSpawnFruitShields = function ultraShouldSpawnFruitShields() {
@@ -20077,23 +20097,86 @@ window.ultraPlaceWallEveryAppleToggle = function ultraPlaceWallEveryAppleToggle(
   }
 };
 
+window.ultraGameplayToggleSpecs = function ultraGameplayToggleSpecs() {
+  return [
+    { id: "UltraShieldedFruitSpawn", label: "Spawn fruit with shields" },
+    { id: "UltraWallModeSpawn", label: "Walls spawn in wall mode" },
+    { id: "UltraArrowTurnSpawn", label: "Arrows spawn on turns" },
+    { id: "UltraMineModeSpawn", label: "Mines spawn in minesweeper mode" },
+    { id: "UltraGateModeSpawn", label: "Gates spawn in gate mode" },
+    { id: "UltraBridgeModeSpawn", label: "Bridges spawn in bridge mode" },
+    { id: "UltraStatueModeSpawn", label: "Statues spawn in statue mode" },
+  ];
+};
+
+window.ultraApplyGameplayToggleFlags = function ultraApplyGameplayToggleFlags(id, checked) {
+  if (id === "UltraWallModeSpawn") {
+    window.disableWallMode = !checked;
+    if (typeof window.remixSyncWallEveryAppleEnabled === "function") {
+      window.remixSyncWallEveryAppleEnabled();
+    }
+  }
+  if (id === "UltraMineModeSpawn") window.disableMineMode = !checked;
+  if (id === "UltraGateModeSpawn") window.disableGateMode = !checked;
+  if (id === "UltraBridgeModeSpawn") window.disableBridgeMode = !checked;
+  if (id === "UltraStatueModeSpawn") window.disableStatueBodyPlant = !checked;
+};
+
+window.ultraEnsureModesSettingsPage = function ultraEnsureModesSettingsPage() {
+  const root = document.getElementById("settings-popup-pudding");
+  const pager = document.getElementById("ultra-settings-pager");
+  if (!root || !pager) return null;
+  pager.classList.add("ultra-pager-grid");
+  let page = document.getElementById("ultra-settings-page-modes");
+  if (!page) {
+    page = document.createElement("div");
+    page.id = "ultra-settings-page-modes";
+    page.className = "ultra-settings-page";
+    root.appendChild(page);
+  }
+  if (!document.getElementById("ultra-settings-tab-modes")) {
+    const tab = document.createElement("button");
+    tab.type = "button";
+    tab.id = "ultra-settings-tab-modes";
+    tab.className = "ultra-settings-tab";
+    tab.textContent = "Modes";
+    tab.addEventListener("click", function () {
+      window.remixShowSettingsPage("modes");
+    });
+    pager.appendChild(tab);
+  }
+  if (typeof window.remixPaintSettingsTabs === "function") {
+    window.remixPaintSettingsTabs();
+  }
+  return page;
+};
+
+window.ultraMoveGameplayTogglesToModes = function ultraMoveGameplayTogglesToModes(host) {
+  if (!host) return;
+  const ids = window.ultraGameplayToggleSpecs().map(function (spec) {
+    return spec.id;
+  });
+  ids.push("WallEveryApple");
+  for (let i = 0; i < ids.length; i++) {
+    const el = document.getElementById(ids[i]);
+    const wrap = el && el.closest(".form-check");
+    if (wrap && wrap.parentElement !== host) host.appendChild(wrap);
+  }
+  window.ultraPlaceWallEveryAppleToggle();
+};
+
 window.ultraInstallGameplayToggleUi = function ultraInstallGameplayToggleUi() {
   window.ultraEnsureGameplayToggles();
-  const play = document.getElementById("ultra-settings-page-play");
-  if (!play) return;
+  const host = window.ultraEnsureModesSettingsPage();
+  if (!host) return;
   if (document.getElementById("UltraShieldedFruitSpawn")) {
-    window.ultraPlaceWallEveryAppleToggle();
+    window.ultraMoveGameplayTogglesToModes(host);
     if (typeof window.remixSyncWallEveryAppleEnabled === "function") {
       window.remixSyncWallEveryAppleEnabled();
     }
     return;
   }
-  const specs = [
-    { id: "UltraShieldedFruitSpawn", label: "Spawn fruit with shields" },
-    { id: "UltraWallModeSpawn", label: "Walls spawn in wall mode" },
-    { id: "UltraArrowTurnSpawn", label: "Arrows spawn on turns" },
-    { id: "UltraMineModeSpawn", label: "Mines spawn in minesweeper mode" },
-  ];
+  const specs = window.ultraGameplayToggleSpecs();
   for (let i = 0; i < specs.length; i++) {
     const spec = specs[i];
     const wrap = document.createElement("div");
@@ -20107,24 +20190,16 @@ window.ultraInstallGameplayToggleUi = function ultraInstallGameplayToggleUi() {
       '">' +
       spec.label +
       "</label>";
-    play.appendChild(wrap);
+    host.appendChild(wrap);
     const input = wrap.querySelector("input");
     input.checked = !!window.pudding_settings[spec.id];
     input.addEventListener("change", function () {
       window.pudding_settings[spec.id] = !!input.checked;
-      if (spec.id === "UltraWallModeSpawn") {
-        window.disableWallMode = !input.checked;
-        if (typeof window.remixSyncWallEveryAppleEnabled === "function") {
-          window.remixSyncWallEveryAppleEnabled();
-        }
-      }
-      if (spec.id === "UltraMineModeSpawn") {
-        window.disableMineMode = !input.checked;
-      }
+      window.ultraApplyGameplayToggleFlags(spec.id, !!input.checked);
       if (typeof window.saveSettings === "function") window.saveSettings();
     });
   }
-  window.ultraPlaceWallEveryAppleToggle();
+  window.ultraMoveGameplayTogglesToModes(host);
   if (typeof window.remixSyncWallEveryAppleEnabled === "function") {
     window.remixSyncWallEveryAppleEnabled();
   }

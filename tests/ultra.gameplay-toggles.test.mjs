@@ -11,32 +11,39 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
     return launchHarness(ultraHarnessOpts({ seed, headless: true }));
   }
 
-  it("Play tab has spawn toggles, default off", async () => {
+  it("Modes tab has spawn toggles, default off", async () => {
     const h = await launchUltra(81);
     try {
       const { COUNT, SIZE } = await import("../tools/harness.mjs");
       await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
       const probe = await h.page.evaluate(() => {
         window.ultraOrganizeSettings();
-        const playTab = document.getElementById("ultra-settings-tab-play");
-        if (playTab) playTab.click();
+        const modesTab = document.getElementById("ultra-settings-tab-modes");
+        if (modesTab) modesTab.click();
         const ids = [
           "UltraShieldedFruitSpawn",
           "UltraWallModeSpawn",
           "UltraArrowTurnSpawn",
           "UltraMineModeSpawn",
+          "UltraGateModeSpawn",
+          "UltraBridgeModeSpawn",
+          "UltraStatueModeSpawn",
         ];
         const items = ids.map((id) => {
           const el = document.getElementById(id);
           const label = el && document.querySelector(`label[for="${id}"]`);
           const wrap = el && el.closest(".form-check");
           const cs = wrap && getComputedStyle(wrap);
+          const modes = document.getElementById("ultra-settings-page-modes");
+          const play = document.getElementById("ultra-settings-page-play");
           return {
             id,
             has: !!el,
             checked: !!(el && el.checked),
             label: label && String(label.textContent || "").trim(),
             display: cs && cs.display,
+            inModes: !!(modes && el && modes.contains(el)),
+            inPlay: !!(play && el && play.contains(el)),
           };
         });
         const every = document.getElementById("WallEveryApple");
@@ -45,6 +52,8 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
         const wallWrap = document.getElementById("UltraWallModeSpawn") &&
           document.getElementById("UltraWallModeSpawn").closest(".form-check");
         const everyWrap = every && every.closest(".form-check");
+        const pager = document.getElementById("ultra-settings-pager");
+        const modes = document.getElementById("ultra-settings-page-modes");
         return {
           items,
           everyApple: {
@@ -57,16 +66,27 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
               everyWrap &&
               wallWrap.nextElementSibling === everyWrap
             ),
+            inModes: !!(modes && every && modes.contains(every)),
           },
+          pagerGrid: !!(pager && pager.classList.contains("ultra-pager-grid")),
+          pagerDisplay: pager && getComputedStyle(pager).display,
+          tabCount: document.querySelectorAll("#ultra-settings-pager .ultra-settings-tab").length,
+          modesOn: !!(modes && modes.classList.contains("ultra-page-on")),
           settings: {
             shields: window.pudding_settings.UltraShieldedFruitSpawn,
             walls: window.pudding_settings.UltraWallModeSpawn,
             arrows: window.pudding_settings.UltraArrowTurnSpawn,
             mines: window.pudding_settings.UltraMineModeSpawn,
+            gates: window.pudding_settings.UltraGateModeSpawn,
+            bridges: window.pudding_settings.UltraBridgeModeSpawn,
+            statues: window.pudding_settings.UltraStatueModeSpawn,
             everyApple: window.pudding_settings.WallEveryApple,
           },
           disableWallMode: !!window.disableWallMode,
           disableMineMode: !!window.disableMineMode,
+          disableGateMode: !!window.disableGateMode,
+          disableBridgeMode: !!window.disableBridgeMode,
+          disableStatueBodyPlant: !!window.disableStatueBodyPlant,
           shouldShields: window.ultraShouldSpawnFruitShields(),
           blockArrows: window.ultraBlockNativeArrowTurns(),
           shouldEvery: window.remixShouldSpawnWallEveryApple(),
@@ -74,34 +94,50 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
       });
       assert.deepEqual(
         probe.items.map((x) => x.has),
-        [true, true, true, true],
+        [true, true, true, true, true, true, true],
         JSON.stringify(probe)
       );
       assert.deepEqual(
         probe.items.map((x) => x.checked),
-        [false, false, false, false],
+        [false, false, false, false, false, false, false],
         JSON.stringify(probe)
       );
       assert.equal(probe.items[0].label, "Spawn fruit with shields");
       assert.equal(probe.items[1].label, "Walls spawn in wall mode");
       assert.equal(probe.items[2].label, "Arrows spawn on turns");
       assert.equal(probe.items[3].label, "Mines spawn in minesweeper mode");
+      assert.equal(probe.items[4].label, "Gates spawn in gate mode");
+      assert.equal(probe.items[5].label, "Bridges spawn in bridge mode");
+      assert.equal(probe.items[6].label, "Statues spawn in statue mode");
       for (const item of probe.items) {
         assert.notEqual(item.display, "none", JSON.stringify(item));
+        assert.equal(item.inModes, true, JSON.stringify(item));
+        assert.equal(item.inPlay, false, JSON.stringify(item));
       }
+      assert.equal(probe.pagerGrid, true, JSON.stringify(probe));
+      assert.equal(probe.pagerDisplay, "grid", JSON.stringify(probe));
+      assert.equal(probe.tabCount, 4, JSON.stringify(probe));
+      assert.equal(probe.modesOn, true, JSON.stringify(probe));
       assert.equal(probe.settings.shields, false, JSON.stringify(probe));
       assert.equal(probe.settings.walls, false, JSON.stringify(probe));
       assert.equal(probe.settings.arrows, false, JSON.stringify(probe));
       assert.equal(probe.settings.mines, false, JSON.stringify(probe));
+      assert.equal(probe.settings.gates, false, JSON.stringify(probe));
+      assert.equal(probe.settings.bridges, false, JSON.stringify(probe));
+      assert.equal(probe.settings.statues, false, JSON.stringify(probe));
       assert.equal(probe.settings.everyApple, false, JSON.stringify(probe));
       assert.equal(probe.disableWallMode, true, JSON.stringify(probe));
       assert.equal(probe.disableMineMode, true, JSON.stringify(probe));
+      assert.equal(probe.disableGateMode, true, JSON.stringify(probe));
+      assert.equal(probe.disableBridgeMode, true, JSON.stringify(probe));
+      assert.equal(probe.disableStatueBodyPlant, true, JSON.stringify(probe));
       assert.equal(probe.shouldShields, false, JSON.stringify(probe));
       assert.equal(probe.blockArrows, true, JSON.stringify(probe));
       assert.equal(probe.shouldEvery, false, JSON.stringify(probe));
       assert.equal(probe.everyApple.has, true, JSON.stringify(probe));
       assert.equal(probe.everyApple.checked, false, JSON.stringify(probe));
       assert.equal(probe.everyApple.disabled, true, JSON.stringify(probe));
+      assert.equal(probe.everyApple.inModes, true, JSON.stringify(probe));
       assert.equal(
         probe.everyApple.label,
         "Walls spawn every apple",
@@ -489,6 +525,171 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
     }
   });
 
+  it("gate, bridge, and statue modes do not spawn unless their toggles are on", async () => {
+    const h = await launchUltra(89);
+    try {
+      const { COUNT, SIZE } = await import("../tools/harness.mjs");
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.LARGE });
+      const probe = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        function gateCount() {
+          const names = window.ultraPlaceNames || {};
+          const game = window.wholeSnakeObject;
+          const gates = names.gateContainer && game[names.gateContainer];
+          return gates && Array.isArray(gates.pfa) ? gates.pfa.length : 0;
+        }
+        function bridgeCount() {
+          const names = window.ultraPlaceNames || {};
+          const game = window.wholeSnakeObject;
+          const bridges = names.bridgeContainer && game[names.bridgeContainer];
+          if (!bridges || !bridges.oa) return 0;
+          let n = 0;
+          for (let y = 0; y < bridges.oa.length; y++) {
+            const row = bridges.oa[y];
+            if (!row) continue;
+            for (let x = 0; x < row.length; x++) {
+              if (row[x] && (row[x].color || row[x].Lh)) n++;
+            }
+          }
+          return n;
+        }
+        function statueCount() {
+          const st =
+            typeof window.ultraStatueManager === "function" &&
+            window.ultraStatueManager();
+          return st && st.oa && typeof st.oa.size === "number" ? st.oa.size : 0;
+        }
+        function revive() {
+          g.nj = false;
+          const snake = g.oa.ka;
+          for (let i = 0; i < snake.length; i++) {
+            snake[i].x = 6;
+            snake[i].y = 8;
+          }
+          g.oa.direction = "RIGHT";
+        }
+        function eatAhead() {
+          const apples = g.wa.ka;
+          if (!apples.length) return;
+          const head = g.oa.ka[0];
+          apples[0].pos.x = head.x + 1;
+          apples[0].pos.y = head.y;
+        }
+        function tickSafe(n) {
+          for (let i = 0; i < n; i++) {
+            if (g.nj) break;
+            g.tick();
+          }
+        }
+        function runMode(spec) {
+          window.pudding_settings[spec.setting] = false;
+          window.ultraEnsureGameplayToggles();
+          const disableOff = !!window[spec.flag];
+          g.settings.ub = spec.mode;
+          g.settings.ob = spec.mode;
+          window.CurrentModeNum = spec.mode;
+          if (typeof window.ensureGameMode === "function") window.ensureGameMode(spec.mode);
+          g.wa.reset();
+          if (typeof window[spec.empty] === "function") window[spec.empty]();
+          revive();
+          const offBefore = spec.count();
+          for (let n = 0; n < 4; n++) {
+            revive();
+            eatAhead();
+            tickSafe(8);
+          }
+          const offAfter = spec.count();
+
+          window.pudding_settings[spec.setting] = true;
+          window.ultraEnsureGameplayToggles();
+          const disableOn = !!window[spec.flag];
+          g.wa.reset();
+          if (typeof window[spec.empty] === "function") window[spec.empty]();
+          revive();
+          const onBefore = spec.count();
+          for (let n = 0; n < 4; n++) {
+            revive();
+            eatAhead();
+            tickSafe(8);
+          }
+          const onAfter = spec.count();
+
+          window.pudding_settings[spec.setting] = false;
+          window.ultraEnsureGameplayToggles();
+          if (typeof window[spec.empty] === "function") window[spec.empty]();
+          const placed = typeof window[spec.place] === "function";
+          const beforePlace = spec.count();
+          if (placed) spec.doPlace();
+          const afterPlace = spec.count();
+          return {
+            disableOff,
+            disableOn,
+            offBefore,
+            offAfter,
+            onBefore,
+            onAfter,
+            placed,
+            beforePlace,
+            afterPlace,
+          };
+        }
+        return {
+          gates: runMode({
+            setting: "UltraGateModeSpawn",
+            flag: "disableGateMode",
+            mode: 19,
+            empty: "emptyGates",
+            count: gateCount,
+            place: "placeGate",
+            doPlace: function () {
+              window.placeGate(3, 3, false);
+            },
+          }),
+          bridges: runMode({
+            setting: "UltraBridgeModeSpawn",
+            flag: "disableBridgeMode",
+            mode: 20,
+            empty: "emptyBridges",
+            count: bridgeCount,
+            place: "placeBridge",
+            doPlace: function () {
+              window.placeBridge(3, 3);
+            },
+          }),
+          statues: runMode({
+            setting: "UltraStatueModeSpawn",
+            flag: "disableStatueBodyPlant",
+            mode: 13,
+            empty: "emptyStatues",
+            count: statueCount,
+            place: "placeStatue",
+            doPlace: function () {
+              window.placeStatue(3, 3, false);
+            },
+          }),
+        };
+      });
+      for (const name of ["gates", "bridges", "statues"]) {
+        const p = probe[name];
+        assert.equal(p.disableOff, true, name + " " + JSON.stringify(p));
+        assert.equal(p.disableOn, false, name + " " + JSON.stringify(p));
+        assert.equal(p.offAfter, p.offBefore, name + " off spawn " + JSON.stringify(p));
+        assert.ok(
+          p.onAfter > p.onBefore,
+          name + " should spawn when toggle is on " + JSON.stringify(p)
+        );
+        assert.equal(p.placed, true, name + " " + JSON.stringify(p));
+        assert.ok(
+          p.afterPlace > p.beforePlace,
+          name + " place still works " + JSON.stringify(p)
+        );
+      }
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
+
   it("every-apple wall toggle is disabled until wall spawning is on", async () => {
     const h = await launchUltra(86);
     try {
@@ -496,8 +697,8 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
       await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
       const probe = await h.page.evaluate(() => {
         window.ultraOrganizeSettings();
-        const playTab = document.getElementById("ultra-settings-tab-play");
-        if (playTab) playTab.click();
+        const modesTab = document.getElementById("ultra-settings-tab-modes");
+        if (modesTab) modesTab.click();
         const every = document.getElementById("WallEveryApple");
         const spawn = document.getElementById("UltraWallModeSpawn");
         const off = {

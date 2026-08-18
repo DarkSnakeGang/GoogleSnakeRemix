@@ -13701,6 +13701,10 @@ window.remixInjectSettingsCss = function remixInjectSettingsCss() {
   flex-shrink: 0;
   margin: 6px 0 8px;
 }
+#ultra-settings-pager.ultra-pager-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
 .ultra-settings-tab {
   flex: 1;
   min-width: 0;
@@ -14007,11 +14011,13 @@ window.remixHideSettingsNode = function remixHideSettingsNode(el, bin) {
 window.remixShowSettingsPage = function remixShowSettingsPage(id) {
   window.__remixSettingsPage = id;
   window.__ultraSettingsPage = id;
-  ["play", "stats", "setup"].forEach(function (pageId) {
-    const page = document.getElementById("ultra-settings-page-" + pageId);
-    const tab = document.getElementById("ultra-settings-tab-" + pageId);
-    if (page) page.classList.toggle("ultra-page-on", pageId === id);
-    if (tab) tab.classList.toggle("ultra-tab-on", pageId === id);
+  document.querySelectorAll(".ultra-settings-page").forEach(function (page) {
+    const pageId = String(page.id || "").replace("ultra-settings-page-", "");
+    page.classList.toggle("ultra-page-on", pageId === id);
+  });
+  document.querySelectorAll(".ultra-settings-tab").forEach(function (tab) {
+    const pageId = String(tab.id || "").replace("ultra-settings-tab-", "");
+    tab.classList.toggle("ultra-tab-on", pageId === id);
   });
   if (typeof window.remixPaintSettingsTabs === "function") {
     window.remixPaintSettingsTabs();
@@ -14154,6 +14160,7 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
   const play = document.getElementById("ultra-settings-page-play");
   const stats = document.getElementById("ultra-settings-page-stats");
   const setup = document.getElementById("ultra-settings-page-setup");
+  const modes = document.getElementById("ultra-settings-page-modes");
   if (!play || !stats || !setup) return;
 
   [
@@ -14189,6 +14196,7 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     "ultra-settings-page-play": 1,
     "ultra-settings-page-stats": 1,
     "ultra-settings-page-setup": 1,
+    "ultra-settings-page-modes": 1,
   };
   Array.from(root.children).forEach(function (el) {
     if (el.tagName === "SPAN") return;
@@ -14197,7 +14205,8 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
       const already =
         play.querySelector("#" + el.id) ||
         stats.querySelector("#" + el.id) ||
-        setup.querySelector("#" + el.id);
+        setup.querySelector("#" + el.id) ||
+        (modes && modes.querySelector("#" + el.id));
       if (already) {
         window.remixHideSettingsNode(el, bin);
         return;
