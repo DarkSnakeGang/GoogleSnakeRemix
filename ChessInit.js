@@ -5,7 +5,7 @@ window.ChessMod = {};
 ////////////////////////////////////////////////////////////////////
 
 window.ChessMod.runCodeBefore = function () {
-  console.log("Adding Chess Mode (v12, independent mode)");
+  console.log("Adding Chess Mode (v13, independent mode)");
 
   window.CHESS_ICON = "https://i.postimg.cc/ZqK0CB95/bn.png";
 
@@ -212,7 +212,7 @@ window.ChessMod.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.ChessMod.alterSnakeCode = function (code) {
-  console.log("Coding Chess Mode into the game (v12)");
+  console.log("Coding Chess Mode into the game (v13)");
 
   // Ensure fruits exist if alter runs in odd order
   if (window.new_fruit && !window._chessFruitsInjected) {
@@ -223,11 +223,11 @@ window.ChessMod.alterSnakeCode = function (code) {
   // poison. Split pieces out of that branch so the Chess Pieces row applies.
   // Both the normal and the twin/infinity mirrored draw carry the same guard.
   let fruitGate =
-    "(window.visiFullPass || (b.nla ? window.checkboxes.checkboxStatuses.poison : window.checkboxes.checkboxStatuses.fruit))";
+    "(window.visiFullPass || (b.Oka ? window.checkboxes.checkboxStatuses.poison : window.checkboxes.checkboxStatuses.fruit))";
   if (code.includes(fruitGate)) {
     code = code.replaceAll(
       fruitGate,
-      "(window.visiFullPass || (b.nla ? window.checkboxes.checkboxStatuses.poison : (b.isPiece ? window.checkboxes.checkboxStatuses.chessPieces : window.checkboxes.checkboxStatuses.fruit)))"
+      "(window.visiFullPass || (b.Oka ? window.checkboxes.checkboxStatuses.poison : (b.isPiece ? window.checkboxes.checkboxStatuses.chessPieces : window.checkboxes.checkboxStatuses.fruit)))"
     );
   } else {
     console.error("ChessMod: failed to find Visibility fruit gate for chess pieces");
@@ -276,7 +276,7 @@ window.ChessMod.alterSnakeCode = function (code) {
   window.muted = false;
 
   // Shield field name on apple objects in v12
-  window.chess_shield_field = "Oba";
+  window.chess_shield_field = "nba";
 
   window.shield_all = function shield_all() {
     if (!window.appleArray) return;
@@ -338,7 +338,7 @@ window.ChessMod.alterSnakeCode = function (code) {
       let apple = window.appleArray[index];
       if (
         apple.isPiece &&
-        !apple.nla &&
+        !apple.Oka &&
         apple.pos.x == x &&
         apple.pos.y == y &&
         window.head_color != apple.ChessColor
@@ -645,8 +645,8 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (
       snake &&
       snake.settings &&
-      typeof f7 === "function" &&
-      f7(snake.settings, 7) &&
+      typeof e7 === "function" &&
+      e7(snake.settings, 7) &&
       typeof k7 === "function" &&
       board
     ) {
@@ -664,6 +664,9 @@ window.ChessMod.alterSnakeCode = function (code) {
   };
 
   window.chess_make_pos = function chess_make_pos(x, y) {
+    if (typeof _ !== "undefined" && _ && typeof _.Od === "function") {
+      return new _.Od(x, y);
+    }
     if (typeof _ !== "undefined" && _ && typeof _.Sd === "function") {
       return new _.Sd(x, y);
     }
@@ -692,9 +695,15 @@ window.ChessMod.alterSnakeCode = function (code) {
         if (ok(p)) return p;
       }
     }
-    if (game && typeof game.Tb === "function") {
+    const nativeFree =
+      game && typeof game.Rb === "function"
+        ? game.Rb.bind(game)
+        : game && typeof game.Tb === "function"
+          ? game.Tb.bind(game)
+          : null;
+    if (nativeFree) {
       for (let attempt = 0; attempt < 8; attempt++) {
-        const p = game.Tb(excludeRef || null, 2);
+        const p = nativeFree(excludeRef || null, 2);
         if (ok(p)) return p;
       }
     }
@@ -717,7 +726,7 @@ window.ChessMod.alterSnakeCode = function (code) {
     el.ChessColor = window.color_turn;
     el.isPiece = true;
     el.type = window[window.color_turn + el.ChessPiece];
-    el.Oba = undefined;
+    el.nba = undefined;
     window.SwitchTurn();
   };
 
@@ -789,7 +798,7 @@ window.ChessMod.alterSnakeCode = function (code) {
       }
       if (typeof pickType === "function") dup.type = pickType(mgr);
       // Cm is the game's spawn-in animation flag (cleared by manager refresh()).
-      dup.Cm = true;
+      dup.wm = true;
       dup.cM = 0;
       dup.nD = 0;
       window.chess_assign_piece(dup);
@@ -831,7 +840,11 @@ window.ChessMod.alterSnakeCode = function (code) {
     }
     // Prefer native freePos via game.Tb when sanitizing qaF results.
     const freePos =
-      window.__remixGame && typeof window.__remixGame.Tb === "function"
+      window.__remixGame && typeof window.__remixGame.Rb === "function"
+        ? function (board, excl, radius) {
+            return window.__remixGame.Rb(excl, radius);
+          }
+        : window.__remixGame && typeof window.__remixGame.Tb === "function"
         ? function (board, excl, radius) {
             return window.__remixGame.Tb(excl, radius);
           }
@@ -846,32 +859,32 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (!window.isChessActive || !window.isChessActive()) return false;
     if (!window.head_pos || !window.appleArray) return false;
     let apple = window.findApple(window.head_pos[0], window.appleArray);
-    return !!(apple && apple.isPiece && !apple.nla);
+    return !!(apple && apple.isPiece && !apple.Oka);
   };
 
-  // --- Code patches for v12 ---
+  // --- Code patches for v13 ---
 
-  // Make Chess activate Shield physics via f7(..., 15)
+  // Make Chess activate Shield physics via e7(..., 15)
   let f7_regex = new RegExp(
-    /f7=function\(a,b\)\{return a\.Qa\?a\.Jc\.has\(b\):a\.ub===22&&a\.ZSa\.has\(b\)\?!0:a\.ub===b\}/
+    /e7=function\(a,b\)\{return a\.Qa\?a\.Lc\.has\(b\):a\.ub===22&&a\.rSa\.has\(b\)\?!0:a\.ub===b\}/
   );
   if (code.match(f7_regex)) {
     code = code.assertReplace(
       f7_regex,
-      `f7=function(a,b){var r=a.Qa?a.Jc.has(b):a.ub===22&&a.ZSa.has(b)?!0:a.ub===b;if(!r&&b===15&&window.CHESS_MODE!=null){if(a.ub===window.CHESS_MODE)return!0;if(a.ub===22&&a.ZSa&&a.ZSa.has(window.CHESS_MODE))return!0;}return r}`
+      `e7=function(a,b){var r=a.Qa?a.Lc.has(b):a.ub===22&&a.rSa.has(b)?!0:a.ub===b;if(!r&&b===15&&window.CHESS_MODE!=null){if(a.ub===window.CHESS_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.CHESS_MODE))return!0;}return r}`
     );
   } else {
-    console.error("ChessMod: failed to patch f7");
+    console.error("ChessMod: failed to patch e7");
   }
 
   // Inject into game tick: track head + run chess unlock logic BEFORE other updates.
   // Visibility may have already patched this tick(); keep the matcher loose.
   // Also expose __remixGame for the Playwright harness.
   let tick_regex = /\}tick\(\)\{/;
-  if (code.match(/\}tick\(\)\{var a=this\.Aa,b=this\.lj;/)) {
+  if (code.match(/\}tick\(\)\{var a=this\.Aa,b=this\.nj;/)) {
     code = code.assertReplace(
-      /\}tick\(\)\{var a=this\.Aa,b=this\.lj;/,
-      `}tick(){window.__remixGame=this;if(window.isChessActive&&window.isChessActive()){try{window.head_pos=this.oa.ka;window.head_dir=this.oa.direction;window.appleArray=this.wa.ka;window.chess_tick_logic();}catch(_ce){console.error("ChessMod: tick failed",_ce);}}var a=this.Aa,b=this.lj;`
+      /\}tick\(\)\{var a=this\.Aa,b=this\.nj;/,
+      `}tick(){window.__remixGame=this;if(window.isChessActive&&window.isChessActive()){try{window.head_pos=this.oa.ka;window.head_dir=this.oa.direction;window.appleArray=this.wa.ka;window.chess_tick_logic();}catch(_ce){console.error("ChessMod: tick failed",_ce);}}var a=this.Aa,b=this.nj;`
     );
   } else if (code.match(tick_regex)) {
     code = code.assertReplace(
@@ -882,32 +895,31 @@ window.ChessMod.alterSnakeCode = function (code) {
     console.error("ChessMod: failed to find tick()");
   }
 
-  // On apple manager reset: chess state + Portal pair layout (iaF force).
+  // On apple manager reset: chess state + Portal pair layout (Y3E force).
   // Pudding prepends timer code to reset(){ so we must NOT match reset(){this.ka=[] —
-  // only the inner this.ka=[] / iaF line that still exists after Pudding.
-  if (code.match(/this\.ka=\[\];var a=iaF\(this\.settings\)/)) {
+  // only the inner this.ka=[] / Y3E line that still exists after Pudding.
+  if (code.match(/this\.ka=\s*\[\];var a=Y3E\(this\.settings\)/)) {
     code = code.assertReplace(
-      /this\.ka=\[\];var a=iaF\(this\.settings\)/,
-      `this.ka=[];window.appleArray=this.ka;window.head_dir="RIGHT";window.head_state="OPEN";window.head_color="NONE";window.color_turn="w";window.just_ate="fruit";var a=iaF(this.settings)||!!(window.isChessActive&&window.isChessActive())`
+      /this\.ka=\s*\[\];var a=Y3E\(this\.settings\)/,
+      `this.ka=[];window.appleArray=this.ka;window.head_dir="RIGHT";window.head_state="OPEN";window.head_color="NONE";window.color_turn="w";window.just_ate="fruit";var a=Y3E(this.settings)||!!(window.isChessActive&&window.isChessActive())`
     );
-  } else if (code.match(/var a=iaF\(this\.settings\)/)) {
+  } else if (code.match(/var a=Y3E\(this\.settings\)/)) {
     code = code.assertReplace(
-      /var a=iaF\(this\.settings\)/,
-      `var a=iaF(this.settings)||!!(window.isChessActive&&window.isChessActive())`
+      /var a=Y3E\(this\.settings\)/,
+      `var a=Y3E(this.settings)||!!(window.isChessActive&&window.isChessActive())`
     );
   } else {
-    console.error("ChessMod: failed to find iaF apple-layout flag");
+    console.error("ChessMod: failed to find Y3E apple-layout flag");
   }
 
-  // After shield Oba init on reset: turn the apples into alternating pieces, start OPEN
-  // Note: Pudding rewrites $$E -> doubleDE before this runs
+  // After shield nba init on reset: turn the apples into alternating pieces, start OPEN
   let after_shield_init = new RegExp(
-    /if\(f7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.Oba=doubleDE\(this,q\.pos\);/
+    /if\(e7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.nba=\s*P3E\(this,q\.pos\);/
   );
   if (code.match(after_shield_init)) {
     code = code.assertReplace(
       after_shield_init,
-      `if(f7(this.settings,15))for(let q of this.ka)q.Oba=doubleDE(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}`
+      `if(e7(this.settings,15))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}`
     );
   } else {
     console.error("ChessMod: failed to find shield init on reset");
@@ -915,41 +927,41 @@ window.ChessMod.alterSnakeCode = function (code) {
 
   // Collision cleanup: remove doomed apples in pairs while chess (keep even count)
   let pair_splice = new RegExp(
-    /f7\(this\.settings,2\)\?n%2===0\?\(this\.ka\.splice\(n,2\),n--\):\(this\.ka\.splice\(n-\s*1,2\),n-=2\)/
+    /e7\(this\.settings,2\)\?n%2===0\?\(this\.ka\.splice\(n,2\),n--\):\(this\.ka\.splice\(n-\s*1,2\),n-=2\)/
   );
   if (code.match(pair_splice)) {
     code = code.assertReplace(
       pair_splice,
-      `(f7(this.settings,2)||(window.isChessActive&&window.isChessActive()))?n%2===0?(this.ka.splice(n,2),n--):(this.ka.splice(n-1,2),n-=2)`
+      `(e7(this.settings,2)||(window.isChessActive&&window.isChessActive()))?n%2===0?(this.ka.splice(n,2),n--):(this.ka.splice(n-1,2),n-=2)`
     );
   } else {
     console.error("ChessMod: failed to find pair-splice on reset");
   }
 
-  // Portal pair-spawn in qaF: include chess so fruit eats / dice / bomb double via all-or-nothing pairs
+  // Portal pair-spawn in f4E: include chess so fruit eats / dice / bomb double via all-or-nothing pairs
   let qaf_pair = new RegExp(
-    /f7\(a\.settings,\s*2\)&&!f\?/
+    /e7\(a\.settings,\s*2\)&&!f\?/
   );
   if (code.match(qaf_pair)) {
     code = code.assertReplace(
       qaf_pair,
-      `(f7(a.settings,2)||(window.isChessActive&&window.isChessActive()))&&!f?`
+      `(e7(a.settings,2)||(window.isChessActive&&window.isChessActive()))&&!f?`
     );
   } else {
-    console.error("ChessMod: failed to find qaF portal pair condition");
+    console.error("ChessMod: failed to find f4E portal pair condition");
   }
 
-  // After qaF adds apples (+ optional shields), convert new ones to chess pieces
+  // After f4E adds apples (+ optional shields), convert new ones to chess pieces
   let qaf_after_oba = new RegExp(
-    /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(f7\(a\.settings,15\)\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.Oba=doubleDE\(a,c\.pos\);/
+    /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(e7\(a\.settings,15\)\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.nba=P3E\(a,c\.pos\);/
   );
   if (code.match(qaf_after_oba)) {
     code = code.assertReplace(
       qaf_after_oba,
-      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(f7(a.settings,15))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.Oba=doubleDE(a,c.pos);if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}`
+      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(e7(a.settings,15))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.nba=P3E(a,c.pos);if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}`
     );
   } else {
-    console.error("ChessMod: failed to find qaF trailing convert hook");
+    console.error("ChessMod: failed to find f4E trailing convert hook");
   }
 
   // Track selected fruit
@@ -972,12 +984,12 @@ window.ChessMod.alterSnakeCode = function (code) {
 
   // Do NOT multiply dice roll by 2 — Portal pairing already doubles (R apples -> 2R pieces).
 
-  // Score / eat: pieces never score; fruit scores; native qaF pairing handles respawn pieces
-  let score_regex = new RegExp(/this\.Oh\+\+;/);
+  // Score / eat: pieces never score; fruit scores. Eat helper uses a.Sh++.
+  let score_regex = new RegExp(/a\.Sh\+\+;/);
   if (code.match(score_regex)) {
     code = code.assertReplace(
       score_regex,
-      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';this.Oh++;}else if(_ae&&_ae.isPiece){window.just_ate='piece';window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}else{window.just_ate='fruit';this.Oh++;}}else{this.Oh++;}`
+      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';a.Sh++;}else if(_ae&&_ae.isPiece){window.just_ate='piece';window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}else{window.just_ate='fruit';a.Sh++;}}else{a.Sh++;}`
     );
   } else {
     console.error("ChessMod: failed to find score increment");
@@ -986,67 +998,62 @@ window.ChessMod.alterSnakeCode = function (code) {
   // Don't grow when eating a chess piece. This runs before the score hook, so the
   // piece is still in appleArray and can be detected live.
   let snakeLength = new RegExp(
-    /f7\(this\.settings,3\)\?this\.oa\.Ta\+=2:this\.oa\.Ta\+=1;/
+    /e7\(a\.settings,3\)\?a\.oa\.Ua\+=2:a\.oa\.Ua\+=1;/
   );
   if (code.match(snakeLength)) {
     code = code.assertReplace(
       snakeLength,
-      `f7(this.settings,3)?this.oa.Ta+=2:this.oa.Ta+=1;if(window.chess_eating_piece&&window.chess_eating_piece()){this.oa.Ta-=f7(this.settings,3)?2:1;}`
+      `e7(a.settings,3)?a.oa.Ua+=2:a.oa.Ua+=1;if(window.chess_eating_piece&&window.chess_eating_piece()){a.oa.Ua-=e7(a.settings,3)?2:1;}`
     );
   }
 
   // Also block Candy's random length bonus on chess piece pickup
   let candy_len_bonus = new RegExp(
-    /if\(window\.isCandyActive && window\.isCandyActive\(\)\) \{\s*this\.oa\.Ta \+= Math\.floor\(Math\.random\(\) \* 6\);\s*\}/
+    /if\(window\.isCandyActive && window\.isCandyActive\(\)\) \{\s*a\.oa\.Ua \+= Math\.floor\(Math\.random\(\) \* 6\);\s*\}/
   );
   if (code.match(candy_len_bonus)) {
     code = code.assertReplace(
       candy_len_bonus,
-      `if(window.isCandyActive && window.isCandyActive() && !(window.chess_eating_piece&&window.chess_eating_piece())) {this.oa.Ta += Math.floor(Math.random() * 6);}`
+      `if(window.isCandyActive && window.isCandyActive() && !(window.chess_eating_piece&&window.chess_eating_piece())) {a.oa.Ua += Math.floor(Math.random() * 6);}`
     );
   }
 
   // Prevent native shield clear from fighting chess shields:
-  // f7(this.settings,15)&&(maF(this.wa,Wd),...)
   let shield_clear = new RegExp(
-    /f7\(this\.settings,15\)&&\(maF\(this\.wa,([a-zA-Z0-9_$]+)\),/
+    /e7\(a\.settings,15\)&&\(b4E\(a\.wa,([a-zA-Z0-9_$]+)\),/
   );
   if (code.match(shield_clear)) {
     code = code.assertReplace(
       shield_clear,
-      `f7(this.settings,15)&&!(window.isChessActive&&window.isChessActive())&&(maF(this.wa,$1),`
+      `e7(a.settings,15)&&!(window.isChessActive&&window.isChessActive())&&(b4E(a.wa,$1),`
     );
   }
 
-  // Chess never uses the native reposition (Mn): Xh=!1 makes the game splice the
-  // eaten apple, so a piece eat removes only that piece and a fruit eat spawns
-  // exactly 2 fresh pieces through chess_fruit_respawn.
+  // Chess never uses native Vm reposition: e=!1 splices the eaten apple, so a
+  // piece eat removes only that piece and a fruit eat spawns exactly 2 fresh
+  // pieces through chess_fruit_respawn.
   // Dice (ka 4), Tally (ka 6) and pre-first-explosion Bomb (ka 5) keep their own
-  // refills, which the game fires when the board empties; Key/Soko spawn elsewhere.
+  // refills; Key/Soko spawn elsewhere.
   let spawn = new RegExp(
-    /else\{let Ni=e7\(this\.settings\)\|\|f7\(this\.settings,7\);Xh=this\.Mn\(vd,!Ni,null\)\}/
+    /e=!1;e7\(a\.settings,2\)\?e=!0:e7\(a\.settings,10\)&&d\.Oka\?e=!1:\(e=a\.settings\.ka!==6&&\(d7\(a\.settings\)\|\|e7\(a\.settings,7\)\),e=a\.Vm\(k,\s*!e,null\)\);/
   );
   if (code.match(spawn)) {
     code = code.assertReplace(
       spawn,
-      `else{if(window.isChessActive&&window.isChessActive()){Xh=!1;if(window.just_ate==='fruit'&&!(this.settings.ka===4||this.settings.ka===6||(this.settings.ka===5&&!this.hc)||f7(this.settings,8)||f7(this.settings,9))){window.chess_fruit_respawn(this.wa,h7,oaF,aaF);}}else{let Ni=e7(this.settings)||f7(this.settings,7);Xh=this.Mn(vd,!Ni,null);}}`
+      `e=!1;if(window.isChessActive&&window.isChessActive()){e=!1;if(window.just_ate==='fruit'&&!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.kc)||e7(a.settings,8)||e7(a.settings,9))){window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);}}else e7(a.settings,2)?e=!0:e7(a.settings,10)&&d.Oka?e=!1:(e=a.settings.ka!==6&&(d7(a.settings)||e7(a.settings,7)),e=a.Vm(k,!e,null));`
     );
   } else {
-    console.error("ChessMod: failed to find Mn respawn path");
+    console.error("ChessMod: failed to find Vm respawn path");
   }
 
-  // Tally wave refill (sdF) spawns 5 slots; Chess needs 10 pieces per wave.
-  // Each slot gets its own tally index, so we raise the slot count instead of
-  // routing through iaF pairing — paired slots share one sequence number, and
-  // since every Chess eat advances the tally counter the twin would never
-  // become edible again. Fewer than 10 spawn when the board has no room.
+  // Tally wave refill spawns 5 slots; Chess needs 10 pieces per wave.
   let tally_wave = new RegExp(
-    /var b=f7\(a\.settings,11\)\?10:5;a\.wa\.wa=1;/
+    /var b=e7\(a\.settings,11\)\?10:5;/
   );
   if (code.match(tally_wave)) {
     code = code.assertReplace(
       tally_wave,
-      `var b=(f7(a.settings,11)||(window.isChessActive&&window.isChessActive()))?10:5;a.wa.wa=1;`
+      `var b=(e7(a.settings,11)||(window.isChessActive&&window.isChessActive()))?10:5;`
     );
   } else {
     console.error("ChessMod: failed to find tally wave size");

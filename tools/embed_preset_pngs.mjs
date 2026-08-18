@@ -27,7 +27,7 @@ for (const file of files) {
   const url =
     "https://api.github.com/repos/DarkSnakeGang/GoogleSnakeLevelEditor/contents/" +
     file +
-    "?ref=v12";
+    "?ref=v13";
   const res = await fetch(url, {
     headers: { Accept: "application/vnd.github+json", "User-Agent": "remixultra" },
   });

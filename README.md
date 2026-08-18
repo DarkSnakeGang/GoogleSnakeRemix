@@ -1,6 +1,6 @@
 # GoogleSnakeRemix
 
-Remix Mod for Google Snake — adds **Chess Mode**, **Candy Mode** and **Burger Mode** on top of **More Pudding Mod**, targeting game **v12** (`googlesnakemods.com/v/current`).
+Remix Mod for Google Snake — adds **Chess Mode**, **Candy Mode** and **Burger Mode** on top of **More Pudding Mod**, targeting game **v13** (`googlesnakemods.com/v/current`).
 
 ## Features
 
@@ -10,7 +10,7 @@ Remix Mod for Google Snake — adds **Chess Mode**, **Candy Mode** and **Burger 
 - **Cat Speed** — between Normal and Fast in feel (`0.85×`), appended after MoreMenu speeds
 - **Blue / Green / Black Dice** — DiceMod-style counts (roll **1–12** / **4–9** / **custom spawn range**) when the last apple is eaten; tinted game dice icons after Nuke. **Black Dice** min/max fruits per roll (default **6–24**, clamp **1–10000**) are set in Pudding Settings.
 - **Blender** — separate Candy, Chess and Burger toggles with their own icons in the Blender panel. In Burger+Chess, expired pieces become plain skull poisons (no chess-piece status, cannot be unlocked).
-- **Chess Pieces** hide toggle added to the Visibility panel
+- **Pause** — press **Q** to pause/unpause (PauseMod, included in both Remix and Remix Ultra)
 
 ## Build
 
@@ -29,9 +29,11 @@ This downloads `MorePudding.js` (and bootstrap CSS) from [GoogleSnakePudding](ht
 5. `CatSpeedInit.js`
 6. `DiceCountsInit.js`
 7. `RemixSpeedInfoInit.js`
-8. `RemixInit.js`
+8. `CspMenuIcons.js`
+9. `PauseInit.js`
+10. `RemixInit.js`
 
-Output: **`RemixMod.js`** (committed for raw-GitHub / custom URL use). The same command also writes **`RemixUltraMod.js`** (Remix + Level Editor v12). See RemixUltra below.
+Output: **`RemixMod.js`** (committed for raw-GitHub / custom URL use). The same command also writes **`RemixUltraMod.js`** (Remix + Level Editor v13). See RemixUltra below.
 
 More Pudding already bundles Pudding Mod, Visibility Mod and More Menu Mod and runs them in that order, so Remix calls `window.MorePudding` rather than wiring those three itself. `RemixInit.js` still falls back to Pudding + Visibility directly if a build ever ships without More Pudding.
 
@@ -53,7 +55,7 @@ The exported API object is `window.RemixMod`.
 
 ## RemixUltra (Remix + Level Editor)
 
-A second loadable bundle that is Remix plus [Level Editor v12](https://github.com/DarkSnakeGang/GoogleSnakeLevelEditor/tree/v12). Remix itself is unchanged.
+A second loadable bundle that is Remix plus [Level Editor v13](https://github.com/DarkSnakeGang/GoogleSnakeLevelEditor/tree/v13). Remix itself is unchanged.
 
 **Desktop only** — Level Editor has no mobile support.
 
@@ -65,11 +67,11 @@ API: `window.RemixUltraMod` (the bundle also aliases `window.RemixMod` to Ultra 
 
 Settings are isolated to `RemixUltraSettings` and `snake_timeKeeper_remix_ultra` (seeded once from Remix keys if empty). Saving Ultra does not write `PuddingSettings` or `RemixSettings`.
 
-Menus share one right dock and one left dock with tabs (**Place | Presets | Speed | More** on the right, **Custom | Challenge** on the left) instead of stacking every 220px sidebar. Full-screen Pudding overlays hide the docks and restore the previous tab when closed. The canvas label is **Remix Ultra**.
+Menus share one right dock and one left dock with tabs (**Place | Presets | More** on the right, **Custom | Challenge | Splits** on the left) instead of stacking every 220px sidebar. Full-screen Pudding overlays hide the docks and restore the previous tab when closed. The canvas label is **Remix Ultra**.
 
 Build still uses `python RemixBuilder.py` — it writes both `RemixMod.js` and `RemixUltraMod.js`.
 
-## Mode IDs (v12)
+## Mode IDs (v13)
 
 | Mode   | ID |
 |--------|----|
@@ -82,7 +84,7 @@ Modes claim their trophy slots after More Pudding has added its own, so the ids 
 
 ## Chess spawn rules (summary)
 
-Chess reuses **Portal’s pair layout** at start (`iaF` force) and Portal’s all-or-nothing pair spawner for respawns:
+Chess reuses **Portal’s pair layout** at start (`Y3E` force) and Portal’s all-or-nothing pair spawner for respawns:
 
 | Count | Start pieces | After fruit eat (not unlock) |
 |-------|--------------|------------------------------|
@@ -142,12 +144,15 @@ npm run capture            # dump original ChessMod on /v/3
 | `ChessInit.js` | Chess mode + blender toggle + fruit inject + Chess Pieces visibility row |
 | `CandyInit.js` | Candy mode + blender toggle |
 | `BurgerInit.js` | Burger mode + blender toggle |
+| `PauseInit.js` | Q-to-pause overlay (PauseMod) |
 | `RemixInit.js` | `window.RemixMod` chain + shared blender slot helper |
 | `ChessCapture.mp3` | Capture sound |
 | `RemixMod.js` | Built Remix bundle |
 
 ## Versions
 
-- Game: **v12**
+- Game: **v13**
 - Legacy Chess last supported: v3; Candy: v5 (see ModLoader `mod-info.json`)
-- More Pudding (Pudding + Visibility + More Menu): current `main` (v12)
+- More Pudding (Pudding + Visibility + More Menu): current `main` (v13)
+- PauseMod: bundled via `PauseInit.js` (Q key)
+- Frozen v12 snapshot: git branch `v12`

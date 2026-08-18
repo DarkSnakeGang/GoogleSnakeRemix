@@ -1,3 +1,5 @@
+window.PuddingMod = window.PuddingMod || {};
+
 window.Core = {};
 
 window.Core.make = function () {
@@ -440,8 +442,10 @@ window.Theme.alterCode = function (code) {
       }
     }
 
-    document.getElementById('settings-popup-pudding').style.background = real_top_bar;
-    document.getElementById('speedinfo-popup-pudding').style.background = real_top_bar;
+    const settingsBox = document.getElementById('settings-popup-pudding');
+    if (settingsBox) settingsBox.style.background = real_top_bar;
+    const speedinfo = document.getElementById('speedinfo-popup-pudding');
+    if (speedinfo) speedinfo.style.background = real_top_bar;
     const splitPanel = document.getElementById('split-panel-pudding');
     if (splitPanel) splitPanel.style.background = real_top_bar;
     const portalPanel = document.getElementById('fruit-bowl-popup-pudding') || document.getElementById('portal-pairs-popup-pudding');
@@ -836,20 +840,35 @@ window.Counter.alterCode = function (code) {
 
     code = code.assertReplace(stop_regex, save_stats_code);
 
-    wall_spawn_regex = new RegExp(/(?:let|const|var) [a-zA-Z0-9_$]{1,8}=\n?[a-zA-Z0-9_$]{1,8}\(this\.[a-zA-Z0-9_$]{1,8},this\.[a-zA-Z0-9_$]{1,8}\(null,5\)\);/gm)
-    catchError(wall_spawn_regex, code)
-    wall_pos = code.match(wall_spawn_regex)[0].split('=')[0].split(' ')[1]
+    // v12: let Ni=ucF(this.Ca,this.Sb(null,5));
+    // v13: (h=p6E(a.Ca,a.Vb(null,5)))&&(...)
+    const wall_spawn_let = /(?:let|const|var) ([a-zA-Z0-9_$]{1,8})=\n?[a-zA-Z0-9_$]{1,8}\(this\.[a-zA-Z0-9_$]{1,8},this\.[a-zA-Z0-9_$]{1,8}\(null,5\)\);/
+    const wall_spawn_assign = /\(([a-zA-Z0-9_$]{1,8})=[a-zA-Z0-9_$]{1,8}\((?:this|a)\.[a-zA-Z0-9_$]{1,8},(?:this|a)\.[a-zA-Z0-9_$]{1,8}\(null,5\)\)\)/
 
-    wall_counter_code = `${code.match(wall_spawn_regex)[0]}
+    const wall_let_match = code.match(wall_spawn_let)
+    if (wall_let_match) {
+        catchError(wall_spawn_let, code)
+        const wall_pos = wall_let_match[1]
+        const wall_counter_code = `${wall_let_match[0]}
     if(${wall_pos}){stats.walls.game++;
     window.wallCoords.push([${wall_pos}.x, ${wall_pos}.y]);
     updateCounterDisplay();}
     `
-    if (window.NepDebug) {
-        console.log("Wall thing: " + wall_pos)
-        console.log("Wall thing 2: " + wall_counter_code)
+        if (window.NepDebug) {
+            console.log("Wall thing: " + wall_pos)
+            console.log("Wall thing 2: " + wall_counter_code)
+        }
+        code = code.assertReplace(wall_spawn_let, wall_counter_code)
+    } else {
+        catchError(wall_spawn_assign, code)
+        const wall_assign_match = code.match(wall_spawn_assign)
+        const wall_pos = wall_assign_match[1]
+        const inner = wall_assign_match[0].slice(1, -1)
+        code = code.assertReplace(
+            wall_spawn_assign,
+            `(${inner},${wall_pos}&&(stats.walls.game++,window.wallCoords.push([${wall_pos}.x,${wall_pos}.y]),updateCounterDisplay()),${wall_pos})`
+        )
     }
-    code = code.assertReplace(wall_spawn_regex, wall_counter_code);
     
 
     window.coordinatesToBoardString = function coordinatesToBoardString(coordinates) {
@@ -1250,40 +1269,43 @@ window.TimeKeeper.make = function () {
         return window.ModeRegistry.getCurrentModeKey();
     };
 
-    window.timeKeeper.ensurePlaying = function () {
-        if (!window.timeKeeper.runStarted) {
-            window.timeKeeper.start();
-        } else {
-            window.timeKeeper.playing = true;
-        }
-    };
-
     window.timeKeeper.gotApple = function (time, score) {
-        stats.apples.session++;
-        stats.apples.lifetime++;
-        updateCounterDisplay();
-        if (window.pudding_settings && window.pudding_settings.randomizeThemeApple) {
+        if (!window.SpeedrunMod && typeof stats !== "undefined" && stats.apples) {
+            stats.apples.session++;
+            stats.apples.lifetime++;
+            if (typeof updateCounterDisplay === "function") {
+                updateCounterDisplay();
+            }
+        }
+        if (
+            !window.SpeedrunMod &&
+            window.pudding_settings &&
+            window.pudding_settings.randomizeThemeApple &&
+            typeof window.setTheme === "function" &&
+            typeof window.getRandomThemeName === "function"
+        ) {
             window.setTheme(window.getRandomThemeName());
         }
         if (!window.timeKeeper.shouldTrack(window.timeKeeper.getSaveContext())) return;
 
-        window.timeKeeper.ensurePlaying();
         window.timeKeeper.lastAppleDate = new Date();
         window.timeKeeper.lastAppleTime = time;
 
         if (score == 25 || score == 50 || score == 100) {
             window.timeKeeper.savePB(time, score);
         }
-        // Mirror milestone PBs: refresh Highscore as soon as this run beats the stored best
         window.timeKeeper.updateHighscoreLive(time, score);
     };
 
     window.timeKeeper.gotAll = function (time, score) {
         if (!window.timeKeeper.shouldTrack(window.timeKeeper.getSaveContext())) return;
-        window.timeKeeper.ensurePlaying();
+        if (window.timeKeeper.playing || window.timeKeeper.runStarted) {
+            window.timeKeeper.saveScore(time, score);
+        }
         window.timeKeeper.savePB(time, "ALL");
         // End of successful run: persist mid-run PB/HS memory
         window.timeKeeper.flushStorage();
+        window.timeKeeper.playing = false;
     };
 
     window.timeKeeper.death = function (time, score) {
@@ -1332,10 +1354,19 @@ window.TimeKeeper.make = function () {
             return 0;
         };
 
-        if (name != "trophy") {
+        if (!window.SpeedrunMod && name != "trophy") {
             return eval(window[name + "_var"]);
         }
         return getSelectedIndex(name);
+    };
+
+    window.timeKeeper.scheduleLiveRefresh = function () {
+        if (window.timeKeeper._liveRefreshQueued) return;
+        window.timeKeeper._liveRefreshQueued = true;
+        queueMicrotask(function () {
+            window.timeKeeper._liveRefreshQueued = false;
+            window.timeKeeper.refreshSpeedInfo();
+        });
     };
 
     // Mid-run: update Highscore PB in memory when current apples beat the stored best
@@ -1344,40 +1375,39 @@ window.TimeKeeper.make = function () {
         if (!window.timeKeeper.shouldTrack(ctx)) return;
         if (typeof score !== "number" || isNaN(score)) return;
 
-        time = Math.floor(time);
         const storage = window.timeKeeper.getStorage();
         const name = window.timeKeeper.buildKey("H", ctx);
         const appleTime =
             typeof window.timeKeeper.lastAppleTime !== "undefined"
                 ? window.timeKeeper.lastAppleTime
-                : time;
-        const appleDate =
-            typeof window.timeKeeper.lastAppleDate !== "undefined"
-                ? window.timeKeeper.lastAppleDate
-                : new Date();
+                : Math.floor(time);
 
         if (typeof storage[name] == "undefined") {
             storage[name] = {
                 high: score,
                 time: appleTime,
-                date: appleDate,
+                date:
+                    typeof window.timeKeeper.lastAppleDate !== "undefined"
+                        ? window.timeKeeper.lastAppleDate
+                        : new Date(),
             };
             window.timeKeeper.markStorageDirty();
-            window.timeKeeper.refreshSpeedInfo();
+            window.timeKeeper.scheduleLiveRefresh();
             return;
         }
 
         const cur = storage[name];
-        if (
-            score > cur.high ||
-            (score == cur.high && appleTime < cur.time)
-        ) {
-            cur.high = score;
-            cur.time = appleTime;
-            cur.date = appleDate;
-            window.timeKeeper.markStorageDirty();
-            window.timeKeeper.refreshSpeedInfo();
-        }
+        if (score < cur.high) return;
+        if (score == cur.high && appleTime >= cur.time) return;
+
+        cur.high = score;
+        cur.time = appleTime;
+        cur.date =
+            typeof window.timeKeeper.lastAppleDate !== "undefined"
+                ? window.timeKeeper.lastAppleDate
+                : new Date();
+        window.timeKeeper.markStorageDirty();
+        window.timeKeeper.scheduleLiveRefresh();
     };
 
     window.timeKeeper.saveScore = function (time, score) {
@@ -1834,6 +1864,14 @@ window.TimeKeeper.make = function () {
         dialog.appendChild(buildRow(buildTimedCell("100"), buildTimedCell("ALL")));
         dialog.appendChild(buildRow(buildHighscoreCell(), buildAttemptsCell()));
 
+        if (window.SpeedrunMod && typeof window.buildSpeedInfoTrackingControls === "function") {
+            const trackingControls = window.buildSpeedInfoTrackingControls();
+            dialog.appendChild(trackingControls);
+            if (typeof window.wireSpeedInfoTrackingControls === "function") {
+                window.wireSpeedInfoTrackingControls(trackingControls);
+            }
+        }
+
         const buttonClose = document.createElement("button");
         buttonClose.appendChild(document.createTextNode("Close"));
         buttonClose.addEventListener("click", function () {
@@ -1888,23 +1926,38 @@ window.TimeKeeper.alterCode = function (code) {
     StartOfNext = func.substring(func.lastIndexOf(";"), func.length);
     func = func.substring(0, func.lastIndexOf(";"));
 
-    scoreFuncVar = func.match(/[a-zA-Z0-9$]{1,4}\=\=\=\n?25/)[0].split("=")[0];
-    scoreFunc = func.match(
-        `${window.escapeRegex(scoreFuncVar.replace("\n", ""))}=\n?this.[a-zA-Z0-9$]{1,6}`
-    )[0].split("=")[1];
-    timeFunc = func.match(/\([a-zA-Z0-9$]{1,6}\*[a-zA-Z0-9$]{1,6}\)/)[0];
-    ticksVar = timeFunc.split("(")[1].split("*")[0];
-    tickLengthVar = timeFunc.split("*")[1].split(")")[0];
-    realTicks = func.match(`${escapeRegex(ticksVar)}=this.[a-zA-Z0-9$]{1,6}`)[0].split("=")[1];
-    realTickLength = func.match(`${escapeRegex(tickLengthVar)}=this.[a-zA-Z0-9$]{1,6}`)[0].split(
-        "="
-    )[1];
-    timeFunc = `${realTicks}*${realTickLength}`;
+    // v12: this.header=c;this.Oh=this.Eb=this.ticks=this.ob=0
+    // v13: this.header=c;this.Sh=this.Fb=this.ticks=this.ob=0
+    const scoreCtor = code.match(
+        /this\.header=[a-zA-Z0-9_$];this\.([a-zA-Z0-9_$]{1,8})=this\.([a-zA-Z0-9_$]{1,8})=this\.ticks=/
+    );
+    let scoreFunc;
+    let timeFunc;
+    if (scoreCtor) {
+        scoreFunc = "this." + scoreCtor[1];
+        timeFunc = "this.ticks*this." + scoreCtor[2];
+    } else {
+        scoreFuncVar = func.match(/[a-zA-Z0-9$]{1,8}\=\=\=\n?25/)[0].split("=")[0];
+        scoreFunc = func.match(
+            `${window.escapeRegex(scoreFuncVar.replace("\n", ""))}=\n?this.[a-zA-Z0-9$]{1,8}`
+        )[0].split("=")[1];
+        timeFunc = func.match(/\([a-zA-Z0-9$]{1,8}\*[a-zA-Z0-9$]{1,8}\)/)[0];
+        ticksVar = timeFunc.split("(")[1].split("*")[0];
+        tickLengthVar = timeFunc.split("*")[1].split(")")[0];
+        realTicks = func.match(`${escapeRegex(ticksVar)}=this.[a-zA-Z0-9$]{1,8}`)[0].split("=")[1];
+        realTickLength = func.match(`${escapeRegex(tickLengthVar)}=this.[a-zA-Z0-9$]{1,8}`)[0].split(
+            "="
+        )[1];
+        timeFunc = `${realTicks}*${realTickLength}`;
+    }
 
     ownFunc = "window.timeKeeper.gotApple(Math.floor(" + timeFunc + ")," + scoreFunc + ");";
-    if25_regex = new RegExp(/if\([a-zA-Z0-9$]{1,4}\=\=\=\n?25/);
-    ownFuncIndex = func.indexOf(func.match(if25_regex)[0]);
-    func = func.slice(0, ownFuncIndex) + ownFunc + func.slice(ownFuncIndex);
+    if25_regex = new RegExp(/if\([a-zA-Z0-9$]{1,8}\=\=\=\n?25/);
+    const if25_in_tick = func.match(if25_regex);
+    if (if25_in_tick) {
+        ownFuncIndex = func.indexOf(if25_in_tick[0]);
+        func = func.slice(0, ownFuncIndex) + ownFunc + func.slice(ownFuncIndex);
+    }
 
     func =
         func.slice(0, func.indexOf("WIN.play()") + 11) +
@@ -1915,7 +1968,7 @@ window.TimeKeeper.alterCode = function (code) {
         ")," +
         func.slice(func.indexOf("WIN.play()") + 11);
 
-    death = func.match(/if\(this.[a-zA-Z0-9$]{1,4}\|\|this.[a-zA-Z0-9$]{1,4}\)/)[0];
+    death = func.match(/if\(this.[a-zA-Z0-9$]{1,8}\|\|this.[a-zA-Z0-9$]{1,8}\)/)[0];
     death = death.slice(death.indexOf("(") + 1, death.indexOf("|"));
     func =
         func.slice(0, func.indexOf("{") + 1) +
@@ -1925,10 +1978,20 @@ window.TimeKeeper.alterCode = function (code) {
         timeFunc +
         ")," +
         scoreFunc +
-        ");}" +
+        ");}else if(!window.timeKeeper.runStarted){window.timeKeeper.start();}" +
         func.slice(func.indexOf("{") + 1);
 
     code = code.assertReplace(func_regex, func + StartOfNext);
+
+    // v13 moved the 25/50/100 HUD update out of tick() into a helper.
+    if (!if25_in_tick) {
+        const appleHud = /([a-zA-Z0-9_$]{1,8})=function\(a,b,c,d\)\{if\(b===25\|\|b===50\|\|b===100\)/;
+        window.catchError(appleHud, code);
+        code = code.assertReplace(
+            appleHud,
+            "$1=function(a,b,c,d){window.timeKeeper.gotApple(Math.floor(c*d),b);if(b===25||b===50||b===100)"
+        );
+    }
     return code;
 };
 window.Fruit = {};
@@ -2053,17 +2116,41 @@ window.Fruit.make = function () {
         "Real": "https://i.postimg.cc/pTCF6hCJ/redpudding-real.png",
         "Poison_values": 'b,\'#ff3f3f\',\'#909090\',20',
     });
-    new_fruit.push({ // Cabbage
-        "Normal": 'https://i.postimg.cc/j59z8v1m/cabbage.png',
-        "Pixel": 'https://i.postimg.cc/FR1ygwT0/cabbage-px.png',
-        "Real": "https://i.postimg.cc/yd1GyLFv/cabbage-real.png",
-        "Poison_values": 'b,\'#ff3f3f\',\'#909090\',20',
+    new_fruit.push({ // Boiled Egg
+        "Normal": 'https://i.postimg.cc/NMgtGCTG/boiled-egg-normal.png',
+        "Pixel": 'https://i.postimg.cc/hjSn4ZxK/boiled-egg-pixel.png',
+        "Real": "https://i.postimg.cc/XJVWN1FJ/boiled-egg-real.png",
+        "Poison_values": 'b,\'#e7dfa4\',\'#909090\',20',
     });
-    new_fruit.push({ // Heart
-        "Normal": 'https://i.postimg.cc/8PGLRXCb/heart.png',
-        "Pixel": 'https://i.postimg.cc/v8fW6wGB/pixel-heart.png',
-        "Real": "https://i.postimg.cc/3NXmMmtp/real-heart.png",
-        "Poison_values": 'b,\'#ff3f3f\',\'#909090\',20',
+    new_fruit.push({ // Bacon
+        "Normal": 'https://i.postimg.cc/ZRTmYs3m/bacon-normal.png',
+        "Pixel": 'https://i.postimg.cc/C1F0MrDS/bacon-pixel.png',
+        "Real": "https://i.postimg.cc/XJVWN1FV/bacon-real.png",
+        "Poison_values": 'b,\'#9b441c\',\'#909090\',20',
+    });
+    new_fruit.push({ // White Onion
+        "Normal": 'https://i.postimg.cc/262D1dF5/white-onion-normal.png',
+        "Pixel": 'https://i.postimg.cc/qRjTNcXg/white-onion-pixel.png',
+        "Real": "https://i.postimg.cc/LXNpJkBJ/white-onion-real.png",
+        "Poison_values": 'b,\'#f5f0e6\',\'#909090\',20',
+    });
+    new_fruit.push({ // Purple Onion
+        "Normal": 'https://i.postimg.cc/j5sTq3N7/purple-onion-normal.png',
+        "Pixel": 'https://i.postimg.cc/j5ZbD6Qd/purple-onion-pixel.png',
+        "Real": "https://i.postimg.cc/nz0JXKYz/purple-onion-real.png",
+        "Poison_values": 'b,\'#7b3fa0\',\'#909090\',20',
+    });
+    new_fruit.push({ // Cooked Steak
+        "Normal": 'https://i.postimg.cc/C1F0MrDK/cooked-steak-normal.png',
+        "Pixel": 'https://i.postimg.cc/NMgtGCTF/cooked-steak-pixel.png',
+        "Real": "https://i.postimg.cc/FR9vFCcf/cooked-steak-real.png",
+        "Poison_values": 'b,\'#6d2e1c\',\'#909090\',20',
+    });
+    new_fruit.push({ // Cucumber
+        "Normal": 'https://i.postimg.cc/zBJND2WR/cucumber-normal.png',
+        "Pixel": 'https://i.postimg.cc/50xJ9KvQ/cucumber-pixel.png',
+        "Real": "https://i.postimg.cc/PxtHfVZp/cucumber-real.png",
+        "Poison_values": 'b,\'#93ef13\',\'#909090\',20',
     });
 
     last_fruit_num = document.querySelector('#apple').children.length - 1;
@@ -2356,7 +2443,27 @@ window.TopBar.make = function () {
 
   window.toggle_topbar_icons = function () {
     window.pudding_settings.TopBar = !window.pudding_settings.TopBar;
+    if (typeof window.saveSettings === "function") {
+      window.saveSettings();
+    }
+    if (typeof window.apply_topbar_icons === "function") {
+      window.apply_topbar_icons();
+    }
   }
+
+  window.setup_topbar_checkbox = function () {
+    const topbarCheckbox = document.getElementById("TopBarIcons");
+    if (!topbarCheckbox || document.getElementById("settings-popup-pudding")) return;
+    if (topbarCheckbox.dataset.topbarBound === "1") {
+      topbarCheckbox.checked = !!window.pudding_settings.TopBar;
+      return;
+    }
+    topbarCheckbox.addEventListener("change", window.toggle_topbar_icons);
+    topbarCheckbox.checked = !!window.pudding_settings.TopBar;
+    topbarCheckbox.dataset.topbarBound = "1";
+  };
+
+  window.setup_topbar_checkbox();
 
 }
 
@@ -2364,6 +2471,63 @@ window.TopBar.alterCode = function (code) {
 
   window.count_img_arr = Array.from(document.querySelector('#count').children).map(el=>el.src);
   window.speed_img_arr = Array.from(document.querySelector('#speed').children).map(el=>el.src);
+  const appleRoot = document.querySelector('#apple');
+  window.apple_img_arr = appleRoot ? Array.from(appleRoot.children).map(el => el.src) : [];
+
+  window.getSelectorRowIndex = function (selectorId) {
+    const elementList = document.getElementById(selectorId);
+    if (!elementList || !elementList.children.length) return 0;
+    let number = 0;
+    const classNames = [];
+    let notUnique = "";
+    for (const element of elementList.children) {
+      if (classNames.indexOf(element.className) === -1) {
+        classNames.push(element.className);
+      } else {
+        notUnique = element.className;
+        break;
+      }
+    }
+    for (const element of elementList.children) {
+      if (element.className !== notUnique) return number;
+      number++;
+    }
+    return 0;
+  };
+
+  window.apply_topbar_icons = function () {
+    if (typeof window.control_mute_img !== "function") return;
+    if (!window.speed_img_arr || !window.count_img_arr) return;
+
+    const daily = !!window.daily_challenge;
+    const topBar = !!(window.pudding_settings && window.pudding_settings.TopBar) && !daily;
+
+    let speedIdx = 0;
+    let countIdx = 0;
+    if (window.timeKeeper && typeof window.timeKeeper.getCurrentSetting === "function") {
+      try {
+        speedIdx = window.timeKeeper.getCurrentSetting("speed");
+        countIdx = window.timeKeeper.getCurrentSetting("count");
+      } catch (e) { /* settings refs may be unavailable early */ }
+    }
+
+    const speedSrc = window.speed_img_arr[speedIdx] || window.speed_img_arr[0];
+    window.control_mute_img(topBar, speedSrc);
+
+    if (!window.fruit_jsname) return;
+    const fruitImg = document.querySelector('[jsname="' + window.fruit_jsname + '"]');
+    if (!fruitImg) return;
+
+    if (topBar) {
+      fruitImg.src = window.count_img_arr[countIdx] || window.count_img_arr[0];
+      return;
+    }
+
+    if (window.apple_img_arr && window.apple_img_arr.length) {
+      const appleIdx = window.getSelectorRowIndex("apple");
+      fruitImg.src = window.apple_img_arr[appleIdx] || window.apple_img_arr[0];
+    }
+  };
 
   count_regex = new RegExp(/case "count"\:[a-zA-Z0-9_$]{1,8}\.[a-zA-Z0-9_$]{1,8}\.[a-zA-Z0-9_$]{1,8}/)
   speed_regex = new RegExp(/case "speed"\:[a-zA-Z0-9_$]{1,8}\.[a-zA-Z0-9_$]{1,8}\.[a-zA-Z0-9_$]{1,8}/)
@@ -2389,6 +2553,7 @@ window.TopBar.alterCode = function (code) {
   //code = code.assertReplace(speed_regex, set_speed_code);
 
   fruit_jsname = document.querySelector('[src$="apple_00.png"]').getAttribute("jsname")
+  window.fruit_jsname = fruit_jsname;
   fruit_src = `document.querySelector('[jsname="${fruit_jsname}"]').src `
 
   window.mute_divs = document.querySelectorAll('[aria-label="Mute"]');
@@ -2434,6 +2599,8 @@ window.TopBar.alterCode = function (code) {
   eval(speed_var + `=0`)
   eval(count_var + `=0`)
   eval(size_var + `=0`)
+
+  window.apply_topbar_icons();
 
   return code;
 }
@@ -2726,6 +2893,7 @@ window.SettingsSaver = {};
 window.SettingsSaver.make = function () {
     const COUNT_KEYS = ["0", "1", "2", "3", "4", "5", "6"];
     const COUNT_MINIMA = { 0: 1, 1: 3, 2: 5, 3: 10, 4: 6, 5: 24, 6: 5 };
+    const PUDDING_SETTINGS_VERSION = 1;
 
     const GAME_SETTING_KEYS = [
         "trophy",
@@ -2737,6 +2905,93 @@ window.SettingsSaver.make = function () {
         "color",
         "apple",
     ];
+
+    // v12/v13 share the same menu rows today; caps are fallbacks when DOM is not ready yet.
+    const FALLBACK_ROW_LIMITS = {
+        trophy: 25,
+        count: 7,
+        speed: 3,
+        size: 3,
+        graphics: 7,
+        theme: 24,
+        color: 24,
+        apple: 50,
+    };
+
+    function getSelectorRowLength(selectorId) {
+        const row = document.getElementById(selectorId);
+        return row && row.children ? row.children.length : 0;
+    }
+
+    function clampSettingIndex(index, maxLen) {
+        let i = Number(index);
+        if (isNaN(i) || i < 0) return 0;
+        if (!maxLen || maxLen <= 0) return i;
+        return Math.min(i, maxLen - 1);
+    }
+
+    function nativeGraphicsCount() {
+        return window.nativeGraphicsCount || 4;
+    }
+
+    // Pair-mix slots (indices >= native count) map back to a native style if mix icons are missing.
+    function fallbackNativeGraphics(savedIndex) {
+        const n = nativeGraphicsCount();
+        const g = Number(savedIndex);
+        if (isNaN(g) || g < 0) return 0;
+        if (g < n - 1) return g;
+        const pools = {};
+        pools[n - 1] = 0;
+        pools[n] = 0;
+        pools[n + 1] = 1;
+        pools[n + 2] = 0;
+        return Object.prototype.hasOwnProperty.call(pools, g) ? pools[g] : 0;
+    }
+
+    function requiredGraphicsRowLength(savedGraphics) {
+        const g = Number(savedGraphics);
+        if (isNaN(g) || g < 0) return nativeGraphicsCount();
+        const n = nativeGraphicsCount();
+        if (g < n) return n;
+        return n + 3;
+    }
+
+    function graphicsRowReady(savedGraphics) {
+        const len = getSelectorRowLength("graphics");
+        if (!len) return false;
+        return len >= requiredGraphicsRowLength(savedGraphics);
+    }
+
+    function sanitizeSavedGameSettings(snap, options) {
+        if (!snap || typeof snap !== "object") return snap;
+        const out = Object.assign({}, snap);
+        const savedRows = out._rowLengths && typeof out._rowLengths === "object" ? out._rowLengths : null;
+        const allowGraphicsFallback = !!(options && options.allowGraphicsFallback);
+
+        for (const key of GAME_SETTING_KEYS) {
+            if (typeof out[key] !== "number" || isNaN(out[key])) continue;
+
+            let maxLen = getSelectorRowLength(key);
+            if (!maxLen && savedRows && typeof savedRows[key] === "number") {
+                maxLen = savedRows[key];
+            }
+            if (!maxLen && FALLBACK_ROW_LIMITS[key]) {
+                maxLen = FALLBACK_ROW_LIMITS[key];
+            }
+
+            if (key === "graphics" && maxLen && out[key] >= nativeGraphicsCount()) {
+                if (allowGraphicsFallback && maxLen < requiredGraphicsRowLength(out[key])) {
+                    out[key] = fallbackNativeGraphics(out[key]);
+                } else {
+                    out[key] = clampSettingIndex(out[key], maxLen);
+                }
+            } else if (maxLen) {
+                out[key] = clampSettingIndex(out[key], maxLen);
+            }
+        }
+
+        return out;
+    }
 
     function defaultPoolForCount(count) {
         const min = COUNT_MINIMA[count] || 1;
@@ -2775,10 +3030,52 @@ window.SettingsSaver.make = function () {
         return settings;
     }
 
+    function copyPool(pool, fallbackCount) {
+        if (Array.isArray(pool)) {
+            return pool.map(Number).filter((n) => !isNaN(n) && n !== 24);
+        }
+        return defaultPoolForCount(fallbackCount);
+    }
+
+    function migrateSelectedPairsByCountGeneral(settings) {
+        if (!settings.SelectedPairsByCountGeneral || typeof settings.SelectedPairsByCountGeneral !== "object") {
+            settings.SelectedPairsByCountGeneral = {};
+        }
+        for (const key of COUNT_KEYS) {
+            if (!Array.isArray(settings.SelectedPairsByCountGeneral[key])) {
+                const src = settings.SelectedPairsByCount && settings.SelectedPairsByCount[key];
+                settings.SelectedPairsByCountGeneral[key] = copyPool(src, Number(key));
+            }
+        }
+        return settings;
+    }
+
+    function migrateRemixUltraSettings(settings) {
+        if (!settings || typeof settings !== "object") return settings;
+
+        if (typeof settings.StorageVersion !== "number") {
+            settings.StorageVersion = PUDDING_SETTINGS_VERSION;
+        }
+
+        settings = migrateSelectedPairsByCount(settings);
+        settings.SelectedPairs = settings.SelectedPairsByCount["0"];
+        settings = migrateSelectedPairsByCountGeneral(settings);
+
+        if (settings.SavedGameSettings && typeof settings.SavedGameSettings === "object") {
+            settings.SavedGameSettings = sanitizeSavedGameSettings(settings.SavedGameSettings, {
+                allowGraphicsFallback: true,
+            });
+        }
+
+        settings.StorageVersion = PUDDING_SETTINGS_VERSION;
+        return settings;
+    }
+
     window.loadSettings = function () {
         let pudding_settings = localStorage.getItem('RemixUltraSettings');
         if (pudding_settings === null) {
             pudding_settings = {
+                StorageVersion: PUDDING_SETTINGS_VERSION,
                 Skull: false,
                 SokoGoals: true,
                 InputDisplay: false,
@@ -2787,9 +3084,10 @@ window.SettingsSaver.make = function () {
                 ShowWrHolders: true,
                 TrackedPlayerName: "",
                 PortalPairs: false,
-                AlwaysUniqueFruit: false,
+                AlwaysUniqueFruit: true,
                 SelectedPairs: defaultPoolForCount(0),
                 SelectedPairsByCount: {},
+                SelectedPairsByCountGeneral: {},
                 DisableRandom: false,
                 randomizeThemeApple: false,
                 ScrollBar: false,
@@ -2799,14 +3097,16 @@ window.SettingsSaver.make = function () {
             };
             for (const key of COUNT_KEYS) {
                 pudding_settings.SelectedPairsByCount[key] = defaultPoolForCount(Number(key));
+                pudding_settings.SelectedPairsByCountGeneral[key] = defaultPoolForCount(Number(key)).slice();
             }
         } else {
             pudding_settings = JSON.parse(pudding_settings);
+            const needsPersist = typeof pudding_settings.StorageVersion !== "number";
             if (typeof pudding_settings.PortalPairs !== 'boolean') {
                 pudding_settings.PortalPairs = false;
             }
             if (typeof pudding_settings.AlwaysUniqueFruit !== 'boolean') {
-                pudding_settings.AlwaysUniqueFruit = false;
+                pudding_settings.AlwaysUniqueFruit = true;
             }
             if (typeof pudding_settings.ScrollBar !== 'boolean') {
                 pudding_settings.ScrollBar = false;
@@ -2829,13 +3129,19 @@ window.SettingsSaver.make = function () {
             ) {
                 pudding_settings.SavedGameSettings = null;
             }
-            pudding_settings = migrateSelectedPairsByCount(pudding_settings);
-            pudding_settings.SelectedPairs = pudding_settings.SelectedPairsByCount["0"];
+            pudding_settings = migrateRemixUltraSettings(pudding_settings);
+            if (needsPersist) {
+                window._puddingSettingsNeedsPersist = true;
+            }
         }
 
         return pudding_settings;
     }
     window.pudding_settings = window.loadSettings();
+    if (window._puddingSettingsNeedsPersist && typeof window.saveSettings === "function") {
+        window.saveSettings();
+        window._puddingSettingsNeedsPersist = false;
+    }
 
     window.saveSettings = function () {
         const s = window.pudding_settings;
@@ -2934,7 +3240,15 @@ window.SettingsSaver.make = function () {
         if (typeof window.fruit_selected === "number") {
             snap.apple = window.fruit_selected;
         }
-        window.pudding_settings.SavedGameSettings = snap;
+        snap._rowLengths = {};
+        for (const key of GAME_SETTING_KEYS) {
+            const len = getSelectorRowLength(key);
+            if (len) snap._rowLengths[key] = len;
+        }
+        snap._nativeGraphicsCount = nativeGraphicsCount();
+        window.pudding_settings.SavedGameSettings = sanitizeSavedGameSettings(snap, {
+            allowGraphicsFallback: false,
+        });
         if (typeof window.saveSettings === "function") window.saveSettings();
     };
 
@@ -2946,11 +3260,12 @@ window.SettingsSaver.make = function () {
             window._puddingGameSettingsApplied = true;
             return;
         }
-        const snap = s.SavedGameSettings;
+        let snap = s.SavedGameSettings;
         if (!snap || typeof snap !== "object") {
             window._puddingGameSettingsApplied = true;
             return;
         }
+        snap = sanitizeSavedGameSettings(snap, { allowGraphicsFallback: false });
 
         const gear =
             document.querySelector('div[jsname="iyH4Cb"]') ||
@@ -3004,6 +3319,20 @@ window.SettingsSaver.make = function () {
                 }
                 setTimeout(waitMenuThenApply, 50);
                 return;
+            }
+
+            if (typeof snap.graphics === "number" && snap.graphics >= nativeGraphicsCount()) {
+                if (typeof window.appendPairGraphicsIcons === "function") {
+                    window.appendPairGraphicsIcons();
+                }
+                if (!graphicsRowReady(snap.graphics)) {
+                    if (waitTries > 80) {
+                        snap = sanitizeSavedGameSettings(snap, { allowGraphicsFallback: true });
+                    } else {
+                        setTimeout(waitMenuThenApply, 50);
+                        return;
+                    }
+                }
             }
 
             for (const key of order) {
@@ -4007,6 +4336,112 @@ window.SpeedInfo.make = function () {
         updateTrackingSectionVisibility();
     };
 
+    window.buildSpeedInfoTrackingControls = function () {
+        const btnColor = window.button_color || "#1155CC";
+        const section = document.createElement("div");
+        section.className = "speedinfo-tracking-controls";
+        section.style.cssText =
+            "margin:12px 0 0;padding:12px 0 0;border-top:1px solid rgba(255,255,255,0.22);";
+        section.innerHTML = `
+        <div style="font-weight:bold;color:white;font-family:Roboto,Arial,sans-serif;text-align:center;margin-bottom:8px;">SRC / Tracking</div>
+        <div style="display:flex;gap:10px;align-items:flex-start;justify-content:center;flex-wrap:wrap;text-align:left;">
+          <div style="display:flex;align-items:center;gap:6px;padding-top:4px;">
+            <input class="form-check-input" type="checkbox" role="switch" id="ShowWrHolders" style="width:1.3em;height:1.3em;margin:0;">
+            <label class="form-check-label" for="ShowWrHolders" style="margin:0;white-space:nowrap;color:white;font-family:Roboto,Arial,sans-serif;">Show WR holders</label>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <label for="TrackedPlayerInput" class="form-check-label" style="margin:0;white-space:nowrap;color:white;font-family:Roboto,Arial,sans-serif;">Track player</label>
+            <input type="text" class="form-control" id="TrackedPlayerInput" list="tracked-player-suggestions" placeholder="SRC username" autocomplete="off" style="width:140px;display:inline-block;background-color:${btnColor};color:white;font-family:Roboto,Arial,sans-serif;border:1px solid rgba(255,255,255,0.25);border-radius:4px;outline:none;text-align:left;caret-color:white;padding:2px 6px;">
+            <datalist id="tracked-player-suggestions"></datalist>
+            <button class="btn" type="button" style="margin:0;color:white;background-color:${btnColor};font-family:Roboto,Arial,sans-serif;padding:2px 10px;" id="TrackedPlayerSet">Set</button>
+            <button class="btn" type="button" style="margin:0;color:white;background-color:${btnColor};font-family:Roboto,Arial,sans-serif;padding:2px 10px;" id="TrackedPlayerClear">Clear</button>
+          </div>
+        </div>`;
+        return section;
+    };
+
+    window.wireSpeedInfoTrackingControls = function (root) {
+        if (!root || !window.pudding_settings) return;
+
+        const wrholders_checkbox = root.querySelector("#ShowWrHolders");
+        const tracked_input = root.querySelector("#TrackedPlayerInput");
+        const trackedSetBtn = root.querySelector("#TrackedPlayerSet");
+        const trackedClearBtn = root.querySelector("#TrackedPlayerClear");
+        if (!wrholders_checkbox || !tracked_input || !trackedSetBtn || !trackedClearBtn) return;
+
+        function syncSpeedInfoExclusiveUi() {
+            const tracking = !!(window.pudding_settings.TrackedPlayerName || "").trim();
+            if (tracking) {
+                wrholders_checkbox.checked = false;
+                wrholders_checkbox.disabled = true;
+                wrholders_checkbox.title = "Clear tracked player to show WR holders";
+            } else {
+                wrholders_checkbox.disabled = false;
+                wrholders_checkbox.title = "";
+                wrholders_checkbox.checked = !!window.pudding_settings.ShowWrHolders;
+            }
+            tracked_input.value = window.pudding_settings.TrackedPlayerName || "";
+        }
+
+        function refreshSrcAfterSpeedInfoChange() {
+            if (typeof window.refreshTrackedPlayerUi === "function") {
+                window.refreshTrackedPlayerUi();
+            }
+            if (typeof window.getAllSrc === "function") {
+                window.getAllSrc().catch(function (e) {
+                    console.error("getAllSrc error:", e);
+                });
+            }
+        }
+
+        syncSpeedInfoExclusiveUi();
+        if (typeof window.fillTrackedPlayerSuggestions === "function") {
+            window.fillTrackedPlayerSuggestions();
+        }
+
+        tracked_input.addEventListener("keydown", function (evt) {
+            evt.stopPropagation();
+            if (evt.key === "Enter") {
+                evt.preventDefault();
+                trackedSetBtn.click();
+            }
+        });
+        tracked_input.addEventListener("keyup", function (evt) {
+            evt.stopPropagation();
+        });
+
+        wrholders_checkbox.addEventListener("change", function () {
+            if (wrholders_checkbox.disabled) return;
+            if (wrholders_checkbox.checked) {
+                window.pudding_settings.TrackedPlayerName = "";
+                tracked_input.value = "";
+            }
+            window.pudding_settings.ShowWrHolders = !!wrholders_checkbox.checked;
+            if (typeof window.saveSettings === "function") window.saveSettings();
+            syncSpeedInfoExclusiveUi();
+            refreshSrcAfterSpeedInfoChange();
+        });
+
+        trackedSetBtn.addEventListener("click", function () {
+            const name = (tracked_input.value || "").trim();
+            window.pudding_settings.TrackedPlayerName = name;
+            if (name) {
+                window.pudding_settings.ShowWrHolders = false;
+            }
+            if (typeof window.saveSettings === "function") window.saveSettings();
+            syncSpeedInfoExclusiveUi();
+            refreshSrcAfterSpeedInfoChange();
+        });
+
+        trackedClearBtn.addEventListener("click", function () {
+            tracked_input.value = "";
+            window.pudding_settings.TrackedPlayerName = "";
+            if (typeof window.saveSettings === "function") window.saveSettings();
+            syncSpeedInfoExclusiveUi();
+            refreshSrcAfterSpeedInfoChange();
+        });
+    };
+
     window.fillTrackedPlayerSuggestions = function () {
         const list = document.getElementById("tracked-player-suggestions");
         if (!list) return;
@@ -4326,7 +4761,8 @@ window.SpeedInfo.make = function () {
         speedinfoBox.style.display = 'flex';
         speedinfoBox.style.visibility = 'hidden';
         window.pudding_settings.SpeedInfo = false;
-        document.getElementById('AlwaysOnTimeKeeper').checked = false;
+        const speedInfoToggle = document.getElementById("AlwaysOnTimeKeeper");
+        if (speedInfoToggle) speedInfoToggle.checked = false;
     }
 
     window.SpeedInfoSetup = function () {
@@ -4389,6 +4825,14 @@ window.SpeedInfo.make = function () {
         </div>
         </div>
 
+        <div id="speedrun-controls-section" style="display:none;flex-shrink:0;margin-top:auto;padding:6px 3px 0;border-top:1px solid rgba(255,255,255,0.22);">
+        <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="TopBarIcons">
+        <label class="form-check-label" for="TopBarIcons" style="${siLabel}">Top Bar Icons</label>
+        </div>
+        <button class="btn" style="margin:3px;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="ResetKeybind">Reset Key: Shift</button>
+        </div>
+
         <div id="input-display-section" style="display:none;flex-shrink:0;margin-top:auto;margin-bottom:0;width:100%;min-height:104px;box-sizing:border-box;padding:6px 0 0;border-top:1px solid rgba(255,255,255,0.22);justify-content:center;align-items:flex-end;"></div>
 
   <button class="btn" style="display:none;margin:3px;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="speedinfo-close" jsname="speedinfo-close">Close</button>
@@ -4397,6 +4841,14 @@ window.SpeedInfo.make = function () {
 
   document.getElementsByClassName('sEOCsb')[0].appendChild(speedinfoBox);
         updateTrackingSectionVisibility();
+
+        if (window.SpeedrunMod) {
+            const speedrunControls = document.getElementById("speedrun-controls-section");
+            if (speedrunControls) speedrunControls.style.display = "block";
+            if (typeof window.setup_topbar_checkbox === "function") {
+                window.setup_topbar_checkbox();
+            }
+        }
 
         const speedinfoCloseElements = document.getElementById('speedinfo-close');
         speedinfoCloseElements.addEventListener('click', window.SpeedInfoHide);
@@ -4708,19 +5160,17 @@ window.SpeedInfo.alterCode = function (code) {
     mode_get_code = `case "trophy":queueMicrotask(function(){window.SpeedInfoUpdate().catch(function(e){console.error('SpeedInfoUpdate error:',e);});window.getAllSrc().catch(function(e){console.error('getAllSrc error:',e);});});window.CurrentModeNum = `
     code = code.assertReplace(mode_regex, mode_get_code);
 
-    /*
-    count_regex = new RegExp(/case "count"\:/)
-    count_get_code = `case "count":window.getAllSrc();`
-    code = code.assertReplace(mode_regex, count_get_code);
+    const settings_refresh =
+        'queueMicrotask(function(){window.SpeedInfoUpdate().catch(function(e){console.error("SpeedInfoUpdate error:",e);});window.getAllSrc().catch(function(e){console.error("getAllSrc error:",e);});if(typeof window.apply_topbar_icons==="function")window.apply_topbar_icons();});';
 
-    speed_regex = new RegExp(/case "speed"\:/)
-    speed_get_code = `case "speed":window.getAllSrc();`
-    code = code.assertReplace(speed_regex, speed_get_code);
+    count_regex = new RegExp(/case "count"\:/);
+    code = code.assertReplace(count_regex, 'case "count":' + settings_refresh);
 
-    size_regex = new RegExp(/case "size"\:/)
-    size_get_code = `case "size":window.getAllSrc();`
-    code = code.assertReplace(size_regex, size_get_code);
-    */
+    speed_regex = new RegExp(/case "speed"\:/);
+    code = code.assertReplace(speed_regex, 'case "speed":' + settings_refresh);
+
+    size_regex = new RegExp(/case "size"\:/);
+    code = code.assertReplace(size_regex, 'case "size":' + settings_refresh);
 
     return code;
 }
@@ -5212,69 +5662,9 @@ window.Timer = {
         document.body.appendChild(editBox)
         document.getElementById('close-box').addEventListener('click', closeEditBox)
 
-        const wrholders_checkbox = document.getElementById('ShowWrHolders')
-        const tracked_input = document.getElementById('TrackedPlayerInput')
-        const trackedSetBtn = document.getElementById('TrackedPlayerSet')
-        const trackedClearBtn = document.getElementById('TrackedPlayerClear')
-
-        function syncSpeedInfoExclusiveUi() {
-          const tracking = !!(window.pudding_settings.TrackedPlayerName || '').trim()
-          if (tracking) {
-            wrholders_checkbox.checked = false
-            wrholders_checkbox.disabled = true
-            wrholders_checkbox.title = 'Clear tracked player to show WR holders'
-          } else {
-            wrholders_checkbox.disabled = false
-            wrholders_checkbox.title = ''
-            wrholders_checkbox.checked = !!window.pudding_settings.ShowWrHolders
-          }
-          tracked_input.value = window.pudding_settings.TrackedPlayerName || ''
+        if (typeof window.wireSpeedInfoTrackingControls === "function") {
+          window.wireSpeedInfoTrackingControls(editBox)
         }
-
-        function refreshSrcAfterSpeedInfoChange() {
-          if (typeof window.refreshTrackedPlayerUi === 'function') {
-            window.refreshTrackedPlayerUi()
-          }
-          if (typeof window.getAllSrc === 'function') {
-            window.getAllSrc().catch(e => console.error('getAllSrc error:', e))
-          }
-        }
-
-        syncSpeedInfoExclusiveUi()
-        if (typeof window.fillTrackedPlayerSuggestions === 'function') {
-          window.fillTrackedPlayerSuggestions()
-        }
-
-        wrholders_checkbox.addEventListener('change', function () {
-          if (wrholders_checkbox.disabled) return
-          if (wrholders_checkbox.checked) {
-            window.pudding_settings.TrackedPlayerName = ''
-            tracked_input.value = ''
-          }
-          window.pudding_settings.ShowWrHolders = !!wrholders_checkbox.checked
-          if (typeof window.saveSettings === 'function') window.saveSettings()
-          syncSpeedInfoExclusiveUi()
-          refreshSrcAfterSpeedInfoChange()
-        })
-
-        trackedSetBtn.addEventListener('click', function () {
-          const name = (tracked_input.value || '').trim()
-          window.pudding_settings.TrackedPlayerName = name
-          if (name) {
-            window.pudding_settings.ShowWrHolders = false
-          }
-          if (typeof window.saveSettings === 'function') window.saveSettings()
-          syncSpeedInfoExclusiveUi()
-          refreshSrcAfterSpeedInfoChange()
-        })
-
-        trackedClearBtn.addEventListener('click', function () {
-          tracked_input.value = ''
-          window.pudding_settings.TrackedPlayerName = ''
-          if (typeof window.saveSettings === 'function') window.saveSettings()
-          syncSpeedInfoExclusiveUi()
-          refreshSrcAfterSpeedInfoChange()
-        })
 
         const toggleDelta = document.getElementById('edit-delta')
         toggleDelta.checked = +_showDelta
@@ -5739,12 +6129,31 @@ window.Timer = {
       )
     )
 
+    let score
+    let ticks
+    let dt
+    let winTicks
+    let winDt
     const stuffBlock = code.match(
       /[a-zA-Z0-9_$]{1,8}=this\.header,[a-zA-Z0-9_$]{1,8}=\n?this\.[a-zA-Z0-9_$]{1,8},[a-zA-Z0-9_$]{1,8}=this\.ticks,[a-zA-Z0-9_$]{1,8}=this\.[a-zA-Z0-9_$]{1,8};/
-    )[0]
-    const score = stuffBlock.match(/header,[a-zA-Z0-9_$]{1,8}=\n?this\.[a-zA-Z0-9_$]{1,8}/)[0].replace(/header,[a-zA-Z0-9_$]{1,8}=/,'')
-    const ticks = stuffBlock.match(/[a-zA-Z0-9_$]{1,8}=this\.ticks/)[0].replace(/[a-zA-Z0-9_$]{1,8}=/,'')
-    const dt    = stuffBlock.match(/ticks,[a-zA-Z0-9_$]{1,8}=this\.[a-zA-Z0-9_$]{1,8}/)[0].replace(/ticks,[a-zA-Z0-9_$]{1,8}=/,'')
+    )
+    if (stuffBlock) {
+      score = stuffBlock[0].match(/header,[a-zA-Z0-9_$]{1,8}=\n?this\.[a-zA-Z0-9_$]{1,8}/)[0].replace(/header,[a-zA-Z0-9_$]{1,8}=/,'')
+      ticks = stuffBlock[0].match(/[a-zA-Z0-9_$]{1,8}=this\.ticks/)[0].replace(/[a-zA-Z0-9_$]{1,8}=/,'')
+      dt    = stuffBlock[0].match(/ticks,[a-zA-Z0-9_$]{1,8}=this\.[a-zA-Z0-9_$]{1,8}/)[0].replace(/ticks,[a-zA-Z0-9_$]{1,8}=/,'')
+      winTicks = ticks
+      winDt = dt
+    } else {
+      // v13: 25/50/100 HUD lives in q7E=function(a,b,c,d){if(b===25...
+      score = 'b'
+      ticks = 'c'
+      dt = 'd'
+      const scoreCtor = code.match(
+        /this\.header=[a-zA-Z0-9_$];this\.([a-zA-Z0-9_$]{1,8})=this\.([a-zA-Z0-9_$]{1,8})=this\.ticks=/
+      )
+      winTicks = 'this.ticks'
+      winDt = scoreCtor ? ('this.' + scoreCtor[2]) : 'this.Fb'
+    }
 
 
 
@@ -5831,7 +6240,7 @@ window.Timer = {
       const _speed = getSelected('#speed')
       const _size  = getSelected('#size')
 
-      const _time = ${ticks} * ${dt} * 1e-3
+      const _time = ${winTicks} * ${winDt} * 1e-3
 
       let _delta = NaN
 
@@ -6243,19 +6652,6 @@ window.BootstrapMenu.make = function () {
         window.applyRandomButtonState(window.pudding_settings.DisableRandom);
     }
 
-    window.ToggleScrollbar = function () {
-        window.pudding_settings.ScrollBar = !window.pudding_settings.ScrollBar;
-        if (window.pudding_settings.ScrollBar) {
-            // Disable it
-            document.body.style.overflow = 'hidden';
-        }
-        else {
-            // Enable it
-            document.body.style.overflow = '';
-        }
-    }
-
-
     window.BootstrapSetup = function () {
 
         const a = new Image();
@@ -6371,10 +6767,6 @@ window.BootstrapMenu.make = function () {
     <label class="form-check-label" for="DisableRandom" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Disable Randomizer</label>
     </div>
     <div class="form-check form-check-inline">
-    <input class="form-check-input" type="checkbox" role="switch" id="RemoveScrollbar">
-    <label class="form-check-label" for="RemoveScrollbar" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Remove Scrollbar</label>
-    </div>
-    <div class="form-check form-check-inline">
     <input class="form-check-input" type="checkbox" role="switch" id="SaveGameSettings">
     <label class="form-check-label" for="SaveGameSettings" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Save Game Settings</label>
     </div>
@@ -6446,19 +6838,6 @@ window.BootstrapMenu.make = function () {
         randombtn_checkbox.addEventListener("change", window.ToggleRandom);
         randombtn_checkbox.checked = window.pudding_settings.DisableRandom;
         window.applyRandomButtonState(window.pudding_settings.DisableRandom);
-
-        scrollbtn_checkbox = document.getElementById("RemoveScrollbar");
-        scrollbtn_checkbox.addEventListener("change", window.ToggleScrollbar);
-        scrollbtn_checkbox.checked = window.pudding_settings.ScrollBar;
-
-        if (window.pudding_settings.ScrollBar) {
-            // Disable it
-            document.body.style.overflow = 'hidden';
-        }
-        else {
-            // Enable it
-            document.body.style.overflow = '';
-        }
 
         const saveGameSettingsCheckbox = document.getElementById("SaveGameSettings");
         if (typeof window.pudding_settings.SaveGameSettings !== "boolean") {
@@ -6632,6 +7011,7 @@ window.ResetKey.make = function (){
   let keybinds = JSON.parse(localStorage.getItem("keybinds")) || {};
   function setupKeybindPicker(buttonId, keybindType) {
       const button = document.getElementById(buttonId);
+      if (!button) return;
       if(!keybinds[keybindType]){
           keybinds[keybindType] = "Shift";
       }
@@ -6653,11 +7033,31 @@ window.ResetKey.make = function (){
 }
 
 window.ResetKey.alterCode = function(code){
+  if (window.SpeedrunMod) {
+    const keyHandler =
+      /([a-zA-Z0-9_$]{1,8})\(a\)\{if\(!this\.closed\)\{var b=\s*a\.VTa\?a\.Qh:void 0/;
+    code = code.assertReplace(
+      keyHandler,
+      "$1(a){if(!this.closed){var _ae=document.activeElement;if(_ae&&(_ae.tagName==='INPUT'||_ae.tagName==='TEXTAREA'||_ae.tagName==='SELECT'||_ae.isContentEditable))return;var b= a.VTa?a.Qh:void 0"
+    );
+  }
+
+  function isTypingInField() {
+    const ae = document.activeElement;
+    return !!(
+      ae &&
+      (ae.tagName === "INPUT" ||
+        ae.tagName === "TEXTAREA" ||
+        ae.tagName === "SELECT" ||
+        ae.isContentEditable)
+    );
+  }
+
   document.addEventListener('keydown', function(e){
     let keybinds = JSON.parse(localStorage.getItem("keybinds")) || {};
     let resetButton = document.getElementById('ResetKeybind');
     let isSettingKeybind = resetButton && resetButton.textContent === "Press any key...";
-    if(!(isSettingKeybind || window.timeKeeper.dialogActive || document.getElementById('edit-box'))){
+    if(!(isSettingKeybind || isTypingInField() || window.timeKeeper.dialogActive || document.getElementById('edit-box'))){
         if(e.key === keybinds["resetKey"]){
             const keydownEvent = new KeyboardEvent('keydown', {
                 keyCode: 27
@@ -6726,34 +7126,95 @@ window.CustomBowl.make = function () {
     window.custom_pair_call_counter = 0;
     window.__portalAppleArrayName = window.__portalAppleArrayName || "ka";
     window.__customBowlCountOverride = null;
+    window._fruitBowlTab = window._fruitBowlTab || "general";
+
+    function clampCountIndex(count) {
+        const n = Number(count);
+        if (isNaN(n)) return 0;
+        if (n < 0) return 0;
+        if (n > 6) return 6;
+        return n;
+    }
+
+    function readCountIndexFromDom() {
+        const root = document.getElementById("count");
+        if (!root || !root.children || !root.children.length) return null;
+        for (let i = 0; i < root.children.length; i++) {
+            const el = root.children[i];
+            const cls = el.className || "";
+            if ((el.classList && el.classList.contains("tuJOWd")) || /\btuJOWd\b/.test(cls)) {
+                return i;
+            }
+        }
+        const classNames = [];
+        let notUnique = "";
+        for (const el of root.children) {
+            if (classNames.indexOf(el.className) === -1) classNames.push(el.className);
+            else {
+                notUnique = el.className;
+                break;
+            }
+        }
+        if (notUnique) {
+            let n = 0;
+            for (const el of root.children) {
+                if (el.className !== notUnique) return n;
+                n++;
+            }
+        }
+        return null;
+    }
 
     function getCountIndex() {
         if (typeof window.__customBowlCountOverride === "number" && !isNaN(window.__customBowlCountOverride)) {
-            return window.__customBowlCountOverride;
+            return clampCountIndex(window.__customBowlCountOverride);
         }
-        if (window.timeKeeper && typeof window.timeKeeper.getCurrentSetting === "function") {
-            const c = window.timeKeeper.getCurrentSetting("count");
-            if (typeof c === "number" && !isNaN(c)) return c;
-        }
-        if (typeof window.count_var !== "undefined") {
-            const c = Number(window.count_var);
-            if (!isNaN(c)) return c;
-        }
+        const fromDom = readCountIndexFromDom();
+        if (fromDom !== null) return clampCountIndex(fromDom);
+        try {
+            if (window.timeKeeper && typeof window.timeKeeper.getCurrentSetting === "function") {
+                const c = window.timeKeeper.getCurrentSetting("count");
+                if (typeof c === "number" && !isNaN(c)) return clampCountIndex(c);
+            }
+        } catch (e) { /* set_ref may not exist yet */ }
         return 0;
     }
 
-    window.getPortalPairMinimum = function () {
-        const count = getCountIndex();
+    function countMinima(count) {
         return COUNT_MINIMA.hasOwnProperty(count) ? COUNT_MINIMA[count] : 1;
+    }
+
+    window.getPortalPairMinimum = function () {
+        return countMinima(getCountIndex());
     };
 
     function countKey(count) {
         return String(count);
     }
 
+    function isPortalTab() {
+        return window._fruitBowlTab === "portal";
+    }
+
+    function storeNameForKind(kind) {
+        return kind === "general" ? "SelectedPairsByCountGeneral" : "SelectedPairsByCount";
+    }
+
+    function minForKind(kind, count) {
+        count = clampCountIndex(count);
+        if (kind === "portal") return countMinima(count);
+        if (window.pudding_settings && window.pudding_settings.AlwaysUniqueFruit) {
+            return countMinima(count);
+        }
+        return 1;
+    }
+
+    function minForTab() {
+        return minForKind(isPortalTab() ? "portal" : "general", getCountIndex());
+    }
+
     function defaultPoolForCount(count) {
-        const min = COUNT_MINIMA.hasOwnProperty(count) ? COUNT_MINIMA[count] : 1;
-        return normalizePool([], min);
+        return normalizePool([], countMinima(count));
     }
 
     function normalizePool(pool, min) {
@@ -6768,41 +7229,78 @@ window.CustomBowl.make = function () {
         return next;
     }
 
-    function ensurePairsByCountStore() {
-        if (!window.pudding_settings.SelectedPairsByCount || typeof window.pudding_settings.SelectedPairsByCount !== "object") {
-            window.pudding_settings.SelectedPairsByCount = {};
+    function copyPoolArray(pool, fallbackCount) {
+        if (Array.isArray(pool)) {
+            return pool.map(Number).filter((n) => !isNaN(n) && n !== FRUIT_BOWL_INDEX);
         }
-        for (const c of Object.keys(COUNT_MINIMA)) {
-            const key = countKey(c);
-            if (!Array.isArray(window.pudding_settings.SelectedPairsByCount[key])) {
-                window.pudding_settings.SelectedPairsByCount[key] = defaultPoolForCount(Number(c));
-            }
-        }
+        return defaultPoolForCount(fallbackCount);
     }
 
-    function getPoolForCurrentCount(minOverride) {
-        ensurePairsByCountStore();
+    function ensureStore(kind) {
+        const name = storeNameForKind(kind);
+        if (!window.pudding_settings[name] || typeof window.pudding_settings[name] !== "object") {
+            window.pudding_settings[name] = {};
+        }
+        const store = window.pudding_settings[name];
+        const portalStore = window.pudding_settings.SelectedPairsByCount;
+        for (const c of Object.keys(COUNT_MINIMA)) {
+            const key = countKey(c);
+            if (!Array.isArray(store[key])) {
+                const src = kind === "general" && portalStore && Array.isArray(portalStore[key])
+                    ? portalStore[key]
+                    : null;
+                store[key] = copyPoolArray(src, Number(c));
+            }
+        }
+        return store;
+    }
+
+    function getPoolForKind(kind, minOverride) {
+        const store = ensureStore(kind);
         const count = getCountIndex();
         const key = countKey(count);
-        const min = Math.max(window.getPortalPairMinimum(), minOverride || 0);
-        const pool = normalizePool(window.pudding_settings.SelectedPairsByCount[key], min);
-        window.pudding_settings.SelectedPairsByCount[key] = pool;
-        window.pudding_settings.SelectedPairs = pool;
+        const min = Math.max(minForKind(kind, count), minOverride || 0);
+        const pool = normalizePool(store[key], min);
+        store[key] = pool;
+        if (kind === "portal") {
+            window.pudding_settings.SelectedPairs = pool;
+        }
         return pool;
     }
 
-    function setPoolForCurrentCount(pool) {
-        ensurePairsByCountStore();
+    function setPoolForKind(kind, pool) {
+        const store = ensureStore(kind);
         const count = getCountIndex();
         const key = countKey(count);
-        const min = window.getPortalPairMinimum();
+        const min = minForKind(kind, count);
         const next = normalizePool(pool, min);
-        window.pudding_settings.SelectedPairsByCount[key] = next;
-        window.pudding_settings.SelectedPairs = next;
+        store[key] = next;
+        if (kind === "portal") {
+            window.pudding_settings.SelectedPairs = next;
+        }
         return next;
     }
 
+    function getPoolForCurrentCount(minOverride) {
+        return getPoolForKind(isPortalTab() ? "portal" : "general", minOverride);
+    }
+
+    function setPoolForCurrentCount(pool) {
+        return setPoolForKind(isPortalTab() ? "portal" : "general", pool);
+    }
+
     function ensurePoolMeetsMinimum() {
+        ensureStore("portal");
+        ensureStore("general");
+        getPoolForKind("portal");
+        if (window.pudding_settings && window.pudding_settings.AlwaysUniqueFruit) {
+            const store = ensureStore("general");
+            for (const c of Object.keys(COUNT_MINIMA)) {
+                const key = countKey(c);
+                store[key] = normalizePool(store[key], countMinima(Number(c)));
+            }
+        }
+        getPoolForKind("general");
         return getPoolForCurrentCount();
     }
 
@@ -6815,16 +7313,108 @@ window.CustomBowl.make = function () {
     }
 
     // Types currently visible on the board (type < 0 = slot being reassigned, not showing).
-    function typesOnBoard(appleManager) {
+    function typesOnBoard(appleManager, ctx) {
         const showing = new Set();
         const apples = getAppleList(appleManager);
         if (!apples) return showing;
+        ctx = ctx || {};
         for (const apple of apples) {
             if (!apple) continue;
             const t = Number(apple.type);
-            if (!isNaN(t) && t >= 0) showing.add(t);
+            if (isNaN(t) || t < 0) continue;
+            if (ctx.lh !== undefined && !!apple.Lh !== ctx.lh) continue;
+            if (ctx.oka !== undefined && !!apple.Oka !== ctx.oka) continue;
+            if (ctx.pairOka && ctx.pairOka.indexOf(!!apple.Oka) < 0) continue;
+            showing.add(t);
         }
         return showing;
+    }
+
+    function pendingApple(appleManager) {
+        const apples = getAppleList(appleManager);
+        if (!apples) return null;
+        for (const apple of apples) {
+            if (!apple) continue;
+            const t = Number(apple.type);
+            if (isNaN(t) || t < 0) return apple;
+        }
+        return null;
+    }
+
+    function assignContext(appleManager, opts) {
+        opts = opts || {};
+        const settings = appleManager && appleManager.settings;
+        const pending = pendingApple(appleManager);
+        const ctx = {};
+        if (opts.pairOka) {
+            ctx.pairOka = opts.pairOka;
+        } else if (pending && pending.Oka !== undefined &&
+            window.__bowlIsMode && window.__bowlIsMode(settings, 10)) {
+            ctx.oka = !!pending.Oka;
+        }
+        if (opts.lh !== undefined) {
+            ctx.lh = !!opts.lh;
+        } else if (pending && window.__bowlIsMode && window.__bowlIsMode(settings, 9)) {
+            ctx.lh = !!pending.Lh;
+        }
+        return ctx;
+    }
+
+    function pickMatchesCtx(entry, ctx) {
+        if (entry.lh !== undefined && ctx.lh !== undefined && entry.lh !== ctx.lh) return false;
+        if (entry.oka !== undefined && ctx.oka !== undefined && entry.oka !== ctx.oka) return false;
+        if (entry.pairOka && ctx.pairOka) {
+            for (let i = 0; i < entry.pairOka.length; i++) {
+                if (ctx.pairOka.indexOf(entry.pairOka[i]) >= 0) return true;
+            }
+            return false;
+        }
+        if (entry.pairOka && ctx.oka !== undefined) {
+            return entry.pairOka.indexOf(ctx.oka) >= 0;
+        }
+        return true;
+    }
+
+    function mergeUniquePicks(showing, ctx) {
+        if (!window.__bowlUniquePicks) return;
+        window.__bowlUniquePicks.forEach(function (entry) {
+            if (pickMatchesCtx(entry, ctx)) showing.add(entry.type);
+        });
+    }
+
+    // Dimension pairs alternate Oka; assign before type picks when unique needs it.
+    window.ensureCustomBowlDimensionOka = function (appleManager) {
+        if (!appleManager || !window.__bowlIsMode || !window.__bowlIsMode(appleManager.settings, 10)) return;
+        const apples = getAppleList(appleManager);
+        if (!apples || apples.length < 2) return;
+        for (let b = 0; b + 1 < apples.length; b += 2) {
+            const c = Math.random() < 0.5;
+            apples[b].Oka = c;
+            apples[b + 1].Oka = !c;
+        }
+    };
+
+    // When every pool type still looks "on board", pick the least-used ones
+    // (the eaten slot, once cleared to -1, is the only 0-count type at minimum).
+    function rarestPoolTypes(appleManager, pool, ctx) {
+        ctx = ctx || {};
+        const counts = new Map();
+        for (let i = 0; i < pool.length; i++) counts.set(pool[i], 0);
+        const apples = getAppleList(appleManager);
+        if (apples) {
+            for (const apple of apples) {
+                if (!apple) continue;
+                const t = Number(apple.type);
+                if (!counts.has(t)) continue;
+                if (ctx.lh !== undefined && !!apple.Lh !== ctx.lh) continue;
+                if (ctx.oka !== undefined && !!apple.Oka !== ctx.oka) continue;
+                if (ctx.pairOka && ctx.pairOka.indexOf(!!apple.Oka) < 0) continue;
+                counts.set(t, counts.get(t) + 1);
+            }
+        }
+        let best = Infinity;
+        counts.forEach(function (n) { if (n < best) best = n; });
+        return pool.filter(function (t) { return counts.get(t) === best; });
     }
 
     function isCustomBowlActive(settings) {
@@ -6839,26 +7429,49 @@ window.CustomBowl.make = function () {
         }
     }
 
+    function rememberUniquePick(type, ctx) {
+        if (!window.__bowlUniquePicks) window.__bowlUniquePicks = [];
+        const entry = { type: type };
+        if (ctx) {
+            if (ctx.lh !== undefined) entry.lh = ctx.lh;
+            if (ctx.oka !== undefined) entry.oka = ctx.oka;
+            if (ctx.pairOka) entry.pairOka = ctx.pairOka.slice();
+        }
+        window.__bowlUniquePicks.push(entry);
+        if (!window.__bowlUniquePicksClear) {
+            window.__bowlUniquePicksClear = true;
+            setTimeout(function () {
+                window.__bowlUniquePicks = [];
+                window.__bowlUniquePicksClear = false;
+            }, 0);
+        }
+    }
+
     /**
      * Roll a fruit from the custom bowl pool.
-     * Unique (pool − showing) when portal OR AlwaysUniqueFruit is on.
-     * Portal always uses unique logic; the checkbox enables it for other modes.
-     * If allowed is empty, fall back to full pool (re-roll eaten type when board is full).
+     * Portal always unique + portal store.
+     * Other modes use General store; unique iff AlwaysUniqueFruit.
+     * Simultaneous 3a/5a picks in one turn share __bowlUniquePicks.
      */
-    window.pickCustomPortalType = function (appleManager, isPortal) {
+    window.pickCustomPortalType = function (appleManager, isPortal, opts) {
         syncCountOverride(appleManager && appleManager.settings);
         try {
-            const pool = ensurePoolMeetsMinimum();
+            const kind = isPortal ? "portal" : "general";
+            const pool = getPoolForKind(kind);
             if (!pool.length) return 0;
             const useUnique = !!isPortal ||
                 !!(window.pudding_settings && window.pudding_settings.AlwaysUniqueFruit);
             if (!useUnique) {
                 return pool[Math.floor(Math.random() * pool.length)];
             }
-            const showing = typesOnBoard(appleManager);
+            const ctx = assignContext(appleManager, opts || {});
+            const showing = typesOnBoard(appleManager, ctx);
+            mergeUniquePicks(showing, ctx);
             const available = pool.filter((t) => !showing.has(t));
-            const source = available.length > 0 ? available : pool;
-            return source[Math.floor(Math.random() * source.length)];
+            const source = available.length > 0 ? available : rarestPoolTypes(appleManager, pool, ctx);
+            const picked = source[Math.floor(Math.random() * source.length)];
+            rememberUniquePick(picked, ctx);
+            return picked;
         } finally {
             window.__customBowlCountOverride = null;
         }
@@ -6870,10 +7483,20 @@ window.CustomBowl.make = function () {
         const apples = getAppleList(appleManager);
         if (!apples || apples.length < 2) return false;
 
+        window.ensureCustomBowlDimensionOka(appleManager);
+
         for (let i = 0; i < apples.length; i++) apples[i].type = -1;
 
         for (let i = 0; i < apples.length; i += 2) {
-            const t = window.pickCustomPortalType(appleManager, true);
+            const a0 = apples[i];
+            const a1 = apples[i + 1];
+            const opts = {};
+            if (window.__bowlIsMode && window.__bowlIsMode(appleManager.settings, 10)) {
+                opts.pairOka = [!!a0.Oka, a1 ? !!a1.Oka : !!a0.Oka];
+            } else if (window.__bowlIsMode && window.__bowlIsMode(appleManager.settings, 9)) {
+                opts.lh = !!a0.Lh;
+            }
+            const t = window.pickCustomPortalType(appleManager, true, opts);
             apples[i].type = t;
             if (apples[i + 1]) apples[i + 1].type = t;
         }
@@ -6883,6 +7506,8 @@ window.CustomBowl.make = function () {
     // Portal-only safety: if two pairs share a type, re-roll with showing-list rules.
     window.enforceUniquePortalFruitTypes = function (appleManager) {
         if (!appleManager || !isCustomBowlActive(appleManager.settings)) return;
+        // assignCustomPortalPairTypes already enforces per-dimension uniqueness.
+        if (window.__bowlIsMode && window.__bowlIsMode(appleManager.settings, 10)) return;
         const apples = getAppleList(appleManager);
         if (!apples || apples.length < 2) return;
 
@@ -6894,7 +7519,11 @@ window.CustomBowl.make = function () {
             if (isNaN(t) || t < 0 || seen.has(t)) {
                 if (a0) a0.type = -1;
                 if (a1) a1.type = -1;
-                t = window.pickCustomPortalType(appleManager, true);
+                const opts = {};
+                if (window.__bowlIsMode && window.__bowlIsMode(appleManager.settings, 9)) {
+                    opts.lh = !!a0.Lh;
+                }
+                t = window.pickCustomPortalType(appleManager, true, opts);
                 if (a0) a0.type = t;
                 if (a1) a1.type = t;
             } else if (a1 && Number(a1.type) !== t) {
@@ -6934,23 +7563,41 @@ window.CustomBowl.make = function () {
         return options;
     }
 
+    function tabButtonStyle(active) {
+        const bg = active ? "#1155CC" : "rgba(17,85,204,0.45)";
+        return "margin:0;padding:4px 16px;color:white;background-color:" + bg +
+            ";font-family:Roboto,Arial,sans-serif;border:1px solid rgba(255,255,255,0.25);";
+    }
+
+    function syncTabUi() {
+        const portalBtn = document.getElementById("fruit-bowl-tab-portal");
+        const generalBtn = document.getElementById("fruit-bowl-tab-general");
+        const uniqueRow = document.getElementById("fruit-bowl-unique-row");
+        const portalNote = document.getElementById("fruit-bowl-portal-note");
+        const portalOn = isPortalTab();
+        if (portalBtn) portalBtn.style.cssText = tabButtonStyle(portalOn);
+        if (generalBtn) generalBtn.style.cssText = tabButtonStyle(!portalOn);
+        if (uniqueRow) uniqueRow.style.display = portalOn ? "none" : "flex";
+        if (portalNote) portalNote.style.display = portalOn ? "block" : "none";
+    }
+
     function updateStatusLabel() {
         const el = document.getElementById("fruit-bowl-status");
         if (!el) return;
         const pool = getPoolForCurrentCount();
-        const min = window.getPortalPairMinimum();
+        const min = minForTab();
         el.textContent = `Selected ${pool.length} / min ${min}`;
     }
 
     function renderFruitGrid() {
         const grid = document.getElementById("fruit-bowl-grid");
         if (!grid) return;
-        const pool = new Set(ensurePoolMeetsMinimum());
+        const pool = new Set(getPoolForCurrentCount());
         const options = buildFruitOptions();
-        const min = window.getPortalPairMinimum();
+        const min = minForTab();
         grid.innerHTML = "";
 
-        const rowSize = 6;
+        const rowSize = 7;
         for (let i = 0; i < options.length; i += rowSize) {
             const row = document.createElement("div");
             row.style = "display:flex;flex-wrap:nowrap;gap:8px;margin-bottom:8px;justify-content:center;";
@@ -7002,13 +7649,21 @@ window.CustomBowl.make = function () {
             grid.style.opacity = window.pudding_settings.PortalPairs ? "1" : "0.45";
             grid.style.pointerEvents = window.pudding_settings.PortalPairs ? "auto" : "none";
         }
+        syncTabUi();
+    }
+
+    function setFruitBowlTab(tab) {
+        window._fruitBowlTab = tab === "general" ? "general" : "portal";
+        ensurePoolMeetsMinimum();
+        syncPanelEnabledState();
+        renderFruitGrid();
     }
 
     // Theme background is applied separately via applyPanelTheme (Theme.js sets real_topbar_color).
     const PANEL_STYLE =
         "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:100000;" +
         "padding:18px 20px 16px;display:none;border-radius:8px;" +
-        "width:min(480px,92vw);min-width:280px;height:auto;min-height:320px;max-height:min(720px,88vh);" +
+        "width:min(560px,92vw);min-width:280px;height:auto;min-height:320px;max-height:min(720px,88vh);" +
         "overflow-x:hidden;overflow-y:auto;visibility:hidden;box-sizing:border-box;" +
         "box-shadow:0 12px 36px rgba(0,0,0,0.5);border:2px solid rgba(255,255,255,0.18);";
 
@@ -7058,22 +7713,31 @@ window.CustomBowl.make = function () {
         }
 
         let panel = document.getElementById("fruit-bowl-popup-pudding");
+        if (panel && !document.getElementById("fruit-bowl-tab-portal")) {
+            panel.remove();
+            panel = null;
+        }
         if (!panel) {
             panel = document.createElement("div");
             panel.id = "fruit-bowl-popup-pudding";
             panel.style.cssText = PANEL_STYLE;
             panel.innerHTML = `
-                <div style="color:white;font-family:Roboto,Arial,sans-serif;text-align:center;margin-bottom:14px;font-size:22px;font-weight:bold;letter-spacing:0.2px;">Fruit Bowl Settings</div>
+                <div style="color:white;font-family:Roboto,Arial,sans-serif;text-align:center;margin-bottom:10px;font-size:22px;font-weight:bold;letter-spacing:0.2px;">Fruit Bowl Settings</div>
+                <div style="display:flex;justify-content:center;gap:8px;margin:0 auto 12px;">
+                    <button type="button" class="btn" id="fruit-bowl-tab-general">General</button>
+                    <button type="button" class="btn" id="fruit-bowl-tab-portal">Portal</button>
+                </div>
                 <div style="display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin:0 auto 12px;width:100%;">
                     <div style="display:flex;align-items:center;gap:8px;">
                         <input class="form-check-input" type="checkbox" role="switch" id="fruit-bowl-enable" style="margin:0;float:none;position:static;">
                         <label class="form-check-label" for="fruit-bowl-enable" style="margin:0;color:white;font-family:Roboto,Arial,sans-serif;font-size:16px;line-height:1.2;">Enable custom fruit bowl</label>
                     </div>
-                    <div style="display:flex;align-items:center;gap:8px;">
+                    <div id="fruit-bowl-unique-row" style="display:none;align-items:center;gap:8px;">
                         <input class="form-check-input" type="checkbox" role="switch" id="fruit-bowl-always-unique" style="margin:0;float:none;position:static;">
                         <label class="form-check-label" for="fruit-bowl-always-unique" style="margin:0;color:white;font-family:Roboto,Arial,sans-serif;font-size:16px;line-height:1.2;">Always Unique Fruit</label>
                     </div>
                 </div>
+                <div id="fruit-bowl-portal-note" style="display:none;color:#dce8c8;font-family:Roboto,Arial,sans-serif;font-size:14px;margin:0 0 10px 0;text-align:center;">Portal fruit bowl is always unique</div>
                 <div id="fruit-bowl-status" style="color:#dce8c8;font-family:Roboto,Arial,sans-serif;font-size:15px;margin:0 0 12px 0;text-align:center;"></div>
                 <div id="fruit-bowl-grid" style="padding:4px 0 8px;display:flex;flex-direction:column;align-items:center;"></div>
                 <button type="button" class="btn" style="margin:8px auto 0;display:block;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="fruit-bowl-close">Close</button>
@@ -7081,6 +7745,12 @@ window.CustomBowl.make = function () {
             host.appendChild(panel);
             applyPanelTheme(panel);
 
+            document.getElementById("fruit-bowl-tab-portal").addEventListener("click", function () {
+                setFruitBowlTab("portal");
+            });
+            document.getElementById("fruit-bowl-tab-general").addEventListener("click", function () {
+                setFruitBowlTab("general");
+            });
             document.getElementById("fruit-bowl-enable").addEventListener("change", function () {
                 window.pudding_settings.PortalPairs = !!this.checked;
                 ensurePoolMeetsMinimum();
@@ -7090,8 +7760,17 @@ window.CustomBowl.make = function () {
             });
             document.getElementById("fruit-bowl-always-unique").addEventListener("change", function () {
                 window.pudding_settings.AlwaysUniqueFruit = !!this.checked;
+                if (this.checked) {
+                    const store = ensureStore("general");
+                    for (const c of Object.keys(COUNT_MINIMA)) {
+                        const key = countKey(c);
+                        store[key] = normalizePool(store[key], countMinima(Number(c)));
+                    }
+                }
+                getPoolForKind("general");
                 if (typeof window.saveSettings === "function") window.saveSettings();
                 syncPanelEnabledState();
+                renderFruitGrid();
             });
             document.getElementById("fruit-bowl-close").addEventListener("click", function () {
                 window.PortalPairsPanelHide();
@@ -7196,12 +7875,12 @@ window.CustomBowl.alterCode = function (code) {
     // Portal init: clear + roll from (pool − showing) pair by pair.
     code = code.assertReplace(
         baf_regex,
-        `${baf_name}=function(a){` +
+        `${baf_name}=function(a){window.__bowlIsMode=${portal_check};` +
         `if(${portal_check}(a.settings,2)&&window.assignCustomPortalPairTypes&&window.assignCustomPortalPairTypes(a))return;` +
         `if(${portal_check}(a.settings,2)){var b=Math.floor(48/a.${apple_array}.length);`
     );
 
-    // Custom bowl pick: portal → showing-list uniqueness; other modes → random from pool.
+    // Custom bowl pick: portal → portal store + unique; other modes → general store + AlwaysUniqueFruit.
     code = code.assertReplace(
         aaf_regex,
         `${aaf_name}=function(a){` +
@@ -7210,18 +7889,44 @@ window.CustomBowl.alterCode = function (code) {
         `if(a.settings.${fruit_setting}===24){`
     );
 
-    // Before in-place portal retype, drop the eaten pair from "showing" (type=-1).
+    // v12: Ni&&(this.wa.ka[vd].type=aaF(this.wa),this.wa.ka[Ok].type=this.wa.ka[vd].type)
+    // v13: e&&(a.wa.ka[k].type=Q3E(a.wa),a.wa.ka[d].type=a.wa.ka[k].type)
     const inplace_regex = new RegExp(
-        `Ni&&\\(this\\.wa\\.ka\\[vd\\]\\.type=${aaf_name}\\(this\\.wa\\),this\\.wa\\.ka\\[Ok\\]\\.type=this\\.wa\\.ka\\[vd\\]\\.type\\)`
+        `([a-zA-Z0-9_$]{1,8})&&\\(([a-zA-Z0-9_$]{1,8}\\.)wa\\.ka\\[([a-zA-Z0-9_$]{1,8})\\]\\.type=${aaf_name}\\(\\2wa\\),\\2wa\\.ka\\[([a-zA-Z0-9_$]{1,8})\\]\\.type=\\2wa\\.ka\\[\\3\\]\\.type\\)`
     );
     catchError(inplace_regex, code);
+    const inplace_match = code.match(inplace_regex);
     code = code.assertReplace(
         inplace_regex,
-        `Ni&&(this.wa.ka[vd].type=-1,this.wa.ka[Ok].type=-1,this.wa.ka[vd].type=${aaf_name}(this.wa),this.wa.ka[Ok].type=this.wa.ka[vd].type)`
+        `${inplace_match[1]}&&(${inplace_match[2]}wa.ka[${inplace_match[3]}].type=-1,${inplace_match[2]}wa.ka[${inplace_match[4]}].type=-1,${inplace_match[2]}wa.ka[${inplace_match[3]}].type=${aaf_name}(${inplace_match[2]}wa),${inplace_match[2]}wa.ka[${inplace_match[4]}].type=${inplace_match[2]}wa.ka[${inplace_match[3]}].type)`
+    );
+
+    // Non-portal eat/respawn (3a/5a/10a): clear the reused slot first, same as
+    // tally's type:-1 new apple, so the eaten type leaves "showing" and can re-roll.
+    const eat_retype_regex = new RegExp(
+        `:([a-zA-Z0-9_$]{1,8})&&\\(([a-zA-Z0-9_$]{1,8})\\.type=${aaf_name}\\(([a-zA-Z0-9_$]{1,8})\\.wa\\)\\)`
+    );
+    catchError(eat_retype_regex, code);
+    code = code.assertReplace(
+        eat_retype_regex,
+        `:$1&&($2.type=-1,$2.type=${aaf_name}($3.wa))`
+    );
+
+    // Non-portal start-of-game fill: stage every slot as -1, then pick sequentially
+    // so typesOnBoard sees earlier apples in the same wave.
+    const classic_fill_regex = new RegExp(
+        `else for\\(var ([a-zA-Z0-9_$]{1,8}) of this\\.${apple_array}\\)\\1\\.type=${aaf_name}\\(this\\)`
+    );
+    catchError(classic_fill_regex, code);
+    code = code.assertReplace(
+        classic_fill_regex,
+        `else{for(var $1 of this.${apple_array})$1.type=-1;` +
+        `window.ensureCustomBowlDimensionOka&&window.ensureCustomBowlDimensionOka(this);` +
+        `for($1 of this.${apple_array})$1.type=${aaf_name}(this)}`
     );
 
     const refill_regex = new RegExp(
-        `if\\(([a-zA-Z0-9_$]{1,8})\\(a\\.settings,2\\)&&b\\.length>0\\)for\\(b\\[0\\]\\.type=${aaf_name}\\(a\\.([a-zA-Z0-9_$]{1,8})\\),b\\[1\\]\\.type=b\\[0\\]\\.type,a=2;a<b\\.length;a\\+=2\\)b\\[a\\]\\.type=\\(b\\[a-2\\]\\.type\\+1\\)%24,b\\[a\\+1\\]\\.type=b\\[a\\]\\.type`
+        `if\\(([a-zA-Z0-9_$]{1,8})\\(a\\.settings,2\\)&&b\\.length>0\\)for\\(b\\[0\\]\\.type=${aaf_name}\\(a\\.([a-zA-Z0-9_$]{1,8})\\),b\\[1\\]\\.type=b\\[0\\]\\.type,a=2;a<b\\.length;a\\+=2\\)b\\[a\\]\\.type=\\(b\\[a-2\\]\\.type\\+1\\)%\\n?24,b\\[a\\+1\\]\\.type=b\\[a\\]\\.type`
     );
     catchError(refill_regex, code);
     const refill_match = code.match(refill_regex);
@@ -7253,8 +7958,6 @@ window.CustomBowl.alterCode = function (code) {
 
     return code;
 };
-window.PuddingMod = {};
-
 ////////////////////////////////////////////////////////////////////
 //RUNCODEBEFORE
 ////////////////////////////////////////////////////////////////////
@@ -7419,6 +8122,7 @@ window.PuddingMod.runCodeAfter = function () {
     setTimeout(window.applySavedGameSettingsOnce, 0);
   }
 };
+
 window.moreMenu = {
   runCodeBefore: () => {
     window.uiImage = src => {
@@ -7632,7 +8336,7 @@ window.moreMenu = {
       /this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?=\n?\(\n?d\n?\.\n?isMobile\n?\?\n?175\n?:\n?135\n?\)\n?\*\n?a\n?;/
     )[0]
     const selectedSpeed = code.match(
-      /switch\n?\(\n?d\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\)\n?{\n?case(\n? \n?|\n)1\n?:\n?a\n?=\n?\.66/
+      /switch\n?\(\n?d\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\)\n?{\n?case(\n? \n?|\n)?1\n?:\n?a\n?=\n?\.66/
     )[0].match(
       /d\n?\.\n?[a-zA-Z0-9_$]{1,8}/
     )[0].replace('d', 'this.settings')
@@ -7642,18 +8346,12 @@ window.moreMenu = {
     )[0]
     const replacePoint = tickFunction.match(
       /\.5\n?:\n?1\.25\n?\);\n?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\+\+;/
-    )[0]
+    )
   
     window.bunnyTurtleSpeed = 1.33
     window.lightningSnailSpeed = 1.85
-  
-    code = code.assertReplace(tickFunction,
-      tickFunction.replaceAll(
-        '&&', ' && '
-      ).replace(
-        replacePoint,
-        replacePoint
-         + `
+
+    const speedMultiplierBlock = `
           window.bunnyTurtleSpeed = Math.random() < .5 ? .66 : 1.33
           window.lightningSnailSpeed = Math.random() < .5 ? .45 : 1.85
           let speedMultiplier
@@ -7701,19 +8399,47 @@ window.moreMenu = {
               speedMultiplier = 1
               break
           }
-          ${tileLengthSetLine.replace(/\*\n?a/, '* speedMultiplier').replace('d.isMobile', 'this.settings.isMobile')}
+          ${tileLengthSetLine.replace(/\*\n?a/, '* speedMultiplier').replace(/d\.isMobile/g, 'this.settings.isMobile')}
         `
+  
+    if (replacePoint) {
+      code = code.assertReplace(tickFunction,
+        tickFunction.replaceAll(
+          '&&', ' && '
+        ).replace(
+          replacePoint[0],
+          replacePoint[0] + speedMultiplierBlock
+        )
       )
-    )
+    } else {
+      const tickAnchor = tickFunction.match(
+        /\}else if\(!window\.timeKeeper\.runStarted\)\{window\.timeKeeper\.start\(\);\}/
+      )
+      if (!tickAnchor) {
+        throw new Error('More Menu: could not find tick speed injection point')
+      }
+      code = code.assertReplace(
+        tickFunction,
+        tickFunction.assertReplace(tickAnchor[0], tickAnchor[0] + speedMultiplierBlock)
+      )
+    }
   
     const resetFunction1 = code.match(
       /reset\n?\(\n?\)\n?{\n?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?=\n?null[^]*?\.66[^]*?!0\n?\)\n?\)\n?}/
     )[0]
+
+    const speedSwitchRegex =
+      /a:switch\(d\.[a-zA-Z0-9_$]{1,8}\)\{case 1:a=\.66;break a;case 2:a=1\.33;break a;default:a=1\}/
+    const speedSwitchLegacyRegex =
+      /\{case 1:a=\.66[^}]*?1\}/
+    const resetSpeedField = resetFunction1.match(
+      /switch\(d\.([a-zA-Z0-9_$]{1,8})\)\{case 1:a=\.66/
+    )[1]
   
     code = code.assertReplace(resetFunction1,
       resetFunction1.assertReplace(
-        /{case 1:a=\.66[^}]*?1}/,
-        `{
+        speedSwitchRegex.test(resetFunction1) ? speedSwitchRegex : speedSwitchLegacyRegex,
+        `a:switch(d.${resetSpeedField}){
           case 1:
             a = .66
             break a
@@ -7902,18 +8628,18 @@ window.moreMenu = {
         '}}',
         `}
           const appleCountDisplay = document.body.getElementsByClassName('UJhXPd wSwbef EWyEF')[0]
-  
-          // [...appleCountDisplay.children].forEach((e, i) => i > 1 && (appleCountDisplay.removeChild(appleCountDisplay.children[i])))
-          for(let i = 2; i < appleCountDisplay.children.length; i++) {
-            appleCountDisplay.removeChild(appleCountDisplay.children[i])
-          }
+          if (appleCountDisplay) {
+            while (appleCountDisplay.children.length > 2) {
+              appleCountDisplay.removeChild(appleCountDisplay.children[2])
+            }
 
-          if(${selectedAppleCount1} > 3) {
-            const __src = document.querySelector('#count').children[${selectedAppleCount1}].src
-            const __img = window.uiImage(__src)
-            __img.style.position = 'relative'
-            __img.style.left = '50px'
-            appleCountDisplay.appendChild(__img)
+            if(${selectedAppleCount1} > 3) {
+              const __src = document.querySelector('#count').children[${selectedAppleCount1}].src
+              const __img = window.uiImage(__src)
+              __img.style.position = 'relative'
+              __img.style.left = '50px'
+              appleCountDisplay.appendChild(__img)
+            }
           }
         } 
         `
@@ -8841,13 +9567,13 @@ Same as replace, but throws an error if nothing is changed
     fruitRegex,
     deleteModDebug);
 
-  //Regular fruit vs poison fruit. `nla` marks the poisonous half of the fruit set in poison mode.
+  //Regular fruit vs poison fruit. `nla` was the v12 poison marker; `Oka` is the v13 one.
   funcWithFruit = assertReplace(funcWithFruit, fruitRegex,
-    '(window.visiFullPass || (b.nla ? window.checkboxes.checkboxStatuses.poison : window.checkboxes.checkboxStatuses.fruit)) && $&');
+    '(window.visiFullPass || ((b.nla||b.Oka) ? window.checkboxes.checkboxStatuses.poison : window.checkboxes.checkboxStatuses.fruit)) && $&');
 
   //Mirrored copy (in twin/infinity layouts), using the same poison marker.
   funcWithFruit = assertReplace(funcWithFruit, /this\.[$a-zA-Z0-9_]{0,6}\.drawImage\([$a-zA-Z0-9_]{0,6},0,0,[$a-zA-Z0-9_]{0,6},[$a-zA-Z0-9_]{0,6},-\([$a-zA-Z0-9_]{0,6}\/2\),-\([$a-zA-Z0-9_]{0,6}\/2\),[$a-zA-Z0-9_]{0,6},[$a-zA-Z0-9_]{0,6}\)/,
-    '(window.visiFullPass || (b.nla ? window.checkboxes.checkboxStatuses.poison : window.checkboxes.checkboxStatuses.fruit)) && $&');
+    '(window.visiFullPass || ((b.nla||b.Oka) ? window.checkboxes.checkboxStatuses.poison : window.checkboxes.checkboxStatuses.fruit)) && $&');
 
   //For compatitibilty, also change this code for animatedSnakeColours
   /*
@@ -8869,9 +9595,9 @@ Same as replace, but throws an error if nothing is changed
     wallInsideRegex,
     deleteModDebug);
 
-  //for walls / locks / hotdog walls (same renderer; distinguished by k.ez and k.XNa)
+  //for walls / locks / hotdog walls (same renderer; v12 uses ez/XNa, v13 uses ty/yNa)
   funcWithRenderWall = assertReplace(funcWithRenderWall, /this\.[$a-zA-Z0-9_]{0,6}\.fillRect\([$a-zA-Z0-9_]{0,6},[$a-zA-Z0-9_]{0,6},[$a-zA-Z0-9_]{0,6},[$a-zA-Z0-9_]{0,6}\)/,
-    '(k.ez?window.checkboxes.checkboxStatuses.hotdogWalls:(k.XNa!==void 0&&k.XNa>=0?window.checkboxes.checkboxStatuses.locks:window.checkboxes.checkboxStatuses.walls))&&$&');
+    '((k.ez||k.ty)?window.checkboxes.checkboxStatuses.hotdogWalls:(((k.XNa!==void 0&&k.XNa>=0)||(k.yNa!==void 0&&k.yNa>=0))?window.checkboxes.checkboxStatuses.locks:window.checkboxes.checkboxStatuses.walls))&&$&');
 
   //lock icon on wall
   funcWithRenderWall = assertReplace(funcWithRenderWall, /this\.[$a-zA-Z0-9_]{0,6}\.drawImage\([$a-zA-Z0-9_]{0,6}\(this\.[$a-zA-Z0-9_]{0,6}\)\.[$a-zA-Z0-9_]{0,6}\.canvas,[$a-zA-Z0-9_]{0,6}\.[$a-zA-Z0-9_]{0,6}\*128,0,128,128,[$a-zA-Z0-9_]{0,6}\.[$a-zA-Z0-9_]{0,6}-[$a-zA-Z0-9_]{0,6}\/2,[$a-zA-Z0-9_]{0,6}\.[$a-zA-Z0-9_]{0,6}-[$a-zA-Z0-9_]{0,6}\/2,[$a-zA-Z0-9_]{0,6},[$a-zA-Z0-9_]{0,6}\)/,
@@ -8968,18 +9694,19 @@ Same as replace, but throws an error if nothing is changed
   funcWithMiscRendering = assertReplace(funcWithMiscRendering, /[$a-zA-Z0-9_]{1,6}\.context\.fillRect\([$a-zA-Z0-9_]{1,6}\*[$a-zA-Z0-9_.]{1,24}-[$a-zA-Z0-9_]{1,6}\.x\+[$a-zA-Z0-9_]{1,6}\.x,[$a-zA-Z0-9_]{1,6}\*[$a-zA-Z0-9_.]{1,24}-[$a-zA-Z0-9_]{1,6}\.y\+[$a-zA-Z0-9_]{1,6}\.y,[$a-zA-Z0-9_.]{1,24},[$a-zA-Z0-9_.]{1,24}\)/,
     'window.checkboxes.checkboxStatuses.darkTiles && $&');
 
-  //Light mode: snake-head glow (TbF) vs apple glow (fruit list loop)
-  funcWithMiscRendering = assertReplaceAll(funcWithMiscRendering, /TbF\(/g,
-    'window.checkboxes.checkboxStatuses.lightSnake&&TbF(');
+  //Light mode: snake-head glow helper renamed between builds (TbF on v12, N5E-like on v13)
+  let lightSnakeCallRegex = /(?:TbF\(|[$a-zA-Z0-9_]{1,6}\([$a-zA-Z0-9_]{1,6},[$a-zA-Z0-9_.]{1,24},[$a-zA-Z0-9_.]{1,24},Math\.max\(2,)/g;
+  funcWithMiscRendering = assertReplaceAll(funcWithMiscRendering, lightSnakeCallRegex,
+    'window.checkboxes.checkboxStatuses.lightSnake&&$&');
 
   funcWithMiscRendering = assertReplace(funcWithMiscRendering, /(for\(let [$a-zA-Z0-9_]{1,6} of [$a-zA-Z0-9_]{1,6}\.wb\.wa\.ka\)\{)/,
     'if(window.checkboxes.checkboxStatuses.lightFruit)$1');
 
   //Inline active bridges/gates drawn in the compositor (not only via helper functions)
-  funcWithMiscRendering = assertReplaceAll(funcWithMiscRendering, /f7\(this\.settings,20\)/g,
-    'f7(this.settings,20)&&window.checkboxes.checkboxStatuses.bridges');
-  funcWithMiscRendering = assertReplaceAll(funcWithMiscRendering, /f7\(this\.settings,19\)/g,
-    'f7(this.settings,19)&&window.checkboxes.checkboxStatuses.gates');
+  funcWithMiscRendering = assertReplaceAll(funcWithMiscRendering, /[ef]7\(this\.settings,20\)/g,
+    '$&&&window.checkboxes.checkboxStatuses.bridges');
+  funcWithMiscRendering = assertReplaceAll(funcWithMiscRendering, /[ef]7\(this\.settings,19\)/g,
+    '$&&&window.checkboxes.checkboxStatuses.gates');
 
   //Snake, fruit, keys and boxes are drawn into the sprite layer, and the shadow is taken straight
   //off that layer's silhouette. When Shadow Included is off and something is hidden, duplicating
@@ -8989,10 +9716,10 @@ Same as replace, but throws an error if nothing is changed
   let shadowFnName = funcWithShadow_Origin.match(/^([$a-zA-Z0-9_]{1,6})=function/)[1];
   let sceneRegionRegex = new RegExp(
     '(this\\.[$a-zA-Z0-9_]{1,6}\\.render\\(a,b,[$a-zA-Z0-9_]{1,6}\\(this\\)\\);[\\s\\S]*?)' +
-    '(f7\\(this\\.settings,4\\)\\|\\|' + shadowFnName.replace(/\$/g, '\\$') + '\\(this\\);)');
+    '([ef]7\\(this\\.settings,4\\)\\|\\|' + shadowFnName.replace(/\$/g, '\\$') + '\\(this\\);)');
 
   funcWithMiscRendering = assertReplace(funcWithMiscRendering, sceneRegionRegex,
-    'window.visiBeginShadowPass(this,f7(this.settings,4));$1$2if(window.visiEndShadowPass(this)){$1}');
+    'window.visiBeginShadowPass(this,this.ka.canvas.width!==this.context.canvas.width||this.ka.canvas.height!==this.context.canvas.height);$1$2if(window.visiEndShadowPass(this)){$1}');
 
   //eval(funcWithMiscRendering);
 
@@ -9085,21 +9812,9 @@ if(window.NepDebug){
   //eval(funcWithPortals);
 
   //For flashing snake body when we eat an apple
-  let eatInsideRegex = /if\([$a-zA-Z0-9_]{0,6}\|\|[$a-zA-Z0-9_]{0,6}\){(?:var|let|const) [$a-zA-Z0-9_]{0,6}=[$a-zA-Z0-9_]{0,6}\.[$a-zA-Z0-9_]{0,6};[$a-zA-Z0-9_]{0,6}\|\|\([$a-zA-Z0-9_]{0,6}=!0/;
-
-  let funcWithEat_Origin = findFunctionInCode(code, /tick\(\)$/,
-    eatInsideRegex,
-    deleteModDebug);
-
-  let funcWithEat = findFunctionInCode(code, /tick\(\)$/,
-    eatInsideRegex,
-    deleteModDebug);
-
-  funcWithEat = assertReplace(funcWithEat, /if\([$a-zA-Z0-9_]{0,6}\|\|[$a-zA-Z0-9_]{0,6}\){/,
-    '$& window.checkboxes.checkboxStatuses.flashSnake && window.brieflyShowSnake();');
-
-  //funcWithEat = swapInMainClassPrototype(mainClass, funcWithEat);
-  //eval(funcWithEat);
+  let eatInsideRegex = /[a-z]\&&\([a-z]\.[$a-zA-Z0-9_]{0,6}=!1,[a-z]\.[$a-zA-Z0-9_]{0,6}=!0,[a-z]\.[$a-zA-Z0-9_]{0,6}=10\)/;
+  code = assertReplace(code, eatInsideRegex,
+    '$&;window.checkboxes.checkboxStatuses.flashSnake&&window.brieflyShowSnake()');
 
   //Mine radius: the dashed red circle plus its fading blast preview. Both are helper calls
   //shaped `helper(renderer, centre, offsetX, offsetY, radius)`, once for the board and once per
@@ -9136,7 +9851,7 @@ if(window.NepDebug){
     shieldsFnName + '=function($1){if(!window.checkboxes.checkboxStatuses.shields)return;');
 
   //Gates (mode 19): BbF dashed rectangles
-  let gatesFnMatch = code.match(/([$a-zA-Z0-9_]{1,6})=function\(([$a-zA-Z0-9_]{1,6}),([$a-zA-Z0-9_]{1,6})\)\{for\(let [$a-zA-Z0-9_]{1,6} of [$a-zA-Z0-9_.]{1,20}\.Yfa\)/);
+  let gatesFnMatch = code.match(/([$a-zA-Z0-9_]{1,6})=function\(([$a-zA-Z0-9_]{1,6}),([$a-zA-Z0-9_]{1,6})\)\{for\(let [$a-zA-Z0-9_]{1,6} of [$a-zA-Z0-9_.]{1,20}\.(?:Yfa|pfa)\)/);
   if (!gatesFnMatch) {
     throw new Error('Visibility mod: could not find gate drawer (BbF)');
   }
@@ -9155,8 +9870,8 @@ if(window.NepDebug){
 
   //Border chrome CSS background-color (same palette index as the canvas border fill)
   code = assertReplaceAll(code,
-    /_\.on\(([$a-zA-Z0-9_.()]{1,40}),"background-color",([$a-zA-Z0-9_]{1,6}\([$a-zA-Z0-9_.]{1,20},[$a-zA-Z0-9_.]{1,20},3\))\)/g,
-    '($1&&window.visiBorderEls.push($1),window.visiBorderColor=$2,_.on($1,"background-color",window.checkboxes.checkboxStatuses.border?$2:"transparent"))'
+    /_\.(?:on|pn)\(([$a-zA-Z0-9_.()]{1,40}),"background-color",([$a-zA-Z0-9_]{1,6}\([$a-zA-Z0-9_.]{1,30},[$a-zA-Z0-9_.]{1,30},3\))\)/g,
+    '($1&&window.visiBorderEls.push($1),window.visiBorderColor=$2,_.pn($1,"background-color",window.checkboxes.checkboxStatuses.border?$2:"transparent"))'
   );
 
     // Mines
@@ -9226,7 +9941,6 @@ if(window.NepDebug){
   code = code.assertReplace(funcWithKeyRendering_Origin, funcWithKeyRendering)
   code = code.assertReplace(funcWithBodyLines_Origin, funcWithBodyLines)
   code = code.assertReplace(funcWithPortals_Origin, funcWithPortals)
-  code = code.assertReplace(funcWithEat_Origin, funcWithEat)
 
   // Disables statue break animation
   if (!window.catchError(/[$a-zA-Z0-9_]{0,6}\(this\.[$a-zA-Z0-9_]{0,6},[a-z],new _\.[$a-zA-Z0-9_]{0,6}\([a-z],[a-z]\),[a-z],[a-z]\.[$a-zA-Z0-9_]{0,6}\)/g, code)) {
@@ -9296,7 +10010,7 @@ window.MorePudding.alterSnakeCode = function(code) {
 window.MorePudding.runCodeAfter = function() {
   //window.moreMenu.runCodeAfter();
   let modIndicator = document.createElement('div');
-  modIndicator.style='position:absolute;font-family:roboto;color:white;font-size:14px;padding-top:4px;padding-left:30px;user-select: none;';
+  modIndicator.style='position:absolute;font-family:Arial,sans-serif;color:white;font-size:14px;padding-top:4px;padding-left:30px;user-select: none;';
   modIndicator.textContent = 'More Pudding Mod';
   let canvasNode = document.getElementsByClassName('jNB0Ic')[0];
   document.getElementsByClassName('EjCLSb')[0].insertBefore(modIndicator, canvasNode);
@@ -9316,7 +10030,7 @@ window.CandyMod.runCodeBefore = function () {
   // MoreMenu intentionally omitted until it supports v12.
   // Future: window.moreMenu.runCodeBefore();
 
-  console.log("Adding Candy Mode (v12)");
+  console.log("Adding Candy Mode (v13)");
 
   window.CANDY_ICON = "https://i.postimg.cc/rsSFx6gg/candy.png";
 
@@ -9390,7 +10104,7 @@ window.CandyMod.alterSnakeCode = function (code) {
   // MoreMenu intentionally omitted until it supports v12.
   // Future: code = window.moreMenu.alterSnakeCode(code);
 
-  console.log("Coding Candy Mode into the game (v12)");
+  console.log("Coding Candy Mode into the game (v13)");
 
   window.updateCandyTrophySRC = function updateCandyTrophySRC() {
     if (window.trophy_src) {
@@ -9421,12 +10135,12 @@ window.CandyMod.alterSnakeCode = function (code) {
   // Blender's mode summary strip builds trophy_NN.png per selected mode; custom
   // modes have no such file, so point them at their own icons.
   let blender_mode_icons = new RegExp(
-    /m\$E\(d,`https:\/\/www\.google\.com\/logos\/fnbx\/\$\{`snake_arcade\/v22\/trophy_\$\{j\$E\(c\)\}\.png`\}`\)/
+    /b3E\(d,`https:\/\/www\.google\.com\/logos\/fnbx\/\$\{`snake_arcade\/v22\/trophy_\$\{Z2E\(c\)\}\.png`\}`\)/
   );
   if (code.match(blender_mode_icons)) {
     code = code.assertReplace(
       blender_mode_icons,
-      `m$E(d,(c===window.CANDY_MODE)?window.CANDY_ICON:(c===window.CHESS_MODE)?window.CHESS_ICON:\`https://www.google.com/logos/fnbx/\${\`snake_arcade/v22/trophy_\${j$E(c)}.png\`}\`)`
+      `b3E(d,(c===window.CANDY_MODE)?window.CANDY_ICON:(c===window.CHESS_MODE)?window.CHESS_ICON:\`https://www.google.com/logos/fnbx/\${\`snake_arcade/v22/trophy_\${Z2E(c)}.png\`}\`)`
     );
   }
 
@@ -9441,13 +10155,11 @@ window.CandyMod.alterSnakeCode = function (code) {
 
   // +1..+6 extra length on candy (and blender with candy toggle)
   let candy_logic = new RegExp(
-    /f7\(this\.settings,3\)\?this\.oa\.Ta\+=2:this\.oa\.Ta\+=1;/
+    /e7\(a\.settings,3\)\?a\.oa\.Ua\+=2:a\.oa\.Ua\+=1;/
   );
   let candy_match = code.match(candy_logic);
   if (candy_match) {
-    let snake_length = candy_match[0].split("+=")[0].split("?")[1] || "this.oa.Ta";
-    // Prefer the +=1 target: this.oa.Ta
-    snake_length = "this.oa.Ta";
+    let snake_length = "a.oa.Ua";
     let candy_logic_set = `${candy_match[0]}
     if(window.isCandyActive && window.isCandyActive()) {
         ${snake_length} += Math.floor(Math.random() * 6);
@@ -9460,12 +10172,12 @@ window.CandyMod.alterSnakeCode = function (code) {
 
   // Inject candy/chess into blender mode set builder
   let blender_foreach = new RegExp(
-    /a\.Ta\.forEach\(\(c,d\)=>\{_\.zm\(c,"lH9Ipd"\)&&b\.push\(d\)\}\)/
+    /a\.Ua\.forEach\(\(c,d\)=>\{_\.zm\(c,"lH9Ipd"\)&&b\.push\(d\)\}\)/
   );
   if (code.match(blender_foreach)) {
     code = code.assertReplace(
       blender_foreach,
-      `a.Ta.forEach((c,d)=>{_.zm(c,"lH9Ipd")&&b.push(d)});if(window.candy_blending&&window.CANDY_MODE!=null)b.push(window.CANDY_MODE);if(window.chess_blending&&window.CHESS_MODE!=null)b.push(window.CHESS_MODE)`
+      `a.Ua.forEach((c,d)=>{_.zm(c,"lH9Ipd")&&b.push(d)});if(window.candy_blending&&window.CANDY_MODE!=null)b.push(window.CANDY_MODE);if(window.chess_blending&&window.CHESS_MODE!=null)b.push(window.CHESS_MODE)`
     );
   } else {
     console.error("CandyMod: failed to find blender forEach regex");
@@ -9474,12 +10186,12 @@ window.CandyMod.alterSnakeCode = function (code) {
   // Map custom blender panel icons into Ta with correct mode ids.
   // Must stay an expression (ternary false-branch) — a bare {let ...} block is a SyntaxError.
   let ta_fallback = new RegExp(
-    /this\.Ta\.set\(22,e\),this\.kl\.set\(e,22\)/
+    /this\.Ua\.set\(22,e\),this\.Uk\.set\(e,22\)/
   );
   if (code.match(ta_fallback)) {
     code = code.assertReplace(
       ta_fallback,
-      `((function(el){var s=el.children[0]&&el.children[0].src||"",m=22;if(window.CANDY_MODE!=null&&s.indexOf("rsSFx6gg")>=0)m=window.CANDY_MODE;else if(window.CHESS_MODE!=null&&s.indexOf("ZqK0CB95")>=0)m=window.CHESS_MODE;this.Ta.set(m,el);this.kl.set(el,m);}).call(this,e))`
+      `((function(el){var s=el.children[0]&&el.children[0].src||"",m=22;if(window.CANDY_MODE!=null&&s.indexOf("rsSFx6gg")>=0)m=window.CANDY_MODE;else if(window.CHESS_MODE!=null&&s.indexOf("ZqK0CB95")>=0)m=window.CHESS_MODE;this.Ua.set(m,el);this.Uk.set(el,m);}).call(this,e))`
     );
   }
 
@@ -9501,7 +10213,7 @@ window.ChessMod = {};
 ////////////////////////////////////////////////////////////////////
 
 window.ChessMod.runCodeBefore = function () {
-  console.log("Adding Chess Mode (v12, independent mode)");
+  console.log("Adding Chess Mode (v13, independent mode)");
 
   window.CHESS_ICON = "https://i.postimg.cc/ZqK0CB95/bn.png";
 
@@ -9708,7 +10420,7 @@ window.ChessMod.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.ChessMod.alterSnakeCode = function (code) {
-  console.log("Coding Chess Mode into the game (v12)");
+  console.log("Coding Chess Mode into the game (v13)");
 
   // Ensure fruits exist if alter runs in odd order
   if (window.new_fruit && !window._chessFruitsInjected) {
@@ -9719,11 +10431,11 @@ window.ChessMod.alterSnakeCode = function (code) {
   // poison. Split pieces out of that branch so the Chess Pieces row applies.
   // Both the normal and the twin/infinity mirrored draw carry the same guard.
   let fruitGate =
-    "(window.visiFullPass || (b.nla ? window.checkboxes.checkboxStatuses.poison : window.checkboxes.checkboxStatuses.fruit))";
+    "(window.visiFullPass || (b.Oka ? window.checkboxes.checkboxStatuses.poison : window.checkboxes.checkboxStatuses.fruit))";
   if (code.includes(fruitGate)) {
     code = code.replaceAll(
       fruitGate,
-      "(window.visiFullPass || (b.nla ? window.checkboxes.checkboxStatuses.poison : (b.isPiece ? window.checkboxes.checkboxStatuses.chessPieces : window.checkboxes.checkboxStatuses.fruit)))"
+      "(window.visiFullPass || (b.Oka ? window.checkboxes.checkboxStatuses.poison : (b.isPiece ? window.checkboxes.checkboxStatuses.chessPieces : window.checkboxes.checkboxStatuses.fruit)))"
     );
   } else {
     console.error("ChessMod: failed to find Visibility fruit gate for chess pieces");
@@ -9772,7 +10484,7 @@ window.ChessMod.alterSnakeCode = function (code) {
   window.muted = false;
 
   // Shield field name on apple objects in v12
-  window.chess_shield_field = "Oba";
+  window.chess_shield_field = "nba";
 
   window.shield_all = function shield_all() {
     if (!window.appleArray) return;
@@ -9834,7 +10546,7 @@ window.ChessMod.alterSnakeCode = function (code) {
       let apple = window.appleArray[index];
       if (
         apple.isPiece &&
-        !apple.nla &&
+        !apple.Oka &&
         apple.pos.x == x &&
         apple.pos.y == y &&
         window.head_color != apple.ChessColor
@@ -10141,8 +10853,8 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (
       snake &&
       snake.settings &&
-      typeof f7 === "function" &&
-      f7(snake.settings, 7) &&
+      typeof e7 === "function" &&
+      e7(snake.settings, 7) &&
       typeof k7 === "function" &&
       board
     ) {
@@ -10160,6 +10872,9 @@ window.ChessMod.alterSnakeCode = function (code) {
   };
 
   window.chess_make_pos = function chess_make_pos(x, y) {
+    if (typeof _ !== "undefined" && _ && typeof _.Od === "function") {
+      return new _.Od(x, y);
+    }
     if (typeof _ !== "undefined" && _ && typeof _.Sd === "function") {
       return new _.Sd(x, y);
     }
@@ -10188,9 +10903,15 @@ window.ChessMod.alterSnakeCode = function (code) {
         if (ok(p)) return p;
       }
     }
-    if (game && typeof game.Tb === "function") {
+    const nativeFree =
+      game && typeof game.Rb === "function"
+        ? game.Rb.bind(game)
+        : game && typeof game.Tb === "function"
+          ? game.Tb.bind(game)
+          : null;
+    if (nativeFree) {
       for (let attempt = 0; attempt < 8; attempt++) {
-        const p = game.Tb(excludeRef || null, 2);
+        const p = nativeFree(excludeRef || null, 2);
         if (ok(p)) return p;
       }
     }
@@ -10213,7 +10934,7 @@ window.ChessMod.alterSnakeCode = function (code) {
     el.ChessColor = window.color_turn;
     el.isPiece = true;
     el.type = window[window.color_turn + el.ChessPiece];
-    el.Oba = undefined;
+    el.nba = undefined;
     window.SwitchTurn();
   };
 
@@ -10285,7 +11006,7 @@ window.ChessMod.alterSnakeCode = function (code) {
       }
       if (typeof pickType === "function") dup.type = pickType(mgr);
       // Cm is the game's spawn-in animation flag (cleared by manager refresh()).
-      dup.Cm = true;
+      dup.wm = true;
       dup.cM = 0;
       dup.nD = 0;
       window.chess_assign_piece(dup);
@@ -10327,7 +11048,11 @@ window.ChessMod.alterSnakeCode = function (code) {
     }
     // Prefer native freePos via game.Tb when sanitizing qaF results.
     const freePos =
-      window.__remixGame && typeof window.__remixGame.Tb === "function"
+      window.__remixGame && typeof window.__remixGame.Rb === "function"
+        ? function (board, excl, radius) {
+            return window.__remixGame.Rb(excl, radius);
+          }
+        : window.__remixGame && typeof window.__remixGame.Tb === "function"
         ? function (board, excl, radius) {
             return window.__remixGame.Tb(excl, radius);
           }
@@ -10342,32 +11067,32 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (!window.isChessActive || !window.isChessActive()) return false;
     if (!window.head_pos || !window.appleArray) return false;
     let apple = window.findApple(window.head_pos[0], window.appleArray);
-    return !!(apple && apple.isPiece && !apple.nla);
+    return !!(apple && apple.isPiece && !apple.Oka);
   };
 
-  // --- Code patches for v12 ---
+  // --- Code patches for v13 ---
 
-  // Make Chess activate Shield physics via f7(..., 15)
+  // Make Chess activate Shield physics via e7(..., 15)
   let f7_regex = new RegExp(
-    /f7=function\(a,b\)\{return a\.Qa\?a\.Jc\.has\(b\):a\.ub===22&&a\.ZSa\.has\(b\)\?!0:a\.ub===b\}/
+    /e7=function\(a,b\)\{return a\.Qa\?a\.Lc\.has\(b\):a\.ub===22&&a\.rSa\.has\(b\)\?!0:a\.ub===b\}/
   );
   if (code.match(f7_regex)) {
     code = code.assertReplace(
       f7_regex,
-      `f7=function(a,b){var r=a.Qa?a.Jc.has(b):a.ub===22&&a.ZSa.has(b)?!0:a.ub===b;if(!r&&b===15&&window.CHESS_MODE!=null){if(a.ub===window.CHESS_MODE)return!0;if(a.ub===22&&a.ZSa&&a.ZSa.has(window.CHESS_MODE))return!0;}return r}`
+      `e7=function(a,b){var r=a.Qa?a.Lc.has(b):a.ub===22&&a.rSa.has(b)?!0:a.ub===b;if(!r&&b===15&&window.CHESS_MODE!=null){if(a.ub===window.CHESS_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.CHESS_MODE))return!0;}return r}`
     );
   } else {
-    console.error("ChessMod: failed to patch f7");
+    console.error("ChessMod: failed to patch e7");
   }
 
   // Inject into game tick: track head + run chess unlock logic BEFORE other updates.
   // Visibility may have already patched this tick(); keep the matcher loose.
   // Also expose __remixGame for the Playwright harness.
   let tick_regex = /\}tick\(\)\{/;
-  if (code.match(/\}tick\(\)\{var a=this\.Aa,b=this\.lj;/)) {
+  if (code.match(/\}tick\(\)\{var a=this\.Aa,b=this\.nj;/)) {
     code = code.assertReplace(
-      /\}tick\(\)\{var a=this\.Aa,b=this\.lj;/,
-      `}tick(){window.__remixGame=this;if(window.isChessActive&&window.isChessActive()){try{window.head_pos=this.oa.ka;window.head_dir=this.oa.direction;window.appleArray=this.wa.ka;window.chess_tick_logic();}catch(_ce){console.error("ChessMod: tick failed",_ce);}}var a=this.Aa,b=this.lj;`
+      /\}tick\(\)\{var a=this\.Aa,b=this\.nj;/,
+      `}tick(){window.__remixGame=this;if(window.isChessActive&&window.isChessActive()){try{window.head_pos=this.oa.ka;window.head_dir=this.oa.direction;window.appleArray=this.wa.ka;window.chess_tick_logic();}catch(_ce){console.error("ChessMod: tick failed",_ce);}}var a=this.Aa,b=this.nj;`
     );
   } else if (code.match(tick_regex)) {
     code = code.assertReplace(
@@ -10378,32 +11103,31 @@ window.ChessMod.alterSnakeCode = function (code) {
     console.error("ChessMod: failed to find tick()");
   }
 
-  // On apple manager reset: chess state + Portal pair layout (iaF force).
+  // On apple manager reset: chess state + Portal pair layout (Y3E force).
   // Pudding prepends timer code to reset(){ so we must NOT match reset(){this.ka=[] —
-  // only the inner this.ka=[] / iaF line that still exists after Pudding.
-  if (code.match(/this\.ka=\[\];var a=iaF\(this\.settings\)/)) {
+  // only the inner this.ka=[] / Y3E line that still exists after Pudding.
+  if (code.match(/this\.ka=\s*\[\];var a=Y3E\(this\.settings\)/)) {
     code = code.assertReplace(
-      /this\.ka=\[\];var a=iaF\(this\.settings\)/,
-      `this.ka=[];window.appleArray=this.ka;window.head_dir="RIGHT";window.head_state="OPEN";window.head_color="NONE";window.color_turn="w";window.just_ate="fruit";var a=iaF(this.settings)||!!(window.isChessActive&&window.isChessActive())`
+      /this\.ka=\s*\[\];var a=Y3E\(this\.settings\)/,
+      `this.ka=[];window.appleArray=this.ka;window.head_dir="RIGHT";window.head_state="OPEN";window.head_color="NONE";window.color_turn="w";window.just_ate="fruit";var a=Y3E(this.settings)||!!(window.isChessActive&&window.isChessActive())`
     );
-  } else if (code.match(/var a=iaF\(this\.settings\)/)) {
+  } else if (code.match(/var a=Y3E\(this\.settings\)/)) {
     code = code.assertReplace(
-      /var a=iaF\(this\.settings\)/,
-      `var a=iaF(this.settings)||!!(window.isChessActive&&window.isChessActive())`
+      /var a=Y3E\(this\.settings\)/,
+      `var a=Y3E(this.settings)||!!(window.isChessActive&&window.isChessActive())`
     );
   } else {
-    console.error("ChessMod: failed to find iaF apple-layout flag");
+    console.error("ChessMod: failed to find Y3E apple-layout flag");
   }
 
-  // After shield Oba init on reset: turn the apples into alternating pieces, start OPEN
-  // Note: Pudding rewrites $$E -> doubleDE before this runs
+  // After shield nba init on reset: turn the apples into alternating pieces, start OPEN
   let after_shield_init = new RegExp(
-    /if\(f7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.Oba=doubleDE\(this,q\.pos\);/
+    /if\(e7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.nba=\s*P3E\(this,q\.pos\);/
   );
   if (code.match(after_shield_init)) {
     code = code.assertReplace(
       after_shield_init,
-      `if(f7(this.settings,15))for(let q of this.ka)q.Oba=doubleDE(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}`
+      `if(e7(this.settings,15))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}`
     );
   } else {
     console.error("ChessMod: failed to find shield init on reset");
@@ -10411,41 +11135,41 @@ window.ChessMod.alterSnakeCode = function (code) {
 
   // Collision cleanup: remove doomed apples in pairs while chess (keep even count)
   let pair_splice = new RegExp(
-    /f7\(this\.settings,2\)\?n%2===0\?\(this\.ka\.splice\(n,2\),n--\):\(this\.ka\.splice\(n-\s*1,2\),n-=2\)/
+    /e7\(this\.settings,2\)\?n%2===0\?\(this\.ka\.splice\(n,2\),n--\):\(this\.ka\.splice\(n-\s*1,2\),n-=2\)/
   );
   if (code.match(pair_splice)) {
     code = code.assertReplace(
       pair_splice,
-      `(f7(this.settings,2)||(window.isChessActive&&window.isChessActive()))?n%2===0?(this.ka.splice(n,2),n--):(this.ka.splice(n-1,2),n-=2)`
+      `(e7(this.settings,2)||(window.isChessActive&&window.isChessActive()))?n%2===0?(this.ka.splice(n,2),n--):(this.ka.splice(n-1,2),n-=2)`
     );
   } else {
     console.error("ChessMod: failed to find pair-splice on reset");
   }
 
-  // Portal pair-spawn in qaF: include chess so fruit eats / dice / bomb double via all-or-nothing pairs
+  // Portal pair-spawn in f4E: include chess so fruit eats / dice / bomb double via all-or-nothing pairs
   let qaf_pair = new RegExp(
-    /f7\(a\.settings,\s*2\)&&!f\?/
+    /e7\(a\.settings,\s*2\)&&!f\?/
   );
   if (code.match(qaf_pair)) {
     code = code.assertReplace(
       qaf_pair,
-      `(f7(a.settings,2)||(window.isChessActive&&window.isChessActive()))&&!f?`
+      `(e7(a.settings,2)||(window.isChessActive&&window.isChessActive()))&&!f?`
     );
   } else {
-    console.error("ChessMod: failed to find qaF portal pair condition");
+    console.error("ChessMod: failed to find f4E portal pair condition");
   }
 
-  // After qaF adds apples (+ optional shields), convert new ones to chess pieces
+  // After f4E adds apples (+ optional shields), convert new ones to chess pieces
   let qaf_after_oba = new RegExp(
-    /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(f7\(a\.settings,15\)\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.Oba=doubleDE\(a,c\.pos\);/
+    /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(e7\(a\.settings,15\)\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.nba=P3E\(a,c\.pos\);/
   );
   if (code.match(qaf_after_oba)) {
     code = code.assertReplace(
       qaf_after_oba,
-      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(f7(a.settings,15))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.Oba=doubleDE(a,c.pos);if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}`
+      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(e7(a.settings,15))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.nba=P3E(a,c.pos);if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}`
     );
   } else {
-    console.error("ChessMod: failed to find qaF trailing convert hook");
+    console.error("ChessMod: failed to find f4E trailing convert hook");
   }
 
   // Track selected fruit
@@ -10468,12 +11192,12 @@ window.ChessMod.alterSnakeCode = function (code) {
 
   // Do NOT multiply dice roll by 2 — Portal pairing already doubles (R apples -> 2R pieces).
 
-  // Score / eat: pieces never score; fruit scores; native qaF pairing handles respawn pieces
-  let score_regex = new RegExp(/this\.Oh\+\+;/);
+  // Score / eat: pieces never score; fruit scores. Eat helper uses a.Sh++.
+  let score_regex = new RegExp(/a\.Sh\+\+;/);
   if (code.match(score_regex)) {
     code = code.assertReplace(
       score_regex,
-      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';this.Oh++;}else if(_ae&&_ae.isPiece){window.just_ate='piece';window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}else{window.just_ate='fruit';this.Oh++;}}else{this.Oh++;}`
+      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';a.Sh++;}else if(_ae&&_ae.isPiece){window.just_ate='piece';window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}else{window.just_ate='fruit';a.Sh++;}}else{a.Sh++;}`
     );
   } else {
     console.error("ChessMod: failed to find score increment");
@@ -10482,67 +11206,62 @@ window.ChessMod.alterSnakeCode = function (code) {
   // Don't grow when eating a chess piece. This runs before the score hook, so the
   // piece is still in appleArray and can be detected live.
   let snakeLength = new RegExp(
-    /f7\(this\.settings,3\)\?this\.oa\.Ta\+=2:this\.oa\.Ta\+=1;/
+    /e7\(a\.settings,3\)\?a\.oa\.Ua\+=2:a\.oa\.Ua\+=1;/
   );
   if (code.match(snakeLength)) {
     code = code.assertReplace(
       snakeLength,
-      `f7(this.settings,3)?this.oa.Ta+=2:this.oa.Ta+=1;if(window.chess_eating_piece&&window.chess_eating_piece()){this.oa.Ta-=f7(this.settings,3)?2:1;}`
+      `e7(a.settings,3)?a.oa.Ua+=2:a.oa.Ua+=1;if(window.chess_eating_piece&&window.chess_eating_piece()){a.oa.Ua-=e7(a.settings,3)?2:1;}`
     );
   }
 
   // Also block Candy's random length bonus on chess piece pickup
   let candy_len_bonus = new RegExp(
-    /if\(window\.isCandyActive && window\.isCandyActive\(\)\) \{\s*this\.oa\.Ta \+= Math\.floor\(Math\.random\(\) \* 6\);\s*\}/
+    /if\(window\.isCandyActive && window\.isCandyActive\(\)\) \{\s*a\.oa\.Ua \+= Math\.floor\(Math\.random\(\) \* 6\);\s*\}/
   );
   if (code.match(candy_len_bonus)) {
     code = code.assertReplace(
       candy_len_bonus,
-      `if(window.isCandyActive && window.isCandyActive() && !(window.chess_eating_piece&&window.chess_eating_piece())) {this.oa.Ta += Math.floor(Math.random() * 6);}`
+      `if(window.isCandyActive && window.isCandyActive() && !(window.chess_eating_piece&&window.chess_eating_piece())) {a.oa.Ua += Math.floor(Math.random() * 6);}`
     );
   }
 
   // Prevent native shield clear from fighting chess shields:
-  // f7(this.settings,15)&&(maF(this.wa,Wd),...)
   let shield_clear = new RegExp(
-    /f7\(this\.settings,15\)&&\(maF\(this\.wa,([a-zA-Z0-9_$]+)\),/
+    /e7\(a\.settings,15\)&&\(b4E\(a\.wa,([a-zA-Z0-9_$]+)\),/
   );
   if (code.match(shield_clear)) {
     code = code.assertReplace(
       shield_clear,
-      `f7(this.settings,15)&&!(window.isChessActive&&window.isChessActive())&&(maF(this.wa,$1),`
+      `e7(a.settings,15)&&!(window.isChessActive&&window.isChessActive())&&(b4E(a.wa,$1),`
     );
   }
 
-  // Chess never uses the native reposition (Mn): Xh=!1 makes the game splice the
-  // eaten apple, so a piece eat removes only that piece and a fruit eat spawns
-  // exactly 2 fresh pieces through chess_fruit_respawn.
+  // Chess never uses native Vm reposition: e=!1 splices the eaten apple, so a
+  // piece eat removes only that piece and a fruit eat spawns exactly 2 fresh
+  // pieces through chess_fruit_respawn.
   // Dice (ka 4), Tally (ka 6) and pre-first-explosion Bomb (ka 5) keep their own
-  // refills, which the game fires when the board empties; Key/Soko spawn elsewhere.
+  // refills; Key/Soko spawn elsewhere.
   let spawn = new RegExp(
-    /else\{let Ni=e7\(this\.settings\)\|\|f7\(this\.settings,7\);Xh=this\.Mn\(vd,!Ni,null\)\}/
+    /e=!1;e7\(a\.settings,2\)\?e=!0:e7\(a\.settings,10\)&&d\.Oka\?e=!1:\(e=a\.settings\.ka!==6&&\(d7\(a\.settings\)\|\|e7\(a\.settings,7\)\),e=a\.Vm\(k,\s*!e,null\)\);/
   );
   if (code.match(spawn)) {
     code = code.assertReplace(
       spawn,
-      `else{if(window.isChessActive&&window.isChessActive()){Xh=!1;if(window.just_ate==='fruit'&&!(this.settings.ka===4||this.settings.ka===6||(this.settings.ka===5&&!this.hc)||f7(this.settings,8)||f7(this.settings,9))){window.chess_fruit_respawn(this.wa,h7,oaF,aaF);}}else{let Ni=e7(this.settings)||f7(this.settings,7);Xh=this.Mn(vd,!Ni,null);}}`
+      `e=!1;if(window.isChessActive&&window.isChessActive()){e=!1;if(window.just_ate==='fruit'&&!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.kc)||e7(a.settings,8)||e7(a.settings,9))){window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);}}else e7(a.settings,2)?e=!0:e7(a.settings,10)&&d.Oka?e=!1:(e=a.settings.ka!==6&&(d7(a.settings)||e7(a.settings,7)),e=a.Vm(k,!e,null));`
     );
   } else {
-    console.error("ChessMod: failed to find Mn respawn path");
+    console.error("ChessMod: failed to find Vm respawn path");
   }
 
-  // Tally wave refill (sdF) spawns 5 slots; Chess needs 10 pieces per wave.
-  // Each slot gets its own tally index, so we raise the slot count instead of
-  // routing through iaF pairing — paired slots share one sequence number, and
-  // since every Chess eat advances the tally counter the twin would never
-  // become edible again. Fewer than 10 spawn when the board has no room.
+  // Tally wave refill spawns 5 slots; Chess needs 10 pieces per wave.
   let tally_wave = new RegExp(
-    /var b=f7\(a\.settings,11\)\?10:5;a\.wa\.wa=1;/
+    /var b=e7\(a\.settings,11\)\?10:5;/
   );
   if (code.match(tally_wave)) {
     code = code.assertReplace(
       tally_wave,
-      `var b=(f7(a.settings,11)||(window.isChessActive&&window.isChessActive()))?10:5;a.wa.wa=1;`
+      `var b=(e7(a.settings,11)||(window.isChessActive&&window.isChessActive()))?10:5;`
     );
   } else {
     console.error("ChessMod: failed to find tally wave size");
@@ -10582,7 +11301,7 @@ window.BurgerMod = {};
 ////////////////////////////////////////////////////////////////////
 
 window.BurgerMod.runCodeBefore = function () {
-  console.log("Adding Burger Mode (v12)");
+  console.log("Adding Burger Mode (v13)");
 
   window.BURGER_ICON = "https://i.postimg.cc/13m2Cr16/burger.png";
 
@@ -10653,7 +11372,7 @@ window.BurgerMod.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.BurgerMod.alterSnakeCode = function (code) {
-  console.log("Coding Burger Mode into the game (v12)");
+  console.log("Coding Burger Mode into the game (v13)");
 
   window.isBurgerActive = function isBurgerActive() {
     return (
@@ -10703,7 +11422,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   };
 
   window.burger_assign_timer = function burger_assign_timer(apple, game) {
-    if (!apple || apple.nla) return;
+    if (!apple || apple.Oka) return;
     const t = window.burger_timer_roll(game);
     apple.burgerTimer = t;
     apple.burgerTimerMax = t;
@@ -10723,7 +11442,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   // Cache greyscale on the apple (updated from tick, every 3 ticks). Draw
   // reads apple.burgerGrey only — no per-frame math or canvas.filter.
   window.burger_update_grey = function burger_update_grey(apple) {
-    if (!apple || apple.nla || !(apple.burgerTimerMax > 0)) {
+    if (!apple || apple.Oka || !(apple.burgerTimerMax > 0)) {
       if (apple) apple.burgerGrey = 0;
       return;
     }
@@ -10742,7 +11461,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
     let n = 0;
     if (!apples) return 0;
     for (let i = 0; i < apples.length; i++) {
-      if (apples[i] && !apples[i].nla) n++;
+      if (apples[i] && !apples[i].Oka) n++;
     }
     return n;
   };
@@ -10757,7 +11476,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
     const limit = beforeIndex == null ? mgr.ka.length : beforeIndex;
     let removedBefore = 0;
     for (let i = mgr.ka.length - 1; i >= 0; i--) {
-      if (mgr.ka[i] && mgr.ka[i].nla) {
+      if (mgr.ka[i] && mgr.ka[i].Oka) {
         mgr.ka.splice(i, 1);
         if (i < limit) removedBefore++;
       }
@@ -10834,7 +11553,11 @@ window.BurgerMod.alterSnakeCode = function (code) {
         if (occupied.has(k)) continue;
         if (banned && banned.has(k)) continue;
         candidates.push(
-          typeof _ !== "undefined" && _.Sd ? new _.Sd(x, y) : { x: x, y: y }
+          typeof _ !== "undefined" && _.Od
+            ? new _.Od(x, y)
+            : typeof _ !== "undefined" && _.Sd
+              ? new _.Sd(x, y)
+              : { x: x, y: y }
         );
       }
     }
@@ -10875,7 +11598,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
     if (!apple) return;
     // Poison keeps the fruit's original max as its lifetime — no grey indicator.
     const life = apple.burgerTimerMax | 0;
-    apple.nla = true;
+    apple.Oka = true;
     apple.burgerGrey = 0;
     // Burger+Chess blender: expired pieces are plain poisons — not unlockable.
     apple.isPiece = false;
@@ -10908,7 +11631,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
       window.__qaF(mgr, pos, void 0, true, sequenceNumber, true);
       if (mgr.ka.length > before) {
         const last = mgr.ka[mgr.ka.length - 1];
-        last.nla = false;
+        last.Oka = false;
         if (sequenceNumber !== undefined) last.sequenceNumber = sequenceNumber;
         window.burger_assign_timer(last, game);
         return true;
@@ -10922,7 +11645,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
         apple.pos.y = pos.y;
       }
       apple.Cm = true;
-      apple.nla = false;
+      apple.Oka = false;
       apple.Gh = true;
       if (sequenceNumber !== undefined) apple.sequenceNumber = sequenceNumber;
       if (typeof window.__aaF === "function") apple.type = window.__aaF(mgr);
@@ -10957,7 +11680,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   ) {
     if (!apple) return false;
     // Poisons always count down (no tally gate, no grey overlay).
-    if (apple.nla) return true;
+    if (apple.Oka) return true;
     // Tally: only the current index ages for fresh fruit.
     if (game.settings && game.settings.ka === 6) {
       const cur = game.wa ? game.wa.wa : 1;
@@ -10978,7 +11701,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
       const a = apples[i];
       if (!window.burger_apple_timer_eligible(game, a)) continue;
       if (a.burgerTimer == null) {
-        if (a.nla) {
+        if (a.Oka) {
           const t = window.burger_timer_roll(game);
           a.burgerTimer = t;
           a.burgerTimerMax = t;
@@ -10995,9 +11718,9 @@ window.BurgerMod.alterSnakeCode = function (code) {
       a.burgerTimer = (a.burgerTimer | 0) - 1;
       if (a.burgerTimer <= 0) {
         a.burgerTimer = 0;
-        if (!a.nla) a.burgerGrey = 100;
+        if (!a.Oka) a.burgerGrey = 100;
         toExpire.push(a);
-      } else if (!a.nla && (a.burgerTimerMax - a.burgerTimer) % 3 === 0) {
+      } else if (!a.Oka && (a.burgerTimerMax - a.burgerTimer) % 3 === 0) {
         // Only refresh the cached overlay every 3 ticks (fresh fruit only).
         window.burger_update_grey(a);
       }
@@ -11006,7 +11729,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
       if (game.lj) break;
       const a = toExpire[i];
       if (apples.indexOf(a) < 0) continue;
-      if (a.nla) window.burger_despawn_poison(game, a);
+      if (a.Oka) window.burger_despawn_poison(game, a);
       else window.burger_expire_apple(game, a);
     }
   };
@@ -11021,7 +11744,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
     window.just_ate = "fruit";
     window.burger_fruits_eaten = (window.burger_fruits_eaten | 0) + 1;
     const eaten = game.wa.ka[eatenIndex | 0];
-    if (eaten && !eaten.nla) {
+    if (eaten && !eaten.Oka) {
       eaten.burgerTimer = null;
       eaten.burgerTimerMax = null;
       eaten.burgerGrey = 0;
@@ -11035,7 +11758,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
     // new spawn) get a roll. Existing countdowns are left alone.
     for (let i = 0; i < game.wa.ka.length; i++) {
       const a = game.wa.ka[i];
-      if (a && !a.nla && a.burgerTimer == null) {
+      if (a && !a.Oka && a.burgerTimer == null) {
         window.burger_assign_timer(a, game);
       }
     }
@@ -11047,87 +11770,87 @@ window.BurgerMod.alterSnakeCode = function (code) {
   // it helps to see the exact text it was matched against.
   if (window.RemixDebug) window.__remixPreBurgerCode = code;
 
-  // Extend Chess-patched f7 (or raw) so Burger activates Poison mode (10).
+  // Extend Chess-patched e7 (or raw) so Burger activates Poison mode (10).
   if (
     code.match(
-      /f7=function\(a,b\)\{var r=a\.Qa\?a\.Jc\.has\(b\):a\.ub===22&&a\.ZSa\.has\(b\)\?!0:a\.ub===b;if\(!r&&b===15&&window\.CHESS_MODE!=null\)/
+      /e7=function\(a,b\)\{var r=a\.Qa\?a\.Lc\.has\(b\):a\.ub===22&&a\.rSa\.has\(b\)\?!0:a\.ub===b;if\(!r&&b===15&&window\.CHESS_MODE!=null\)/
     )
   ) {
     code = code.assertReplace(
-      /f7=function\(a,b\)\{var r=a\.Qa\?a\.Jc\.has\(b\):a\.ub===22&&a\.ZSa\.has\(b\)\?!0:a\.ub===b;if\(!r&&b===15&&window\.CHESS_MODE!=null\)\{if\(a\.ub===window\.CHESS_MODE\)return!0;if\(a\.ub===22&&a\.ZSa&&a\.ZSa\.has\(window\.CHESS_MODE\)\)return!0;\}return r\}/,
-      `f7=function(a,b){var r=a.Qa?a.Jc.has(b):a.ub===22&&a.ZSa.has(b)?!0:a.ub===b;if(!r&&b===15&&window.CHESS_MODE!=null){if(a.ub===window.CHESS_MODE)return!0;if(a.ub===22&&a.ZSa&&a.ZSa.has(window.CHESS_MODE))return!0;}if(!r&&b===10&&window.BURGER_MODE!=null){if(a.ub===window.BURGER_MODE)return!0;if(a.ub===22&&a.ZSa&&a.ZSa.has(window.BURGER_MODE))return!0;}return r}`
+      /e7=function\(a,b\)\{var r=a\.Qa\?a\.Lc\.has\(b\):a\.ub===22&&a\.rSa\.has\(b\)\?!0:a\.ub===b;if\(!r&&b===15&&window\.CHESS_MODE!=null\)\{if\(a\.ub===window\.CHESS_MODE\)return!0;if\(a\.ub===22&&a\.rSa&&a\.rSa\.has\(window\.CHESS_MODE\)\)return!0;\}return r\}/,
+      `e7=function(a,b){var r=a.Qa?a.Lc.has(b):a.ub===22&&a.rSa.has(b)?!0:a.ub===b;if(!r&&b===15&&window.CHESS_MODE!=null){if(a.ub===window.CHESS_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.CHESS_MODE))return!0;}if(!r&&b===10&&window.BURGER_MODE!=null){if(a.ub===window.BURGER_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BURGER_MODE))return!0;}return r}`
     );
   } else if (
     code.match(
-      /f7=function\(a,b\)\{return a\.Qa\?a\.Jc\.has\(b\):a\.ub===22&&a\.ZSa\.has\(b\)\?!0:a\.ub===b\}/
+      /e7=function\(a,b\)\{return a\.Qa\?a\.Lc\.has\(b\):a\.ub===22&&a\.rSa\.has\(b\)\?!0:a\.ub===b\}/
     )
   ) {
     code = code.assertReplace(
-      /f7=function\(a,b\)\{return a\.Qa\?a\.Jc\.has\(b\):a\.ub===22&&a\.ZSa\.has\(b\)\?!0:a\.ub===b\}/,
-      `f7=function(a,b){var r=a.Qa?a.Jc.has(b):a.ub===22&&a.ZSa.has(b)?!0:a.ub===b;if(!r&&b===10&&window.BURGER_MODE!=null){if(a.ub===window.BURGER_MODE)return!0;if(a.ub===22&&a.ZSa&&a.ZSa.has(window.BURGER_MODE))return!0;}return r}`
+      /e7=function\(a,b\)\{return a\.Qa\?a\.Lc\.has\(b\):a\.ub===22&&a\.rSa\.has\(b\)\?!0:a\.ub===b\}/,
+      `e7=function(a,b){var r=a.Qa?a.Lc.has(b):a.ub===22&&a.rSa.has(b)?!0:a.ub===b;if(!r&&b===10&&window.BURGER_MODE!=null){if(a.ub===window.BURGER_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BURGER_MODE))return!0;}return r}`
     );
   } else {
-    console.error("BurgerMod: failed to patch f7 for poison mode");
+    console.error("BurgerMod: failed to patch e7 for poison mode");
   }
 
-  // Classic layout: iaF must ignore Burger's f7(10).
-  if (code.match(/iaF=function\(a\)\{return f7\(a,2\)\|\|f7\(a,8\)\|\|f7\(a,9\)\|\|f7\(a,10\)\}/)) {
+  // Classic layout: Y3E must ignore Burger's e7(10).
+  if (code.match(/Y3E=function\(a\)\{return e7\(a,2\)\|\|e7\(a,8\)\|\|e7\(a,9\)\|\|e7\(a,10\)\}/)) {
     code = code.assertReplace(
-      /iaF=function\(a\)\{return f7\(a,2\)\|\|f7\(a,8\)\|\|f7\(a,9\)\|\|f7\(a,10\)\}/,
-      `iaF=function(a){return f7(a,2)||f7(a,8)||f7(a,9)||(f7(a,10)&&!(window.isBurgerActive&&window.isBurgerActive()))}`
+      /Y3E=function\(a\)\{return e7\(a,2\)\|\|e7\(a,8\)\|\|e7\(a,9\)\|\|e7\(a,10\)\}/,
+      `Y3E=function(a){return e7(a,2)||e7(a,8)||e7(a,9)||(e7(a,10)&&!(window.isBurgerActive&&window.isBurgerActive()))}`
     );
   } else {
-    console.error("BurgerMod: failed to patch iaF");
+    console.error("BurgerMod: failed to patch Y3E");
   }
 
-  // Suppress Poison's paF auto-poison twin spawn for Burger.
-  if (code.match(/f7\(a\.settings,10\)&&!f&&paF\(a\)/)) {
+  // Suppress Poison's e4E auto-poison twin spawn for Burger.
+  if (code.match(/e7\(a\.settings,10\)&&!f&&e4E\(a\)/)) {
     code = code.assertReplace(
-      /f7\(a\.settings,10\)&&!f&&paF\(a\)/,
-      `f7(a.settings,10)&&!f&&!(window.isBurgerActive&&window.isBurgerActive())&&paF(a)`
+      /e7\(a\.settings,10\)&&!f&&e4E\(a\)/,
+      `e7(a.settings,10)&&!f&&!(window.isBurgerActive&&window.isBurgerActive())&&e4E(a)`
     );
   } else {
-    console.error("BurgerMod: failed to patch paF gate");
+    console.error("BurgerMod: failed to patch e4E gate");
   }
 
   // Native Poison pairs every other apple as poison at game start / after some
-  // spawns (uaF). That is exactly the "5a starts with 2 poisons" bug. Gate every
+  // spawns (l4E). That is exactly the "5a starts with 2 poisons" bug. Gate every
   // call site and the function itself.
   {
-    const uaFCalls = code.match(
-      /f7\((?:this|a)\.settings,10\)\s*&&\s*uaF\((?:this|a)\.wa\)/g
+    const l4ECalls = code.match(
+      /e7\((?:this|a)\.settings,10\)\s*&&\s*l4E\((?:this|a)\.wa\)/g
     );
-    if (uaFCalls && uaFCalls.length) {
+    if (l4ECalls && l4ECalls.length) {
       code = code.replace(
-        /f7\((this|a)\.settings,10\)\s*&&\s*uaF\(\1\.wa\)/g,
-        `f7($1.settings,10)&&!(window.isBurgerActive&&window.isBurgerActive())&&uaF($1.wa)`
+        /e7\((this|a)\.settings,10\)\s*&&\s*l4E\(\1\.wa\)/g,
+        `e7($1.settings,10)&&!(window.isBurgerActive&&window.isBurgerActive())&&l4E($1.wa)`
       );
     } else {
-      console.error("BurgerMod: failed to patch uaF call sites");
+      console.error("BurgerMod: failed to patch l4E call sites");
     }
   }
   if (
     code.match(
-      /uaF=function\(a\)\{for\(let b=0;b\+1<a\.ka\.length;b\+=2\)\{let c=Math\.random\(\)<\.5;\s*a\.ka\[b\]\.nla=c;a\.ka\[b\+1\]\.nla=!c\}\}/
+      /l4E=function\(a\)\{for\(let b=0;b\+1<a\.ka\.length;b\+=2\)\{let c=Math\.random\(\)<\.5;\s*a\.ka\[b\]\.Oka=c;a\.ka\[b\+1\]\.Oka=!c\}\}/
     )
   ) {
     code = code.assertReplace(
-      /uaF=function\(a\)\{for\(let b=0;b\+1<a\.ka\.length;b\+=2\)\{let c=Math\.random\(\)<\.5;\s*a\.ka\[b\]\.nla=c;a\.ka\[b\+1\]\.nla=!c\}\}/,
-      `uaF=function(a){if(window.isBurgerActive&&window.isBurgerActive())return;for(let b=0;b+1<a.ka.length;b+=2){let c=Math.random()<.5;a.ka[b].nla=c;a.ka[b+1].nla=!c}};window.__uaF=uaF`
+      /l4E=function\(a\)\{for\(let b=0;b\+1<a\.ka\.length;b\+=2\)\{let c=Math\.random\(\)<\.5;\s*a\.ka\[b\]\.Oka=c;a\.ka\[b\+1\]\.Oka=!c\}\}/,
+      `l4E=function(a){if(window.isBurgerActive&&window.isBurgerActive())return;for(let b=0;b+1<a.ka.length;b+=2){let c=Math.random()<.5;a.ka[b].Oka=c;a.ka[b+1].Oka=!c}};window.__l4E=l4E`
     );
   } else {
-    console.error("BurgerMod: failed to patch uaF function");
+    console.error("BurgerMod: failed to patch l4E function");
   }
 
   // Portal-pair path inside qaF also flips nla on the new pair under Poison.
   if (
     code.match(
-      /f7\(a\.settings,10\)&&\(c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.nla=c,a\.ka\[a\.ka\.length-2\]\.nla=!c\)/
+      /e7\(a\.settings,10\)&&\(c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.Oka=c,a\.ka\[a\.ka\.length-2\]\.Oka=!c\)/
     )
   ) {
     code = code.assertReplace(
-      /f7\(a\.settings,10\)&&\(c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.nla=c,a\.ka\[a\.ka\.length-2\]\.nla=!c\)/,
-      `f7(a.settings,10)&&!(window.isBurgerActive&&window.isBurgerActive())&&(c=Math.random()<.5,a.ka[a.ka.length-1].nla=c,a.ka[a.ka.length-2].nla=!c)`
+      /e7\(a\.settings,10\)&&\(c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.Oka=c,a\.ka\[a\.ka\.length-2\]\.Oka=!c\)/,
+      `e7(a.settings,10)&&!(window.isBurgerActive&&window.isBurgerActive())&&(c=Math.random()<.5,a.ka[a.ka.length-1].Oka=c,a.ka[a.ka.length-2].Oka=!c)`
     );
   } else {
     console.error("BurgerMod: failed to patch qaF nla pair");
@@ -11135,28 +11858,28 @@ window.BurgerMod.alterSnakeCode = function (code) {
 
   // Native Poison also top-ups poisons after a fresh eat (keep ≥ half poisoned).
   // Burger piles poisons only via timers, so disable that refill.
-  // Only the paF call is rewritten: MoreMenu respaces the operators in this
+  // Only the e4E call is rewritten: MoreMenu respaces the operators in this
   // statement, so matching the whole `if` verbatim is too brittle.
   const poisonTopUp =
-    /(for\(let Ok of hd\.ka\)Ok\.nla\s*&&\s*Ni\+\+;Ni<hd\.ka\.length\/2\s*&&\s*)paF\(hd\)/;
+    /(for\(let c of a\.ka\)c\.Oka&&b\+\+;b<a\.ka\.length\/2&&\s*)e4E\(a\)/;
   if (code.match(poisonTopUp)) {
     code = code.assertReplace(
       poisonTopUp,
-      `$1!(window.isBurgerActive&&window.isBurgerActive())&&paF(hd)`
+      `$1!(window.isBurgerActive&&window.isBurgerActive())&&e4E(hd)`
     );
   } else {
-    console.error("BurgerMod: failed to patch poison top-up paF");
+    console.error("BurgerMod: failed to patch poison top-up e4E");
   }
 
   // Tick: run burger aging after chess hook (match Chess-injected tick).
   if (
     code.match(
-      /\}tick\(\)\{window\.__remixGame=this;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{try\{window\.head_pos=this\.oa\.ka;window\.head_dir=this\.oa\.direction;window\.appleArray=this\.wa\.ka;window\.chess_tick_logic\(\);\}catch\(_ce\)\{console\.error\("ChessMod: tick failed",_ce\);\}\}var a=this\.Aa,b=this\.lj;/
+      /\}tick\(\)\{window\.__remixGame=this;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{try\{window\.head_pos=this\.oa\.ka;window\.head_dir=this\.oa\.direction;window\.appleArray=this\.wa\.ka;window\.chess_tick_logic\(\);\}catch\(_ce\)\{console\.error\("ChessMod: tick failed",_ce\);\}\}var a=this\.Aa,b=this\.nj;/
     )
   ) {
     code = code.assertReplace(
-      /\}tick\(\)\{window\.__remixGame=this;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{try\{window\.head_pos=this\.oa\.ka;window\.head_dir=this\.oa\.direction;window\.appleArray=this\.wa\.ka;window\.chess_tick_logic\(\);\}catch\(_ce\)\{console\.error\("ChessMod: tick failed",_ce\);\}\}var a=this\.Aa,b=this\.lj;/,
-      `}tick(){window.__remixGame=this;if(window.isChessActive&&window.isChessActive()){try{window.head_pos=this.oa.ka;window.head_dir=this.oa.direction;window.appleArray=this.wa.ka;window.chess_tick_logic();}catch(_ce){console.error("ChessMod: tick failed",_ce);}}if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_tick_logic();}catch(_be){console.error("BurgerMod: tick failed",_be);}}var a=this.Aa,b=this.lj;`
+      /\}tick\(\)\{window\.__remixGame=this;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{try\{window\.head_pos=this\.oa\.ka;window\.head_dir=this\.oa\.direction;window\.appleArray=this\.wa\.ka;window\.chess_tick_logic\(\);\}catch\(_ce\)\{console\.error\("ChessMod: tick failed",_ce\);\}\}var a=this\.Aa,b=this\.nj;/,
+      `}tick(){window.__remixGame=this;if(window.isChessActive&&window.isChessActive()){try{window.head_pos=this.oa.ka;window.head_dir=this.oa.direction;window.appleArray=this.wa.ka;window.chess_tick_logic();}catch(_ce){console.error("ChessMod: tick failed",_ce);}}if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_tick_logic();}catch(_be){console.error("BurgerMod: tick failed",_be);}}var a=this.Aa,b=this.nj;`
     );
   } else if (code.match(/\}tick\(\)\{window\.__remixGame=this;/)) {
     code = code.assertReplace(
@@ -11171,21 +11894,21 @@ window.BurgerMod.alterSnakeCode = function (code) {
   // Hook the end of apple manager reset via shield init line (post-Pudding doubleDE).
   if (
     code.match(
-      /if\(f7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.Oba=doubleDE\(this,q\.pos\);if\(window\.isChessActive&&window\.isChessActive\(\)\)/
+      /if\(e7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);if\(window\.isChessActive&&window\.isChessActive\(\)\)/
     )
   ) {
     code = code.assertReplace(
-      /if\(f7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.Oba=doubleDE\(this,q\.pos\);if\(window\.isChessActive&&window\.isChessActive\(\)\)\{try\{window\.appleArray=this\.ka;window\.randomize_pieces\(\);window\.shield_empty_all\(\);\}catch\(_ce\)\{console\.error\("ChessMod: reset failed",_ce\);\}\}/,
-      `if(f7(this.settings,15))for(let q of this.ka)q.Oba=doubleDE(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}`
+      /if\(e7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);if\(window\.isChessActive&&window\.isChessActive\(\)\)\{try\{window\.appleArray=this\.ka;window\.randomize_pieces\(\);window\.shield_empty_all\(\);\}catch\(_ce\)\{console\.error\("ChessMod: reset failed",_ce\);\}\}/,
+      `if(e7(this.settings,15))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}`
     );
   } else if (
     code.match(
-      /if\(f7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.Oba=doubleDE\(this,q\.pos\);/
+      /if\(e7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);/
     )
   ) {
     code = code.assertReplace(
-      /if\(f7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.Oba=doubleDE\(this,q\.pos\);/,
-      `if(f7(this.settings,15))for(let q of this.ka)q.Oba=doubleDE(this,q.pos);if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}`
+      /if\(e7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);/,
+      `if(e7(this.settings,15))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}`
     );
   } else {
     console.error("BurgerMod: failed to find reset timer hook");
@@ -11193,10 +11916,10 @@ window.BurgerMod.alterSnakeCode = function (code) {
 
   // Also assign timers when no shield mode (classic reset without Oba loop).
   // After settings.ka===6 tally init on reset:
-  if (code.match(/this\.settings\.ka===6&&\(kaF\(this\),this\.Ca=!1\)\}/)) {
+  if (code.match(/this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\)\}/)) {
     code = code.assertReplace(
-      /this\.settings\.ka===6&&\(kaF\(this\),this\.Ca=!1\)\}/,
-      `this.settings.ka===6&&(kaF(this),this.Ca=!1);if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}}`
+      /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\)\}/,
+      `this.settings.ka===6&&($3E(this),this.Ca=!1);if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}}`
     );
   }
 
@@ -11209,65 +11932,65 @@ window.BurgerMod.alterSnakeCode = function (code) {
   ) {
     code = code.assertReplace(
       /if\(window\.isChessActive&&window\.isChessActive\(\)&&g>0\)\{window\.chess_convert_new_apples\(a,g\);\}/,
-      `if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(window.isBurgerActive&&window.isBurgerActive()&&g>0){for(let _bi=a.ka.length-g;_bi<a.ka.length;_bi++){if(a.ka[_bi]&&!a.ka[_bi].nla)window.burger_assign_timer(a.ka[_bi]);}}`
+      `if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(window.isBurgerActive&&window.isBurgerActive()&&g>0){for(let _bi=a.ka.length-g;_bi<a.ka.length;_bi++){if(a.ka[_bi]&&!a.ka[_bi].Oka)window.burger_assign_timer(a.ka[_bi]);}}`
     );
   } else if (
     code.match(
-      /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(f7\(a\.settings,15\)\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.Oba=doubleDE\(a,c\.pos\);/
+      /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(e7\(a\.settings,15\)\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.nba=P3E\(a,c\.pos\);/
     )
   ) {
     code = code.assertReplace(
-      /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(f7\(a\.settings,15\)\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.Oba=doubleDE\(a,c\.pos\);/,
-      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(f7(a.settings,15))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.Oba=doubleDE(a,c.pos);if(window.isBurgerActive&&window.isBurgerActive()&&g>0){for(let _bi=a.ka.length-g;_bi<a.ka.length;_bi++){if(a.ka[_bi]&&!a.ka[_bi].nla)window.burger_assign_timer(a.ka[_bi]);}}`
+      /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(e7\(a\.settings,15\)\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.nba=P3E\(a,c\.pos\);/,
+      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(e7(a.settings,15))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.nba=P3E(a,c.pos);if(window.isBurgerActive&&window.isBurgerActive()&&g>0){for(let _bi=a.ka.length-g;_bi<a.ka.length;_bi++){if(a.ka[_bi]&&!a.ka[_bi].Oka)window.burger_assign_timer(a.ka[_bi]);}}`
     );
   } else {
     console.error("BurgerMod: failed to find qaF trailing hook");
   }
 
   // Fresh eat: clear poisons + bump eat count BEFORE score side-effects finish / before Mn.
-  // Hook at this.Oh++ — Chess may have replaced it; handle both.
+  // Hook at a.Sh++ — Chess may have replaced it; handle both.
 
   // Clearing poisons splices game.wa.ka, so the eat loop's index has to be
-  // corrected in place. Its name is minified, so read it off the saF call that
+  // corrected in place. Its name is minified, so read it off the i4E call that
   // sits in the same statement (native Poison already decrements it there).
   const appleIndexMatch = code.match(
-    /f7\(this\.settings,10\)\s*&&\s*saF\(this\.wa,([a-zA-Z0-9_$]{1,6}),[a-zA-Z0-9_$]{1,6},this\.Jc\.bind\(this\)\)\s*&&\s*\1--/
+    /e7\(a\.settings,10\)\s*&&\s*i4E\(a\.wa,([a-zA-Z0-9_$]{1,6}),[a-zA-Z0-9_$]{1,6},a\.Lc\.bind\(a\)\)\s*&&\s*\1--/
   );
   const idx = appleIndexMatch && appleIndexMatch[1];
   if (!idx) {
     console.error("BurgerMod: failed to find eat-loop apple index variable");
   }
   const onFreshEaten = idx
-    ? `if(window.isBurgerActive&&window.isBurgerActive())${idx}=window.burger_on_fresh_eaten(this,${idx});`
-    : `if(window.isBurgerActive&&window.isBurgerActive())window.burger_on_fresh_eaten(this);`;
+    ? `if(window.isBurgerActive&&window.isBurgerActive())${idx}=window.burger_on_fresh_eaten(a,${idx});`
+    : `if(window.isBurgerActive&&window.isBurgerActive())window.burger_on_fresh_eaten(a);`;
 
   if (
     code.match(
-      /if\(window\.isChessActive&&window\.isChessActive\(\)\)\{let _ae=window\.findApple\(window\.head_pos\[0\],window\.appleArray\);if\(_ae&&!_ae\.isPiece\)\{window\.just_ate='fruit';this\.Oh\+\+;\}else if\(_ae&&_ae\.isPiece\)\{window\.just_ate='piece';window\.head_state=_ae\.ChessPiece;window\.updateTrophySRC\(_ae\.type\);window\.head_color=_ae\.ChessColor;window\.shield_all\(\);\}else\{window\.just_ate='fruit';this\.Oh\+\+;\}\}else\{this\.Oh\+\+;\}/
+      /if\(window\.isChessActive&&window\.isChessActive\(\)\)\{let _ae=window\.findApple\(window\.head_pos\[0\],window\.appleArray\);if\(_ae&&!_ae\.isPiece\)\{window\.just_ate='fruit';a\.Sh\+\+;\}else if\(_ae&&_ae\.isPiece\)\{window\.just_ate='piece';window\.head_state=_ae\.ChessPiece;window\.updateTrophySRC\(_ae\.type\);window\.head_color=_ae\.ChessColor;window\.shield_all\(\);\}else\{window\.just_ate='fruit';a\.Sh\+\+;\}\}else\{a\.Sh\+\+;\}/
     )
   ) {
     code = code.assertReplace(
-      /if\(window\.isChessActive&&window\.isChessActive\(\)\)\{let _ae=window\.findApple\(window\.head_pos\[0\],window\.appleArray\);if\(_ae&&!_ae\.isPiece\)\{window\.just_ate='fruit';this\.Oh\+\+;\}else if\(_ae&&_ae\.isPiece\)\{window\.just_ate='piece';window\.head_state=_ae\.ChessPiece;window\.updateTrophySRC\(_ae\.type\);window\.head_color=_ae\.ChessColor;window\.shield_all\(\);\}else\{window\.just_ate='fruit';this\.Oh\+\+;\}\}else\{this\.Oh\+\+;\}/,
-      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';this.Oh++;${onFreshEaten}}else if(_ae&&_ae.isPiece){window.just_ate='piece';window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}else{window.just_ate='fruit';this.Oh++;${onFreshEaten}}}else{this.Oh++;${onFreshEaten}}`
+      /if\(window\.isChessActive&&window\.isChessActive\(\)\)\{let _ae=window\.findApple\(window\.head_pos\[0\],window\.appleArray\);if\(_ae&&!_ae\.isPiece\)\{window\.just_ate='fruit';a\.Sh\+\+;\}else if\(_ae&&_ae\.isPiece\)\{window\.just_ate='piece';window\.head_state=_ae\.ChessPiece;window\.updateTrophySRC\(_ae\.type\);window\.head_color=_ae\.ChessColor;window\.shield_all\(\);\}else\{window\.just_ate='fruit';a\.Sh\+\+;\}\}else\{a\.Sh\+\+;\}/,
+      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';a.Sh++;${onFreshEaten}}else if(_ae&&_ae.isPiece){window.just_ate='piece';window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}else{window.just_ate='fruit';a.Sh++;${onFreshEaten}}}else{a.Sh++;${onFreshEaten}}`
     );
-  } else if (code.match(/this\.Oh\+\+;/)) {
+  } else if (code.match(/a\.Sh\+\+;/)) {
     code = code.assertReplace(
-      /this\.Oh\+\+;/,
-      `this.Oh++;${onFreshEaten}`
+      /a\.Sh\+\+;/,
+      `a.Sh++;${onFreshEaten}`
     );
   } else {
     console.error("BurgerMod: failed to find score hook");
   }
 
-  // After Mn / chess fruit respawn path, re-assign timers on new apples.
+  // After chess fruit respawn path, re-assign timers on new apples.
   if (
     code.match(
-      /else\{if\(window\.isChessActive&&window\.isChessActive\(\)\)\{Xh=!1;if\(window\.just_ate==='fruit'&&!\(this\.settings\.ka===4\|\|this\.settings\.ka===6\|\|\(this\.settings\.ka===5&&!this\.hc\)\|\|f7\(this\.settings,8\)\|\|f7\(this\.settings,9\)\)\)\{window\.chess_fruit_respawn\(this\.wa,h7,oaF,aaF\);\}\}else\{let Ni=e7\(this\.settings\)\|\|f7\(this\.settings,7\);Xh=this\.Mn\(vd,!Ni,null\);\}\}/
+      /window\.chess_fruit_respawn\(a\.wa,g7,d4E,Q3E\);/
     )
   ) {
     code = code.assertReplace(
-      /else\{if\(window\.isChessActive&&window\.isChessActive\(\)\)\{Xh=!1;if\(window\.just_ate==='fruit'&&!\(this\.settings\.ka===4\|\|this\.settings\.ka===6\|\|\(this\.settings\.ka===5&&!this\.hc\)\|\|f7\(this\.settings,8\)\|\|f7\(this\.settings,9\)\)\)\{window\.chess_fruit_respawn\(this\.wa,h7,oaF,aaF\);\}\}else\{let Ni=e7\(this\.settings\)\|\|f7\(this\.settings,7\);Xh=this\.Mn\(vd,!Ni,null\);\}\}/,
-      `else{if(window.isChessActive&&window.isChessActive()){Xh=!1;if(window.just_ate==='fruit'&&!(this.settings.ka===4||this.settings.ka===6||(this.settings.ka===5&&!this.hc)||f7(this.settings,8)||f7(this.settings,9))){window.chess_fruit_respawn(this.wa,h7,oaF,aaF);}}else{let Ni=e7(this.settings)||f7(this.settings,7);Xh=this.Mn(vd,!Ni,null);}if(window.isBurgerActive&&window.isBurgerActive()&&window.just_ate==='fruit'){window.burger_after_respawn(this);}}`
+      /window\.chess_fruit_respawn\(a\.wa,g7,d4E,Q3E\);/,
+      `window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);if(window.isBurgerActive&&window.isBurgerActive()&&window.just_ate==='fruit'){window.burger_after_respawn(a);}`
     );
   }
 
@@ -11278,7 +12001,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   if (code.match(/this\.ka\.drawImage\(f,0,0,g,g,-d\/2,-d\/2,d,d\);/)) {
     code = code.assertReplace(
       /this\.ka\.drawImage\(f,0,0,g,g,-d\/2,-d\/2,d,d\);/,
-      `(this.ka.drawImage(f,0,0,g,g,-d/2,-d/2,d,d),b&&!b.nla&&b.burgerGrey>0&&(this.ka.globalAlpha=Math.min(.85,b.burgerGrey/110),this.ka.fillStyle="#1a1a1a",this.ka.beginPath(),this.ka.arc(0,0,d*.32,0,6.283185307179586),this.ka.fill(),this.ka.globalAlpha=1));`
+      `(this.ka.drawImage(f,0,0,g,g,-d/2,-d/2,d,d),b&&!b.Oka&&b.burgerGrey>0&&(this.ka.globalAlpha=Math.min(.85,b.burgerGrey/110),this.ka.fillStyle="#1a1a1a",this.ka.beginPath(),this.ka.arc(0,0,d*.32,0,6.283185307179586),this.ka.fill(),this.ka.globalAlpha=1));`
     );
   } else {
     console.error("BurgerMod: failed to find fruit drawImage for greyscale");
@@ -11337,13 +12060,13 @@ window.BurgerMod.alterSnakeCode = function (code) {
   }
 
   // Expose apple helpers after their definitions complete (assignment form).
-  if (code.match(/h7=function\(a,b,c\)\{b=new _\.Sd/)) {
+  if (code.match(/g7=function\(a,b,c\)\{b=new _\.Od/)) {
     code = code.assertReplace(
-      /h7=function\(a,b,c\)\{b=new _\.Sd/,
-      `h7=function(a,b,c){window.__h7=h7;window.__aaF=aaF;window.__qaF=qaF;b=new _.Sd`
+      /g7=function\(a,b,c\)\{b=new _\.Od/,
+      `g7=function(a,b,c){window.__h7=g7;window.__aaF=d4E;window.__qaF=f4E;b=new _.Od`
     );
   } else {
-    console.error("BurgerMod: failed to expose h7/qaF");
+    console.error("BurgerMod: failed to expose g7/f4E");
   }
 
   return code;
@@ -12031,8 +12754,13 @@ window.DiceCounts.alterSnakeCode = function (code) {
       diceRefill[0],
       `(this.settings.ka===4||(window.remixIsColoredDice&&window.remixIsColoredDice(this.settings.ka)))?odF(this)!==0||ecF(this.settings) && rdF(this)<=0||(tdF(this,this.settings.ka===4?Math.ceil(Math.random()*6):(window.remixColoredDiceRoll(this.settings.ka)||1)),odF(this)>0 && ${sound}.play())`
     );
+  } else if (code.match(/a\.settings\.ka===4\?r7E\(a\)===0&&s7E\(a\)/)) {
+    code = code.assertReplace(
+      /a\.settings\.ka===4\?r7E\(a\)===0&&s7E\(a\)/,
+      `(a.settings.ka===4||(window.remixIsColoredDice&&window.remixIsColoredDice(a.settings.ka)))?r7E(a)===0&&(a.settings.ka===4?s7E(a):u7E(a,window.remixColoredDiceRoll(a.settings.ka)||1))`
+    );
   } else {
-    console.error("DiceCounts: failed to find native dice tdF refill path");
+    console.error("DiceCounts: failed to find native dice tdF/s7E refill path");
   }
 
   // Mn still early-returns for dice-like; keep spawn-count wrap for safety on
@@ -12049,6 +12777,11 @@ window.DiceCounts.alterSnakeCode = function (code) {
     code = code.assertReplace(
       /this\.settings\.ka===4\|\|this\.settings\.ka===6/g,
       `(window.remixIsDiceLike?window.remixIsDiceLike(this.settings.ka):this.settings.ka===4)||this.settings.ka===6`
+    );
+  } else if (code.match(/a\.settings\.ka===4\|\|a\.settings\.ka===6/)) {
+    code = code.assertReplace(
+      /a\.settings\.ka===4\|\|a\.settings\.ka===6/g,
+      `(window.remixIsDiceLike?window.remixIsDiceLike(a.settings.ka):a.settings.ka===4)||a.settings.ka===6`
     );
   }
 
@@ -12733,6 +13466,73 @@ window.remixInlineCspMenuIcons = function remixInlineCspMenuIcons() {
   }
 };
 
+window.PauseMod = {};
+window.PauseGameMod = window.PauseMod;
+
+////////////////////////////////////////////////////////////////////
+//RUNCODEBEFORE
+////////////////////////////////////////////////////////////////////
+
+window.PauseMod.runCodeBefore = function () {
+  window.pauseGame = false;
+};
+
+////////////////////////////////////////////////////////////////////
+//ALTERSNAKECODE
+////////////////////////////////////////////////////////////////////
+
+window.PauseMod.alterSnakeCode = function (code) {
+  // MoreMenu already gates the tick with && !window.pauseGame. Skip if so —
+  // this stays idempotent if both run.
+  if (code.indexOf("!window.pauseGame") >= 0) return code;
+
+  const pauseRe =
+    /\(\n?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\.\n?direction\n?!==\n?"NONE"\n?\|\|\n?[a-zA-Z0-9_$]{1,8}\n?\(\n?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\)\n?\)/;
+  const pauseCondition = code.match(pauseRe);
+  if (!pauseCondition) {
+    console.error("PauseMod: failed to find tick pause condition");
+    return code;
+  }
+  if (typeof code.assertReplace === "function") {
+    return code.assertReplace(
+      pauseCondition[0],
+      `(${pauseCondition[0]} && !window.pauseGame)`
+    );
+  }
+  return code.replace(
+    pauseCondition[0],
+    `(${pauseCondition[0]} && !window.pauseGame)`
+  );
+};
+
+////////////////////////////////////////////////////////////////////
+//RUNCODEAFTER
+////////////////////////////////////////////////////////////////////
+
+window.PauseMod.runCodeAfter = function () {
+  if (window.__remixPauseBound) return;
+  window.__remixPauseBound = true;
+
+  document.addEventListener("keydown", function (evt) {
+    if (evt.code !== "KeyQ") return;
+    window.pauseGame = !window.pauseGame;
+    const overlay = document.getElementsByClassName("wjOYOd")[0];
+    if (!overlay) return;
+    const menuDiv = overlay.children[0];
+    if (window.pauseGame) {
+      overlay.style.visibility = "visible";
+      overlay.style.opacity = 1;
+      if (menuDiv) menuDiv.style.visibility = "hidden";
+    } else {
+      setTimeout(function () {
+        if (!window.pauseGame && menuDiv) menuDiv.style.visibility = "visible";
+      }, 500);
+      overlay.style.visibility = "hidden";
+      overlay.style.opacity = 0;
+    }
+  });
+};
+
 window.RemixMod = {};
 
 ////////////////////////////////////////////////////////////////////
@@ -12853,6 +13653,7 @@ window.RemixMod.runCodeBefore = function () {
   window.DiceCounts.runCodeBefore();
   // After Chess/Burger helpers exist: re-enable SpeedInfo and gate its data.
   window.RemixSpeedInfo.runCodeBefore();
+  window.PauseMod.runCodeBefore();
 };
 
 ////////////////////////////////////////////////////////////////////
@@ -12868,6 +13669,8 @@ window.RemixMod.alterSnakeCode = function (code) {
   code = window.CatSpeed.alterSnakeCode(code);
   code = window.DiceCounts.alterSnakeCode(code);
   code = window.RemixSpeedInfo.alterSnakeCode(code);
+  // After MoreMenu: skip if the tick is already gated.
+  code = window.PauseMod.alterSnakeCode(code);
   return code;
 };
 
@@ -12881,6 +13684,7 @@ window.RemixMod.runCodeAfter = function () {
   window.ChessMod.runCodeAfter && window.ChessMod.runCodeAfter();
   window.BurgerMod.runCodeAfter && window.BurgerMod.runCodeAfter();
   window.RemixSpeedInfo.runCodeAfter && window.RemixSpeedInfo.runCodeAfter();
+  window.PauseMod.runCodeAfter && window.PauseMod.runCodeAfter();
 
   let modIndicator = document.createElement("div");
   modIndicator.style =
@@ -12951,16 +13755,16 @@ window.levelEditorMod.runCodeBefore = function() {
 
   if(isProd) {
     //Live
-    globalThis.rootUrl = 'https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v12/';
+    globalThis.rootUrl = 'https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v13/';
     globalThis.imagePresetsFolder = 'image-presets/';
-    globalThis.sharedUrl = 'https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v12/shared.js';
-    globalThis.randomHamUrl = 'https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v12/random_ham.txt';
-    globalThis.challengeUrl = 'https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v12/challenge.txt';
+    globalThis.sharedUrl = 'https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v13/shared.js';
+    globalThis.randomHamUrl = 'https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v13/random_ham.txt';
+    globalThis.challengeUrl = 'https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v13/challenge.txt';
   } else {
     //Dev
     globalThis.rootUrl = 'http://localhost:3000/';
     globalThis.imagePresetsFolder = 'presets-windows-symlink/';
-    globalThis.sharedUrl = 'https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v12/shared.js';
+    globalThis.sharedUrl = 'https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v13/shared.js';
     globalThis.randomHamUrl = 'http://localhost:3000/random_ham.txt';
     globalThis.challengeUrl = 'http://localhost:3000/challenge.txt';
   }
@@ -13703,8 +14507,8 @@ window.levelEditorMod.runCodeBefore = function() {
   
     const htmlToInsert = `
     <div id="place-panel" style="height: 650px; width: 200px; background-color: #bfde80; display: grid; grid-template-columns: 60px 60px 60px; justify-content: space-evenly;box-sizing: border-box; border: 10px solid #507f30;">
-      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v13/trophy_01.png" data-type="-1" data-category="wall">
-      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v13/trophy_09.png" data-type="-1" data-category="box">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v22/trophy_01.png" data-type="-1" data-category="wall">
+      <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v22/trophy_09.png" data-type="-1" data-category="box">
       <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(0%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_00.png" data-type="0" data-category="apple">
       <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_01.png" data-type="1" data-category="apple">
       <img class="place-option" style="max-width:100%; height:auto; object-fit:cover; cursor:pointer; filter: grayscale(100%)" draggable="false" src="https://www.google.com/logos/fnbx/snake_arcade/v18/apple_02.png" data-type="2" data-category="apple">
@@ -14130,8 +14934,12 @@ window.levelEditorMod.alterSnakeCode = function(code) {
     /([$a-zA-Z0-9_]{0,8})=function\(a\)\{a\.wa=1;if\([$a-zA-Z0-9_]{0,8}\(a\.settings\)\)/
   )[1];
   let [, tallyCountGameplayProperty, tallyCountMenuProperty] = code.assertMatch(
-    /[a-z]\.([$a-zA-Z0-9_]{0,8})=[a-z]\.([$a-zA-Z0-9_]{0,8});[a-z]\.yb=[a-z]\.Na;/
+    /[a-z]\.([$a-zA-Z0-9_]{0,8})=[a-z]\.([$a-zA-Z0-9_]{0,8});[a-z]\.yb=[a-z]\.[$a-zA-Z0-9_]{0,8};/
   );
+  // Yin-yang tally visibility flag (v12 Gh, v13 Lh)
+  let appleTallyVisibleProperty = code.assertMatch(
+    /sequenceNumber!==void 0&&\([a-z]\.([$a-zA-Z0-9_]{0,8})=[a-z]\.sequenceNumber%/
+  )[1];
 
   //globalThis.coordConstructor = swapInSnakeGlobal(code.assertMatch(/new (_\.[$a-zA-Z0-9_]{0,8})\(1,1\)/)[1]);
   globalThis.coordConstructor = code.assertMatch(/new (_\.[$a-zA-Z0-9_]{0,8})\(1,1\)/)[1];
@@ -14171,8 +14979,8 @@ window.levelEditorMod.alterSnakeCode = function(code) {
 
   // Speedrun mode: intercept level-clear win so challenge can auto-advance
   code = assertReplace(code,
-    /if\(odF\(this\)===0\)\{([$a-zA-Z0-9_]{0,8})\.WIN\.play\(\);this\.([$a-zA-Z0-9_]{0,8})=this\.([$a-zA-Z0-9_]{0,8})=!0;([$a-zA-Z0-9_]{0,8})\(this\.menu,1400,this\.Oh\);([\s\S]*?)this\.Mb=this\.ticks\}else if/,
-    'if(odF(this)===0){if(window.tryChallengeSpeedrunAdvance&&window.tryChallengeSpeedrunAdvance(this)){this.$2=this.$3=!0;}else{$1.WIN.play();this.$2=this.$3=!0;$4(this.menu,1400,this.Oh);$5this.Mb=this.ticks}}else if'
+    /if\(([$a-zA-Z0-9_]{0,8})\(this\)===0\)\{([$a-zA-Z0-9_]{0,8})\.WIN\.play\(\);this\.([$a-zA-Z0-9_]{0,8})=this\.([$a-zA-Z0-9_]{0,8})=!0;([$a-zA-Z0-9_]{0,8})\(this\.menu,1400,this\.([$a-zA-Z0-9_]{0,8})\);([\s\S]*?)this\.Mb=this\.ticks\}else if/,
+    'if($1(this)===0){if(window.tryChallengeSpeedrunAdvance&&window.tryChallengeSpeedrunAdvance(this)){this.$3=this.$4=!0;}else{$2.WIN.play();this.$3=this.$4=!0;$5(this.menu,1400,this.$6);$7this.Mb=this.ticks}}else if'
   );
 
   // Track where the board is drawn inside the main canvas (for accurate mouse placing).
@@ -14181,10 +14989,13 @@ window.levelEditorMod.alterSnakeCode = function(code) {
     /let ([$a-zA-Z0-9_]{0,8})=Math\.round\(\(this\.context\.canvas\.width-this\.[$a-zA-Z0-9_]{0,8}\.canvas\.width\)\/2\),([$a-zA-Z0-9_]{0,8})=Math\.round\(\(this\.context\.canvas\.height-this\.[$a-zA-Z0-9_]{0,8}\.canvas\.height\)\/\n?2\);/,
     '$&globalThis.leftBorderWidth=$1;globalThis.topBorderWidth=$2;'
   );
-  // Borderless: board is drawn at (Wd,$d) with a 2-tile content translate.
+  // Borderless: board is drawn at (drawX,drawY) plus the 2-tile content translate (Nd/he in v12, Pd/le in v13).
+  let [, borderlessBoardOffsetX, borderlessBoardOffsetY] = code.assertMatch(
+    /([$a-zA-Z0-9_]{0,8})=[$a-zA-Z0-9_]{0,8}\?-\(this\.wb\.ka\.Aa\.x\*this\.wb\.ka\.ka\)\/2:Math\.round\(this\.ka\.canvas\.width\/2-this\.wb\.oa\.[$a-zA-Z0-9_]{0,8}\.x-this\.wb\.ka\.ka\*2\),([$a-zA-Z0-9_]{0,8})=/
+  );
   code = assertReplace(code,
-    /let ([$a-zA-Z0-9_]{0,8})=([$a-zA-Z0-9_]{0,8})-([$a-zA-Z0-9_]{0,8}),(\$d)=([$a-zA-Z0-9_]{0,8})-([$a-zA-Z0-9_]{0,8});this\.context\.drawImage\(this\.[$a-zA-Z0-9_]{0,8}\.canvas,\1,\4\)/,
-    '$&;globalThis.leftBorderWidth=$1+Nd+2*this.wb.ka.ka;globalThis.topBorderWidth=$4+he+2*this.wb.ka.ka;'
+    /let ([$a-zA-Z0-9_]{0,8})=([$a-zA-Z0-9_]{0,8})-([$a-zA-Z0-9_]{0,8}),([$a-zA-Z0-9_]{0,8})=([$a-zA-Z0-9_]{0,8})-([$a-zA-Z0-9_]{0,8});this\.context\.drawImage\(this\.[$a-zA-Z0-9_]{0,8}\.canvas,\1,\4\)/,
+    `$&;globalThis.leftBorderWidth=$1+${borderlessBoardOffsetX}+2*this.wb.ka.ka;globalThis.topBorderWidth=$4+${borderlessBoardOffsetY}+2*this.wb.ka.ka;`
   );
 
   ///////////////////////////////////////
@@ -14231,7 +15042,7 @@ window.levelEditorMod.alterSnakeCode = function(code) {
     }
     // Match kaF's yin-yang visibility rule
     if(${modeCheck}(appleManager.settings, 11)) {
-      apple.Gh = apple.sequenceNumber % 2 === 1;
+      apple.${appleTallyVisibleProperty} = apple.sequenceNumber % 2 === 1;
     }
   };
 
@@ -14285,7 +15096,8 @@ window.levelEditorMod.alterSnakeCode = function(code) {
   }
   `, false);
 
-  let wallDetailsContainer = code.assertMatch(/[$a-zA-Z0-9_]{0,8}&&\([$a-zA-Z0-9_]{0,8}\(this\.([$a-zA-Z0-9_]{0,8}),\n?[$a-zA-Z0-9_]{0,8}\),\n?[$a-zA-Z0-9_]{0,8}\(this\.[$a-zA-Z0-9_]{0,8},7\)/)[1];
+  // Wall manager on the game object (v12 this.Ca, v13 a.Ca)
+  let wallDetailsContainer = code.assertMatch(/[$a-zA-Z0-9_]{0,8}\((?:this|[a-z])\.([$a-zA-Z0-9_]{0,8}),[a-z]\),[$a-zA-Z0-9_]{0,8}\((?:this|[a-z])\.[$a-zA-Z0-9_]{0,8},7\)/)[1];
 
   //Real wall placer object shape (not yinyang center/fake wall)
   let [,placeWallFunc,wallCoordProperty,wallSolidProperty,wallFakeProperty,wallAnimProperty] = code.assertMatch(
@@ -14343,7 +15155,7 @@ window.levelEditorMod.alterSnakeCode = function(code) {
 
   code = code.replace(funcWithPlaceWallOrig, funcWithPlaceWall);
 
-  let sokoDetailsContainer = code.assertMatch(/this\.([$a-zA-Z0-9_]{0,8})\.reset\(\);if\([$a-zA-Z0-9_]{0,8}\(this\.[$a-zA-Z0-9_]{0,8},8\)/)[1];
+  let sokoDetailsContainer = code.assertMatch(/this\.([$a-zA-Z0-9_]{0,8})\.reset\(\);\n?if\([$a-zA-Z0-9_]{0,8}\(this\.[$a-zA-Z0-9_]{0,8},8\)/)[1];
 
   //Setup for placing sokoban boxes
   let [, addSokoboxFunc, sokoPosition, sokoPrevProperty, sokoPlaySpawnAnimProperty, sokoLastProperty] = code.assertMatch(/([$a-zA-Z0-9_]{0,8})\([a-z],{([$a-zA-Z0-9_]{0,8}):[a-z],\n?([$a-zA-Z0-9_]{0,8}):null,([$a-zA-Z0-9_]{0,8}):!0,([$a-zA-Z0-9_]{0,8}):[a-z]}\)/);
@@ -15579,7 +16391,7 @@ window.ultraAssignNewApples = function ultraAssignNewApples(added) {
   }
   if (window.isBurgerActive && window.isBurgerActive() && typeof window.burger_assign_timer === "function") {
     for (let i = mgr.ka.length - added; i < mgr.ka.length; i++) {
-      if (mgr.ka[i] && !mgr.ka[i].nla) window.burger_assign_timer(mgr.ka[i]);
+      if (mgr.ka[i] && !mgr.ka[i].Oka) window.burger_assign_timer(mgr.ka[i]);
     }
   }
 };
@@ -15597,7 +16409,7 @@ window.ultraAssignAllBoardApples = function ultraAssignAllBoardApples() {
     let first = -1;
     for (let i = 0; i < mgr.ka.length; i++) {
       const a = mgr.ka[i];
-      if (!a || a.isPiece || a.nla) continue;
+      if (!a || a.isPiece || a.Oka) continue;
       window.chess_assign_piece(a);
       converted++;
       if (first < 0) first = i;
@@ -15622,7 +16434,7 @@ window.ultraAssignAllBoardApples = function ultraAssignAllBoardApples() {
   ) {
     for (let i = 0; i < mgr.ka.length; i++) {
       const a = mgr.ka[i];
-      if (a && !a.nla && a.burgerTimer == null) {
+      if (a && !a.Oka && a.burgerTimer == null) {
         window.burger_assign_timer(a);
       }
     }
@@ -16546,6 +17358,7 @@ window.RemixUltraMod.alterSnakeCode = function (code) {
     code = window.CatSpeed.alterSnakeCode(code);
     code = window.DiceCounts.alterSnakeCode(code);
     code = window.RemixSpeedInfo.alterSnakeCode(code);
+    code = window.PauseMod.alterSnakeCode(code);
     return code;
   });
 };
@@ -16562,6 +17375,7 @@ window.RemixUltraMod.runCodeAfter = function () {
     window.DiceCounts.runCodeAfter &&
     window.DiceCounts.runCodeAfter();
   window.RemixSpeedInfo.runCodeAfter && window.RemixSpeedInfo.runCodeAfter();
+  window.PauseMod.runCodeAfter && window.PauseMod.runCodeAfter();
 
   window.ultraPatchPresetLoads();
   window.ultraPatchLevelLoads();

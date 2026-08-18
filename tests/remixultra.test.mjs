@@ -17,6 +17,7 @@ describe("RemixUltra build artifacts", () => {
     assert.match(remix, /window\.RemixMod = \{\}/);
     assert.doesNotMatch(remix, /window\.RemixUltraMod/);
     assert.doesNotMatch(remix, /window\.levelEditorMod/);
+    assert.match(remix, /window\.PauseMod/);
     assert.match(remix, /RemixSettings/);
     assert.doesNotMatch(remix, /RemixUltraSettings/);
   });
@@ -24,6 +25,7 @@ describe("RemixUltra build artifacts", () => {
   it("RemixUltraMod.js concatenates LE + Ultra keys + dock helper", () => {
     assert.equal(fs.existsSync(ULTRA), true, "run python RemixBuilder.py");
     const ultra = fs.readFileSync(ULTRA, "utf8");
+    assert.match(ultra, /window\.PauseMod/);
     assert.match(ultra, /window\.RemixUltraMod/);
     assert.match(ultra, /window\.levelEditorMod/);
     assert.match(ultra, /RemixUltraSettings/);

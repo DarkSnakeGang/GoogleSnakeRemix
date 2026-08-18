@@ -22,20 +22,21 @@ async function main() {
   const htmlPath = path.join(CACHE, `index-${version}.html`);
   fs.writeFileSync(htmlPath, html, "utf8");
 
+  // googlesnakemods.com/v/current/ HTML is the Google search shell; the game
+  // bundle is always sibling snake.js (same as Pudding's tools/verify.js).
+  let jsUrl = new URL("snake.js", base).href;
   const scriptMatch =
     html.match(/src="([^"]*snake[^"]*\.js[^"]*)"/i) ||
     html.match(/src="(\.\/[^"]+\.js)"/);
-  if (!scriptMatch) {
-    // Fall back: find any large game script reference
-    const all = [...html.matchAll(/src="([^"]+\.js)"/g)].map((m) => m[1]);
-    console.error("Scripts found:", all);
-    throw new Error("Could not find snake JS URL in HTML");
-  }
-  let jsUrl = scriptMatch[1];
-  if (jsUrl.startsWith("./") || jsUrl.startsWith("/")) {
-    jsUrl = new URL(jsUrl, base).href;
-  } else if (!jsUrl.startsWith("http")) {
-    jsUrl = new URL(jsUrl, base).href;
+  if (scriptMatch) {
+    let fromHtml = scriptMatch[1];
+    if (fromHtml.startsWith("./") || fromHtml.startsWith("/")) {
+      fromHtml = new URL(fromHtml, base).href;
+    } else if (!fromHtml.startsWith("http")) {
+      fromHtml = new URL(fromHtml, base).href;
+    }
+    // Prefer snake.js over snake-loader.js / other shells.
+    if (/snake\.js(\?|$)/i.test(fromHtml)) jsUrl = fromHtml;
   }
   const jsRes = await fetch(jsUrl);
   if (!jsRes.ok) throw new Error(`JS ${jsRes.status} ${jsUrl}`);

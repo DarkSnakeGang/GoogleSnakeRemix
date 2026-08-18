@@ -1086,7 +1086,7 @@ window.ultraAssignNewApples = function ultraAssignNewApples(added) {
   }
   if (window.isBurgerActive && window.isBurgerActive() && typeof window.burger_assign_timer === "function") {
     for (let i = mgr.ka.length - added; i < mgr.ka.length; i++) {
-      if (mgr.ka[i] && !mgr.ka[i].nla) window.burger_assign_timer(mgr.ka[i]);
+      if (mgr.ka[i] && !mgr.ka[i].Oka) window.burger_assign_timer(mgr.ka[i]);
     }
   }
 };
@@ -1104,7 +1104,7 @@ window.ultraAssignAllBoardApples = function ultraAssignAllBoardApples() {
     let first = -1;
     for (let i = 0; i < mgr.ka.length; i++) {
       const a = mgr.ka[i];
-      if (!a || a.isPiece || a.nla) continue;
+      if (!a || a.isPiece || a.Oka) continue;
       window.chess_assign_piece(a);
       converted++;
       if (first < 0) first = i;
@@ -1129,7 +1129,7 @@ window.ultraAssignAllBoardApples = function ultraAssignAllBoardApples() {
   ) {
     for (let i = 0; i < mgr.ka.length; i++) {
       const a = mgr.ka[i];
-      if (a && !a.nla && a.burgerTimer == null) {
+      if (a && !a.Oka && a.burgerTimer == null) {
         window.burger_assign_timer(a);
       }
     }
@@ -2053,6 +2053,7 @@ window.RemixUltraMod.alterSnakeCode = function (code) {
     code = window.CatSpeed.alterSnakeCode(code);
     code = window.DiceCounts.alterSnakeCode(code);
     code = window.RemixSpeedInfo.alterSnakeCode(code);
+    code = window.PauseMod.alterSnakeCode(code);
     return code;
   });
 };
@@ -2069,6 +2070,7 @@ window.RemixUltraMod.runCodeAfter = function () {
     window.DiceCounts.runCodeAfter &&
     window.DiceCounts.runCodeAfter();
   window.RemixSpeedInfo.runCodeAfter && window.RemixSpeedInfo.runCodeAfter();
+  window.PauseMod.runCodeAfter && window.PauseMod.runCodeAfter();
 
   window.ultraPatchPresetLoads();
   window.ultraPatchLevelLoads();

@@ -118,6 +118,7 @@ window.RemixMod.runCodeBefore = function () {
   window.DiceCounts.runCodeBefore();
   // After Chess/Burger helpers exist: re-enable SpeedInfo and gate its data.
   window.RemixSpeedInfo.runCodeBefore();
+  window.PauseMod.runCodeBefore();
 };
 
 ////////////////////////////////////////////////////////////////////
@@ -133,6 +134,8 @@ window.RemixMod.alterSnakeCode = function (code) {
   code = window.CatSpeed.alterSnakeCode(code);
   code = window.DiceCounts.alterSnakeCode(code);
   code = window.RemixSpeedInfo.alterSnakeCode(code);
+  // After MoreMenu: skip if the tick is already gated.
+  code = window.PauseMod.alterSnakeCode(code);
   return code;
 };
 
@@ -146,6 +149,7 @@ window.RemixMod.runCodeAfter = function () {
   window.ChessMod.runCodeAfter && window.ChessMod.runCodeAfter();
   window.BurgerMod.runCodeAfter && window.BurgerMod.runCodeAfter();
   window.RemixSpeedInfo.runCodeAfter && window.RemixSpeedInfo.runCodeAfter();
+  window.PauseMod.runCodeAfter && window.PauseMod.runCodeAfter();
 
   let modIndicator = document.createElement("div");
   modIndicator.style =

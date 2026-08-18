@@ -499,8 +499,13 @@ window.DiceCounts.alterSnakeCode = function (code) {
       diceRefill[0],
       `(this.settings.ka===4||(window.remixIsColoredDice&&window.remixIsColoredDice(this.settings.ka)))?odF(this)!==0||ecF(this.settings) && rdF(this)<=0||(tdF(this,this.settings.ka===4?Math.ceil(Math.random()*6):(window.remixColoredDiceRoll(this.settings.ka)||1)),odF(this)>0 && ${sound}.play())`
     );
+  } else if (code.match(/a\.settings\.ka===4\?r7E\(a\)===0&&s7E\(a\)/)) {
+    code = code.assertReplace(
+      /a\.settings\.ka===4\?r7E\(a\)===0&&s7E\(a\)/,
+      `(a.settings.ka===4||(window.remixIsColoredDice&&window.remixIsColoredDice(a.settings.ka)))?r7E(a)===0&&(a.settings.ka===4?s7E(a):u7E(a,window.remixColoredDiceRoll(a.settings.ka)||1))`
+    );
   } else {
-    console.error("DiceCounts: failed to find native dice tdF refill path");
+    console.error("DiceCounts: failed to find native dice tdF/s7E refill path");
   }
 
   // Mn still early-returns for dice-like; keep spawn-count wrap for safety on
@@ -517,6 +522,11 @@ window.DiceCounts.alterSnakeCode = function (code) {
     code = code.assertReplace(
       /this\.settings\.ka===4\|\|this\.settings\.ka===6/g,
       `(window.remixIsDiceLike?window.remixIsDiceLike(this.settings.ka):this.settings.ka===4)||this.settings.ka===6`
+    );
+  } else if (code.match(/a\.settings\.ka===4\|\|a\.settings\.ka===6/)) {
+    code = code.assertReplace(
+      /a\.settings\.ka===4\|\|a\.settings\.ka===6/g,
+      `(window.remixIsDiceLike?window.remixIsDiceLike(a.settings.ka):a.settings.ka===4)||a.settings.ka===6`
     );
   }
 

@@ -9,7 +9,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 # window.VisibilityModCode / window.moreMenu objects it bundles.
 MOREPUDDING_URL = "https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakePudding/main/MorePudding.js"
 BOOTSTRAP_URL = "https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakePudding/main/bootstrap-stripped.css"
-LEVEL_EDITOR_URL = "https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v12/modloadercode.js"
+LEVEL_EDITOR_URL = "https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v13/modloadercode.js"
 
 REMIX_PARTS = [
     "CandyInit.js",
@@ -19,6 +19,7 @@ REMIX_PARTS = [
     "DiceCountsInit.js",
     "RemixSpeedInfoInit.js",
     "CspMenuIcons.js",
+    "PauseInit.js",
     "RemixInit.js",
 ]
 

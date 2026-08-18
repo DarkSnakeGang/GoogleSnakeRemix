@@ -8,7 +8,7 @@ window.CandyMod.runCodeBefore = function () {
   // MoreMenu intentionally omitted until it supports v12.
   // Future: window.moreMenu.runCodeBefore();
 
-  console.log("Adding Candy Mode (v12)");
+  console.log("Adding Candy Mode (v13)");
 
   window.CANDY_ICON = "https://i.postimg.cc/rsSFx6gg/candy.png";
 
@@ -82,7 +82,7 @@ window.CandyMod.alterSnakeCode = function (code) {
   // MoreMenu intentionally omitted until it supports v12.
   // Future: code = window.moreMenu.alterSnakeCode(code);
 
-  console.log("Coding Candy Mode into the game (v12)");
+  console.log("Coding Candy Mode into the game (v13)");
 
   window.updateCandyTrophySRC = function updateCandyTrophySRC() {
     if (window.trophy_src) {
@@ -113,12 +113,12 @@ window.CandyMod.alterSnakeCode = function (code) {
   // Blender's mode summary strip builds trophy_NN.png per selected mode; custom
   // modes have no such file, so point them at their own icons.
   let blender_mode_icons = new RegExp(
-    /m\$E\(d,`https:\/\/www\.google\.com\/logos\/fnbx\/\$\{`snake_arcade\/v22\/trophy_\$\{j\$E\(c\)\}\.png`\}`\)/
+    /b3E\(d,`https:\/\/www\.google\.com\/logos\/fnbx\/\$\{`snake_arcade\/v22\/trophy_\$\{Z2E\(c\)\}\.png`\}`\)/
   );
   if (code.match(blender_mode_icons)) {
     code = code.assertReplace(
       blender_mode_icons,
-      `m$E(d,(c===window.CANDY_MODE)?window.CANDY_ICON:(c===window.CHESS_MODE)?window.CHESS_ICON:\`https://www.google.com/logos/fnbx/\${\`snake_arcade/v22/trophy_\${j$E(c)}.png\`}\`)`
+      `b3E(d,(c===window.CANDY_MODE)?window.CANDY_ICON:(c===window.CHESS_MODE)?window.CHESS_ICON:\`https://www.google.com/logos/fnbx/\${\`snake_arcade/v22/trophy_\${Z2E(c)}.png\`}\`)`
     );
   }
 
@@ -133,13 +133,11 @@ window.CandyMod.alterSnakeCode = function (code) {
 
   // +1..+6 extra length on candy (and blender with candy toggle)
   let candy_logic = new RegExp(
-    /f7\(this\.settings,3\)\?this\.oa\.Ta\+=2:this\.oa\.Ta\+=1;/
+    /e7\(a\.settings,3\)\?a\.oa\.Ua\+=2:a\.oa\.Ua\+=1;/
   );
   let candy_match = code.match(candy_logic);
   if (candy_match) {
-    let snake_length = candy_match[0].split("+=")[0].split("?")[1] || "this.oa.Ta";
-    // Prefer the +=1 target: this.oa.Ta
-    snake_length = "this.oa.Ta";
+    let snake_length = "a.oa.Ua";
     let candy_logic_set = `${candy_match[0]}
     if(window.isCandyActive && window.isCandyActive()) {
         ${snake_length} += Math.floor(Math.random() * 6);
@@ -152,12 +150,12 @@ window.CandyMod.alterSnakeCode = function (code) {
 
   // Inject candy/chess into blender mode set builder
   let blender_foreach = new RegExp(
-    /a\.Ta\.forEach\(\(c,d\)=>\{_\.zm\(c,"lH9Ipd"\)&&b\.push\(d\)\}\)/
+    /a\.Ua\.forEach\(\(c,d\)=>\{_\.zm\(c,"lH9Ipd"\)&&b\.push\(d\)\}\)/
   );
   if (code.match(blender_foreach)) {
     code = code.assertReplace(
       blender_foreach,
-      `a.Ta.forEach((c,d)=>{_.zm(c,"lH9Ipd")&&b.push(d)});if(window.candy_blending&&window.CANDY_MODE!=null)b.push(window.CANDY_MODE);if(window.chess_blending&&window.CHESS_MODE!=null)b.push(window.CHESS_MODE)`
+      `a.Ua.forEach((c,d)=>{_.zm(c,"lH9Ipd")&&b.push(d)});if(window.candy_blending&&window.CANDY_MODE!=null)b.push(window.CANDY_MODE);if(window.chess_blending&&window.CHESS_MODE!=null)b.push(window.CHESS_MODE)`
     );
   } else {
     console.error("CandyMod: failed to find blender forEach regex");
@@ -166,12 +164,12 @@ window.CandyMod.alterSnakeCode = function (code) {
   // Map custom blender panel icons into Ta with correct mode ids.
   // Must stay an expression (ternary false-branch) — a bare {let ...} block is a SyntaxError.
   let ta_fallback = new RegExp(
-    /this\.Ta\.set\(22,e\),this\.kl\.set\(e,22\)/
+    /this\.Ua\.set\(22,e\),this\.Uk\.set\(e,22\)/
   );
   if (code.match(ta_fallback)) {
     code = code.assertReplace(
       ta_fallback,
-      `((function(el){var s=el.children[0]&&el.children[0].src||"",m=22;if(window.CANDY_MODE!=null&&s.indexOf("rsSFx6gg")>=0)m=window.CANDY_MODE;else if(window.CHESS_MODE!=null&&s.indexOf("ZqK0CB95")>=0)m=window.CHESS_MODE;this.Ta.set(m,el);this.kl.set(el,m);}).call(this,e))`
+      `((function(el){var s=el.children[0]&&el.children[0].src||"",m=22;if(window.CANDY_MODE!=null&&s.indexOf("rsSFx6gg")>=0)m=window.CANDY_MODE;else if(window.CHESS_MODE!=null&&s.indexOf("ZqK0CB95")>=0)m=window.CHESS_MODE;this.Ua.set(m,el);this.Uk.set(el,m);}).call(this,e))`
     );
   }
 
