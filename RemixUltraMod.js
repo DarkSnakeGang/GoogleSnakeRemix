@@ -15898,7 +15898,7 @@ window.disableMineMode = true;
 window.disableGateMode = true;
 window.disableBridgeMode = true;
 window.disableStatueBodyPlant = true;
-window.disableKeyResetPlant = true;
+window.disableKeyResetPlant = false;
 
 /* ULTRA_PLACE_CODEC_START */
 window.ULTRA_PLACE_SIZES = [

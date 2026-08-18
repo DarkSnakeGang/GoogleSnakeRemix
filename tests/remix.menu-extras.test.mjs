@@ -520,9 +520,6 @@ async function assertSokobanKeyBlackDiceStartsLikeDice(launch) {
         sokoDice: snap(9, 4),
         sokoBlack: snap(9, black),
         sokoOne: snap(9, 0),
-        keyDice: snap(8, 4),
-        keyBlack: snap(8, black),
-        keyOne: snap(8, 0),
         classicBlack: snap(0, black),
         classicDice: snap(0, 4),
         sokoSmallDice: snap(9, 4, 1),
@@ -531,9 +528,7 @@ async function assertSokobanKeyBlackDiceStartsLikeDice(launch) {
     });
     assert.ok(probe.sokoDice.length >= 1, JSON.stringify(probe));
     assert.deepEqual(probe.sokoBlack, probe.sokoDice, JSON.stringify(probe));
-    assert.deepEqual(probe.keyBlack, probe.keyDice, JSON.stringify(probe));
     assert.deepEqual(probe.sokoBlack, probe.sokoOne, JSON.stringify(probe));
-    assert.deepEqual(probe.keyBlack, probe.keyOne, JSON.stringify(probe));
     assert.deepEqual(probe.classicBlack, probe.classicDice, JSON.stringify(probe));
     assert.equal(probe.classicDice.length, 1, JSON.stringify(probe));
     assert.deepEqual(probe.sokoSmallBlack, probe.sokoSmallDice, JSON.stringify(probe));
@@ -544,17 +539,123 @@ async function assertSokobanKeyBlackDiceStartsLikeDice(launch) {
 }
 
 describe("Sokoban/Key black dice start", { skip: !runBrowser }, () => {
-  it("Remix: sokoban and key black dice start like Dice", async () => {
+  it("Remix: sokoban black dice start like Dice", async () => {
     const { launchHarness } = await import("../tools/harness.mjs");
     await assertSokobanKeyBlackDiceStartsLikeDice(() =>
       launchHarness({ seed: 62, headless: true })
     );
   });
 
-  it("Ultra: sokoban and key black dice start like Dice", async () => {
+  it("Ultra: sokoban black dice start like Dice", async () => {
     const { launchHarness, ultraHarnessOpts } = await import("../tools/harness.mjs");
     await assertSokobanKeyBlackDiceStartsLikeDice(() =>
       launchHarness(ultraHarnessOpts({ seed: 63, headless: true }))
+    );
+  });
+});
+
+async function assertKeyModeStartsWithKeyAndBlock(launch) {
+  const { COUNT, SIZE } = await import("../tools/harness.mjs");
+  const h = await launch();
+  try {
+    await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
+    const probe = await h.page.evaluate(() => {
+      const g = window.__remixGame;
+      function keyBox() {
+        if (g.Ba && Array.isArray(g.Ba.keys)) return g.Ba;
+        const keys = Object.keys(g);
+        for (let i = 0; i < keys.length; i++) {
+          const v = g[keys[i]];
+          if (v && Array.isArray(v.keys) && typeof v.reset === "function") return v;
+        }
+        return null;
+      }
+      function keyblocks() {
+        const out = [];
+        const hosts = Object.keys(g).map((k) => g[k]);
+        for (let i = 0; i < hosts.length; i++) {
+          const host = hosts[i];
+          if (!host || typeof host !== "object") continue;
+          for (const sk of Object.keys(host)) {
+            const set = host[sk];
+            if (!set || typeof set.values !== "function") continue;
+            try {
+              for (const v of set.values()) {
+                if (v && v.yNa != null && v.pos) {
+                  const rec = { x: v.pos.x, y: v.pos.y, type: v.yNa };
+                  const id = rec.x + "," + rec.y + "," + rec.type;
+                  if (!out._seen) out._seen = new Set();
+                  if (out._seen.has(id)) continue;
+                  out._seen.add(id);
+                  out.push(rec);
+                }
+              }
+            } catch (_e) {}
+          }
+        }
+        delete out._seen;
+        return out;
+      }
+      function snap(ka) {
+        g.settings.ub = 8;
+        g.settings.ob = 8;
+        g.settings.ka = ka;
+        g.settings.Ca = ka;
+        window.CurrentModeNum = 8;
+        g.nj = false;
+        g.reset();
+        const kb = keyBox();
+        const keys = kb
+          ? kb.keys.map((k) => ({
+              x: k.pos.x,
+              y: k.pos.y,
+              type: k.type,
+              bx: k.r7a && k.r7a.x,
+              by: k.r7a && k.r7a.y,
+            }))
+          : [];
+        const blocks = keyblocks();
+        return {
+          apples: (g.wa.ka || []).length,
+          keys,
+          blocks,
+        };
+      }
+      return {
+        disableKeyResetPlant: !!window.disableKeyResetPlant,
+        one: snap(0),
+        dice: snap(4),
+        black: snap(window.BLACK_DICE_COUNT),
+      };
+    });
+    assert.equal(probe.disableKeyResetPlant, false, JSON.stringify(probe));
+    for (const name of ["one", "dice", "black"]) {
+      const s = probe[name];
+      assert.equal(s.apples, 0, name + " leftover fruit " + JSON.stringify(probe));
+      assert.equal(s.keys.length, 1, name + " keys " + JSON.stringify(probe));
+      assert.equal(s.blocks.length, 1, name + " blocks " + JSON.stringify(probe));
+      assert.equal(s.keys[0].type, s.blocks[0].type, name + " type " + JSON.stringify(probe));
+      assert.equal(s.keys[0].bx, s.blocks[0].x, name + " pair x " + JSON.stringify(probe));
+      assert.equal(s.keys[0].by, s.blocks[0].y, name + " pair y " + JSON.stringify(probe));
+    }
+    assert.deepEqual(h.modErrors(), [], "no mod errors");
+  } finally {
+    await h.close();
+  }
+}
+
+describe("Key mode start plants key + keyblock", { skip: !runBrowser }, () => {
+  it("Remix: one/dice/black dice start with a matching key and keyblock", async () => {
+    const { launchHarness } = await import("../tools/harness.mjs");
+    await assertKeyModeStartsWithKeyAndBlock(() =>
+      launchHarness({ seed: 64, headless: true })
+    );
+  });
+
+  it("Ultra: one/dice/black dice start with a matching key and keyblock", async () => {
+    const { launchHarness, ultraHarnessOpts } = await import("../tools/harness.mjs");
+    await assertKeyModeStartsWithKeyAndBlock(() =>
+      launchHarness(ultraHarnessOpts({ seed: 65, headless: true }))
     );
   });
 });
