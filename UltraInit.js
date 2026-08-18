@@ -182,7 +182,85 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   gap: 6px 0 !important;
 }
 #place-panel {
-  grid-template-columns: repeat(4, 48px) !important;
+  grid-template-columns: 1fr !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  overflow: hidden !important;
+  align-content: stretch !important;
+}
+#ultra-place-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 6px;
+}
+.ultra-place-tab {
+  flex: 1 1 30%;
+  font-size: 10px !important;
+  padding: 4px 3px !important;
+  border: none !important;
+  border-radius: 6px !important;
+  cursor: pointer;
+  background: rgba(0,0,0,0.22);
+  color: #fff;
+  line-height: 1.15;
+}
+.ultra-place-tab-on {
+  background: var(--ultra-btn, #1155CC) !important;
+}
+#ultra-place-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 48px);
+  justify-content: space-evenly;
+  gap: 4px 0;
+  overflow: auto;
+  min-height: 0;
+  scrollbar-width: none;
+}
+#ultra-place-grid::-webkit-scrollbar { display: none; }
+#place-panel[data-ultra-place-cols="5"] #ultra-place-grid,
+#ultra-place-grid .ultra-place-key-row {
+  grid-template-columns: repeat(5, 38px);
+}
+#place-panel[data-ultra-place-cols="5"] #ultra-place-grid {
+  display: block;
+}
+#ultra-place-grid .ultra-place-row-label {
+  font-size: 11px;
+  opacity: 0.85;
+  margin: 4px 2px 2px;
+}
+#ultra-place-grid .ultra-place-key-row {
+  display: grid;
+  justify-content: space-evenly;
+  gap: 4px 0;
+  margin-bottom: 6px;
+}
+#place-panel[data-ultra-place-cols="6"] #ultra-place-grid {
+  grid-template-columns: repeat(6, 32px);
+}
+#place-panel[data-ultra-place-cols="5"] #ultra-place-grid img.place-option {
+  width: 38px !important;
+  height: 38px !important;
+  max-width: 38px !important;
+}
+#place-panel[data-ultra-place-cols="6"] #ultra-place-grid img.place-option {
+  width: 32px !important;
+  height: 32px !important;
+  max-width: 32px !important;
+}
+.ultra-place-chip, .ultra-custom-chip {
+  display: inline-block;
+  font-size: 11px;
+  padding: 4px 8px;
+  margin: 2px 4px 6px 0;
+  border-radius: 8px;
+  border: none;
+  background: rgba(0,0,0,0.22);
+  color: #fff;
+  cursor: pointer;
+}
+.ultra-custom-chip-on, #ultra-custom-current {
+  background: var(--ultra-btn, #1155CC);
 }
 #preset-panel {
   grid-template-columns: repeat(3, 56px) !important;
@@ -1940,6 +2018,13 @@ window.RemixUltraMod.alterSnakeCode = function (code) {
     } catch (e) {
       console.error("RemixUltraMod: Level Editor alterSnakeCode failed", e);
     }
+    try {
+      if (window.UltraPlace && typeof window.UltraPlace.alterSnakeCode === "function") {
+        code = window.UltraPlace.alterSnakeCode(code);
+      }
+    } catch (e) {
+      console.error("RemixUltraMod: UltraPlace alterSnakeCode failed", e);
+    }
     code = window.CandyMod.alterSnakeCode(code);
     code = window.ChessMod.alterSnakeCode(code);
     code = window.BurgerMod.alterSnakeCode(code);
@@ -1968,6 +2053,9 @@ window.RemixUltraMod.runCodeAfter = function () {
   window.ultraPatchPresetLoads();
   window.ultraPatchLevelLoads();
   window.levelEditorMod.runCodeAfter();
+  if (window.UltraPlace && typeof window.UltraPlace.runCodeAfter === "function") {
+    window.UltraPlace.runCodeAfter();
+  }
   window.ultraPatchLevelLoads();
   window.ultraFixPresetImages();
 

@@ -71,7 +71,13 @@ Settings are isolated to `RemixUltraSettings` and `snake_timeKeeper_remix_ultra`
 
 Menus share one right dock and one left dock with tabs (**Place | Presets | More** on the right, **Custom | Challenge | Splits** on the left) instead of stacking every 220px sidebar. Full-screen Pudding overlays hide the docks and restore the previous tab when closed. The canvas label is **Remix Ultra**.
 
-Build still uses `python RemixBuilder.py` — it writes both `RemixMod.js` and `RemixUltraMod.js`.
+**Place tabs:** the right-hand Place dock has inner tabs **Original Fruit | Pudding Fruit | Objects | Key | Chess**. Original is vanilla apples `0–23`. Pudding lists More Pudding fruits (not chess pieces, goldens, or the skull). Objects cover wall, sokobox, sokogoal, bridge, both gate orientations, poison, arrows, shields, mines, and statues. Key is one tab with keys `0–4` over matching keyblocks. Chess plants an exact piece (`isPiece`, no random assign). Live clicks overwrite the cell. Shields only toggle a direction on fruit that already exists.
+
+**Custom codes** stay space-separated with no version header. Old `17x15 A11,7 W3,4 B5,5 S4,1` still imports (`A` is apple type 0). Export writes apple type and these extra letters: `Y` sokogoal, `C` bridge, `Ex,y,h|v` gate, `P` poison, `V` arrow, `H` shield on an existing apple, `N` mine, `Tx,y,0|1` statue, `Fx,y,bB` chess piece, `K` key, `L` keyblock. PNG presets are unchanged.
+
+**Custom map sizes** match More Menu `#size` 0–10: Standard 17×15, Small 10×9, Large 24×21, Micro 5×4, Tiny 7×6, Compact 12×11, Super 37×32, Too Big 64×56, Humongous 105×92, Way Too Big 168×147, Enormous 600×530.
+
+Build still uses `python RemixBuilder.py` — it writes both `RemixMod.js` and `RemixUltraMod.js`. Level Editor source is re-downloaded each build; Place/object work lives in `UltraPlaceInit.js` so `LevelEditorInit.js` and `RemixMod.js` stay untouched.
 
 ## Mode IDs (v13)
 
@@ -142,6 +148,7 @@ npm run capture            # dump original ChessMod on /v/3
 |------|------|
 | `RemixBuilder.py` | Fetch More Pudding + Level Editor; concat Remix and RemixUltra |
 | `UltraInit.js` | `window.RemixUltraMod` chain, dock tabs, LE+Chess/Burger hooks |
+| `UltraPlaceInit.js` | Place inner tabs, object placers, custom export letters, MoreMenu sizes |
 | `RemixUltraMod.js` | Built Ultra bundle (Remix + Level Editor) |
 | `ChessInit.js` | Chess mode + blender toggle + fruit inject + Chess Pieces visibility row |
 | `CandyInit.js` | Candy mode + blender toggle |

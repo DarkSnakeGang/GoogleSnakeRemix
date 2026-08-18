@@ -37,6 +37,8 @@ describe("RemixUltra build artifacts", () => {
     assert.match(ultra, /ULTRA_CHALLENGE_TXT/);
     assert.match(ultra, /setupMakePatternHtml/);
     assert.match(ultra, /textContent = "Remix Ultra"/);
+    assert.match(ultra, /window\.UltraPlace/);
+    assert.match(ultra, /ultraPlaceBuildGridHtml/);
   });
 });
 

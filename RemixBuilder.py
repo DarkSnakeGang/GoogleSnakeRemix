@@ -99,6 +99,7 @@ def main():
             "LevelEditorInit.js",
             "UltraPresetImages.js",
             "UltraPresetLevels.js",
+            "UltraPlaceInit.js",
             "UltraInit.js",
         ],
     )
