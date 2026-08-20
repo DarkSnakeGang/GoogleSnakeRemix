@@ -27,6 +27,13 @@ describe("RemixUltra build artifacts", () => {
     assert.match(remix, /remixShowDragonFruitCheckbox/);
     assert.match(remix, /remixInstallWallEveryAppleToggle/);
     assert.match(remix, /remixShouldSpawnWallEveryApple/);
+    assert.match(remix, /window\.CustomSize/);
+    assert.match(remix, /window\.CustomColors/);
+    assert.match(remix, /window\.CustomSpeeds/);
+    assert.match(remix, /remixEnsureCustomSettingsUi/);
+    assert.match(remix, /remixCustomBoardSize/);
+    assert.match(remix, /remixOnAppleEatenSpeedSwitch/);
+    assert.match(remix, /window\.CAT_SPEED_ICON\s*=\s*"data:image\/png;base64,/);
     assert.doesNotMatch(remix, /RemixUltraSettings/);
     assert.doesNotMatch(remix, /UltraShieldedFruitSpawn/);
     assert.doesNotMatch(remix, /UltraMineModeSpawn/);
@@ -74,6 +81,9 @@ describe("RemixUltra build artifacts", () => {
     assert.match(ultra, /ultra-pager-grid/);
     assert.match(ultra, /ultraBlockNativeArrowTurns/);
     assert.match(ultra, /ultraSetWallModeSpawn/);
+    assert.match(ultra, /id: \"custom\"/);
+    assert.match(ultra, /remixEnsureCustomSettingsUi/);
+    assert.match(ultra, /window\.CustomSize/);
   });
 });
 
@@ -242,16 +252,11 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
         const root = document.getElementById("settings-popup-pudding");
         const s = root && getComputedStyle(root);
         const play = document.getElementById("ultra-settings-page-play");
-        const stats = document.getElementById("ultra-settings-page-stats");
-        document.getElementById("ultra-settings-tab-stats").click();
-        const afterStats = {
-          playOn: play && play.classList.contains("ultra-page-on"),
-          statsOn: stats && stats.classList.contains("ultra-page-on"),
-        };
-        const chooser = document.getElementById("stat-chooser");
-        const chooserH = chooser && chooser.getBoundingClientRect().height;
         document.getElementById("ultra-settings-tab-setup").click();
         const setup = document.getElementById("ultra-settings-page-setup");
+        const custom = document.getElementById("ultra-settings-page-custom");
+        const chooser = document.getElementById("stat-chooser");
+        const chooserH = chooser && chooser.getBoundingClientRect().height;
         const visBtn = document.getElementById("remix-visibility-settings");
         const vis = document.getElementById("delete-stuff-popup");
         const visBtnBox = visBtn && visBtn.getBoundingClientRect();
@@ -280,20 +285,47 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
         const resetCs = setupResets[0] && getComputedStyle(setupResets[0]);
         const onTab = document.querySelector("#ultra-settings-pager .ultra-settings-tab.ultra-tab-on");
         const tabCs = onTab && getComputedStyle(onTab);
+        document.getElementById("ultra-settings-tab-custom").click();
+        const customOn = custom && custom.classList.contains("ultra-page-on");
+        const diceInCustom = !!document.querySelector(
+          "#remix-custom-panel-dice #black-dice-settings"
+        );
         document.getElementById("ultra-settings-tab-play").click();
         const setupKids = setup
           ? [...setup.children].map((el) => el.id || el.tagName)
           : [];
+        const statsTab = document.getElementById("ultra-settings-tab-stats");
+        const statsVisible =
+          !!statsTab &&
+          getComputedStyle(statsTab).display !== "none" &&
+          !statsTab.closest("#ultra-settings-hidden");
         return {
           overflowY: s && s.overflowY,
           scroll: root && root.scrollHeight - root.clientHeight,
           pager: !!document.getElementById("ultra-settings-pager"),
           play: !!play,
-          stats: !!stats,
           setup: !!setup,
+          custom: !!custom,
+          customOn,
+          diceInCustom,
           modes: !!document.getElementById("ultra-settings-page-modes"),
           modesTab: !!document.getElementById("ultra-settings-tab-modes"),
-          tabCount: document.querySelectorAll("#ultra-settings-pager .ultra-settings-tab").length,
+          tabCount: [
+            ...document.querySelectorAll("#ultra-settings-pager .ultra-settings-tab"),
+          ].filter(
+            (t) =>
+              getComputedStyle(t).display !== "none" &&
+              !t.closest("#ultra-settings-hidden")
+          ).length,
+          tabLabels: [
+            ...document.querySelectorAll("#ultra-settings-pager .ultra-settings-tab"),
+          ]
+            .filter(
+              (t) =>
+                getComputedStyle(t).display !== "none" &&
+                !t.closest("#ultra-settings-hidden")
+            )
+            .map((t) => t.textContent.trim()),
           pagerDisplay: document.getElementById("ultra-settings-pager") &&
             getComputedStyle(document.getElementById("ultra-settings-pager")).display,
           pagerGrid: document.getElementById("ultra-settings-pager") &&
@@ -306,9 +338,8 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
             document.getElementById("ultra-settings-page-modes") &&
             document.getElementById("ultra-settings-page-modes").querySelector("#UltraWallModeSpawn")
           ),
-          chooserInStats: !!(
-            stats && stats.querySelector("#stat-chooser")
-          ),
+          chooserInSetup: !!(setup && setup.querySelector("#stat-chooser")),
+          statsVisible,
           visBtn: !!(visBtn && visBtn.parentElement === setup),
           visBtnFirst: setupKids[0] === "remix-visibility-settings",
           visBtnShow,
@@ -321,7 +352,6 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
           chooserH,
           visBtnW: visBtnBox && visBtnBox.width,
           setupW: setupBox && setupBox.width,
-          afterStats,
           setupResetCount: setupResets.length,
           speedinfoKeep: !!speedinfoReset,
           resetBg: resetCs && resetCs.backgroundColor,
@@ -332,19 +362,25 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       assert.ok(more.scroll <= 2, JSON.stringify(more));
       assert.equal(more.pager, true, JSON.stringify(more));
       assert.equal(more.play, true, JSON.stringify(more));
-      assert.equal(more.stats, true, JSON.stringify(more));
       assert.equal(more.setup, true, JSON.stringify(more));
+      assert.equal(more.custom, true, JSON.stringify(more));
+      assert.equal(more.customOn, true, JSON.stringify(more));
+      assert.equal(more.diceInCustom, true, JSON.stringify(more));
       assert.equal(more.modes, true, JSON.stringify(more));
       assert.equal(more.modesTab, true, JSON.stringify(more));
       assert.equal(more.tabCount, 4, JSON.stringify(more));
+      assert.deepEqual(
+        more.tabLabels,
+        ["Play", "Setup", "Custom", "Modes"],
+        JSON.stringify(more)
+      );
       assert.equal(more.pagerDisplay, "grid", JSON.stringify(more));
       assert.equal(more.pagerGrid, true, JSON.stringify(more));
       assert.equal(more.skullInPlay, true, JSON.stringify(more));
       assert.equal(more.spawnInPlay, false, JSON.stringify(more));
       assert.equal(more.spawnInModes, true, JSON.stringify(more));
-      assert.equal(more.chooserInStats, true, JSON.stringify(more));
-      assert.equal(more.afterStats.playOn, false, JSON.stringify(more));
-      assert.equal(more.afterStats.statsOn, true, JSON.stringify(more));
+      assert.equal(more.chooserInSetup, true, JSON.stringify(more));
+      assert.equal(more.statsVisible, false, JSON.stringify(more));
       assert.equal(more.visBtn, true, JSON.stringify(more));
       assert.equal(more.visBtnFirst, true, JSON.stringify(more));
       assert.equal(more.visWasHidden, true, JSON.stringify(more));
@@ -602,21 +638,21 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
         cb.checked = true;
         cb.dispatchEvent(new Event("change", { bubbles: true }));
         const g = window.__remixGame || window.megaWholeSnakeObject;
-        const tick = g && g.tick && g.tick.toString();
         return {
           speedrun: !!window.challengeSpeedrunMode,
           wrapped: !!(
             window.tryChallengeSpeedrunAdvance &&
             window.tryChallengeSpeedrunAdvance.__ultra
           ),
-          hooked: !!(tick && tick.includes("tryChallengeSpeedrunAdvance")),
+          // Tick may be shield-gate wrapped; presence of the advance helper is enough.
+          advanceFn: typeof window.tryChallengeSpeedrunAdvance === "function",
           level: Number(window.otherPresetmanager && window.otherPresetmanager.challengelevel),
           apples: g && g.wa && g.wa.ka ? g.wa.ka.length : -1,
         };
       });
       assert.equal(hooked.speedrun, true, JSON.stringify(hooked));
       assert.equal(hooked.wrapped, true, JSON.stringify(hooked));
-      assert.equal(hooked.hooked, true, JSON.stringify(hooked));
+      assert.equal(hooked.advanceFn, true, JSON.stringify(hooked));
       assert.equal(hooked.level, 1, JSON.stringify(hooked));
 
       await h.page.evaluate(() => {

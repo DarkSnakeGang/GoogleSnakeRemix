@@ -177,6 +177,93 @@ label[for="RemoveScrollbar"] {
 #black-dice-settings input {
   width: 4.4em !important;
 }
+#remix-custom-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.remix-custom-subpager {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.remix-custom-subtab {
+  flex: 1;
+  min-width: 0;
+  font-family: Roboto, Arial, sans-serif !important;
+  font-size: 10px !important;
+  padding: 4px 2px !important;
+  border: none !important;
+  border-radius: 6px !important;
+  cursor: pointer;
+  line-height: 1.2;
+  background: rgba(0,0,0,0.22);
+  color: #fff;
+}
+.remix-custom-subtab.remix-custom-subtab-on {
+  background: var(--ultra-btn, #1155CC) !important;
+}
+.remix-custom-panel {
+  display: none;
+  overflow-y: auto;
+  max-height: 100%;
+  min-height: 0;
+  scrollbar-width: none;
+}
+.remix-custom-panel.remix-custom-panel-on {
+  display: block;
+}
+.remix-custom-panel::-webkit-scrollbar {
+  display: none;
+}
+.remix-custom-card {
+  margin: 4px 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.18);
+  border: 1px solid rgba(255,255,255,0.14);
+  color: #fff;
+  font-family: Roboto, Arial, sans-serif;
+}
+.remix-custom-card .remix-custom-title {
+  font-size: 13px;
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+.remix-custom-card .remix-custom-hint {
+  font-size: 11px;
+  opacity: 0.85;
+  margin-bottom: 6px;
+}
+.remix-custom-card label {
+  font-size: 12px;
+  margin: 0;
+}
+.remix-custom-card input[type="number"] {
+  width: 4.8em !important;
+  margin-left: 4px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+.remix-custom-card input[type="color"] {
+  width: 2.4em;
+  height: 1.6em;
+  padding: 0;
+  border: none;
+  background: transparent;
+  vertical-align: middle;
+}
+#remix-custom-rainbow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.4em, 1fr));
+  gap: 4px;
+  max-height: 140px;
+  overflow-y: auto;
+  margin-top: 6px;
+}
 `;
   document.head.appendChild(style);
 };
@@ -360,6 +447,7 @@ window.remixHideSettingsNode = function remixHideSettingsNode(el, bin) {
 };
 
 window.remixShowSettingsPage = function remixShowSettingsPage(id) {
+  if (id === "stats") id = "setup";
   window.__remixSettingsPage = id;
   window.__ultraSettingsPage = id;
   document.querySelectorAll(".ultra-settings-page").forEach(function (page) {
@@ -459,6 +547,18 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
   if (typeof window.remixInjectBlackDiceSettingsUi === "function") {
     window.remixInjectBlackDiceSettingsUi();
   }
+  if (typeof window.remixEnsureCustomSettingsUi === "function") {
+    window.remixEnsureCustomSettingsUi();
+  }
+  if (typeof window.remixInjectCustomBoardSettingsUi === "function") {
+    window.remixInjectCustomBoardSettingsUi();
+  }
+  if (typeof window.remixInjectCustomColorSettingsUi === "function") {
+    window.remixInjectCustomColorSettingsUi();
+  }
+  if (typeof window.remixInjectCustomSpeedSettingsUi === "function") {
+    window.remixInjectCustomSpeedSettingsUi();
+  }
 
   let bin = document.getElementById("ultra-settings-hidden");
   if (!bin) {
@@ -488,7 +588,6 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
 
     [
       ["play", "Play"],
-      ["stats", "Stats"],
       ["setup", "Setup"],
     ].forEach(function (pair) {
       const page = document.createElement("div");
@@ -508,11 +607,27 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     });
   }
 
+  // Drop legacy Stats tab/page (merged into Setup).
+  const legacyStatsTab = document.getElementById("ultra-settings-tab-stats");
+  const legacyStatsPage = document.getElementById("ultra-settings-page-stats");
+  if (legacyStatsTab) window.remixHideSettingsNode(legacyStatsTab, bin);
+  if (legacyStatsPage) {
+    Array.from(legacyStatsPage.children).forEach(function (ch) {
+      const setupTmp = document.getElementById("ultra-settings-page-setup");
+      if (setupTmp) setupTmp.appendChild(ch);
+    });
+    window.remixHideSettingsNode(legacyStatsPage, bin);
+  }
+
+  if (typeof window.remixEnsureCustomSettingsUi === "function") {
+    window.remixEnsureCustomSettingsUi();
+  }
+
   const play = document.getElementById("ultra-settings-page-play");
-  const stats = document.getElementById("ultra-settings-page-stats");
   const setup = document.getElementById("ultra-settings-page-setup");
+  const custom = document.getElementById("ultra-settings-page-custom");
   const modes = document.getElementById("ultra-settings-page-modes");
-  if (!play || !stats || !setup) return;
+  if (!play || !setup) return;
 
   [
     "SkullPoisonFruit",
@@ -529,25 +644,36 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
   window.remixInstallWallEveryAppleToggle(play);
   ["stat-chooser", "edit-stat", "reset-stats"].forEach(function (id) {
     const el = window.remixSettingsEl(id, root);
-    if (el && el.parentElement !== stats) stats.appendChild(el);
+    if (el && el.parentElement !== setup) setup.appendChild(el);
   });
   [
     "SaveGameSettings",
     "TimerSettings",
     "ResetKeybind",
     "CustomBowlFruits",
-    "black-dice-settings",
   ].forEach(function (id) {
     const el = window.remixSettingsWrap(id, root) || window.remixSettingsEl(id, root);
     if (el && el.parentElement !== setup) setup.appendChild(el);
   });
+
+  const dicePanel = document.getElementById("remix-custom-panel-dice");
+  const blackDice = document.getElementById("black-dice-settings");
+  if (dicePanel && blackDice && blackDice.parentElement !== dicePanel) {
+    dicePanel.appendChild(blackDice);
+  }
+  const customHost = document.getElementById("remix-custom-settings");
+  if (custom && customHost && customHost.parentElement !== custom) {
+    custom.appendChild(customHost);
+  }
+
   const keepIds = {
     "ultra-settings-hidden": 1,
     "ultra-settings-pager": 1,
     "ultra-settings-page-play": 1,
-    "ultra-settings-page-stats": 1,
     "ultra-settings-page-setup": 1,
+    "ultra-settings-page-custom": 1,
     "ultra-settings-page-modes": 1,
+    "ultra-settings-page-stats": 1,
   };
   Array.from(root.children).forEach(function (el) {
     if (el.tagName === "SPAN") return;
@@ -555,8 +681,8 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     if (el.id) {
       const already =
         play.querySelector("#" + el.id) ||
-        stats.querySelector("#" + el.id) ||
         setup.querySelector("#" + el.id) ||
+        (custom && custom.querySelector("#" + el.id)) ||
         (modes && modes.querySelector("#" + el.id));
       if (already) {
         window.remixHideSettingsNode(el, bin);
@@ -575,9 +701,9 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
   window.remixHookResetKeyMake();
   window.remixBindResetKeyButtons();
 
-  window.remixShowSettingsPage(
-    window.__remixSettingsPage || window.__ultraSettingsPage || "play"
-  );
+  let startPage = window.__remixSettingsPage || window.__ultraSettingsPage || "play";
+  if (startPage === "stats") startPage = "setup";
+  window.remixShowSettingsPage(startPage);
 };
 
 window.RemixMod.runCodeBefore = function () {
@@ -657,6 +783,10 @@ window.RemixMod.runCodeBefore = function () {
   window.BurgerMod.runCodeBefore();
   window.CatSpeed.runCodeBefore();
   window.DiceCounts.runCodeBefore();
+  window.CustomSettings.runCodeBefore();
+  window.CustomSize.runCodeBefore();
+  window.CustomColors.runCodeBefore();
+  window.CustomSpeeds.runCodeBefore();
   // After Chess/Burger helpers exist: re-enable SpeedInfo and gate its data.
   window.RemixSpeedInfo.runCodeBefore();
   window.PauseMod.runCodeBefore();
@@ -674,6 +804,9 @@ window.RemixMod.alterSnakeCode = function (code) {
   code = window.BurgerMod.alterSnakeCode(code);
   code = window.CatSpeed.alterSnakeCode(code);
   code = window.DiceCounts.alterSnakeCode(code);
+  code = window.CustomSize.alterSnakeCode(code);
+  code = window.CustomColors.alterSnakeCode(code);
+  code = window.CustomSpeeds.alterSnakeCode(code);
   code = window.RemixSpeedInfo.alterSnakeCode(code);
   // After MoreMenu: skip if the tick is already gated.
   code = window.PauseMod.alterSnakeCode(code);

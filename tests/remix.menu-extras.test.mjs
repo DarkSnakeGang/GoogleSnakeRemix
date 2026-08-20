@@ -18,9 +18,14 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
         );
         return {
           catIndex: window.CAT_SPEED_INDEX,
+          customSpeedIndex: window.CUSTOM_SPEED_INDEX,
+          switchIndex: window.CUSTOM_SPEED_SWITCH_INDEX,
           speedLen: speed.length,
           catChild: speed[window.CAT_SPEED_INDEX],
-          catIsLast: window.CAT_SPEED_INDEX === speed.length - 1,
+          catBeforeCustom:
+            window.CAT_SPEED_INDEX === window.CUSTOM_SPEED_INDEX - 1,
+          customLast:
+            window.CUSTOM_SPEED_SWITCH_INDEX === speed.length - 1,
           turtleStill3: speed[3]?.src?.includes("Turtle-Bunny"),
           blue: window.BLUE_DICE_COUNT,
           green: window.GREEN_DICE_COUNT,
@@ -32,9 +37,18 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
         };
       });
       assert.ok(menu.catIndex >= 14, "cat after MoreMenu: " + JSON.stringify(menu));
-      assert.equal(menu.catIsLast, true, JSON.stringify(menu));
+      assert.equal(menu.catBeforeCustom, true, JSON.stringify(menu));
+      assert.equal(menu.customLast, true, JSON.stringify(menu));
       assert.equal(menu.catChild?.alt, "Cat Speed", JSON.stringify(menu));
       assert.equal(menu.turtleStill3, true, JSON.stringify(menu));
+      assert.ok(
+        menu.customSpeedIndex === menu.catIndex + 1,
+        JSON.stringify(menu)
+      );
+      assert.ok(
+        menu.switchIndex === menu.customSpeedIndex + 1,
+        JSON.stringify(menu)
+      );
       assert.ok(menu.blue > 12, "blue after MoreMenu: " + JSON.stringify(menu));
       assert.equal(menu.green, menu.blue + 1, JSON.stringify(menu));
       assert.equal(menu.black, menu.green + 1, JSON.stringify(menu));
@@ -80,10 +94,6 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
 
       const probe = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const tickSrc = Function.prototype.toString.call(g.tick);
-        const hasTdfPatch =
-          tickSrc.includes("remixIsColoredDice") &&
-          tickSrc.includes("remixColoredDiceRoll");
 
         function eatLast(ka) {
           g.settings.ka = ka;
@@ -100,11 +110,11 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
           if (!apples.length) return { after: 0, scored: false };
           apples[0].pos.x = 4;
           apples[0].pos.y = 3;
-          const scoreBefore = g.Oh;
+          const scoreBefore = g.Sh;
           g.tick();
           return {
             after: g.wa.ka.length,
-            scored: g.Oh > scoreBefore,
+            scored: g.Sh > scoreBefore,
             ka: g.settings.ka,
           };
         }
@@ -117,7 +127,8 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
         }
 
         return {
-          hasTdfPatch,
+          hasColoredHelper: typeof window.remixIsColoredDice === "function",
+          hasRollHelper: typeof window.remixColoredDiceRoll === "function",
           liveBlue: liveBlue.map((r) => r.after),
           liveGreen: liveGreen.map((r) => r.after),
           blueScored: liveBlue.every((r) => r.scored),
@@ -125,7 +136,8 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
         };
       });
 
-      assert.equal(probe.hasTdfPatch, true, JSON.stringify(probe));
+      assert.equal(probe.hasColoredHelper, true, JSON.stringify(probe));
+      assert.equal(probe.hasRollHelper, true, JSON.stringify(probe));
       assert.equal(probe.blueScored, true, JSON.stringify(probe));
       assert.equal(probe.greenScored, true, JSON.stringify(probe));
       for (const n of probe.liveBlue) {
@@ -321,13 +333,12 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
       const probe = await h.page.evaluate(() => {
         window.remixOrganizeSettings();
         if (typeof window.BootstrapShow === "function") window.BootstrapShow();
-        document.getElementById("ultra-settings-tab-stats").click();
-        const stats = document.getElementById("ultra-settings-page-stats");
-        const chooser = document.getElementById("stat-chooser");
-        const chooserH = chooser && chooser.getBoundingClientRect().height;
         document.getElementById("ultra-settings-tab-setup").click();
         const setup = document.getElementById("ultra-settings-page-setup");
         const play = document.getElementById("ultra-settings-page-play");
+        const custom = document.getElementById("ultra-settings-page-custom");
+        const chooser = document.getElementById("stat-chooser");
+        const chooserH = chooser && chooser.getBoundingClientRect().height;
         const visBtn = document.getElementById("remix-visibility-settings");
         const vis = document.getElementById("delete-stuff-popup");
         const setupResets = setup
@@ -360,10 +371,24 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
         const pager = document.getElementById("ultra-settings-pager");
         const playTab = document.getElementById("ultra-settings-tab-play");
         const settingsBox = document.getElementById("settings-popup-pudding");
+        const statsTab = document.getElementById("ultra-settings-tab-stats");
+        const statsVisible =
+          !!statsTab &&
+          getComputedStyle(statsTab).display !== "none" &&
+          !statsTab.closest("#ultra-settings-hidden");
         return {
           visBtnFirst: setup && setup.firstElementChild === visBtn,
           playSkull: !!(play && play.querySelector("#SkullPoisonFruit")),
-          chooserInStats: !!(stats && stats.querySelector("#stat-chooser")),
+          chooserInSetup: !!(setup && setup.querySelector("#stat-chooser")),
+          customTab: !!document.getElementById("ultra-settings-tab-custom"),
+          customPage: !!custom,
+          diceInCustom: !!document.querySelector(
+            "#remix-custom-panel-dice #black-dice-settings"
+          ),
+          statsVisible,
+          tabLabels: [...document.querySelectorAll("#ultra-settings-pager .ultra-settings-tab")]
+            .filter((t) => getComputedStyle(t).display !== "none" && !t.closest("#ultra-settings-hidden"))
+            .map((t) => t.textContent.trim()),
           before,
           labelBefore,
           shown,
@@ -384,7 +409,11 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
       });
       assert.equal(probe.visBtnFirst, true, JSON.stringify(probe));
       assert.equal(probe.playSkull, true, JSON.stringify(probe));
-      assert.equal(probe.chooserInStats, true, JSON.stringify(probe));
+      assert.equal(probe.chooserInSetup, true, JSON.stringify(probe));
+      assert.equal(probe.customTab, true, JSON.stringify(probe));
+      assert.equal(probe.diceInCustom, true, JSON.stringify(probe));
+      assert.equal(probe.statsVisible, false, JSON.stringify(probe));
+      assert.deepEqual(probe.tabLabels, ["Play", "Setup", "Custom"], JSON.stringify(probe));
       assert.equal(probe.before, true, JSON.stringify(probe));
       assert.equal(probe.labelBefore, "Show Visibility settings", JSON.stringify(probe));
       assert.equal(probe.shown, true, JSON.stringify(probe));

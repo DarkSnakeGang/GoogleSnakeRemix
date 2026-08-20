@@ -21,6 +21,25 @@ window.ULTRA_PLACE_SIZES = [
   { id: "humongous", label: "Humongous", w: 105, h: 92, idx: 8 },
   { id: "wayTooBig", label: "Way Too Big", w: 168, h: 147, idx: 9 },
   { id: "enormous", label: "Enormous", w: 600, h: 530, idx: 10 },
+  {
+    id: "custom",
+    label: "Custom",
+    get w() {
+      return window.remixCustomBoardSize
+        ? window.remixCustomBoardSize().width
+        : 17;
+    },
+    get h() {
+      return window.remixCustomBoardSize
+        ? window.remixCustomBoardSize().height
+        : 15;
+    },
+    get idx() {
+      return typeof window.CUSTOM_SIZE_INDEX === "number"
+        ? window.CUSTOM_SIZE_INDEX
+        : 11;
+    },
+  },
 ];
 
 window.ultraPlaceCodec = {
