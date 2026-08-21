@@ -177,6 +177,19 @@ label[for="RemoveScrollbar"] {
 #black-dice-settings input {
   width: 4.4em !important;
 }
+/* Native number spinners keep auto-repeating on hover/drag — hide them. */
+#black-dice-settings input[type="number"],
+.remix-custom-card input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+#black-dice-settings input[type="number"]::-webkit-outer-spin-button,
+#black-dice-settings input[type="number"]::-webkit-inner-spin-button,
+.remix-custom-card input[type="number"]::-webkit-outer-spin-button,
+.remix-custom-card input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 #remix-custom-settings {
   display: flex;
   flex-direction: column;

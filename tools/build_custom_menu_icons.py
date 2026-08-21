@@ -97,72 +97,98 @@ def harden_eyes(im: Image.Image) -> Image.Image:
     return im
 
 
-def paint_speed_eye(im: Image.Image) -> Image.Image:
-    """Guarantee a solid white eye + black pupil on the custom-speed snake."""
+def erase_oversized_whites(im: Image.Image) -> tuple[Image.Image, tuple[float, float] | None]:
+    """Replace bright white blobs with nearby body color; return eye center guess."""
     im = im.copy()
-    # Eye sits on the upper-left head in the v5 pose (approx after fit).
-    # Search for the densest white cluster; if missing, paint a default.
     px = im.load()
     w, h = im.size
     whites = [
         (x, y)
         for y in range(h)
         for x in range(w)
-        if px[x, y][3] > 200 and min(px[x, y][:3]) >= 220
+        if px[x, y][3] > 180 and min(px[x, y][:3]) >= 200
     ]
-    draw = ImageDraw.Draw(im)
-    if whites:
-        cx = sum(x for x, _ in whites) / len(whites)
-        cy = sum(y for _, y in whites) / len(whites)
+    if not whites:
+        return im, None
+    cx = sum(x for x, _ in whites) / len(whites)
+    cy = sum(y for _, y in whites) / len(whites)
+    # Sample body color around the cluster (non-white opaque neighbors).
+    samples: list[tuple[int, int, int]] = []
+    for x, y in whites:
+        for dx, dy in ((2, 0), (-2, 0), (0, 2), (0, -2), (3, 1), (-3, 1)):
+            nx, ny = x + dx, y + dy
+            if nx < 0 or ny < 0 or nx >= w or ny >= h:
+                continue
+            r, g, b, a = px[nx, ny]
+            if a > 200 and min(r, g, b) < 190:
+                samples.append((r, g, b))
+    if samples:
+        br = sum(c[0] for c in samples) // len(samples)
+        bg = sum(c[1] for c in samples) // len(samples)
+        bb = sum(c[2] for c in samples) // len(samples)
+        fill = (br, bg, bb, 255)
     else:
-        # Fallback: head region of the green snake icon
-        cx, cy = 14.5, 11.5
-    # Solid eye disc
-    r = 3.2
+        fill = (80, 180, 40, 255)
+    for x, y in whites:
+        px[x, y] = fill
+    # Also clear near-white fringe around the cluster
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if a > 0 and min(r, g, b) >= 190 and max(r, g, b) - min(r, g, b) <= 40:
+                if (x - cx) ** 2 + (y - cy) ** 2 <= 8 * 8:
+                    px[x, y] = fill
+    return im, (cx, cy)
+
+
+def paint_snake_eye(
+    im: Image.Image,
+    center: tuple[float, float] | None,
+    fallback: tuple[float, float],
+    pupil_rgb: tuple[int, int, int] = (0, 0, 0),
+) -> Image.Image:
+    """
+    Vanilla speed_00 eye is ~14x14 on a 128px icon → ~4.4px diameter at 40px.
+    """
+    im, guessed = erase_oversized_whites(im)
+    cx, cy = center or guessed or fallback
+    draw = ImageDraw.Draw(im)
+    # Match standard speed icon proportions.
+    r_eye = 2.15
+    r_pupil = 0.95
     draw.ellipse(
-        (cx - r, cy - r, cx + r, cy + r),
+        (cx - r_eye, cy - r_eye, cx + r_eye, cy + r_eye),
         fill=(255, 255, 255, 255),
         outline=(255, 255, 255, 255),
     )
-    pr = 1.35
     draw.ellipse(
-        (cx - pr, cy - pr, cx + pr, cy + pr),
-        fill=(0, 0, 0, 255),
-        outline=(0, 0, 0, 255),
+        (cx - r_pupil, cy - r_pupil, cx + r_pupil, cy + r_pupil),
+        fill=pupil_rgb + (255,),
+        outline=pupil_rgb + (255,),
     )
+    # Kill antialiased semi-transparent white flecks outside the solid eye.
+    px = im.load()
+    w, h = im.size
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if a == 255 or a == 0:
+                continue
+            if min(r, g, b) >= 200:
+                dist2 = (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2
+                if dist2 <= (r_eye + 0.35) ** 2:
+                    px[x, y] = (255, 255, 255, 255)
+                else:
+                    px[x, y] = (r, g, b, 0)
     return im
+
+
+def paint_speed_eye(im: Image.Image) -> Image.Image:
+    return paint_snake_eye(im, None, (14.5, 11.5), pupil_rgb=(0, 0, 0))
 
 
 def paint_gradient_eye(im: Image.Image) -> Image.Image:
-    """Guarantee a solid white eye + black pupil on the gradient snake."""
-    im = im.copy()
-    px = im.load()
-    w, h = im.size
-    whites = [
-        (x, y)
-        for y in range(h)
-        for x in range(w)
-        if px[x, y][3] > 200 and min(px[x, y][:3]) >= 210
-    ]
-    draw = ImageDraw.Draw(im)
-    if whites:
-        cx = sum(x for x, _ in whites) / len(whites)
-        cy = sum(y for _, y in whites) / len(whites)
-    else:
-        cx, cy = 28.0, 9.0
-    r = 2.8
-    draw.ellipse(
-        (cx - r, cy - r, cx + r, cy + r),
-        fill=(255, 255, 255, 255),
-        outline=(255, 255, 255, 255),
-    )
-    pr = 1.2
-    draw.ellipse(
-        (cx - pr, cy - pr, cx + pr, cy + pr),
-        fill=(20, 40, 90, 255),
-        outline=(20, 40, 90, 255),
-    )
-    return im
+    return paint_snake_eye(im, None, (28.0, 9.0), pupil_rgb=(20, 40, 90))
 
 
 def content_bbox(im: Image.Image, pad: int = 8) -> tuple[int, int, int, int]:
@@ -220,11 +246,12 @@ def main() -> None:
             raise SystemExit(f"missing {path}")
         im = punch_transparency(Image.open(path), mode=mode)
         small = fit_square(im, 40)
-        small = harden_eyes(small)
         if eye == "speed":
             small = paint_speed_eye(small)
         elif eye == "gradient":
             small = paint_gradient_eye(small)
+        else:
+            small = harden_eyes(small)
         uri, nbytes = to_data_uri(small)
         out[key] = uri
         small.save(preview / f"{key}.png")

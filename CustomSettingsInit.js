@@ -6,11 +6,13 @@ window.CustomSettings = {};
 window.remixStabilizeNumberInput = function remixStabilizeNumberInput(el) {
   if (!el || el.dataset.remixNumStable === "1") return el;
   el.dataset.remixNumStable = "1";
+  // No spinner UI: typing / arrows-when-focused only.
+  el.setAttribute("inputmode", "decimal");
   el.addEventListener(
     "wheel",
     function (ev) {
       ev.preventDefault();
-      // Keep scrolling the settings panel instead of spinning the value.
+      ev.stopPropagation();
       const panel =
         el.closest(".remix-custom-panel") ||
         el.closest(".ultra-settings-page") ||
@@ -19,6 +21,15 @@ window.remixStabilizeNumberInput = function remixStabilizeNumberInput(el) {
     },
     { passive: false }
   );
+  // Ignore accidental arrow key repeats unless the field is focused.
+  el.addEventListener("keydown", function (ev) {
+    if (
+      (ev.key === "ArrowUp" || ev.key === "ArrowDown") &&
+      document.activeElement !== el
+    ) {
+      ev.preventDefault();
+    }
+  });
   return el;
 };
 
