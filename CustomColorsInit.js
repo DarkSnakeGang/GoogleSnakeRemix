@@ -155,13 +155,17 @@ window.remixInjectCustomColorSettingsUi = function remixInjectCustomColorSetting
         window.remixRefreshCustomColorIcons();
         if (typeof window.saveSettings === "function") window.saveSettings();
       });
+    window.remixStabilizeNumberInput(
+      document.getElementById("remix-custom-rainbow-count")
+    );
   }
 
   document.getElementById("remix-custom-grad-1").value =
     window.pudding_settings.CustomGradientColor1;
   document.getElementById("remix-custom-grad-2").value =
     window.pudding_settings.CustomGradientColor2;
-  document.getElementById("remix-custom-rainbow-count").value = String(
+  window.remixSetNumberInputValue(
+    document.getElementById("remix-custom-rainbow-count"),
     window.pudding_settings.CustomRainbowCount
   );
   window.remixRebuildRainbowGrid();

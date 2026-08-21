@@ -120,24 +120,29 @@ window.remixInjectCustomSpeedSettingsUi = function remixInjectCustomSpeedSetting
       window.pudding_settings.CustomSpeedA = Number(a.value);
       window.pudding_settings.CustomSpeedB = Number(b.value);
       window.remixEnsureCustomSpeedSettings();
-      m.value = String(window.pudding_settings.CustomSpeedMult);
-      a.value = String(window.pudding_settings.CustomSpeedA);
-      b.value = String(window.pudding_settings.CustomSpeedB);
+      window.remixSetNumberInputValue(m, window.pudding_settings.CustomSpeedMult);
+      window.remixSetNumberInputValue(a, window.pudding_settings.CustomSpeedA);
+      window.remixSetNumberInputValue(b, window.pudding_settings.CustomSpeedB);
       if (typeof window.saveSettings === "function") window.saveSettings();
     }
     ["remix-custom-speed-mult", "remix-custom-speed-a", "remix-custom-speed-b"].forEach(
       function (id) {
-        document.getElementById(id).addEventListener("change", commit);
+        const el = document.getElementById(id);
+        window.remixStabilizeNumberInput(el);
+        el.addEventListener("change", commit);
       }
     );
   }
-  document.getElementById("remix-custom-speed-mult").value = String(
+  window.remixSetNumberInputValue(
+    document.getElementById("remix-custom-speed-mult"),
     window.pudding_settings.CustomSpeedMult
   );
-  document.getElementById("remix-custom-speed-a").value = String(
+  window.remixSetNumberInputValue(
+    document.getElementById("remix-custom-speed-a"),
     window.pudding_settings.CustomSpeedA
   );
-  document.getElementById("remix-custom-speed-b").value = String(
+  window.remixSetNumberInputValue(
+    document.getElementById("remix-custom-speed-b"),
     window.pudding_settings.CustomSpeedB
   );
 };

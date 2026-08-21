@@ -135,18 +135,36 @@ window.remixInjectCustomBoardSettingsUi = function remixInjectCustomBoardSetting
       window.pudding_settings.CustomBoardWidth = Number(wEl.value);
       window.pudding_settings.CustomBoardHeight = Number(hEl.value);
       window.remixEnsureCustomBoardSettings();
-      wEl.value = String(window.pudding_settings.CustomBoardWidth);
-      hEl.value = String(window.pudding_settings.CustomBoardHeight);
+      window.remixSetNumberInputValue(
+        wEl,
+        window.pudding_settings.CustomBoardWidth
+      );
+      window.remixSetNumberInputValue(
+        hEl,
+        window.pudding_settings.CustomBoardHeight
+      );
       if (typeof window.saveSettings === "function") window.saveSettings();
+    }
+    function commitAndReapply() {
+      commit();
       window.remixReapplyCustomSizeIfSelected();
     }
-    document.getElementById("remix-custom-board-w").addEventListener("change", commit);
-    document.getElementById("remix-custom-board-h").addEventListener("change", commit);
+    const wInput = document.getElementById("remix-custom-board-w");
+    const hInput = document.getElementById("remix-custom-board-h");
+    window.remixStabilizeNumberInput(wInput);
+    window.remixStabilizeNumberInput(hInput);
+    // Save on change; hard-reset only on blur so spinner mouseup isn't lost.
+    wInput.addEventListener("change", commit);
+    hInput.addEventListener("change", commit);
+    wInput.addEventListener("blur", commitAndReapply);
+    hInput.addEventListener("blur", commitAndReapply);
   }
-  document.getElementById("remix-custom-board-w").value = String(
+  window.remixSetNumberInputValue(
+    document.getElementById("remix-custom-board-w"),
     window.pudding_settings.CustomBoardWidth
   );
-  document.getElementById("remix-custom-board-h").value = String(
+  window.remixSetNumberInputValue(
+    document.getElementById("remix-custom-board-h"),
     window.pudding_settings.CustomBoardHeight
   );
 };

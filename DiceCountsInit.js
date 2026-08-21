@@ -384,8 +384,13 @@ window.DiceCounts.runCodeBefore = function () {
     const range = window.remixEnsureBlackDiceSettings();
     const minEl = document.getElementById("black-dice-min");
     const maxEl = document.getElementById("black-dice-max");
-    if (minEl) minEl.value = String(range.min);
-    if (maxEl) maxEl.value = String(range.max);
+    if (typeof window.remixSetNumberInputValue === "function") {
+      window.remixSetNumberInputValue(minEl, range.min);
+      window.remixSetNumberInputValue(maxEl, range.max);
+    } else {
+      if (minEl) minEl.value = String(range.min);
+      if (maxEl) maxEl.value = String(range.max);
+    }
   };
 
   window.remixInjectBlackDiceSettingsUi = function remixInjectBlackDiceSettingsUi() {
@@ -443,8 +448,14 @@ window.DiceCounts.runCodeBefore = function () {
       window.remixSyncBlackDiceSettingsUi();
       if (typeof window.saveSettings === "function") window.saveSettings();
     }
-    document.getElementById("black-dice-min").addEventListener("change", commit);
-    document.getElementById("black-dice-max").addEventListener("change", commit);
+    const minInput = document.getElementById("black-dice-min");
+    const maxInput = document.getElementById("black-dice-max");
+    if (typeof window.remixStabilizeNumberInput === "function") {
+      window.remixStabilizeNumberInput(minInput);
+      window.remixStabilizeNumberInput(maxInput);
+    }
+    minInput.addEventListener("change", commit);
+    maxInput.addEventListener("change", commit);
     window.remixSyncBlackDiceSettingsUi();
   };
 

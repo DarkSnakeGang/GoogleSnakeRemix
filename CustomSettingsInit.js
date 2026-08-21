@@ -1,5 +1,34 @@
 window.CustomSettings = {};
 
+// Chrome changes <input type="number"> on mouse wheel even when you're just
+// scrolling the settings panel — feels like the value "keeps going". Also
+// never overwrite a field the user is actively editing.
+window.remixStabilizeNumberInput = function remixStabilizeNumberInput(el) {
+  if (!el || el.dataset.remixNumStable === "1") return el;
+  el.dataset.remixNumStable = "1";
+  el.addEventListener(
+    "wheel",
+    function (ev) {
+      ev.preventDefault();
+      // Keep scrolling the settings panel instead of spinning the value.
+      const panel =
+        el.closest(".remix-custom-panel") ||
+        el.closest(".ultra-settings-page") ||
+        document.getElementById("settings-popup-pudding");
+      if (panel) panel.scrollTop += ev.deltaY;
+    },
+    { passive: false }
+  );
+  return el;
+};
+
+window.remixSetNumberInputValue = function remixSetNumberInputValue(el, value) {
+  if (!el) return;
+  if (document.activeElement === el) return;
+  const next = String(value);
+  if (el.value !== next) el.value = next;
+};
+
 window.remixEnsureCustomSettingsUi = function remixEnsureCustomSettingsUi() {
   const root = document.getElementById("settings-popup-pudding");
   if (!root) return null;

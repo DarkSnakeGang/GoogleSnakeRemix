@@ -12693,8 +12693,13 @@ window.DiceCounts.runCodeBefore = function () {
     const range = window.remixEnsureBlackDiceSettings();
     const minEl = document.getElementById("black-dice-min");
     const maxEl = document.getElementById("black-dice-max");
-    if (minEl) minEl.value = String(range.min);
-    if (maxEl) maxEl.value = String(range.max);
+    if (typeof window.remixSetNumberInputValue === "function") {
+      window.remixSetNumberInputValue(minEl, range.min);
+      window.remixSetNumberInputValue(maxEl, range.max);
+    } else {
+      if (minEl) minEl.value = String(range.min);
+      if (maxEl) maxEl.value = String(range.max);
+    }
   };
 
   window.remixInjectBlackDiceSettingsUi = function remixInjectBlackDiceSettingsUi() {
@@ -12752,8 +12757,14 @@ window.DiceCounts.runCodeBefore = function () {
       window.remixSyncBlackDiceSettingsUi();
       if (typeof window.saveSettings === "function") window.saveSettings();
     }
-    document.getElementById("black-dice-min").addEventListener("change", commit);
-    document.getElementById("black-dice-max").addEventListener("change", commit);
+    const minInput = document.getElementById("black-dice-min");
+    const maxInput = document.getElementById("black-dice-max");
+    if (typeof window.remixStabilizeNumberInput === "function") {
+      window.remixStabilizeNumberInput(minInput);
+      window.remixStabilizeNumberInput(maxInput);
+    }
+    minInput.addEventListener("change", commit);
+    maxInput.addEventListener("change", commit);
     window.remixSyncBlackDiceSettingsUi();
   };
 
@@ -12889,6 +12900,35 @@ window.DiceCounts.alterSnakeCode = function (code) {
 };
 
 window.CustomSettings = {};
+
+// Chrome changes <input type="number"> on mouse wheel even when you're just
+// scrolling the settings panel — feels like the value "keeps going". Also
+// never overwrite a field the user is actively editing.
+window.remixStabilizeNumberInput = function remixStabilizeNumberInput(el) {
+  if (!el || el.dataset.remixNumStable === "1") return el;
+  el.dataset.remixNumStable = "1";
+  el.addEventListener(
+    "wheel",
+    function (ev) {
+      ev.preventDefault();
+      // Keep scrolling the settings panel instead of spinning the value.
+      const panel =
+        el.closest(".remix-custom-panel") ||
+        el.closest(".ultra-settings-page") ||
+        document.getElementById("settings-popup-pudding");
+      if (panel) panel.scrollTop += ev.deltaY;
+    },
+    { passive: false }
+  );
+  return el;
+};
+
+window.remixSetNumberInputValue = function remixSetNumberInputValue(el, value) {
+  if (!el) return;
+  if (document.activeElement === el) return;
+  const next = String(value);
+  if (el.value !== next) el.value = next;
+};
 
 window.remixEnsureCustomSettingsUi = function remixEnsureCustomSettingsUi() {
   const root = document.getElementById("settings-popup-pudding");
@@ -13109,18 +13149,36 @@ window.remixInjectCustomBoardSettingsUi = function remixInjectCustomBoardSetting
       window.pudding_settings.CustomBoardWidth = Number(wEl.value);
       window.pudding_settings.CustomBoardHeight = Number(hEl.value);
       window.remixEnsureCustomBoardSettings();
-      wEl.value = String(window.pudding_settings.CustomBoardWidth);
-      hEl.value = String(window.pudding_settings.CustomBoardHeight);
+      window.remixSetNumberInputValue(
+        wEl,
+        window.pudding_settings.CustomBoardWidth
+      );
+      window.remixSetNumberInputValue(
+        hEl,
+        window.pudding_settings.CustomBoardHeight
+      );
       if (typeof window.saveSettings === "function") window.saveSettings();
+    }
+    function commitAndReapply() {
+      commit();
       window.remixReapplyCustomSizeIfSelected();
     }
-    document.getElementById("remix-custom-board-w").addEventListener("change", commit);
-    document.getElementById("remix-custom-board-h").addEventListener("change", commit);
+    const wInput = document.getElementById("remix-custom-board-w");
+    const hInput = document.getElementById("remix-custom-board-h");
+    window.remixStabilizeNumberInput(wInput);
+    window.remixStabilizeNumberInput(hInput);
+    // Save on change; hard-reset only on blur so spinner mouseup isn't lost.
+    wInput.addEventListener("change", commit);
+    hInput.addEventListener("change", commit);
+    wInput.addEventListener("blur", commitAndReapply);
+    hInput.addEventListener("blur", commitAndReapply);
   }
-  document.getElementById("remix-custom-board-w").value = String(
+  window.remixSetNumberInputValue(
+    document.getElementById("remix-custom-board-w"),
     window.pudding_settings.CustomBoardWidth
   );
-  document.getElementById("remix-custom-board-h").value = String(
+  window.remixSetNumberInputValue(
+    document.getElementById("remix-custom-board-h"),
     window.pudding_settings.CustomBoardHeight
   );
 };
@@ -13411,13 +13469,17 @@ window.remixInjectCustomColorSettingsUi = function remixInjectCustomColorSetting
         window.remixRefreshCustomColorIcons();
         if (typeof window.saveSettings === "function") window.saveSettings();
       });
+    window.remixStabilizeNumberInput(
+      document.getElementById("remix-custom-rainbow-count")
+    );
   }
 
   document.getElementById("remix-custom-grad-1").value =
     window.pudding_settings.CustomGradientColor1;
   document.getElementById("remix-custom-grad-2").value =
     window.pudding_settings.CustomGradientColor2;
-  document.getElementById("remix-custom-rainbow-count").value = String(
+  window.remixSetNumberInputValue(
+    document.getElementById("remix-custom-rainbow-count"),
     window.pudding_settings.CustomRainbowCount
   );
   window.remixRebuildRainbowGrid();
@@ -13669,24 +13731,29 @@ window.remixInjectCustomSpeedSettingsUi = function remixInjectCustomSpeedSetting
       window.pudding_settings.CustomSpeedA = Number(a.value);
       window.pudding_settings.CustomSpeedB = Number(b.value);
       window.remixEnsureCustomSpeedSettings();
-      m.value = String(window.pudding_settings.CustomSpeedMult);
-      a.value = String(window.pudding_settings.CustomSpeedA);
-      b.value = String(window.pudding_settings.CustomSpeedB);
+      window.remixSetNumberInputValue(m, window.pudding_settings.CustomSpeedMult);
+      window.remixSetNumberInputValue(a, window.pudding_settings.CustomSpeedA);
+      window.remixSetNumberInputValue(b, window.pudding_settings.CustomSpeedB);
       if (typeof window.saveSettings === "function") window.saveSettings();
     }
     ["remix-custom-speed-mult", "remix-custom-speed-a", "remix-custom-speed-b"].forEach(
       function (id) {
-        document.getElementById(id).addEventListener("change", commit);
+        const el = document.getElementById(id);
+        window.remixStabilizeNumberInput(el);
+        el.addEventListener("change", commit);
       }
     );
   }
-  document.getElementById("remix-custom-speed-mult").value = String(
+  window.remixSetNumberInputValue(
+    document.getElementById("remix-custom-speed-mult"),
     window.pudding_settings.CustomSpeedMult
   );
-  document.getElementById("remix-custom-speed-a").value = String(
+  window.remixSetNumberInputValue(
+    document.getElementById("remix-custom-speed-a"),
     window.pudding_settings.CustomSpeedA
   );
-  document.getElementById("remix-custom-speed-b").value = String(
+  window.remixSetNumberInputValue(
+    document.getElementById("remix-custom-speed-b"),
     window.pudding_settings.CustomSpeedB
   );
 };
