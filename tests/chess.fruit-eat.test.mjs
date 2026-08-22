@@ -39,7 +39,7 @@ async function eatAheadOfHead(page, asFruit) {
     apples.forEach((a) => (a.Oba = undefined));
 
     const before = apples.length;
-    const beforeScore = g.Oh;
+    const beforeScore = g.Sh;
     const beforeKeys = apples.map((a) => `${a.pos.x},${a.pos.y}`);
 
     g.tick();
@@ -52,10 +52,10 @@ async function eatAheadOfHead(page, asFruit) {
       before,
       after: after.length,
       added: fresh.length,
-      freshAnimated: fresh.every((a) => a.Cm === true),
+      freshAnimated: fresh.every((a) => a.wm === true),
       allPieces: after.every((a) => !!a.isPiece),
       scoreBefore: beforeScore,
-      scoreAfter: g.Oh,
+      scoreAfter: g.Sh,
       head_state: window.head_state,
       just_ate: window.just_ate,
       won: !!(g.ub && g.lj),
@@ -81,7 +81,7 @@ describe("chess fruit eat (browser)", { skip: !runBrowser }, () => {
       assert.equal(fruit.just_ate, "fruit");
       assert.equal(fruit.added, 2, "exactly 2 pieces spawn: " + JSON.stringify(fruit));
       assert.equal(fruit.after, 2, "board is back to its 1a count of 2");
-      assert.equal(fruit.freshAnimated, true, "new pieces carry the Cm spawn animation");
+      assert.equal(fruit.freshAnimated, true, "new pieces carry the wm spawn animation");
       assert.equal(fruit.allPieces, true, "spawns are chess pieces");
       assert.equal(fruit.scoreAfter, fruit.scoreBefore + 1, "fruit scores");
       assert.equal(fruit.duplicates, 0, "no overlapping cells");

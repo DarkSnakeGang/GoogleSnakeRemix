@@ -7,19 +7,28 @@ const path = require("path");
 const base = path.join(__dirname, "..");
 
 const REMIX_PARTS = [
-  "CandyInit.js",
-  "ChessInit.js",
-  "BurgerInit.js",
-  "CatSpeedInit.js",
-  "DiceCountsInit.js",
-  "CustomSettingsInit.js",
-  "CustomSizeInit.js",
-  "CustomColorsInit.js",
-  "CustomSpeedsInit.js",
-  "RemixSpeedInfoInit.js",
-  "CspMenuIcons.js",
-  "PauseInit.js",
-  "RemixInit.js",
+  "src/CandyInit.js",
+  "src/ChessInit.js",
+  "src/BurgerInit.js",
+  "src/CatSpeedInit.js",
+  "src/DiceCountsInit.js",
+  "src/CustomSettingsInit.js",
+  "src/CustomSizeInit.js",
+  "src/CustomColorsInit.js",
+  "src/CustomSpeedsInit.js",
+  "src/RemixSpeedInfoInit.js",
+  "src/CspMenuIcons.js",
+  "src/PauseInit.js",
+  "src/RemixInit.js",
+];
+
+const ULTRA_PARTS = [
+  ...REMIX_PARTS,
+  "LevelEditorInit.js",
+  "src/UltraPresetImages.js",
+  "src/UltraPresetLevels.js",
+  "src/UltraPlaceInit.js",
+  "src/UltraInit.js",
 ];
 
 function concat(outName, parts) {
@@ -43,13 +52,5 @@ if (!fs.existsSync(moreUltra)) throw new Error("MorePudding.ultra.js missing");
 if (!fs.existsSync(le)) throw new Error("LevelEditorInit.js missing");
 
 concat("RemixMod.js", ["MorePudding.js", ...REMIX_PARTS]);
-concat("RemixUltraMod.js", [
-  "MorePudding.ultra.js",
-  ...REMIX_PARTS,
-  "LevelEditorInit.js",
-  "UltraPresetImages.js",
-  "UltraPresetLevels.js",
-  "UltraPlaceInit.js",
-  "UltraInit.js",
-]);
+concat("RemixUltraMod.js", ["MorePudding.ultra.js", ...ULTRA_PARTS]);
 console.log("done");

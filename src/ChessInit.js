@@ -815,7 +815,7 @@ window.ChessMod.alterSnakeCode = function (code) {
         dup.pos.y = pos.y;
       }
       if (typeof pickType === "function") dup.type = pickType(mgr);
-      // Cm is the game's spawn-in animation flag (cleared by manager refresh()).
+      // wm is the game's spawn-in animation flag (cleared by manager refresh()).
       dup.wm = true;
       dup.cM = 0;
       dup.nD = 0;

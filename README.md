@@ -10,6 +10,9 @@ Remix Mod for Google Snake — adds **Chess Mode**, **Candy Mode** and **Burger 
 - **Cat Speed** — between Normal and Fast in feel (`0.85×`), appended after MoreMenu speeds
 - **Blue / Green / Black Dice** — DiceMod-style counts (roll **1–12** / **4–9** / **custom spawn range**) when the last apple is eaten; tinted game dice icons after Nuke. **Black Dice** min/max fruits per roll (default **6–24**, clamp **1–10000**) are set in Pudding Settings.
 - **Blender** — separate Candy, Chess and Burger toggles with their own icons in the Blender panel. In Burger+Chess, expired pieces become plain skull poisons (no chess-piece status, cannot be unlocked).
+- **Custom board size** — index 11 on `#size`; default **17×15**, clamp **2–10000** W/H (Custom → Board)
+- **Custom colors** — two-tone gradient body+shade and a custom rainbow palette (Custom → Colors)
+- **Custom speeds** — global multiplier plus A/B switcher that flips every apple (Custom → Speeds)
 - **Pause** — press **Q** to pause/unpause (PauseMod, included in both Remix and Remix Ultra)
 
 ## Build
@@ -20,26 +23,31 @@ Requires Python 3.
 python RemixBuilder.py
 ```
 
-This downloads `MorePudding.js` (and bootstrap CSS) from [GoogleSnakePudding](https://github.com/DarkSnakeGang/GoogleSnakePudding), applies Remix CE-level SRC patches, then concatenates:
+This downloads `MorePudding.js` (and bootstrap CSS) from [GoogleSnakePudding](https://github.com/DarkSnakeGang/GoogleSnakePudding), applies Remix CE-level SRC patches, then concatenates `MorePudding.js` with the modules under `src/`:
 
-1. `MorePudding.js`
-2. `CandyInit.js`
-3. `ChessInit.js`
-4. `BurgerInit.js`
-5. `CatSpeedInit.js`
-6. `DiceCountsInit.js`
-7. `RemixSpeedInfoInit.js`
-8. `CspMenuIcons.js`
-9. `PauseInit.js`
-10. `RemixInit.js`
+1. `src/CandyInit.js`
+2. `src/ChessInit.js`
+3. `src/BurgerInit.js`
+4. `src/CatSpeedInit.js`
+5. `src/DiceCountsInit.js`
+6. `src/CustomSettingsInit.js`
+7. `src/CustomSizeInit.js`
+8. `src/CustomColorsInit.js`
+9. `src/CustomSpeedsInit.js`
+10. `src/RemixSpeedInfoInit.js`
+11. `src/CspMenuIcons.js`
+12. `src/PauseInit.js`
+13. `src/RemixInit.js`
 
-Output: **`RemixMod.js`** (committed for raw-GitHub / custom URL use). The same command also writes **`RemixUltraMod.js`** (Remix + Level Editor v13). See RemixUltra below.
+Output: **`RemixMod.js`** at repo root (committed for raw-GitHub / custom URL use). The same command also writes **`RemixUltraMod.js`** (Remix + Level Editor v13 + Ultra modules). See RemixUltra below.
 
-More Pudding already bundles Pudding Mod, Visibility Mod and More Menu Mod and runs them in that order, so Remix calls `window.MorePudding` rather than wiring those three itself. `RemixInit.js` still falls back to Pudding + Visibility directly if a build ever ships without More Pudding.
+For a fast local rebuild without re-downloading More Pudding: `node tools/splice_remix_bundles.cjs`.
+
+More Pudding already bundles Pudding Mod, Visibility Mod and More Menu Mod and runs them in that order, so Remix calls `window.MorePudding` rather than wiring those three itself. `src/RemixInit.js` still falls back to Pudding + Visibility directly if a build ever ships without More Pudding.
 
 **Settings isolation:** Remix persists to `RemixSettings` and `snake_timeKeeper_remix` (seeded once from Pudding’s keys if empty) so extra trophies/counts/speeds and Remix-only options never overwrite plain PuddingMod’s `PuddingSettings` / `snake_timeKeeper`.
 
-**Pudding Settings:** The sidebar uses **Play | Stats | Setup** tabs (same layout and control sizes in Remix and Remix Ultra). Speed Info / split panel / scrollbar toggles stay hidden; Black Dice min/max live on Setup. Setup has a **Show / Hide Visibility settings** button for the Visibility overlay.
+**Pudding Settings:** The sidebar uses **Play | Setup | Custom** tabs in Remix (**Modes** is added in Ultra). Stats live on Setup. Speed Info / split panel / scrollbar toggles stay hidden; Black Dice min/max moved to Custom → Dice. Setup has a **Show / Hide Visibility settings** button for the Visibility overlay. Custom sub-tabs: **Board | Colors | Speeds | Dice**.
 
 **ModeRegistry:** Upstream TimeKeeper / SpeedInfo now use stable mode keys (`chess`, `wall+burger`, …). Remix registers Candy/Chess/Burger, detects Blender by `random.png` (not “last trophy”), and keeps blender mix keys in sync with the Remix blend toggles.
 
@@ -79,9 +87,9 @@ Menus share one right dock and one left dock with tabs (**Place | Presets | More
 
 **Custom brush:** the left Custom dock is the canvas, not a second palette. A **Paint | Start | Erase** row plus a status line is the whole tool UI. Paint uses whatever is selected in the right-hand Place dock. Start drops the snake spawn. Erase (and right-click) deletes. Import / Export / Clear / Refresh sit in a 2×2 grid above map size.
 
-**Custom map sizes** match More Menu `#size` 0–10: Standard 17×15, Small 10×9, Large 24×21, Micro 5×4, Tiny 7×6, Compact 12×11, Super 37×32, Too Big 64×56, Humongous 105×92, Way Too Big 168×147, Enormous 600×530.
+**Custom map sizes** match More Menu `#size` 0–11: Standard 17×15, Small 10×9, Large 24×21, Micro 5×4, Tiny 7×6, Compact 12×11, Super 37×32, Too Big 64×56, Humongous 105×92, Way Too Big 168×147, Enormous 600×530, **Custom** (user W/H, default 17×15, clamp 2–10000).
 
-Build still uses `python RemixBuilder.py` — it writes both `RemixMod.js` and `RemixUltraMod.js`. Level Editor source is re-downloaded each build; Place/object work lives in `UltraPlaceInit.js` so `LevelEditorInit.js` and `RemixMod.js` stay untouched.
+Build still uses `python RemixBuilder.py` — it writes both `RemixMod.js` and `RemixUltraMod.js` at repo root. Level Editor source is re-downloaded each build; Place/object work lives in `src/UltraPlaceInit.js` so `LevelEditorInit.js` and `RemixMod.js` stay untouched.
 
 ## Mode IDs (v13)
 
@@ -148,19 +156,29 @@ npm run capture            # dump original ChessMod on /v/3
 
 ## Source layout
 
-| File | Role |
+| Path | Role |
 |------|------|
-| `RemixBuilder.py` | Fetch More Pudding + Level Editor; concat Remix and RemixUltra |
-| `UltraInit.js` | `window.RemixUltraMod` chain, dock tabs, LE+Chess/Burger hooks |
-| `UltraPlaceInit.js` | Place inner tabs, object placers, custom export letters, MoreMenu sizes |
+| `RemixMod.js` | Built Remix bundle (published custom URL) |
 | `RemixUltraMod.js` | Built Ultra bundle (Remix + Level Editor) |
-| `ChessInit.js` | Chess mode + blender toggle + fruit inject + Chess Pieces visibility row |
-| `CandyInit.js` | Candy mode + blender toggle |
-| `BurgerInit.js` | Burger mode + blender toggle |
-| `PauseInit.js` | Q-to-pause overlay (PauseMod) |
-| `RemixInit.js` | `window.RemixMod` chain + shared blender slot helper |
-| `ChessCapture.mp3` | Capture sound |
-| `RemixMod.js` | Built Remix bundle |
+| `RemixBuilder.py` | Fetch More Pudding + Level Editor; concat Remix and RemixUltra |
+| `ChessCapture.mp3` | Capture sound (raw GitHub URL) |
+| `src/CandyInit.js` | Candy mode + blender toggle |
+| `src/ChessInit.js` | Chess mode + blender toggle + fruit inject |
+| `src/BurgerInit.js` | Burger mode + blender toggle |
+| `src/CatSpeedInit.js` | Cat speed menu entry |
+| `src/DiceCountsInit.js` | Blue/Green/Black dice counts |
+| `src/CustomSettingsInit.js` | Custom settings tab host + number-input helpers |
+| `src/CustomSizeInit.js` | Custom board size (index 11) |
+| `src/CustomColorsInit.js` | Custom gradient + rainbow colors |
+| `src/CustomSpeedsInit.js` | Custom speed multiplier + A/B switcher |
+| `src/RemixSpeedInfoInit.js` | SpeedInfo / TimeKeeper integration |
+| `src/CspMenuIcons.js` | CSP-safe inlined size icons |
+| `src/PauseInit.js` | Q-to-pause overlay (PauseMod) |
+| `src/RemixInit.js` | `window.RemixMod` chain + shared blender slot helper |
+| `src/UltraInit.js` | `window.RemixUltraMod` chain, dock tabs, LE hooks |
+| `src/UltraPlaceInit.js` | Place inner tabs, object placers, export letters, sizes |
+| `src/UltraPresetImages.js` | Embedded preset PNG data |
+| `src/UltraPresetLevels.js` | Embedded challenge level data |
 
 ## Versions
 

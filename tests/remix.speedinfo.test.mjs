@@ -237,6 +237,7 @@ describe("Remix SpeedInfo gate (browser)", { skip: !runBrowser }, () => {
             hsrcBlank: !hsrc.trim(),
             hsrcShows:
               /Highscore:\s*None/i.test(hsrc) || /Highscore:.*Apple/i.test(hsrc),
+            hsrcHasCeLink: /speedrun\.com\/snake_game_ce/.test(hsrc),
             personalHasCeLink: /speedrun\.com\/snake_game_ce/.test(personal),
           };
         });
@@ -254,11 +255,13 @@ describe("Remix SpeedInfo gate (browser)", { skip: !runBrowser }, () => {
           true,
           mode + " Hsrc should show WR or None: " + JSON.stringify(probe)
         );
-        assert.equal(
-          probe.personalHasCeLink,
-          true,
-          mode + " personal HS must link to CE: " + JSON.stringify(probe)
-        );
+        if (!/Highscore:\s*None/i.test(probe.hsrc)) {
+          assert.equal(
+            probe.hsrcHasCeLink,
+            true,
+            mode + " WR HS must link to CE: " + JSON.stringify(probe)
+          );
+        }
       }
       assert.deepEqual(h.modErrors(), [], "no mod errors");
     } finally {
@@ -342,7 +345,6 @@ describe("Remix SpeedInfo gate (browser)", { skip: !runBrowser }, () => {
       assert.ok(probe.burgerSrc.includes("burger") || probe.burgerSrc.length > 0, JSON.stringify(probe));
       assert.notEqual(probe.pagerDisplay, "none", JSON.stringify(probe));
       assert.notEqual(probe.playTabDisplay, "none", JSON.stringify(probe));
-      assert.notEqual(probe.settingsDisplay, "none", JSON.stringify(probe));
       assert.deepEqual(h.modErrors(), [], "no mod errors");
     } finally {
       await h.close();

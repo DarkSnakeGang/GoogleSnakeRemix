@@ -45,12 +45,21 @@ async function eatPieceAtHead(page) {
     eaten.Oba = undefined;
 
     const beforeCount = apples.length;
-    const beforeScore = g.Oh;
+    const beforeScore = g.Sh;
     const beforeLen = g.oa.Ta;
     const beforeUb = g.ub;
     const beforeLj = g.lj;
 
     g.tick();
+
+    function shieldCount(a) {
+      if (a.nba) {
+        if (typeof a.nba.size === "number") return a.nba.size;
+        if (Array.isArray(a.nba)) return a.nba.length;
+      }
+      if (a.Oba) return a.Oba.length;
+      return 0;
+    }
 
     const after = g.wa.ka;
     const afterPositions = after.map((a) => ({
@@ -59,7 +68,7 @@ async function eatPieceAtHead(page) {
       isPiece: !!a.isPiece,
       ChessColor: a.ChessColor,
       ChessPiece: a.ChessPiece,
-      shields: a.Oba ? [...a.Oba] : null,
+      shieldCount: shieldCount(a),
     }));
     const survivorsMatch = afterPositions.every((a) =>
       beforeKeys.has(`${a.x},${a.y}`)
@@ -76,7 +85,7 @@ async function eatPieceAtHead(page) {
       afterCount: after.length,
       removed: beforeCount - after.length,
       scoreBefore: beforeScore,
-      scoreAfter: g.Oh,
+      scoreAfter: g.Sh,
       lenBefore: beforeLen,
       lenAfter: g.oa.Ta,
       head_state: window.head_state,
@@ -90,9 +99,7 @@ async function eatPieceAtHead(page) {
       survivorsMatch,
       extras,
       afterPositions,
-      remainingShielded: afterPositions.every(
-        (a) => a.shields && a.shields.length >= 4
-      ),
+      remainingShielded: afterPositions.every((a) => a.shieldCount >= 4),
     };
   });
 }

@@ -8,7 +8,7 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 const ULTRA = path.join(ROOT, "RemixUltraMod.js");
-const PLACE_SRC = path.join(ROOT, "UltraPlaceInit.js");
+const PLACE_SRC = path.join(ROOT, "src", "UltraPlaceInit.js");
 const runBrowser = process.env.RUN_BROWSER_TESTS === "1";
 
 function fromVm(value) {
@@ -144,9 +144,9 @@ describe("Ultra Place export / sizes", () => {
     assert.equal(roundTrip.length, 2);
   });
 
-  it("has the MoreMenu size table including Micro and Enormous", () => {
+  it("has the MoreMenu size table including Micro, Enormous, and Custom", () => {
     const codec = loadCodec();
-    assert.equal(codec.sizes.length, 11);
+    assert.equal(codec.sizes.length, 12);
     assert.deepEqual(codec.sizeById("micro"), {
       id: "micro",
       label: "Micro",
@@ -155,6 +155,12 @@ describe("Ultra Place export / sizes", () => {
       idx: 3,
     });
     assert.equal(codec.sizeById("enormous").w, 600);
+    const custom = codec.sizeById("custom");
+    assert.equal(custom.id, "custom");
+    assert.equal(custom.label, "Custom");
+    assert.equal(custom.idx, 11);
+    assert.equal(custom.w, 17);
+    assert.equal(custom.h, 15);
     assert.deepEqual(codec.appleOffsetForSize(17, 15), { x: -12, y: -7 });
     assert.deepEqual(codec.appleOffsetForSize(5, 4), { x: -3, y: -2 });
     assert.deepEqual(codec.appleOffsetForSize(600, 530), { x: -450, y: -265 });

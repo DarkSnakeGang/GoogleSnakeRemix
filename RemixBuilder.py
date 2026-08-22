@@ -12,19 +12,28 @@ BOOTSTRAP_URL = "https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakePudd
 LEVEL_EDITOR_URL = "https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v13/modloadercode.js"
 
 REMIX_PARTS = [
-    "CandyInit.js",
-    "ChessInit.js",
-    "BurgerInit.js",
-    "CatSpeedInit.js",
-    "DiceCountsInit.js",
-    "CustomSettingsInit.js",
-    "CustomSizeInit.js",
-    "CustomColorsInit.js",
-    "CustomSpeedsInit.js",
-    "RemixSpeedInfoInit.js",
-    "CspMenuIcons.js",
-    "PauseInit.js",
-    "RemixInit.js",
+    "src/CandyInit.js",
+    "src/ChessInit.js",
+    "src/BurgerInit.js",
+    "src/CatSpeedInit.js",
+    "src/DiceCountsInit.js",
+    "src/CustomSettingsInit.js",
+    "src/CustomSizeInit.js",
+    "src/CustomColorsInit.js",
+    "src/CustomSpeedsInit.js",
+    "src/RemixSpeedInfoInit.js",
+    "src/CspMenuIcons.js",
+    "src/PauseInit.js",
+    "src/RemixInit.js",
+]
+
+ULTRA_PARTS = [
+    *REMIX_PARTS,
+    "LevelEditorInit.js",
+    "src/UltraPresetImages.js",
+    "src/UltraPresetLevels.js",
+    "src/UltraPlaceInit.js",
+    "src/UltraInit.js",
 ]
 
 
@@ -95,18 +104,7 @@ def main():
 
     rewrite_ultra_storage_keys(morepudding_path, ultra_pudding)
     download(LEVEL_EDITOR_URL, le_path)
-    concat(
-        ultra_out,
-        [
-            "MorePudding.ultra.js",
-            *REMIX_PARTS,
-            "LevelEditorInit.js",
-            "UltraPresetImages.js",
-            "UltraPresetLevels.js",
-            "UltraPlaceInit.js",
-            "UltraInit.js",
-        ],
-    )
+    concat(ultra_out, ["MorePudding.ultra.js"] + ULTRA_PARTS)
 
 
 if __name__ == "__main__":

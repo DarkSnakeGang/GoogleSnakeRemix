@@ -10,7 +10,7 @@ const ROOT = path.resolve(__dirname, "..");
 
 /** Load capture/unlock helpers from ChessInit without full game. */
 function loadChessHelpers() {
-  const src = readFileSync(path.join(ROOT, "ChessInit.js"), "utf8");
+  const src = readFileSync(path.join(ROOT, "src", "ChessInit.js"), "utf8");
   // Extract the alterSnakeCode function body helpers by evaling a stub environment
   const ctx = createContext({
     window: {

@@ -1475,9 +1475,10 @@ window.UltraPlace.alterSnakeCode = function (code) {
     1,
     "sokoGoalSet"
   ) || "d_";
+  // Pudding rewrites theme checks to `wa==10||window.isRainbow` (also == not ===).
   const bridgeColor = window.ultraPlaceCapture(
     code,
-    /([$a-zA-Z0-9_]{1,8})\s*=\s*function\s*\(\s*a\s*,\s*b\s*\)\s*\{\s*return\s+[$a-zA-Z0-9_]{1,8}\s*\[\s*a\.settings\.wa\s*===\s*10/,
+    /([$a-zA-Z0-9_]{1,8})\s*=\s*function\s*\(\s*a\s*,\s*b\s*\)\s*\{\s*return\s+[$a-zA-Z0-9_]{1,8}\s*\[\s*a\.settings\.wa\s*={2,3}\s*10(?:\s*\|\|\s*window\.isRainbow)?/,
     1,
     "bridgeColor"
   );

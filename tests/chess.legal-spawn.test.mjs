@@ -162,6 +162,7 @@ describe("chess legal spawn (browser)", { skip: !runBrowser }, () => {
                 cM: 0,
                 type: -1,
                 Cm: false,
+                wm: false,
                 Ee: proto.Ee && proto.Ee.clone ? proto.Ee.clone() : { x: 0, y: 0 },
                 RAb: { x: 0, y: 0 },
                 zL: { x: 1, y: 1 },
@@ -172,9 +173,7 @@ describe("chess legal spawn (browser)", { skip: !runBrowser }, () => {
                 nD: 0,
               };
             },
-            function freePos(board, excl, radius) {
-              return g.Tb(excl, radius);
-            },
+            null,
             null
           );
           const board = g.wa.oa;
@@ -206,7 +205,7 @@ describe("chess legal spawn (browser)", { skip: !runBrowser }, () => {
           const keys = apples.map((a) => `${a.pos.x},${a.pos.y}`);
           const delta = apples.length - before;
           const animated =
-            delta === 2 ? apples.slice(-2).every((a) => a.Cm === true) : true;
+            delta === 2 ? apples.slice(-2).every((a) => a.wm === true) : true;
           return {
             ok:
               illegal.length === 0 &&

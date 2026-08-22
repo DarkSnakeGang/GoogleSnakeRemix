@@ -190,28 +190,49 @@ export async function launchHarness(opts = {}) {
     },
 
     async start({ mode, count = COUNT.ONE, speed = 0, size = SIZE.NORMAL }) {
-      const hasGame = await page.evaluate(() => !!window.__remixGame);
-      if (!hasGame) {
-        await page.evaluate(() => {
-          const plays = [
-            ...document.querySelectorAll("div[role=button],button"),
-          ].filter((el) => (el.innerText || "").trim() === "Play");
-          const visible = plays.find((el) => {
-            const r = el.getBoundingClientRect();
-            return (
-              r.width > 0 &&
-              r.height > 0 &&
-              el.id !== "ultra-settings-tab-play"
-            );
+      const bootGame = async () => {
+        const clickPlay = () =>
+          page.evaluate(() => {
+            const plays = [
+              ...document.querySelectorAll("div[role=button],button"),
+            ].filter((el) => (el.innerText || "").trim() === "Play");
+            const visible = plays.find((el) => {
+              const r = el.getBoundingClientRect();
+              return (
+                r.width > 0 &&
+                r.height > 0 &&
+                el.id !== "ultra-settings-tab-play"
+              );
+            });
+            (visible || plays[plays.length - 1] || plays[0])?.click();
           });
-          (visible || plays[plays.length - 1] || plays[0])?.click();
-        });
-        await page.waitForTimeout(400);
-        await page.keyboard.press("ArrowRight");
-        await page.waitForFunction(() => !!window.__remixGame, null, {
-          timeout: 60000,
-        });
-      }
+
+        for (let attempt = 0; attempt < 3; attempt++) {
+          if (await page.evaluate(() => !!window.__remixGame)) return;
+          await clickPlay();
+          await page.waitForTimeout(400);
+          await page.keyboard.press("ArrowRight");
+          try {
+            await page.waitForFunction(() => !!window.__remixGame, null, {
+              timeout: 45000,
+            });
+            return;
+          } catch (err) {
+            if (attempt === 2) throw err;
+            await page.reload({ waitUntil: "domcontentloaded", timeout: 120000 });
+            await page.waitForFunction(
+              ({ text, api }) =>
+                !!document.body?.innerText?.includes(text) ||
+                window.CHESS_MODE != null ||
+                window[api],
+              { text: indicator, api: customModName },
+              { timeout: 120000 }
+            );
+          }
+        }
+      };
+
+      await bootGame();
 
       return page.evaluate(
         ({ mode, count, speed, size }) => {

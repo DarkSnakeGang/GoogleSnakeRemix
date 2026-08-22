@@ -64,7 +64,10 @@ describe("RemixUltra build artifacts", () => {
     assert.match(ultra, /setupMakePatternHtml/);
     assert.match(ultra, /textContent = "Remix Ultra"/);
     assert.match(ultra, /window\.UltraPlace/);
-    assert.match(ultra, /wa\\s\*===\\s\*10/);
+    assert.match(
+      ultra,
+      /wa\\s\*=\s*\{2,3\}\\s\*10(?:\\s\*\\|\\|\\s\*window\\.isRainbow)?/
+    );
     assert.match(ultra, /ultraPlaceBuildGridHtml/);
     assert.match(ultra, /remixShowDragonFruitCheckbox/);
     assert.match(ultra, /remixInstallWallEveryAppleToggle/);
@@ -84,6 +87,17 @@ describe("RemixUltra build artifacts", () => {
     assert.match(ultra, /id: \"custom\"/);
     assert.match(ultra, /remixEnsureCustomSettingsUi/);
     assert.match(ultra, /window\.CustomSize/);
+  });
+
+  it("bridgeColor capture matches pudding-transformed theme checks", () => {
+    const ultra = fs.readFileSync(ULTRA, "utf8");
+    const re =
+      /([$a-zA-Z0-9_]{1,8})\s*=\s*function\s*\(\s*a\s*,\s*b\s*\)\s*\{\s*return\s+[$a-zA-Z0-9_]{1,8}\s*\[\s*a\.settings\.wa\s*={2,3}\s*10(?:\s*\|\|\s*window\.isRainbow)?/;
+    const puddingSnippet =
+      "l5E=function(a,b){return j3E[a.settings.wa==10||window.isRainbow?b?8:";
+    const m = puddingSnippet.match(re);
+    assert.ok(m, "bridgeColor regex must match pudding-transformed snippet");
+    assert.equal(m[1], "l5E");
   });
 });
 
