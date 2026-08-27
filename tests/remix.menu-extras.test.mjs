@@ -183,12 +183,17 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
         const visible = disp
           ? [...disp.querySelectorAll("img")].filter((img) => {
               if (img.style.display === "none") return false;
+              if ((img.className || "").includes("LaTyvd")) return false;
               const s = img.src || "";
               return /count_|data:image/.test(s) || /WwRsj/.test(img.className || "");
             })
           : [];
+        const factoryCls = window.remixTopBarCountIcon
+          ? window.remixTopBarCountIcon("https://example.com/x.png").className
+          : "";
         return {
           blueData: blue.src.startsWith("data:"),
+          factoryCls,
           visibleKinds: visible.map((img) =>
             img.src.startsWith("data:")
               ? "data"
@@ -205,6 +210,8 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
       });
       assert.equal(probe.blueData, true, JSON.stringify(probe));
       assert.equal(probe.arrData, true, JSON.stringify(probe));
+      assert.match(probe.factoryCls, /WwRsj/);
+      assert.equal(probe.factoryCls.includes("LaTyvd"), false, JSON.stringify(probe));
       assert.ok(probe.visibleKinds.includes("data"), JSON.stringify(probe));
       assert.ok(!probe.visibleKinds.includes("red"), JSON.stringify(probe));
       assert.deepEqual(h.modErrors(), [], "no mod errors");

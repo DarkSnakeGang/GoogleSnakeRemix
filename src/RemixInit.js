@@ -198,18 +198,19 @@ label[for="RemoveScrollbar"] {
   flex: 1 1 auto;
 }
 .remix-custom-subpager {
-  display: flex;
-  gap: 3px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
   flex-shrink: 0;
+  margin-bottom: 2px;
 }
 .remix-custom-subtab {
-  flex: 1;
   min-width: 0;
   font-family: Roboto, Arial, sans-serif !important;
-  font-size: 10px !important;
-  padding: 4px 2px !important;
+  font-size: 11px !important;
+  padding: 6px 4px !important;
   border: none !important;
-  border-radius: 6px !important;
+  border-radius: 8px !important;
   cursor: pointer;
   line-height: 1.2;
   background: rgba(0,0,0,0.22);
@@ -276,6 +277,74 @@ label[for="RemoveScrollbar"] {
   max-height: 140px;
   overflow-y: auto;
   margin-top: 6px;
+}
+.remix-custom-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+  margin: 8px 0;
+}
+.remix-custom-toolbar-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+.remix-custom-toolbar .remix-custom-select {
+  width: 100%;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.remix-custom-select,
+.remix-custom-card .remix-custom-input {
+  flex: 1 1 140px;
+  min-width: 120px;
+  box-sizing: border-box;
+  padding: 8px 10px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  font-size: 12px !important;
+  font-family: Roboto, Arial, sans-serif !important;
+  color: #fff !important;
+  background-color: var(--ultra-btn, #1155CC) !important;
+}
+.remix-custom-select option {
+  color: #111;
+  background: #fff;
+}
+.remix-custom-btn-inline {
+  width: auto !important;
+  flex: 0 0 auto;
+  margin: 0 !important;
+  padding: 8px 12px !important;
+  white-space: nowrap;
+}
+.remix-custom-fruit-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 6px 0;
+}
+.remix-custom-fruit-row label {
+  min-width: 3.6em;
+  color: #fff;
+}
+.remix-custom-file {
+  max-width: 100%;
+  color: #fff;
+  font-size: 11px;
+  font-family: Roboto, Arial, sans-serif;
+}
+.remix-custom-status {
+  margin-top: 6px;
+}
+.remix-custom-status-ok {
+  color: #9fef9f !important;
+}
+.remix-custom-status-err {
+  color: #ffb4b4 !important;
 }
 `;
   document.head.appendChild(style);
@@ -546,8 +615,41 @@ window.remixEnsureSettingsFlex = function remixEnsureSettingsFlex() {
         box.style.display = "flex";
         box.style.flexDirection = "column";
       }
+      window.remixSyncInputDisplayVsSettings();
     };
     window.__remixBootstrapFlex = true;
+  }
+  if (typeof window.BootstrapHide === "function" && !window.__remixBootstrapHideInput) {
+    const origHide = window.BootstrapHide;
+    window.BootstrapHide = function () {
+      origHide.apply(this, arguments);
+      window.remixSyncInputDisplayVsSettings();
+    };
+    window.__remixBootstrapHideInput = true;
+  }
+};
+
+/** Hide Input Display while Pudding settings are open (Speed Info footer / Ultra slot). */
+window.remixSyncInputDisplayVsSettings = function remixSyncInputDisplayVsSettings() {
+  const settingsOpen = !!window.bootstrapVisible;
+  const want =
+    !!(window.pudding_settings && window.pudding_settings.InputDisplay) &&
+    !settingsOpen;
+  const sec = document.getElementById("input-display-section");
+  const slot = document.getElementById("ultra-input-slot");
+  // Ultra layout owns the slot; only poke the Speed Info-hosted section here.
+  if (sec && (!slot || !slot.contains(sec))) {
+    sec.style.display = want ? "flex" : "none";
+  }
+  if (slot && settingsOpen) {
+    slot.style.display = "none";
+  } else if (
+    slot &&
+    want &&
+    typeof window.ultraLayoutMenus === "function" &&
+    window.__ultraLayoutReady
+  ) {
+    window.ultraLayoutMenus();
   }
 };
 
@@ -571,6 +673,12 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
   }
   if (typeof window.remixInjectCustomSpeedSettingsUi === "function") {
     window.remixInjectCustomSpeedSettingsUi();
+  }
+  if (typeof window.remixInjectCustomFruitSettingsUi === "function") {
+    window.remixInjectCustomFruitSettingsUi();
+  }
+  if (typeof window.remixInjectCustomPoisonSettingsUi === "function") {
+    window.remixInjectCustomPoisonSettingsUi();
   }
 
   let bin = document.getElementById("ultra-settings-hidden");
@@ -655,6 +763,9 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
   });
   window.remixShowDragonFruitCheckbox(play);
   window.remixInstallWallEveryAppleToggle(play);
+  if (typeof window.remixInstallHamiltonCheckbox === "function") {
+    window.remixInstallHamiltonCheckbox(play);
+  }
   ["stat-chooser", "edit-stat", "reset-stats"].forEach(function (id) {
     const el = window.remixSettingsEl(id, root);
     if (el && el.parentElement !== setup) setup.appendChild(el);
@@ -792,6 +903,9 @@ window.RemixMod.runCodeBefore = function () {
   // Modes claim their trophy slots after MorePudding (incl. MoreMenu) has
   // finished adding its own, so their ids land at the end.
   window.CandyMod.runCodeBefore();
+  // Custom fruit must land in new_fruit before Chess pieces so the #apple menu
+  // index still maps to the custom entry (not black bishop).
+  window.CustomFruit.runCodeBefore();
   window.ChessMod.runCodeBefore();
   window.BurgerMod.runCodeBefore();
   window.CatSpeed.runCodeBefore();
@@ -803,6 +917,7 @@ window.RemixMod.runCodeBefore = function () {
   // After Chess/Burger helpers exist: re-enable SpeedInfo and gate its data.
   window.RemixSpeedInfo.runCodeBefore();
   window.PauseMod.runCodeBefore();
+  window.HamiltonRemix.runCodeBefore();
 };
 
 ////////////////////////////////////////////////////////////////////
@@ -820,6 +935,8 @@ window.RemixMod.alterSnakeCode = function (code) {
   code = window.CustomSize.alterSnakeCode(code);
   code = window.CustomColors.alterSnakeCode(code);
   code = window.CustomSpeeds.alterSnakeCode(code);
+  code = window.CustomFruit.alterSnakeCode(code);
+  code = window.HamiltonRemix.alterSnakeCode(code);
   code = window.RemixSpeedInfo.alterSnakeCode(code);
   // After MoreMenu: skip if the tick is already gated.
   code = window.PauseMod.alterSnakeCode(code);
@@ -838,6 +955,7 @@ window.RemixMod.runCodeAfter = function () {
   window.BurgerMod.runCodeAfter && window.BurgerMod.runCodeAfter();
   window.RemixSpeedInfo.runCodeAfter && window.RemixSpeedInfo.runCodeAfter();
   window.PauseMod.runCodeAfter && window.PauseMod.runCodeAfter();
+  window.HamiltonRemix.runCodeAfter && window.HamiltonRemix.runCodeAfter();
   window.remixHookSetTheme();
   window.remixHookResetKeyMake();
   window.remixOrganizeSettings();

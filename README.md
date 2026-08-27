@@ -13,6 +13,8 @@ Remix Mod for Google Snake — adds **Chess Mode**, **Candy Mode** and **Burger 
 - **Custom board size** — index 11 on `#size`; default **17×15**, clamp **2–10000** W/H (Custom → Board)
 - **Custom colors** — two-tone gradient body+shade and a custom rainbow palette (Custom → Colors)
 - **Custom speeds** — global multiplier plus A/B switcher that flips every apple (Custom → Speeds)
+- **Custom fruit** — modloader icon on `#apple`; Custom → **Fruit** for Normal/Real (128×128) and Pixel (170×170) with fruit presets (Load auto-applies; **Save preset** after a successful Apply, including uploads). Custom → **Poison** for poison sprites with separate presets, enable toggle, and the same Load/Apply/Save flow (overrides Skull when on).
+- **Hamilton tour** — Play checkbox (default off). In **wall mode**, after each wall spawn, solves the live pattern (WallSolver HamiltonMod) and paints a red tour polyline; recolors the score-bar wall trophy while searching. Vendored from [GoogleSnakeWallSolver](https://github.com/DarkSnakeGang/GoogleSnakeWallSolver) (`src/HamiltonMod.js`; refresh with `node tools/sync_hamilton_mod.cjs`).
 - **Pause** — press **Q** to pause/unpause (PauseMod, included in both Remix and Remix Ultra)
 
 ## Build
@@ -34,10 +36,14 @@ This downloads `MorePudding.js` (and bootstrap CSS) from [GoogleSnakePudding](ht
 7. `src/CustomSizeInit.js`
 8. `src/CustomColorsInit.js`
 9. `src/CustomSpeedsInit.js`
-10. `src/RemixSpeedInfoInit.js`
-11. `src/CspMenuIcons.js`
-12. `src/PauseInit.js`
-13. `src/RemixInit.js`
+10. `src/CustomFruitPresets.js`
+11. `src/CustomFruitInit.js`
+12. `src/HamiltonMod.js`
+13. `src/HamiltonInit.js`
+14. `src/RemixSpeedInfoInit.js`
+15. `src/CspMenuIcons.js`
+16. `src/PauseInit.js`
+17. `src/RemixInit.js`
 
 Output: **`RemixMod.js`** at repo root (committed for raw-GitHub / custom URL use). The same command also writes **`RemixUltraMod.js`** (Remix + Level Editor v13 + Ultra modules). See RemixUltra below.
 
@@ -47,7 +53,7 @@ More Pudding already bundles Pudding Mod, Visibility Mod and More Menu Mod and r
 
 **Settings isolation:** Remix persists to `RemixSettings` and `snake_timeKeeper_remix` (seeded once from Pudding’s keys if empty) so extra trophies/counts/speeds and Remix-only options never overwrite plain PuddingMod’s `PuddingSettings` / `snake_timeKeeper`.
 
-**Pudding Settings:** The sidebar uses **Play | Setup | Custom** tabs in Remix (**Modes** is added in Ultra). Stats live on Setup. Speed Info / split panel / scrollbar toggles stay hidden; Black Dice min/max moved to Custom → Dice. Setup has a **Show / Hide Visibility settings** button for the Visibility overlay. Custom sub-tabs: **Board | Colors | Speeds | Dice**.
+**Pudding Settings:** The sidebar uses **Play | Setup | Custom** tabs in Remix (**Modes** is added in Ultra). Stats live on Setup. Speed Info / split panel / scrollbar toggles stay hidden; Black Dice min/max moved to Custom → Dice. Setup has a **Show / Hide Visibility settings** button for the Visibility overlay. Custom sub-tabs (3 per row): **Board | Colors | Speeds | Dice | Fruit | Poison**.
 
 **ModeRegistry:** Upstream TimeKeeper / SpeedInfo now use stable mode keys (`chess`, `wall+burger`, …). Remix registers Candy/Chess/Burger, detects Blender by `random.png` (not “last trophy”), and keeps blender mix keys in sync with the Remix blend toggles.
 
@@ -79,7 +85,7 @@ Settings are isolated to `RemixUltraSettings` and `snake_timeKeeper_remix_ultra`
 
 Menus share one right dock and one left dock with tabs (**Place | Presets | More** on the right, **Custom | Challenge | Splits** on the left) instead of stacking every 220px sidebar. Full-screen Pudding overlays hide the docks and restore the previous tab when closed. The canvas label is **Remix Ultra**.
 
-**Presets / Challenge:** clicking a Presets thumbnail (or Random HAM) still hard-resets and immediately blits that pattern onto the board, same as Level Editor. Challenge lives on the left dock instead of the old CHALLENGE button; picking a level (and Speedrun mode) is unchanged, and the selected level applies on tab open and on dropdown change.
+**Presets / Challenge:** clicking a Presets thumbnail (or Random HAM) still hard-resets and immediately blits that pattern onto the board, same as Level Editor. Challenge lives on the left dock instead of the old CHALLENGE button; picking a level (and Speedrun mode) is unchanged, and the selected level applies on tab open and on dropdown change. With **Hamilton tour** checked on Play, Random HAM also kicks a tour solve after the pattern is applied (LE blit is not wall-mode spawn).
 
 **Place tabs:** the right-hand Place dock has inner tabs **Original Fruit | Pudding Fruit | Objects | Key | Chess**. Original is vanilla apples `0–23`. Pudding lists More Pudding fruits (not chess pieces, goldens, or the skull). Objects cover wall, sokobox, sokogoal, bridge, both gate orientations, poison (Normal skull, not Realism), arrows, shields, mines, and statues (cracked has the crack overlay). Key is one tab with keys `0–23` over matching keyblocks (the in-game `key_types` sheet). Chess plants an exact piece (`isPiece`, no random assign). Live clicks overwrite the cell. A shield click plants fruit if the cell is empty, then toggles that edge. Click other shield directions on the same fruit to keep several sides at once (native `nba` set).
 
@@ -126,7 +132,7 @@ Chess reuses **Portal’s pair layout** at start (`Y3E` force) and Portal’s al
 
 ### Fruit type numbering
 
-Pudding addresses its own trailing fruits by offset from the end of `new_fruit`: the skull poison sprite is the **last** entry and `goldenIndex` is `length - 6`. Chess therefore splices its twelve pieces in *ahead* of that six-entry tail instead of appending. Appending past it rebinds both — poisons render as a white rook and the golden-fruit restore clobbers piece types.
+Pudding addresses its own trailing fruits by offset from the end of `new_fruit`: the skull poison sprite is the **last** entry and `goldenIndex` is `length - 6`. Chess and **Custom Fruit** splice in *ahead* of that six-entry tail instead of appending. Appending past it rebinds both — poisons render as a white rook and the golden-fruit restore clobbers piece types.
 
 ## Dev tooling
 
@@ -171,6 +177,8 @@ npm run capture            # dump original ChessMod on /v/3
 | `src/CustomSizeInit.js` | Custom board size (index 11) |
 | `src/CustomColorsInit.js` | Custom gradient + rainbow colors |
 | `src/CustomSpeedsInit.js` | Custom speed multiplier + A/B switcher |
+| `src/CustomFruitPresets.js` | Deprecated Pudding fruit presets + poison presets |
+| `src/CustomFruitInit.js` | Custom fruit/poison tabs, Poison-tab enable checkbox, Apply validation |
 | `src/RemixSpeedInfoInit.js` | SpeedInfo / TimeKeeper integration |
 | `src/CspMenuIcons.js` | CSP-safe inlined size icons |
 | `src/PauseInit.js` | Q-to-pause overlay (PauseMod) |

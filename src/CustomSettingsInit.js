@@ -40,6 +40,15 @@ window.remixSetNumberInputValue = function remixSetNumberInputValue(el, value) {
   if (el.value !== next) el.value = next;
 };
 
+window.REMIX_CUSTOM_SUBPAGES = [
+  ["board", "Board"],
+  ["colors", "Colors"],
+  ["speeds", "Speeds"],
+  ["dice", "Dice"],
+  ["fruit", "Fruit"],
+  ["poison", "Poison"],
+];
+
 window.remixEnsureCustomSettingsUi = function remixEnsureCustomSettingsUi() {
   const root = document.getElementById("settings-popup-pudding");
   if (!root) return null;
@@ -76,16 +85,13 @@ window.remixEnsureCustomSettingsUi = function remixEnsureCustomSettingsUi() {
       '<div id="remix-custom-panel-board" class="remix-custom-panel"></div>' +
       '<div id="remix-custom-panel-colors" class="remix-custom-panel"></div>' +
       '<div id="remix-custom-panel-speeds" class="remix-custom-panel"></div>' +
-      '<div id="remix-custom-panel-dice" class="remix-custom-panel"></div>';
+      '<div id="remix-custom-panel-dice" class="remix-custom-panel"></div>' +
+      '<div id="remix-custom-panel-fruit" class="remix-custom-panel"></div>' +
+      '<div id="remix-custom-panel-poison" class="remix-custom-panel"></div>';
     page.appendChild(host);
 
     const sub = document.getElementById("remix-custom-subpager");
-    [
-      ["board", "Board"],
-      ["colors", "Colors"],
-      ["speeds", "Speeds"],
-      ["dice", "Dice"],
-    ].forEach(function (pair) {
+    window.REMIX_CUSTOM_SUBPAGES.forEach(function (pair) {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "remix-custom-subtab";
@@ -96,8 +102,27 @@ window.remixEnsureCustomSettingsUi = function remixEnsureCustomSettingsUi() {
       });
       sub.appendChild(b);
     });
-  } else if (host.parentElement !== page) {
-    page.appendChild(host);
+  } else {
+    if (host.parentElement !== page) page.appendChild(host);
+    // Upgrade older hosts that lack the Poison panel/tab.
+    if (!document.getElementById("remix-custom-panel-poison")) {
+      const poisonPanel = document.createElement("div");
+      poisonPanel.id = "remix-custom-panel-poison";
+      poisonPanel.className = "remix-custom-panel";
+      host.appendChild(poisonPanel);
+    }
+    const sub = document.getElementById("remix-custom-subpager");
+    if (sub && !document.getElementById("remix-custom-subtab-poison")) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "remix-custom-subtab";
+      b.id = "remix-custom-subtab-poison";
+      b.textContent = "Poison";
+      b.addEventListener("click", function () {
+        window.remixShowCustomSubPage("poison");
+      });
+      sub.appendChild(b);
+    }
   }
 
   window.remixShowCustomSubPage(
@@ -108,7 +133,8 @@ window.remixEnsureCustomSettingsUi = function remixEnsureCustomSettingsUi() {
 
 window.remixShowCustomSubPage = function remixShowCustomSubPage(id) {
   window.__remixCustomSubPage = id;
-  ["board", "colors", "speeds", "dice"].forEach(function (name) {
+  window.REMIX_CUSTOM_SUBPAGES.forEach(function (pair) {
+    const name = pair[0];
     const panel = document.getElementById("remix-custom-panel-" + name);
     const tab = document.getElementById("remix-custom-subtab-" + name);
     const on = name === id;

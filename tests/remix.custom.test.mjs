@@ -15,6 +15,8 @@ describe("Custom size/colors/speeds artifacts", () => {
     assert.match(remix, /window\.CustomSize/);
     assert.match(remix, /window\.CustomColors/);
     assert.match(remix, /window\.CustomSpeeds/);
+    assert.match(remix, /window\.CustomFruit/);
+    assert.match(remix, /remix-custom-panel-fruit/);
     assert.match(remix, /remix-custom-panel-board/);
     assert.match(remix, /remixCustomBoardSize/);
     assert.match(remix, /_remixCustomGradientColors/);
@@ -64,6 +66,17 @@ describe("Custom menus (browser)", { skip: !runBrowser }, () => {
         const diceOn = document
           .getElementById("remix-custom-panel-dice")
           .classList.contains("remix-custom-panel-on");
+        window.remixShowCustomSubPage("fruit");
+        const fruitOn = document
+          .getElementById("remix-custom-panel-fruit")
+          .classList.contains("remix-custom-panel-on");
+        window.remixShowCustomSubPage("poison");
+        const poisonOn = document
+          .getElementById("remix-custom-panel-poison")
+          .classList.contains("remix-custom-panel-on");
+        const fruitAfterPoison = document
+          .getElementById("remix-custom-panel-fruit")
+          .classList.contains("remix-custom-panel-on");
         return {
           customSize: window.CUSTOM_SIZE_INDEX,
           sizeLen: size && size.children.length,
@@ -76,6 +89,9 @@ describe("Custom menus (browser)", { skip: !runBrowser }, () => {
           boardShown,
           boardAfterDice,
           diceOn,
+          fruitOn,
+          poisonOn,
+          fruitAfterPoison,
           diceUi: !!document.querySelector(
             "#remix-custom-panel-dice #black-dice-settings"
           ),
@@ -94,6 +110,9 @@ describe("Custom menus (browser)", { skip: !runBrowser }, () => {
       assert.equal(probe.boardShown, true, JSON.stringify(probe));
       assert.equal(probe.boardAfterDice, false, JSON.stringify(probe));
       assert.equal(probe.diceOn, true, JSON.stringify(probe));
+      assert.equal(probe.fruitOn, true, JSON.stringify(probe));
+      assert.equal(probe.poisonOn, true, JSON.stringify(probe));
+      assert.equal(probe.fruitAfterPoison, false, JSON.stringify(probe));
       assert.equal(probe.diceUi, true, JSON.stringify(probe));
       assert.equal(probe.boardUi, true, JSON.stringify(probe));
       assert.equal(probe.size.width, 17, JSON.stringify(probe));

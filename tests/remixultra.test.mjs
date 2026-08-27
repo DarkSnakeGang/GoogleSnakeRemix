@@ -739,10 +739,22 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       assert.equal(probe.slotDisplay, "flex", JSON.stringify(probe));
       assert.equal(probe.sectionParent, "ultra-input-slot", JSON.stringify(probe));
       assert.equal(probe.padExists, true);
-      assert.ok(probe.placeH < 520, JSON.stringify(probe));
+      // Place height reserves the input footer (dock 700 − tabs − input ≈ 562).
+      assert.ok(probe.placeH < 600, JSON.stringify(probe));
+      assert.ok(probe.placeH > 500, JSON.stringify(probe));
       assert.ok(
         probe.slotTop + 1 >= probe.placeBottom,
         "input slot should sit under place panel " + JSON.stringify(probe)
+      );
+      const onMore = await h.page.evaluate(() => {
+        window.ultraSetRight("more");
+        const slot = document.getElementById("ultra-input-slot");
+        return slot && getComputedStyle(slot).display;
+      });
+      assert.equal(
+        onMore,
+        "none",
+        "Input Display hidden while Pudding settings (More) open"
       );
       const hamFit = await h.page.evaluate(() => {
         window.ultraSetRight("presets");
@@ -1203,6 +1215,45 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
         fiveLive.apples,
         ["4,2", "4,6", "6,4", "8,2", "8,6"],
         "live 5a blit " + JSON.stringify(fiveLive)
+      );
+
+      const fruitTypes = await h.page.evaluate(() => {
+        const origRand = Math.random;
+        Math.random = function () {
+          return 0;
+        };
+        window.fruit_selected = 3;
+        const listA = window.otherPresetmanager.getRandomHamPixelList();
+        window.fruit_selected = 7;
+        const listB = window.otherPresetmanager.getRandomHamPixelList();
+        window.CUSTOM_FRUIT_MENU_INDEX = 99;
+        window.CUSTOM_FRUIT_TYPE = 42;
+        window.fruit_selected = 99;
+        const listC = window.otherPresetmanager.getRandomHamPixelList();
+        Math.random = origRand;
+        const appleTypes = function (list) {
+          return list
+            .filter((e) => e.category === "apple")
+            .map((e) => e.type);
+        };
+        return {
+          helper: window.ultraHamFruitType(),
+          a: appleTypes(listA),
+          b: appleTypes(listB),
+          c: appleTypes(listC),
+        };
+      });
+      assert.ok(
+        fruitTypes.a.length > 0 && fruitTypes.a.every((t) => t === 3),
+        "selected fruit 3 " + JSON.stringify(fruitTypes)
+      );
+      assert.ok(
+        fruitTypes.b.every((t) => t === 7),
+        "selected fruit 7 " + JSON.stringify(fruitTypes)
+      );
+      assert.ok(
+        fruitTypes.c.every((t) => t === 42),
+        "custom fruit type " + JSON.stringify(fruitTypes)
       );
     } finally {
       await h.close();

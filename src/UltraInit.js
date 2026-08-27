@@ -96,7 +96,7 @@ window.ultraDefaultRightTab = function ultraDefaultRightTab() {
 };
 
 window.ultraDockTabH = 28;
-window.ultraDockH = 584;
+window.ultraDockH = 700;
 window.ultraInputH = 110;
 
 window.ultraInputOn = function ultraInputOn() {
@@ -104,10 +104,12 @@ window.ultraInputOn = function ultraInputOn() {
 };
 
 window.ultraPanelH = function ultraPanelH() {
+  const reserveInput =
+    window.ultraInputOn() && window.ultraDock && window.ultraDock.right !== "more";
   return (
     window.ultraDockH -
     window.ultraDockTabH -
-    (window.ultraInputOn() ? window.ultraInputH : 0)
+    (reserveInput ? window.ultraInputH : 0)
   );
 };
 
@@ -615,7 +617,8 @@ window.ultraLayoutMenus = function ultraLayoutMenus() {
     }
 
     if (inputSlot) {
-      if (window.ultraInputOn()) {
+      // Hide under Pudding settings (More tab) — D-pad overlaps the settings panel.
+      if (window.ultraInputOn() && right !== "more") {
         inputSlot.style.display = "flex";
         inputSlot.style.top =
           (right
@@ -869,11 +872,60 @@ window.ultraInstallChallengeSpeedrun = function ultraInstallChallengeSpeedrun() 
   window.tryChallengeSpeedrunAdvance.__ultra = true;
 };
 
+window.ultraSyncWallCoordsFromBoard = function ultraSyncWallCoordsFromBoard() {
+  const coords = [];
+  try {
+    let size = null;
+    if (typeof window.boardDimensions === "string") {
+      try {
+        size = eval("window.wholeSnakeObject." + window.boardDimensions);
+      } catch (_e) {}
+    }
+    if (
+      !size &&
+      window.__remixGame &&
+      window.__remixGame.wa &&
+      window.__remixGame.wa.oa
+    ) {
+      // fall through
+    }
+    if (size && typeof window.checkWall === "function") {
+      for (let y = 0; y < size.height; y++) {
+        for (let x = 0; x < size.width; x++) {
+          if (window.checkWall(x, y)) coords.push([x, y]);
+        }
+      }
+    }
+  } catch (_e2) {}
+  if (!coords.length && Array.isArray(window.__ultraLastHamWalls)) {
+    for (let i = 0; i < window.__ultraLastHamWalls.length; i++) {
+      const w = window.__ultraLastHamWalls[i];
+      if (w && w.category === "wall") coords.push([w.x, w.y]);
+    }
+  }
+  window.wallCoords = coords;
+  return coords;
+};
+
+window.ultraMaybeHamiltonAfterRandomHam = function ultraMaybeHamiltonAfterRandomHam() {
+  if (typeof window.remixHamiltonEnabled !== "function") return;
+  if (!window.remixHamiltonEnabled()) return;
+  const chosen = document.querySelector(".chosen-preset");
+  if (!chosen || !chosen.classList.contains("preset-random-ham")) return;
+  window.ultraSyncWallCoordsFromBoard();
+  if (typeof window.remixHamiltonSolveCurrentPattern === "function") {
+    window.remixHamiltonSolveCurrentPattern();
+  }
+};
+
 window.ultraBlitChosenPreset = function ultraBlitChosenPreset() {
   if (typeof window.blitSelectedPreset !== "function") return;
   try {
     window.blitSelectedPreset();
   } catch (_e) {}
+  setTimeout(function () {
+    window.ultraMaybeHamiltonAfterRandomHam();
+  }, 0);
 };
 
 window.ultraInstallBlitGuard = function ultraInstallBlitGuard() {
@@ -913,6 +965,9 @@ window.ultraInstallBlitGuard = function ultraInstallBlitGuard() {
       window.selectNewSizeSettingAndHardReset(0);
       window.__ultraFixingSize = false;
     }
+    setTimeout(function () {
+      window.ultraMaybeHamiltonAfterRandomHam();
+    }, 0);
   };
   window.blitSelectedPreset.__ultra = true;
 };
@@ -1367,6 +1422,15 @@ window.ultraSetupGameplayHooks = function ultraSetupGameplayHooks() {
       "ultraChessBurgerApples",
       window.ultraAssignAllBoardApples
     );
+    window.simpleHookManager.registerHook(
+      "afterResetBoard",
+      "ultraHamiltonAfterHam",
+      function () {
+        setTimeout(function () {
+          window.ultraMaybeHamiltonAfterRandomHam();
+        }, 0);
+      }
+    );
   }
 
   if (
@@ -1697,6 +1761,40 @@ window.ultraHamPlaceCount = function ultraHamPlaceCount(intended, blocked, want)
   return out;
 };
 
+/** Fruit type for Random Ham apples — follow the selected fruit, not always apple (0). */
+window.ultraHamFruitType = function ultraHamFruitType() {
+  const mapMenuToType = function (menuIdx) {
+    if (typeof menuIdx !== "number" || menuIdx < 0 || !isFinite(menuIdx)) {
+      return null;
+    }
+    if (
+      typeof window.CUSTOM_FRUIT_MENU_INDEX === "number" &&
+      menuIdx === window.CUSTOM_FRUIT_MENU_INDEX &&
+      typeof window.CUSTOM_FRUIT_TYPE === "number"
+    ) {
+      return window.CUSTOM_FRUIT_TYPE;
+    }
+    return menuIdx;
+  };
+  let t = mapMenuToType(window.fruit_selected);
+  if (t != null) return t;
+  if (
+    window.timeKeeper &&
+    typeof window.timeKeeper.getCurrentSetting === "function"
+  ) {
+    t = mapMenuToType(window.timeKeeper.getCurrentSetting("apple"));
+    if (t != null) return t;
+  }
+  if (
+    typeof window.ultraPlaceFruitType === "number" &&
+    window.ultraPlaceFruitType >= 0 &&
+    isFinite(window.ultraPlaceFruitType)
+  ) {
+    return window.ultraPlaceFruitType;
+  }
+  return 0;
+};
+
 window.ultraHamAppleCoords = function ultraHamAppleCoords(walls) {
   const blocked = window.ultraHamBlockedSet(walls);
   const count = window.ultraHamCountIndex();
@@ -1771,14 +1869,16 @@ window.ultraPatchLevelLoads = function ultraPatchLevelLoads() {
       return e.category === "wall";
     });
     const apples = window.ultraHamAppleCoords(walls);
+    const fruitType = window.ultraHamFruitType();
     for (let i = 0; i < apples.length; i++) {
       walls.push({
         x: apples[i].x,
         y: apples[i].y,
         category: "apple",
-        type: 0,
+        type: fruitType,
       });
     }
+    window.__ultraLastHamWalls = walls.slice();
     return walls;
   };
   mgr.__ultra = true;
@@ -2372,6 +2472,12 @@ window.RemixUltraMod.alterSnakeCode = function (code) {
     code = window.CustomSize.alterSnakeCode(code);
     code = window.CustomColors.alterSnakeCode(code);
     code = window.CustomSpeeds.alterSnakeCode(code);
+    if (window.CustomFruit && typeof window.CustomFruit.alterSnakeCode === "function") {
+      code = window.CustomFruit.alterSnakeCode(code);
+    }
+    if (window.HamiltonRemix && typeof window.HamiltonRemix.alterSnakeCode === "function") {
+      code = window.HamiltonRemix.alterSnakeCode(code);
+    }
     code = window.RemixSpeedInfo.alterSnakeCode(code);
     code = window.PauseMod.alterSnakeCode(code);
     code = window.ultraPatchChallengeSpeedrunWin(code);
@@ -2395,6 +2501,9 @@ window.RemixUltraMod.runCodeAfter = function () {
     window.DiceCounts.runCodeAfter();
   window.RemixSpeedInfo.runCodeAfter && window.RemixSpeedInfo.runCodeAfter();
   window.PauseMod.runCodeAfter && window.PauseMod.runCodeAfter();
+  window.HamiltonRemix &&
+    window.HamiltonRemix.runCodeAfter &&
+    window.HamiltonRemix.runCodeAfter();
 
   window.ultraPatchPresetLoads();
   window.ultraPatchLevelLoads();

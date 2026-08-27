@@ -236,7 +236,9 @@ window.DiceCounts.runCodeBefore = function () {
     const img = document.createElement("img");
     img.src = src;
     // Match native scoreboard count sprites (not menu uiImage 40×40).
-    img.className = "XUtzXd WwRsj LaTyvd";
+    // Do not include LaTyvd — that class is display:none and is only for
+    // native sprites that O7E toggles. MoreMenu appends this icon visible.
+    img.className = "XUtzXd WwRsj";
     img.draggable = false;
     return img;
   };
@@ -294,7 +296,8 @@ window.DiceCounts.runCodeBefore = function () {
           if (!target) {
             target = child;
             child.src = url;
-            child.className = "XUtzXd WwRsj LaTyvd";
+            child.className = "XUtzXd WwRsj";
+            child.classList.remove("LaTyvd");
             child.style.display = "";
             child.style.left = "";
             child.style.position = "";
