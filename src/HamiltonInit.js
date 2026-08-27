@@ -20,17 +20,28 @@ window.remixHamiltonRandomHamChosen = function remixHamiltonRandomHamChosen() {
 };
 
 /**
- * Wall-icon tint is only for real Wall mode. Random Ham / LE pattern tours keep
- * the selected mode trophy in the top bar.
+ * Wall-icon tint is only for real Wall mode while Hamilton is on.
+ * Any other mode (and Random Ham / LE pattern tours) must keep the selected
+ * mode trophy — otherwise onGameReset → setWallIconState("idle") rewrites it
+ * to a stale wall URL and mode changes look stuck.
  */
 window.remixHamiltonShouldTintModeTrophy = function remixHamiltonShouldTintModeTrophy() {
+  if (!window.remixHamiltonEnabled()) return false;
   if (window.remixHamiltonRandomHamChosen()) return false;
   const HM = window.HamiltonMod;
-  if (!HM || !HM.__remixPatternSolve) return true;
+  if (!HM) return false;
   if (typeof HM.__remixNativeIsWallMode === "function") {
     try {
       return !!HM.__remixNativeIsWallMode();
     } catch (_e) {
+      return false;
+    }
+  }
+  if (HM.__remixPatternSolve) return false;
+  if (typeof HM.isWallMode === "function") {
+    try {
+      return !!HM.isWallMode();
+    } catch (_e2) {
       return false;
     }
   }
@@ -48,22 +59,19 @@ window.remixHamiltonReleaseModeTrophy = function remixHamiltonReleaseModeTrophy(
   HM._iconLoadGen = (HM._iconLoadGen || 0) + 1;
   const el =
     typeof HM.getScoreBarIcon === "function" ? HM.getScoreBarIcon() : null;
-  if (!el) return;
-  const src = el.src || "";
-  if (String(src).indexOf("data:") === 0) {
-    const orig = HM._statIconOrigSrc;
-    if (
-      orig &&
-      String(orig).indexOf("data:") !== 0 &&
-      !/trophy_01/i.test(String(orig))
-    ) {
-      el.src = orig;
+  if (el) {
+    const src = el.src || "";
+    // Only undo our canvas recolor. Never force trophy_01 / a stale capture —
+    // that is what made mode switches look broken.
+    if (String(src).indexOf("data:") === 0) {
+      const orig = HM._statIconOrigSrc;
+      if (orig && String(orig).indexOf("data:") !== 0) {
+        el.src = orig;
+      }
     }
-    // else leave data: — next mode click / TopBar refresh will replace it
+    if (typeof HM._clearIconTint === "function") HM._clearIconTint(el);
   }
-  if (typeof HM._clearIconTint === "function") HM._clearIconTint(el);
-  // Don't lock future restores to a stale wall capture from pattern solve.
-  if (HM.__remixPatternSolve) HM._statIconOrigSrc = null;
+  HM._statIconOrigSrc = null;
 };
 
 window.remixHamiltonDisableOverlay = function remixHamiltonDisableOverlay() {

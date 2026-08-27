@@ -194,6 +194,60 @@ describe("Hamilton tour (offline)", () => {
     assert.equal(globalThis.HamiltonMod.iconState, "searching");
     assert.match(modeIcon.src, /candy_trophy/);
   });
+
+  it("does not rewrite mode trophy on reset outside Wall mode", () => {
+    globalThis.window = globalThis;
+    const modeIcon = {
+      jsname: "UEI8qf",
+      src: "https://example.com/trophy_00.png",
+    };
+    const bar = {
+      querySelector(sel) {
+        return sel.includes("UEI8qf") ? modeIcon : null;
+      },
+    };
+    globalThis.document = {
+      getElementById() {
+        return null;
+      },
+      getElementsByClassName(name) {
+        return name === "sEOCsb" ? [bar] : [];
+      },
+      querySelector(sel) {
+        return sel.includes("UEI8qf") ? modeIcon : null;
+      },
+    };
+    const src = fs.readFileSync(path.join(ROOT, "src/HamiltonInit.js"), "utf8");
+    eval(src);
+    globalThis.pudding_settings = { Hamilton: true };
+    let tinted = 0;
+    globalThis.HamiltonMod = {
+      __remixGated: false,
+      __remixPatternSolve: false,
+      iconState: "idle",
+      _iconLoadGen: 0,
+      _statIconOrigSrc:
+        "https://www.google.com/logos/fnbx/snake_arcade/v22/trophy_01.png",
+      getScoreBarIcon() {
+        return modeIcon;
+      },
+      setWallIconState(state) {
+        tinted++;
+        this.iconState = state;
+        modeIcon.src = this._statIconOrigSrc;
+      },
+      _clearIconTint() {},
+      isWallMode() {
+        return false;
+      },
+    };
+    globalThis.remixGateHamiltonMod();
+    assert.equal(globalThis.remixHamiltonShouldTintModeTrophy(), false);
+    globalThis.HamiltonMod.setWallIconState("idle");
+    assert.equal(tinted, 0, "non-wall reset must not restore wall trophy");
+    assert.match(modeIcon.src, /trophy_00/);
+    assert.equal(globalThis.HamiltonMod._statIconOrigSrc, null);
+  });
 });
 
 describe("Hamilton tour (browser)", { skip: !runBrowser }, () => {

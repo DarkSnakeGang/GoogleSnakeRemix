@@ -31,6 +31,50 @@ window.remixEnsureCustomFruitSettings = function remixEnsureCustomFruitSettings(
   return s;
 };
 
+/** Persist Custom fruit/poison fields via Pudding's saveSettings → RemixSettings. */
+window.remixPersistCustomFruitSettings = function remixPersistCustomFruitSettings() {
+  window.remixEnsureCustomFruitSettings();
+  if (typeof window.saveSettings === "function") window.saveSettings();
+};
+
+/** Make every saveSettings flush include ensured Custom fruit/poison keys. */
+window.remixInstallCustomFruitSaveSettingsHook = function remixInstallCustomFruitSaveSettingsHook() {
+  if (window._remixCustomFruitSaveHooked) return;
+  if (typeof window.saveSettings !== "function") return;
+  window._remixCustomFruitSaveHooked = true;
+  const orig = window.saveSettings;
+  window.saveSettings = function remixSaveSettingsWithCustomFruit() {
+    window.remixEnsureCustomFruitSettings();
+    return orig.apply(this, arguments);
+  };
+};
+
+/** Copy URL inputs into pudding_settings (draft or applied) and persist. */
+window.remixCommitCustomFruitUrlFields = function remixCommitCustomFruitUrlFields() {
+  const s = window.remixEnsureCustomFruitSettings();
+  window.remixCustomFruitSlots
+    .concat(window.remixCustomPoisonSlots)
+    .forEach(function (pair) {
+      const urlEl = document.getElementById("remix-custom-fruit-url-" + pair[2]);
+      if (!urlEl) return;
+      s[pair[0]] = String(urlEl.value || "").trim();
+    });
+  window.remixPersistCustomFruitSettings();
+};
+
+window.remixBindCustomFruitUrlPersistence = function remixBindCustomFruitUrlPersistence(
+  slots
+) {
+  (slots || []).forEach(function (pair) {
+    const urlEl = document.getElementById("remix-custom-fruit-url-" + pair[2]);
+    if (!urlEl || urlEl.dataset.remixFruitPersistBound === "1") return;
+    urlEl.dataset.remixFruitPersistBound = "1";
+    urlEl.addEventListener("change", function () {
+      window.remixCommitCustomFruitUrlFields();
+    });
+  });
+};
+
 window.remixMergedCustomFruitPresets = function remixMergedCustomFruitPresets() {
   window.remixEnsureCustomFruitSettings();
   return (window.REMIX_CUSTOM_FRUIT_PRESETS || []).concat(
@@ -184,7 +228,7 @@ window.remixSaveCustomFruitPreset = function remixSaveCustomFruitPreset() {
   };
   if (existing >= 0) list[existing] = preset;
   else list.push(preset);
-  if (typeof window.saveSettings === "function") window.saveSettings();
+  window.remixPersistCustomFruitSettings();
   window.remixRefreshCustomFruitPresetSelect(id);
   window.remixSetCustomFruitStatus('Saved preset "' + label + '".', true);
   return true;
@@ -239,7 +283,7 @@ window.remixSaveCustomPoisonPreset = function remixSaveCustomPoisonPreset() {
   };
   if (existing >= 0) list[existing] = preset;
   else list.push(preset);
-  if (typeof window.saveSettings === "function") window.saveSettings();
+  window.remixPersistCustomFruitSettings();
   window.remixRefreshCustomPoisonPresetSelect(id);
   window.remixSetCustomPoisonStatus('Saved preset "' + label + '".', true);
   return true;
@@ -646,7 +690,7 @@ window.remixApplyCustomFruit = function remixApplyCustomFruit() {
       });
       window.pudding_settings.CustomFruitApplied = true;
       window.remixSyncCustomFruitEntryFromSettings();
-      if (typeof window.saveSettings === "function") window.saveSettings();
+      window.remixPersistCustomFruitSettings();
       window.remixRefreshCustomFruitRuntime();
       window.remixSetCustomFruitStatus("Custom fruit applied.", true);
     })
@@ -668,7 +712,7 @@ window.remixApplyCustomPoison = function remixApplyCustomPoison() {
       });
       window.pudding_settings.CustomPoisonApplied = true;
       window.remixSyncCustomFruitEntryFromSettings();
-      if (typeof window.saveSettings === "function") window.saveSettings();
+      window.remixPersistCustomFruitSettings();
       window.remixRefreshCustomFruitRuntime();
       if (typeof window.remixSyncCustomPoisonCheckbox === "function") {
         window.remixSyncCustomPoisonCheckbox();
@@ -821,6 +865,7 @@ window.remixInjectCustomFruitSettingsUi = function remixInjectCustomFruitSetting
       urlEl.value = window.pudding_settings[pair[0]] || "";
     }
   });
+  window.remixBindCustomFruitUrlPersistence(window.remixCustomFruitSlots);
 };
 
 window.remixInjectCustomPoisonSettingsUi = function remixInjectCustomPoisonSettingsUi() {
@@ -874,6 +919,7 @@ window.remixInjectCustomPoisonSettingsUi = function remixInjectCustomPoisonSetti
       urlEl.value = window.pudding_settings[pair[0]] || "";
     }
   });
+  window.remixBindCustomFruitUrlPersistence(window.remixCustomPoisonSlots);
 };
 
 window.remixSyncCustomPoisonCheckbox = function remixSyncCustomPoisonCheckbox() {
@@ -909,7 +955,7 @@ window.remixBindCustomPoisonCheckbox = function remixBindCustomPoisonCheckbox() 
   box.dataset.remixCustomPoisonBound = "1";
   box.addEventListener("change", function () {
     window.pudding_settings.CustomPoison = !!this.checked;
-    if (typeof window.saveSettings === "function") window.saveSettings();
+    window.remixPersistCustomFruitSettings();
     if (!this.checked && typeof window.remixPatchCustomFruitAtlas === "function") {
       window.remixPatchCustomFruitAtlas();
     }
@@ -1015,6 +1061,7 @@ window.injectCustomFruit = function injectCustomFruit() {
 
 window.CustomFruit.runCodeBefore = function () {
   window.remixEnsureCustomFruitSettings();
+  window.remixInstallCustomFruitSaveSettingsHook();
   if (window.new_fruit) {
     window.injectCustomFruit();
   }

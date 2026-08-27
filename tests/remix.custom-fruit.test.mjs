@@ -46,9 +46,9 @@ describe("Custom fruit presets + validator (offline)", () => {
     );
     assert.equal(ghosts.filter(Boolean).length, 4);
     const blinky = ghosts[0];
-    assert.match(blinky.poisonNormal, /pacman-ghost\.png/);
-    assert.match(blinky.poisonPixel, /px-pacman-ghost\.png/);
-    assert.match(blinky.poisonReal, /ghost-real\.png/);
+    assert.match(blinky.poisonNormal, /poison-ghost\.png/);
+    assert.match(blinky.poisonPixel, /px-poison-ghost\.png/);
+    assert.match(blinky.poisonReal, /poison-ghost\.png/);
     for (const g of ghosts.slice(1)) {
       assert.match(g.poisonNormal, /^data:image\/png;base64,/);
       assert.match(g.poisonPixel, /^data:image\/png;base64,/);
@@ -167,6 +167,94 @@ describe("Custom fruit presets + validator (offline)", () => {
       1
     );
   });
+
+  it("persists applied fruit through saveSettings / loadSettings", () => {
+    globalThis.window = globalThis;
+    globalThis.document = {
+      createElement() {
+        return {
+          width: 0,
+          height: 0,
+          getContext() {
+            return {
+              fillStyle: "",
+              fillRect() {},
+              drawImage() {},
+            };
+          },
+          toDataURL() {
+            return "data:image/png;base64,xx";
+          },
+        };
+      },
+      getElementById() {
+        return null;
+      },
+    };
+    globalThis.Image = class {
+      set src(_v) {
+        queueMicrotask(() => {
+          this.width = 128;
+          this.height = 128;
+          if (this.onload) this.onload();
+        });
+      }
+    };
+    eval(
+      fs.readFileSync(path.join(ROOT, "src/CustomFruitPresets.js"), "utf8")
+    );
+    eval(fs.readFileSync(path.join(ROOT, "src/CustomFruitInit.js"), "utf8"));
+
+    const store = {};
+    globalThis.localStorage = {
+      getItem(k) {
+        return Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null;
+      },
+      setItem(k, v) {
+        store[k] = String(v);
+      },
+    };
+    globalThis.pudding_settings = {
+      Skull: false,
+      SokoGoals: true,
+      InputDisplay: false,
+      TopBar: true,
+      SpeedInfo: false,
+      PortalPairs: false,
+      DisableRandom: false,
+      randomizeThemeApple: false,
+    };
+    globalThis.saveSettings = function () {
+      globalThis.localStorage.setItem(
+        "RemixSettings",
+        JSON.stringify(globalThis.pudding_settings)
+      );
+    };
+    globalThis.loadSettings = function () {
+      const raw = globalThis.localStorage.getItem("RemixSettings");
+      return raw ? JSON.parse(raw) : {};
+    };
+
+    globalThis.remixEnsureCustomFruitSettings();
+    globalThis.remixInstallCustomFruitSaveSettingsHook();
+    globalThis.pudding_settings.CustomFruitApplied = true;
+    globalThis.pudding_settings.CustomFruitNormal = "https://example/n.png";
+    globalThis.pudding_settings.CustomFruitPixel = "https://example/p.png";
+    globalThis.pudding_settings.CustomFruitReal = "https://example/r.png";
+    globalThis.pudding_settings.CustomPoison = true;
+    globalThis.remixPersistCustomFruitSettings();
+
+    const stored = JSON.parse(store.RemixSettings);
+    assert.equal(stored.CustomFruitApplied, true);
+    assert.equal(stored.CustomFruitNormal, "https://example/n.png");
+    assert.equal(stored.CustomPoison, true);
+    assert.ok(Array.isArray(stored.CustomFruitUserPresets));
+
+    const reloaded = globalThis.loadSettings();
+    assert.equal(reloaded.CustomFruitApplied, true);
+    assert.equal(reloaded.CustomFruitPixel, "https://example/p.png");
+    assert.equal(reloaded.CustomPoison, true);
+  });
 });
 
 describe("Custom fruit bundle artifacts", () => {
@@ -184,6 +272,8 @@ describe("Custom fruit bundle artifacts", () => {
     assert.match(remix, /remixApplyCustomPoison/);
     assert.match(remix, /remixSaveCustomFruitPreset/);
     assert.match(remix, /remixSaveCustomPoisonPreset/);
+    assert.match(remix, /remixPersistCustomFruitSettings/);
+    assert.match(remix, /remixInstallCustomFruitSaveSettingsHook/);
     assert.match(remix, /CustomFruitUserPresets/);
     assert.match(remix, /CustomPoisonUserPresets/);
     assert.match(remix, /remix-custom-fruit-save-preset/);
@@ -400,7 +490,7 @@ describe("Custom fruit (browser)", { skip: !runBrowser }, () => {
         };
       });
       assert.match(probe.fruitNormal, /blackberries/);
-      assert.match(probe.poisonNormal, /pacman-ghost\.png/);
+      assert.match(probe.poisonNormal, /poison-ghost\.png/);
       assert.equal(probe.fruitApplied, true, JSON.stringify(probe));
       assert.equal(probe.poisonApplied, true, JSON.stringify(probe));
       assert.equal(probe.poisonToggle, false, JSON.stringify(probe));

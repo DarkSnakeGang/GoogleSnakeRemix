@@ -1,6 +1,6 @@
 /**
  * Generate Pacman ghost poison sprites (Pinky/Inky/Clyde).
- * Blinky (red) uses the existing Pacman Ghost fruit art — not generated.
+ * Blinky uses Distinct Visual’s existing Pudding poison-ghost postimg art.
  * Normal/Real: 128×128. Pixel: 170×170. Writes PNG files + a JS snippet of data URIs.
  */
 import fs from "fs";
@@ -13,7 +13,6 @@ const OUT = path.join(__dirname, "..", "assets", "pacman-ghosts");
 fs.mkdirSync(OUT, { recursive: true });
 
 const GHOSTS = [
-  // Blinky (red) uses the existing in-game Pacman Ghost fruit art — not generated.
   { id: "pinky", label: "Pinky (pink)", color: "#FFB8FF", shade: "#E89AE8" },
   { id: "inky", label: "Inky (cyan)", color: "#00FFFF", shade: "#00C8C8" },
   { id: "clyde", label: "Clyde (orange)", color: "#FFB852", shade: "#E09030" },

@@ -14158,14 +14158,14 @@ window.remixPacmanGhostUri = function remixPacmanGhostUri(key) {
   return map[key] || "";
 };
 
-/** Poison presets: Blinky (existing red Pacman Ghost fruit art) + Pinky/Inky/Clyde + Skull. */
+/** Poison presets: Blinky (Distinct Visual poison-ghost) + Pinky/Inky/Clyde + Skull. */
 window.REMIX_CUSTOM_POISON_PRESETS = [
   {
     id: "blinky-poison",
     label: "Blinky poison",
-    poisonNormal: "https://i.postimg.cc/TP7ZGZGf/pacman-ghost.png",
-    poisonPixel: "https://i.postimg.cc/BvtK8fxb/px-pacman-ghost.png",
-    poisonReal: "https://i.postimg.cc/3Nc4x2Ch/ghost-real.png",
+    poisonNormal: "https://i.postimg.cc/DZqL146Z/poison-ghost.png",
+    poisonPixel: "https://i.postimg.cc/cLF34LtP/px-poison-ghost.png",
+    poisonReal: "https://i.postimg.cc/DZqL146Z/poison-ghost.png",
   },
   {
     id: "pinky-poison",
@@ -14230,6 +14230,50 @@ window.remixEnsureCustomFruitSettings = function remixEnsureCustomFruitSettings(
   if (!Array.isArray(s.CustomFruitUserPresets)) s.CustomFruitUserPresets = [];
   if (!Array.isArray(s.CustomPoisonUserPresets)) s.CustomPoisonUserPresets = [];
   return s;
+};
+
+/** Persist Custom fruit/poison fields via Pudding's saveSettings → RemixSettings. */
+window.remixPersistCustomFruitSettings = function remixPersistCustomFruitSettings() {
+  window.remixEnsureCustomFruitSettings();
+  if (typeof window.saveSettings === "function") window.saveSettings();
+};
+
+/** Make every saveSettings flush include ensured Custom fruit/poison keys. */
+window.remixInstallCustomFruitSaveSettingsHook = function remixInstallCustomFruitSaveSettingsHook() {
+  if (window._remixCustomFruitSaveHooked) return;
+  if (typeof window.saveSettings !== "function") return;
+  window._remixCustomFruitSaveHooked = true;
+  const orig = window.saveSettings;
+  window.saveSettings = function remixSaveSettingsWithCustomFruit() {
+    window.remixEnsureCustomFruitSettings();
+    return orig.apply(this, arguments);
+  };
+};
+
+/** Copy URL inputs into pudding_settings (draft or applied) and persist. */
+window.remixCommitCustomFruitUrlFields = function remixCommitCustomFruitUrlFields() {
+  const s = window.remixEnsureCustomFruitSettings();
+  window.remixCustomFruitSlots
+    .concat(window.remixCustomPoisonSlots)
+    .forEach(function (pair) {
+      const urlEl = document.getElementById("remix-custom-fruit-url-" + pair[2]);
+      if (!urlEl) return;
+      s[pair[0]] = String(urlEl.value || "").trim();
+    });
+  window.remixPersistCustomFruitSettings();
+};
+
+window.remixBindCustomFruitUrlPersistence = function remixBindCustomFruitUrlPersistence(
+  slots
+) {
+  (slots || []).forEach(function (pair) {
+    const urlEl = document.getElementById("remix-custom-fruit-url-" + pair[2]);
+    if (!urlEl || urlEl.dataset.remixFruitPersistBound === "1") return;
+    urlEl.dataset.remixFruitPersistBound = "1";
+    urlEl.addEventListener("change", function () {
+      window.remixCommitCustomFruitUrlFields();
+    });
+  });
 };
 
 window.remixMergedCustomFruitPresets = function remixMergedCustomFruitPresets() {
@@ -14385,7 +14429,7 @@ window.remixSaveCustomFruitPreset = function remixSaveCustomFruitPreset() {
   };
   if (existing >= 0) list[existing] = preset;
   else list.push(preset);
-  if (typeof window.saveSettings === "function") window.saveSettings();
+  window.remixPersistCustomFruitSettings();
   window.remixRefreshCustomFruitPresetSelect(id);
   window.remixSetCustomFruitStatus('Saved preset "' + label + '".', true);
   return true;
@@ -14440,7 +14484,7 @@ window.remixSaveCustomPoisonPreset = function remixSaveCustomPoisonPreset() {
   };
   if (existing >= 0) list[existing] = preset;
   else list.push(preset);
-  if (typeof window.saveSettings === "function") window.saveSettings();
+  window.remixPersistCustomFruitSettings();
   window.remixRefreshCustomPoisonPresetSelect(id);
   window.remixSetCustomPoisonStatus('Saved preset "' + label + '".', true);
   return true;
@@ -14847,7 +14891,7 @@ window.remixApplyCustomFruit = function remixApplyCustomFruit() {
       });
       window.pudding_settings.CustomFruitApplied = true;
       window.remixSyncCustomFruitEntryFromSettings();
-      if (typeof window.saveSettings === "function") window.saveSettings();
+      window.remixPersistCustomFruitSettings();
       window.remixRefreshCustomFruitRuntime();
       window.remixSetCustomFruitStatus("Custom fruit applied.", true);
     })
@@ -14869,7 +14913,7 @@ window.remixApplyCustomPoison = function remixApplyCustomPoison() {
       });
       window.pudding_settings.CustomPoisonApplied = true;
       window.remixSyncCustomFruitEntryFromSettings();
-      if (typeof window.saveSettings === "function") window.saveSettings();
+      window.remixPersistCustomFruitSettings();
       window.remixRefreshCustomFruitRuntime();
       if (typeof window.remixSyncCustomPoisonCheckbox === "function") {
         window.remixSyncCustomPoisonCheckbox();
@@ -15022,6 +15066,7 @@ window.remixInjectCustomFruitSettingsUi = function remixInjectCustomFruitSetting
       urlEl.value = window.pudding_settings[pair[0]] || "";
     }
   });
+  window.remixBindCustomFruitUrlPersistence(window.remixCustomFruitSlots);
 };
 
 window.remixInjectCustomPoisonSettingsUi = function remixInjectCustomPoisonSettingsUi() {
@@ -15075,6 +15120,7 @@ window.remixInjectCustomPoisonSettingsUi = function remixInjectCustomPoisonSetti
       urlEl.value = window.pudding_settings[pair[0]] || "";
     }
   });
+  window.remixBindCustomFruitUrlPersistence(window.remixCustomPoisonSlots);
 };
 
 window.remixSyncCustomPoisonCheckbox = function remixSyncCustomPoisonCheckbox() {
@@ -15110,7 +15156,7 @@ window.remixBindCustomPoisonCheckbox = function remixBindCustomPoisonCheckbox() 
   box.dataset.remixCustomPoisonBound = "1";
   box.addEventListener("change", function () {
     window.pudding_settings.CustomPoison = !!this.checked;
-    if (typeof window.saveSettings === "function") window.saveSettings();
+    window.remixPersistCustomFruitSettings();
     if (!this.checked && typeof window.remixPatchCustomFruitAtlas === "function") {
       window.remixPatchCustomFruitAtlas();
     }
@@ -15216,6 +15262,7 @@ window.injectCustomFruit = function injectCustomFruit() {
 
 window.CustomFruit.runCodeBefore = function () {
   window.remixEnsureCustomFruitSettings();
+  window.remixInstallCustomFruitSaveSettingsHook();
   if (window.new_fruit) {
     window.injectCustomFruit();
   }
@@ -16366,17 +16413,28 @@ window.remixHamiltonRandomHamChosen = function remixHamiltonRandomHamChosen() {
 };
 
 /**
- * Wall-icon tint is only for real Wall mode. Random Ham / LE pattern tours keep
- * the selected mode trophy in the top bar.
+ * Wall-icon tint is only for real Wall mode while Hamilton is on.
+ * Any other mode (and Random Ham / LE pattern tours) must keep the selected
+ * mode trophy — otherwise onGameReset → setWallIconState("idle") rewrites it
+ * to a stale wall URL and mode changes look stuck.
  */
 window.remixHamiltonShouldTintModeTrophy = function remixHamiltonShouldTintModeTrophy() {
+  if (!window.remixHamiltonEnabled()) return false;
   if (window.remixHamiltonRandomHamChosen()) return false;
   const HM = window.HamiltonMod;
-  if (!HM || !HM.__remixPatternSolve) return true;
+  if (!HM) return false;
   if (typeof HM.__remixNativeIsWallMode === "function") {
     try {
       return !!HM.__remixNativeIsWallMode();
     } catch (_e) {
+      return false;
+    }
+  }
+  if (HM.__remixPatternSolve) return false;
+  if (typeof HM.isWallMode === "function") {
+    try {
+      return !!HM.isWallMode();
+    } catch (_e2) {
       return false;
     }
   }
@@ -16394,22 +16452,19 @@ window.remixHamiltonReleaseModeTrophy = function remixHamiltonReleaseModeTrophy(
   HM._iconLoadGen = (HM._iconLoadGen || 0) + 1;
   const el =
     typeof HM.getScoreBarIcon === "function" ? HM.getScoreBarIcon() : null;
-  if (!el) return;
-  const src = el.src || "";
-  if (String(src).indexOf("data:") === 0) {
-    const orig = HM._statIconOrigSrc;
-    if (
-      orig &&
-      String(orig).indexOf("data:") !== 0 &&
-      !/trophy_01/i.test(String(orig))
-    ) {
-      el.src = orig;
+  if (el) {
+    const src = el.src || "";
+    // Only undo our canvas recolor. Never force trophy_01 / a stale capture —
+    // that is what made mode switches look broken.
+    if (String(src).indexOf("data:") === 0) {
+      const orig = HM._statIconOrigSrc;
+      if (orig && String(orig).indexOf("data:") !== 0) {
+        el.src = orig;
+      }
     }
-    // else leave data: — next mode click / TopBar refresh will replace it
+    if (typeof HM._clearIconTint === "function") HM._clearIconTint(el);
   }
-  if (typeof HM._clearIconTint === "function") HM._clearIconTint(el);
-  // Don't lock future restores to a stale wall capture from pattern solve.
-  if (HM.__remixPatternSolve) HM._statIconOrigSrc = null;
+  HM._statIconOrigSrc = null;
 };
 
 window.remixHamiltonDisableOverlay = function remixHamiltonDisableOverlay() {
