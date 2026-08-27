@@ -37,20 +37,19 @@ describe("Custom fruit presets + validator (offline)", () => {
     );
     assert.ok(Array.isArray(poison));
     assert.equal(
-      poison.some((p) => p.id === "blinky-poison"),
+      poison.some((p) => p.id === "pacman-ghost-poison"),
       false,
-      "Blinky is not a separate poison preset"
+      "Pacman Ghost is not a poison preset name"
     );
-    const defaultGhost = poison.find((p) => p.id === "pacman-ghost-poison");
-    assert.ok(defaultGhost, "default pacman ghost is a poison preset");
-    assert.match(defaultGhost.poisonNormal, /pacman-ghost\.png/);
-    assert.match(defaultGhost.poisonPixel, /px-pacman-ghost\.png/);
-    assert.match(defaultGhost.poisonReal, /ghost-real\.png/);
-    const colored = ["pinky", "inky", "clyde"].map((id) =>
-      poison.find((p) => p.id === id + "-poison")
+    const ghosts = ["blinky", "pinky", "inky", "clyde"].map(
+      (id) => poison.find((p) => p.id === id + "-poison")
     );
-    assert.equal(colored.filter(Boolean).length, 3);
-    for (const g of colored) {
+    assert.equal(ghosts.filter(Boolean).length, 4);
+    const blinky = ghosts[0];
+    assert.match(blinky.poisonNormal, /pacman-ghost\.png/);
+    assert.match(blinky.poisonPixel, /px-pacman-ghost\.png/);
+    assert.match(blinky.poisonReal, /ghost-real\.png/);
+    for (const g of ghosts.slice(1)) {
       assert.match(g.poisonNormal, /^data:image\/png;base64,/);
       assert.match(g.poisonPixel, /^data:image\/png;base64,/);
       assert.match(g.poisonReal, /^data:image\/png;base64,/);
@@ -374,7 +373,7 @@ describe("Custom fruit (browser)", { skip: !runBrowser }, () => {
         const fruitApplied = !!window.pudding_settings.CustomFruitApplied;
         window.remixShowCustomSubPage("poison");
         const poisonSel = document.getElementById("remix-custom-poison-preset");
-        poisonSel.value = "pacman-ghost-poison";
+        poisonSel.value = "blinky-poison";
         poisonSel.dispatchEvent(new Event("change", { bubbles: true }));
         await window.__remixPoisonPresetApply;
         const poisonNormal = document.getElementById(

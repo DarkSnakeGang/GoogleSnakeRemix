@@ -83,12 +83,11 @@ window.remixPacmanGhostUri = function remixPacmanGhostUri(key) {
   return map[key] || "";
 };
 
-/** Poison presets: default Pacman Ghost art + Pinky/Inky/Clyde + Skull.
- *  (No separate Blinky — that was the same art as the default ghost.) */
+/** Poison presets: Blinky (existing red Pacman Ghost fruit art) + Pinky/Inky/Clyde + Skull. */
 window.REMIX_CUSTOM_POISON_PRESETS = [
   {
-    id: "pacman-ghost-poison",
-    label: "Pacman Ghost poison",
+    id: "blinky-poison",
+    label: "Blinky poison",
     poisonNormal: "https://i.postimg.cc/TP7ZGZGf/pacman-ghost.png",
     poisonPixel: "https://i.postimg.cc/BvtK8fxb/px-pacman-ghost.png",
     poisonReal: "https://i.postimg.cc/3Nc4x2Ch/ghost-real.png",
