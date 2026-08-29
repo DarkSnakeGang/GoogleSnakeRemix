@@ -112,6 +112,26 @@ describe("Cat Mode (offline)", () => {
     assert.equal(17 * 15 - 3, 252);
     assert.equal(24 * 21 - 3, 501);
   });
+
+  it("stops fruit spawn when score room is within reach (pairs = 1)", () => {
+    const cat = read("src/CatInit.js");
+    const mx = read("src/MexicoInit.js");
+    assert.match(cat, /cat_pair_scoring/);
+    assert.match(cat, /cat_spawn_budget_apples/);
+    assert.match(cat, /cat_allows_pair_spawn/);
+    assert.match(cat, /cat_enforce_fruit_cap/);
+    assert.match(cat, /cat_allows_fruit_spawn/);
+    assert.match(cat, /Vm score-cap gate|cat_allows_fruit_spawn\(a,1,1\)/);
+    assert.match(cat, /chess_fruit_respawn/);
+    assert.match(cat, /chess_spawn_n_pairs/);
+    assert.match(cat, /remixDiceSpawnCount/);
+    // Portal / Mexico pair respawn gated by Cat budget
+    assert.match(mx, /cat_allows_pair_spawn/);
+    assert.match(
+      mx,
+      /isMexicoActive&&window\.isMexicoActive\(\)\)\{e=!window\.cat_allows_pair_spawn\|\|window\.cat_allows_pair_spawn\(a\);\}/
+    );
+  });
 });
 
 describe("Cat Mode (browser)", { skip: !runBrowser }, () => {

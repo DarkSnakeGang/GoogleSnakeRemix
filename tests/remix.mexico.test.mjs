@@ -26,7 +26,7 @@ describe("Mexico Mode (offline)", () => {
     assert.match(mx, /mexico_pos_on_wall/);
     assert.match(mx, /mexico_win_if_empty/);
     assert.match(mx, /mexico_drop_pair_at/);
-    assert.match(mx, /else if\(window\.isMexicoActive&&window\.isMexicoActive\(\)\)\{e=!0;\}/);
+    assert.match(mx, /else if\(window\.isMexicoActive&&window\.isMexicoActive\(\)\)\{e=!window\.cat_allows_pair_spawn\|\|window\.cat_allows_pair_spawn\(a\);\}/);
     assert.match(mx, /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\),window\.isMexicoActive/);
     assert.match(mx, /a\.wa\.ka\.length>0&&\(window\.mexico_constrain_new_apples/);
     assert.match(mx, /__mexicoWallDone/);

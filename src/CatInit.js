@@ -213,6 +213,7 @@ window.CatMod.alterSnakeCode = function (code) {
       window.cat_lives = Math.min(max, (window.cat_lives | 0) + 1);
     }
     window.catUpdateLivesHud && window.catUpdateLivesHud();
+    window.cat_enforce_fruit_cap(game);
     window.cat_check_score_win(game);
   };
 
@@ -251,6 +252,98 @@ window.CatMod.alterSnakeCode = function (code) {
     return w * h - (window.CAT_SNAKE_START_LEN | 3);
   };
 
+  /** Portal / Chess / Mexico: two apples = one score unit. */
+  window.cat_pair_scoring = function cat_pair_scoring(game) {
+    const g = game || window.__remixGame;
+    if (!g) return false;
+    try {
+      if (typeof e7 === "function" && g.settings && e7(g.settings, 2)) return true;
+    } catch (_e) {}
+    if (window.isChessActive && window.isChessActive()) return true;
+    if (window.isMexicoActive && window.isMexicoActive()) return true;
+    return false;
+  };
+
+  window.cat_score_units_for_apples = function cat_score_units_for_apples(
+    appleCount,
+    paired
+  ) {
+    const n = Math.max(0, appleCount | 0);
+    return paired ? n >> 1 : n;
+  };
+
+  window.cat_score_room = function cat_score_room(game) {
+    const g = game || window.__remixGame;
+    if (!g) return 0;
+    const cap = window.cat_max_score(g) | 0;
+    if (!cap) return 0;
+    const score = (g.Sh != null ? g.Sh : g.Oh) | 0;
+    return Math.max(0, cap - score);
+  };
+
+  /** Max apples allowed on the board for the remaining score room. */
+  window.cat_max_apples_on_board = function cat_max_apples_on_board(game) {
+    const g = game || window.__remixGame;
+    const room = window.cat_score_room(g);
+    return window.cat_pair_scoring(g) ? room * 2 : room;
+  };
+
+  /**
+   * How many NEW apples may spawn. `aboutToRemove` is apples this eat will
+   * clear (1 classic, 2 portal/chess-pair) still present in the array.
+   */
+  window.cat_spawn_budget_apples = function cat_spawn_budget_apples(
+    game,
+    aboutToRemove
+  ) {
+    if (!window.isCatActive || !window.isCatActive()) return 1e9;
+    const g = game || window.__remixGame;
+    if (!g) return 0;
+    const max = window.cat_max_apples_on_board(g);
+    const cur = (g.wa && g.wa.ka && g.wa.ka.length) | 0;
+    const rem = aboutToRemove == null ? 1 : aboutToRemove | 0;
+    const after = Math.max(0, cur - rem);
+    return Math.max(0, max - after);
+  };
+
+  window.cat_allows_fruit_spawn = function cat_allows_fruit_spawn(
+    game,
+    wantApples,
+    aboutToRemove
+  ) {
+    if (!window.isCatActive || !window.isCatActive()) return true;
+    return (
+      window.cat_spawn_budget_apples(game, aboutToRemove) >= (wantApples | 0)
+    );
+  };
+
+  window.cat_allows_pair_spawn = function cat_allows_pair_spawn(game) {
+    return window.cat_allows_fruit_spawn(game, 2, 2);
+  };
+
+  /** Drop excess fruit so eating can't push score past the board-fill cap. */
+  window.cat_enforce_fruit_cap = function cat_enforce_fruit_cap(game) {
+    if (!window.isCatActive || !window.isCatActive()) return 0;
+    const g = game || window.__remixGame;
+    if (!g || !g.wa || !Array.isArray(g.wa.ka)) return 0;
+    const paired = window.cat_pair_scoring(g);
+    let max = window.cat_max_apples_on_board(g);
+    if (paired) max -= max % 2;
+    let removed = 0;
+    while (g.wa.ka.length > max) {
+      if (paired && g.wa.ka.length >= 2) {
+        g.wa.ka.pop();
+        g.wa.ka.pop();
+        removed += 2;
+      } else {
+        g.wa.ka.pop();
+        removed++;
+      }
+    }
+    window.appleArray = g.wa.ka;
+    return removed;
+  };
+
   window.cat_trigger_win = function cat_trigger_win(game) {
     if (!game) return;
     if (game.nj || game.lj) return;
@@ -274,11 +367,59 @@ window.CatMod.alterSnakeCode = function (code) {
     if (!g || g.nj || g.lj) return false;
     const cap = window.cat_max_score(g);
     if (!cap) return false;
-    const score = (g.Sh != null ? g.Sh : g.Oh) | 0;
+    let score = (g.Sh != null ? g.Sh : g.Oh) | 0;
+    if (score > cap) {
+      if (g.Sh != null) g.Sh = cap;
+      if (g.Oh != null) g.Oh = cap;
+      score = cap;
+    }
     if (score < cap) return false;
+    window.cat_enforce_fruit_cap(g);
     window.cat_trigger_win(g);
     return true;
   };
+
+  /** Wrap Chess/Dice spawn helpers so pair/mass fills respect the score room. */
+  window.cat_install_spawn_caps = function cat_install_spawn_caps() {
+    if (window.__catSpawnCapsInstalled) return;
+    window.__catSpawnCapsInstalled = true;
+
+    if (typeof window.chess_fruit_respawn === "function") {
+      const origFruit = window.chess_fruit_respawn;
+      window.chess_fruit_respawn = function (mgr, makeApple, freePos, pickType) {
+        const g = window.__remixGame;
+        if (
+          window.isCatActive &&
+          window.isCatActive() &&
+          !window.cat_allows_fruit_spawn(g, 2, 1)
+        ) {
+          return 0;
+        }
+        return origFruit(mgr, makeApple, freePos, pickType);
+      };
+    }
+
+    if (typeof window.chess_spawn_n_pairs === "function") {
+      const origPairs = window.chess_spawn_n_pairs;
+      window.chess_spawn_n_pairs = function (
+        mgr,
+        makeApple,
+        freePos,
+        pickType,
+        pairCount,
+        assignSeq
+      ) {
+        let n = Math.max(0, pairCount | 0);
+        if (window.isCatActive && window.isCatActive()) {
+          const budget = window.cat_spawn_budget_apples(window.__remixGame, 0);
+          n = Math.min(n, budget >> 1);
+        }
+        if (n <= 0) return 0;
+        return origPairs(mgr, makeApple, freePos, pickType, n, assignSeq);
+      };
+    }
+  };
+  window.cat_install_spawn_caps();
 
   window.cat_wrap_head_if_needed = function cat_wrap_head_if_needed(game) {
     const g = game || window.__remixGame;
@@ -337,6 +478,24 @@ window.CatMod.alterSnakeCode = function (code) {
     if ((window.cat_peaceful_ticks | 0) > 0) {
       window.cat_peaceful_ticks = (window.cat_peaceful_ticks | 0) - 1;
     }
+    // Late-bind Dice spawn clamp (DiceCounts runs after Cat in the bundle).
+    if (
+      typeof window.remixDiceSpawnCount === "function" &&
+      !window.remixDiceSpawnCount.__catWrapped
+    ) {
+      const origDice = window.remixDiceSpawnCount;
+      window.remixDiceSpawnCount = function (ka, fallback) {
+        let n = origDice(ka, fallback) | 0;
+        if (window.isCatActive && window.isCatActive()) {
+          const budget = window.cat_spawn_budget_apples(window.__remixGame, 0);
+          n = Math.min(n, budget);
+          if (window.cat_pair_scoring(window.__remixGame)) n -= n % 2;
+        }
+        return n;
+      };
+      window.remixDiceSpawnCount.__catWrapped = true;
+    }
+    window.cat_enforce_fruit_cap(g);
     window.cat_check_score_win(g);
     window.catUpdateLivesHud && window.catUpdateLivesHud();
   };
@@ -380,6 +539,14 @@ window.CatMod.alterSnakeCode = function (code) {
       `}tick(){window.__remixGame=this;try{window.cat_tick_logic(this);}catch(_cat){}if(window.is`
     );
   }
+
+  // Cap classic Vm respawn: no new fruit once score room is exhausted / within reach.
+  // Mexico replaces the chess/portal prefix but leaves this Vm suffix intact.
+  catReplace(
+    "Vm score-cap gate",
+    /e=a\.settings\.ka!==6&&\(d7\(a\.settings\)\|\|e7\(a\.settings,7\)\),e=a\.Vm\(k,!e,null\)\);/,
+    `e=a.settings.ka!==6&&(d7(a.settings)||e7(a.settings,7)),e=window.isCatActive&&window.isCatActive()&&window.cat_allows_fruit_spawn&&!window.cat_allows_fruit_spawn(a,1,1)?!1:a.Vm(k,!e,null));`
+  );
 
   // --- Reset state (burger shield-init + tally paths) ---
   // Prefer the console.error form; also cover the quieter tally inject.
