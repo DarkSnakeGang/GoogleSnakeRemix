@@ -991,6 +991,7 @@ window.RemixMod.runCodeBefore = function () {
   window.CatSpeed.runCodeBefore();
   window.CatMod.runCodeBefore();
   window.MexicoMod.runCodeBefore();
+  window.BombFruitMod.runCodeBefore();
   window.DiceCounts.runCodeBefore();
   window.CustomSettings.runCodeBefore();
   window.CustomSize.runCodeBefore();
@@ -1022,6 +1023,11 @@ window.RemixMod.alterSnakeCode = function (code) {
   } catch (e) {
     console.error("RemixMod: MexicoMod.alterSnakeCode failed", e);
   }
+  try {
+    code = window.BombFruitMod.alterSnakeCode(code);
+  } catch (e) {
+    console.error("RemixMod: BombFruitMod.alterSnakeCode failed", e);
+  }
   code = window.CatSpeed.alterSnakeCode(code);
   code = window.DiceCounts.alterSnakeCode(code);
   code = window.CustomSize.alterSnakeCode(code);
@@ -1047,6 +1053,7 @@ window.RemixMod.runCodeAfter = function () {
   window.BurgerMod.runCodeAfter && window.BurgerMod.runCodeAfter();
   window.CatMod.runCodeAfter && window.CatMod.runCodeAfter();
   window.MexicoMod.runCodeAfter && window.MexicoMod.runCodeAfter();
+  window.BombFruitMod.runCodeAfter && window.BombFruitMod.runCodeAfter();
   // Remove leftover empty placeholders so Cat/Mexico sit flush after Burger.
   // Also pack to 6 columns so the extra modes fit without a clipped 6th row.
   if (typeof window.remixCompactBlenderEmpties === "function") {

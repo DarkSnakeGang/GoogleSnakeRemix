@@ -94,6 +94,9 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     if (window.MEXICO_MODE != null) {
       window.modeToTxt[window.MEXICO_MODE] = { name: "Mexico" };
     }
+    if (window.BOMB_FRUIT_MODE != null) {
+      window.modeToTxt[window.BOMB_FRUIT_MODE] = { name: "Bomb Fruit" };
+    }
   };
 
   // Teach ModeRegistry about trophies Remix appends after Blender.
@@ -106,6 +109,7 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     window.ModeRegistry.LABELS.burger = "Burger";
     window.ModeRegistry.LABELS.cat = "Cat";
     window.ModeRegistry.LABELS.mexico = "Mexico";
+    window.ModeRegistry.LABELS.bomb_fruit = "Bomb Fruit";
 
     if (window.ModeRegistry.listActiveModes.__remix) return;
 
@@ -147,6 +151,8 @@ window.RemixSpeedInfo.runCodeBefore = function () {
           id = "cat";
         } else if (window.MEXICO_MODE != null && i === window.MEXICO_MODE) {
           id = "mexico";
+        } else if (window.BOMB_FRUIT_MODE != null && i === window.BOMB_FRUIT_MODE) {
+          id = "bomb_fruit";
         } else {
           id = window.ModeRegistry._matchMiddleId(src);
           if (!id) {
@@ -214,6 +220,9 @@ window.RemixSpeedInfo.runCodeBefore = function () {
         if (window.cat_blending && ids.indexOf("cat") < 0) ids.push("cat");
         if (window.mexico_blending && ids.indexOf("mexico") < 0) {
           ids.push("mexico");
+        }
+        if (window.bomb_fruit_blending && ids.indexOf("bomb_fruit") < 0) {
+          ids.push("bomb_fruit");
         }
         if (!ids.length) return "blender";
         return ids.slice().sort().join("+");
@@ -472,6 +481,11 @@ window.RemixSpeedInfo.runCodeBefore = function () {
         id: window.MEXICO_MODE,
         icon: window.MEXICO_ICON,
         name: "Mexico",
+      },
+      {
+        id: window.BOMB_FRUIT_MODE,
+        icon: window.BOMB_FRUIT_ICON,
+        name: "Bomb Fruit",
       },
     ].filter(function (m) {
       return typeof m.id === "number" && m.icon;

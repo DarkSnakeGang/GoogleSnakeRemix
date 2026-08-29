@@ -17,6 +17,7 @@ REMIX_PARTS = [
     "src/BurgerInit.js",
     "src/CatInit.js",
     "src/MexicoInit.js",
+    "src/BombFruitInit.js",
     "src/CatSpeedInit.js",
     "src/DiceCountsInit.js",
     "src/CustomSettingsInit.js",

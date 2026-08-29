@@ -2483,6 +2483,11 @@ window.RemixUltraMod.alterSnakeCode = function (code) {
     } catch (e) {
       console.error("RemixUltraMod: MexicoMod.alterSnakeCode failed", e);
     }
+    try {
+      code = window.BombFruitMod.alterSnakeCode(code);
+    } catch (e) {
+      console.error("RemixUltraMod: BombFruitMod.alterSnakeCode failed", e);
+    }
     code = window.CatSpeed.alterSnakeCode(code);
     code = window.DiceCounts.alterSnakeCode(code);
     code = window.CustomSize.alterSnakeCode(code);
@@ -2517,6 +2522,7 @@ window.RemixUltraMod.runCodeAfter = function () {
   window.BurgerMod.runCodeAfter && window.BurgerMod.runCodeAfter();
   window.CatMod.runCodeAfter && window.CatMod.runCodeAfter();
   window.MexicoMod.runCodeAfter && window.MexicoMod.runCodeAfter();
+  window.BombFruitMod.runCodeAfter && window.BombFruitMod.runCodeAfter();
   // Same as Remix: drop empty blender holes and pack to 6 columns so
   // Candy…Mexico aren’t clipped below the fold on the native Blender panel.
   if (typeof window.remixCompactBlenderEmpties === "function") {
