@@ -276,10 +276,43 @@ window.ChessMod.alterSnakeCode = function (code) {
   };
 
   window.isChessActive = function isChessActive() {
-    return (
-      window.CurrentModeNum === window.CHESS_MODE ||
-      (window.CurrentModeNum === 22 && window.chess_blending)
-    );
+    if (window.CHESS_MODE == null) return false;
+    if (window.CurrentModeNum === window.CHESS_MODE) return true;
+    if (window.CurrentModeNum === 22 && window.chess_blending) return true;
+    // Chess may be in blender rSa via the mode grid without chess_blending.
+    // Match e7(...,15) so eat/respawn/unlock stay on the Chess path.
+    const g = window.__remixGame;
+    const s = g && g.settings;
+    if (!s) return false;
+    if (s.ub === window.CHESS_MODE || s.ob === window.CHESS_MODE) return true;
+    if (
+      (s.ub === 22 || window.CurrentModeNum === 22) &&
+      s.rSa &&
+      typeof s.rSa.has === "function" &&
+      s.rSa.has(window.CHESS_MODE)
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  // Chess trophy + Portal physics (mode or blender). Solo Chess / solo Portal stay off.
+  // Do not call e7() here — it lives in the game closure, not on window.
+  window.chess_portal_combo = function chess_portal_combo() {
+    if (!window.isChessActive || !window.isChessActive()) return false;
+    const g = window.__remixGame;
+    if (!g || !g.settings) return false;
+    const s = g.settings;
+    if (s.ub === 2 || s.ob === 2) return true;
+    if (
+      (s.ub === 22 || window.CurrentModeNum === 22 || s.ob === 22) &&
+      s.rSa &&
+      typeof s.rSa.has === "function" &&
+      s.rSa.has(2)
+    ) {
+      return true;
+    }
+    return false;
   };
 
   window.head_pos = [{ y: 0, x: 0 }];
@@ -292,6 +325,9 @@ window.ChessMod.alterSnakeCode = function (code) {
   window.selectedFruit = 0;
   window.dice_doubler = 1;
   window.muted = false;
+  window.__chessPortalNeedRespawn = false;
+  window.__chessPortalTwinKey = null;
+  window.__chessPortalTwinApple = null;
 
   // Shield field name on apple objects in v12
   window.chess_shield_field = "nba";
@@ -375,6 +411,12 @@ window.ChessMod.alterSnakeCode = function (code) {
 
         if (!window.muted && window.capture_sound) {
           window.capture_sound.play();
+        }
+        // Chess+Portal: unlocked fruit needs a portal twin apple.
+        if (window.chess_portal_combo && window.chess_portal_combo()) {
+          try {
+            window.chess_spawn_unlock_twin(apple, index);
+          } catch (_e) {}
         }
         return true;
       }
@@ -847,6 +889,298 @@ window.ChessMod.alterSnakeCode = function (code) {
     return 2;
   };
 
+  // Build a non-piece twin apple for Chess+Portal unlock (clone when g7 is not exposed).
+  window.chess_clone_as_fruit = function chess_clone_as_fruit(src, pos) {
+    if (!src) return null;
+    const make = window.__chessMakeApple;
+    const game = window.__remixGame;
+    const mgr = game && game.wa;
+    let dup = null;
+    if (typeof make === "function" && mgr) {
+      try {
+        dup = make(mgr, 0, 0);
+      } catch (_e) {
+        dup = null;
+      }
+    }
+    if (!dup) {
+      dup = {};
+      for (const key in src) {
+        if (!Object.prototype.hasOwnProperty.call(src, key)) continue;
+        if (key === "pos") continue;
+        try {
+          dup[key] = src[key];
+        } catch (_e2) {}
+      }
+    }
+    if (pos) {
+      if (typeof pos.clone === "function") {
+        dup.pos = pos.clone();
+      } else if (src.pos && typeof src.pos.constructor === "function") {
+        try {
+          dup.pos = new src.pos.constructor(pos.x, pos.y);
+        } catch (_e3) {
+          dup.pos = window.chess_make_pos(pos.x, pos.y);
+        }
+      } else {
+        dup.pos = window.chess_make_pos(pos.x, pos.y);
+      }
+    }
+    dup.isPiece = false;
+    dup.type = src.type;
+    // Tally / numbered counts: twin must share the unlocked fruit's index.
+    if (src.sequenceNumber !== undefined) {
+      dup.sequenceNumber = src.sequenceNumber;
+    }
+    dup.nba = undefined;
+    dup.wm = true;
+    dup.cM = 0;
+    dup.nD = 0;
+    return dup;
+  };
+
+  // After unlock convert: place a non-piece twin in the portal pair slot of the
+  // unlocked fruit (even/odd indices). Mid-list insert breaks later pairs when
+  // the unlock index is odd, so replace the existing pair partner instead.
+  window.chess_spawn_unlock_twin = function chess_spawn_unlock_twin(
+    unlockedApple,
+    unlockedIndex
+  ) {
+    const game = window.__remixGame;
+    if (!game || !game.wa || !unlockedApple) return null;
+    const mgr = game.wa;
+    const board = mgr.oa;
+    window.appleArray = mgr.ka;
+    const occ = window.chess_occupied_keys(game, mgr.ka, new Set());
+    const freePos =
+      typeof window.__chessFreePos === "function"
+        ? window.__chessFreePos
+        : typeof d4E === "function"
+          ? d4E
+          : null;
+    const pos = window.chess_find_legal_spawn(board, freePos, occ, null);
+    if (!pos) return null;
+    const twin = window.chess_clone_as_fruit(unlockedApple, pos);
+    if (!twin) return null;
+    let at =
+      typeof unlockedIndex === "number"
+        ? unlockedIndex
+        : mgr.ka.indexOf(unlockedApple);
+    if (at < 0) at = mgr.ka.indexOf(unlockedApple);
+    if (at < 0) at = mgr.ka.length - 1;
+    const partner = at % 2 === 0 ? at + 1 : at - 1;
+    if (partner >= 0 && partner < mgr.ka.length) {
+      const displaced = mgr.ka[partner];
+      mgr.ka[partner] = twin;
+      // Keep the displaced piece when the board has more than this portal pair
+      // (Dice/Bomb start at 2: partner becomes the twin; don't leave an orphan).
+      if (
+        displaced &&
+        displaced !== unlockedApple &&
+        displaced !== twin &&
+        mgr.ka.length > 2
+      ) {
+        mgr.ka.push(displaced);
+      }
+    } else {
+      // No pair slot (empty/odd orphan): leave unlocked unpaired only if push fails.
+      mgr.ka.push(twin);
+    }
+    window.appleArray = mgr.ka;
+    return twin;
+  };
+
+  // Before splice: remember portal twin so Chess+Portal fruit eats can clear it.
+  window.chess_portal_note_fruit_twin = function chess_portal_note_fruit_twin(
+    mgr,
+    eatenIndex
+  ) {
+    window.__chessPortalNeedRespawn = false;
+    window.__chessPortalTwinKey = null;
+    window.__chessPortalTwinApple = null;
+    if (!mgr || !mgr.ka || eatenIndex == null) return;
+    const twin = eatenIndex % 2 === 0 ? eatenIndex + 1 : eatenIndex - 1;
+    if (twin < 0 || twin >= mgr.ka.length) return;
+    const el = mgr.ka[twin];
+    if (!el || !el.pos) return;
+    window.__chessPortalTwinApple = el;
+    window.__chessPortalTwinKey =
+      typeof window.chess_pos_key === "function"
+        ? window.chess_pos_key(el.pos)
+        : el.pos.x + "," + el.pos.y;
+    window.__chessPortalNeedRespawn = true;
+  };
+
+  // Spawn `pairCount` legal chess pairs (2 * pairCount pieces). Stops early if
+  // the board has no room. Optional assignSeq(a, b, pairIndex) for tally nums.
+  window.chess_spawn_n_pairs = function chess_spawn_n_pairs(
+    mgr,
+    makeApple,
+    freePos,
+    pickType,
+    pairCount,
+    assignSeq
+  ) {
+    if (!mgr || !mgr.ka || typeof makeApple !== "function") return 0;
+    let added = 0;
+    const n = Math.max(0, pairCount | 0);
+    for (let i = 0; i < n; i++) {
+      const got = window.chess_fruit_respawn(mgr, makeApple, freePos, pickType);
+      if (got < 2) break;
+      if (typeof assignSeq === "function") {
+        const a = mgr.ka[mgr.ka.length - 2];
+        const b = mgr.ka[mgr.ka.length - 1];
+        try {
+          assignSeq(a, b, i);
+        } catch (_e) {}
+      }
+      added += got;
+    }
+    window.appleArray = mgr.ka;
+    return added;
+  };
+
+  // Chess+Portal post-fruit refill: bomb first → 48; dice/tally on empty board;
+  // otherwise +2 like vanilla Chess fruit.
+  window.chess_portal_combo_respawn = function chess_portal_combo_respawn(
+    mgr,
+    game,
+    makeApple,
+    freePos,
+    pickType
+  ) {
+    if (!mgr || !mgr.ka || typeof makeApple !== "function") return 0;
+    const ka = game && game.settings ? game.settings.ka : null;
+    const empty = mgr.ka.length === 0;
+
+    // Bomb: first fruit → 24 pairs (48 pieces), then normal +2.
+    if (ka === 5 && game && !game.kc) {
+      const n = window.chess_spawn_n_pairs(
+        mgr,
+        makeApple,
+        freePos,
+        pickType,
+        24,
+        null
+      );
+      game.kc = true;
+      return n;
+    }
+
+    // Dice: last pair left (board empty after twin clear) → roll R, spawn 2R.
+    if (ka === 4) {
+      if (!empty) return 0;
+      let R = Math.ceil(Math.random() * 6);
+      if (
+        window.remixIsColoredDice &&
+        window.remixIsColoredDice(ka) &&
+        typeof window.remixColoredDiceRoll === "function"
+      ) {
+        R = window.remixColoredDiceRoll(ka) || R;
+      }
+      return window.chess_spawn_n_pairs(
+        mgr,
+        makeApple,
+        freePos,
+        pickType,
+        R,
+        null
+      );
+    }
+
+    // Tally: last index / empty board → 5 pairs (10 pieces), paired sequence nums.
+    if (ka === 6) {
+      if (!empty) return 0;
+      const n = window.chess_spawn_n_pairs(
+        mgr,
+        makeApple,
+        freePos,
+        pickType,
+        5,
+        function (a, b, i) {
+          const seq = i;
+          if (a) a.sequenceNumber = seq;
+          if (b) b.sequenceNumber = seq;
+        }
+      );
+      // Point the tally counter at a living sequence so the wave is edible.
+      if (mgr.ka.length > 0 && mgr.ka[0]) {
+        mgr.wa = mgr.ka[0].sequenceNumber;
+      }
+      return n;
+    }
+
+    return window.chess_fruit_respawn(mgr, makeApple, freePos, pickType);
+  };
+
+  // After native splice(k,1): drop noted twin, then count-aware combo respawn.
+  window.chess_portal_after_fruit_splice = function chess_portal_after_fruit_splice(
+    mgr,
+    game
+  ) {
+    if (!window.__chessPortalNeedRespawn) return;
+    window.__chessPortalNeedRespawn = false;
+    const key = window.__chessPortalTwinKey;
+    const twinApple = window.__chessPortalTwinApple;
+    window.__chessPortalTwinKey = null;
+    window.__chessPortalTwinApple = null;
+    if (!mgr || !mgr.ka) return;
+    let removed = false;
+    if (twinApple) {
+      const byRef = mgr.ka.indexOf(twinApple);
+      if (byRef >= 0) {
+        mgr.ka.splice(byRef, 1);
+        removed = true;
+      }
+    }
+    if (!removed && key != null) {
+      for (let i = mgr.ka.length - 1; i >= 0; i--) {
+        const el = mgr.ka[i];
+        if (!el || !el.pos) continue;
+        const k =
+          typeof window.chess_pos_key === "function"
+            ? window.chess_pos_key(el.pos)
+            : el.pos.x + "," + el.pos.y;
+        if (k === key) {
+          mgr.ka.splice(i, 1);
+          break;
+        }
+      }
+    }
+    window.appleArray = mgr.ka;
+    const make =
+      typeof window.__chessMakeApple === "function"
+        ? window.__chessMakeApple
+        : typeof g7 === "function"
+          ? g7
+          : null;
+    const freePos =
+      typeof window.__chessFreePos === "function"
+        ? window.__chessFreePos
+        : typeof d4E === "function"
+          ? d4E
+          : null;
+    const pickType =
+      typeof window.__chessPickType === "function"
+        ? window.__chessPickType
+        : typeof Q3E === "function"
+          ? Q3E
+          : null;
+    if (typeof make === "function") {
+      window.chess_portal_combo_respawn(mgr, game, make, freePos, pickType);
+    }
+    if (
+      game &&
+      window.isBurgerActive &&
+      window.isBurgerActive() &&
+      typeof window.burger_after_respawn === "function"
+    ) {
+      try {
+        window.burger_after_respawn(game);
+      } catch (_e) {}
+    }
+  };
+
   // Convert newly spawned apples (trailing count from qaF) into alternating pieces.
   // Relocate illegal cells; drop what cannot be placed; keep an even count.
   window.chess_convert_new_apples = function chess_convert_new_apples(mgr, added) {
@@ -1047,21 +1381,52 @@ window.ChessMod.alterSnakeCode = function (code) {
     );
   }
 
+  // Gate Portal teleport / odd wipe for Chess+Portal:
+  // - piece eats: skip entire portal branch (no P6E)
+  // - while Chess active: never wipe the board on odd apple count
+  // - only call P6E when the even/odd twin apple exists (odd Chess boards
+  //   after piece eats / unlock can leave a lone apple; native P6E crashes on .pos)
+  let portal_teleport = new RegExp(
+    /if\(e7\(a\.settings,2\)\)if\(a\.wa\.ka\.length%2!==0\)\{a\.wa\.ka\.splice\(0,a\.wa\.ka\.length\);break\}else b=!0,P6E\(a\.Sa,k,f,e,g\),f&&e7\(a\.settings,20\)&&p5E\(a\.Ga\);/
+  );
+  if (code.match(portal_teleport)) {
+    code = code.assertReplace(
+      portal_teleport,
+      `if(e7(a.settings,2)&&!(window.isChessActive&&window.isChessActive()&&window.just_ate==='piece'))if(a.wa.ka.length%2!==0&&!(window.isChessActive&&window.isChessActive())){a.wa.ka.splice(0,a.wa.ka.length);break}else{let _ti=k%2===0?k+1:k-1;if(_ti>=0&&_ti<a.wa.ka.length&&a.wa.ka[_ti])b=!0,P6E(a.Sa,k,f,e,g),f&&e7(a.settings,20)&&p5E(a.Ga);}`
+    );
+  } else {
+    console.error("ChessMod: failed to find portal P6E teleport gate");
+  }
+
   // Chess never uses native Vm reposition: e=!1 splices the eaten apple, so a
   // piece eat removes only that piece and a fruit eat spawns exactly 2 fresh
   // pieces through chess_fruit_respawn.
-  // Dice (ka 4), Tally (ka 6) and pre-first-explosion Bomb (ka 5) keep their own
-  // refills; Key/Soko spawn elsewhere.
+  // Chess+Portal fruit (incl. Dice/Tally/Bomb): note twin, splice clears it, then
+  // 2-piece respawn. Solo Chess still leaves Dice/Tally/pre-bomb to native refill.
+  // Key/Soko stay excluded for now.
   let spawn = new RegExp(
     /e=!1;e7\(a\.settings,2\)\?e=!0:e7\(a\.settings,10\)&&d\.Oka\?e=!1:\(e=a\.settings\.ka!==6&&\(d7\(a\.settings\)\|\|e7\(a\.settings,7\)\),e=a\.Vm\(k,\s*!e,null\)\);/
   );
   if (code.match(spawn)) {
     code = code.assertReplace(
       spawn,
-      `e=!1;if(window.isChessActive&&window.isChessActive()){e=!1;if(window.just_ate==='fruit'&&!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.kc)||e7(a.settings,8)||e7(a.settings,9))){window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);}}else e7(a.settings,2)?e=!0:e7(a.settings,10)&&d.Oka?e=!1:(e=a.settings.ka!==6&&(d7(a.settings)||e7(a.settings,7)),e=a.Vm(k,!e,null));`
+      `e=!1;if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;e=!1;if(window.just_ate==='fruit'&&!(e7(a.settings,8)||e7(a.settings,9))){if(window.chess_portal_combo&&window.chess_portal_combo()){window.chess_portal_note_fruit_twin(a.wa,k);}else if(!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.kc))){window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);}}}else e7(a.settings,2)?e=!0:e7(a.settings,10)&&d.Oka?e=!1:(e=a.settings.ka!==6&&(d7(a.settings)||e7(a.settings,7)),e=a.Vm(k,!e,null));`
     );
   } else {
     console.error("ChessMod: failed to find Vm respawn path");
+  }
+
+  // After non-portal splice of eaten apple: Chess+Portal clears twin + respawns 2 pieces.
+  let eat_splice = new RegExp(
+    /\(a\.wa\.ka\.splice\(k,1\),k--\)/
+  );
+  if (code.match(eat_splice)) {
+    code = code.assertReplace(
+      eat_splice,
+      `(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a))`
+    );
+  } else {
+    console.error("ChessMod: failed to find eat splice for portal twin clear");
   }
 
   // Tally wave refill spawns 5 slots; Chess needs 10 pieces per wave.

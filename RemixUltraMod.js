@@ -10575,10 +10575,43 @@ window.ChessMod.alterSnakeCode = function (code) {
   };
 
   window.isChessActive = function isChessActive() {
-    return (
-      window.CurrentModeNum === window.CHESS_MODE ||
-      (window.CurrentModeNum === 22 && window.chess_blending)
-    );
+    if (window.CHESS_MODE == null) return false;
+    if (window.CurrentModeNum === window.CHESS_MODE) return true;
+    if (window.CurrentModeNum === 22 && window.chess_blending) return true;
+    // Chess may be in blender rSa via the mode grid without chess_blending.
+    // Match e7(...,15) so eat/respawn/unlock stay on the Chess path.
+    const g = window.__remixGame;
+    const s = g && g.settings;
+    if (!s) return false;
+    if (s.ub === window.CHESS_MODE || s.ob === window.CHESS_MODE) return true;
+    if (
+      (s.ub === 22 || window.CurrentModeNum === 22) &&
+      s.rSa &&
+      typeof s.rSa.has === "function" &&
+      s.rSa.has(window.CHESS_MODE)
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  // Chess trophy + Portal physics (mode or blender). Solo Chess / solo Portal stay off.
+  // Do not call e7() here — it lives in the game closure, not on window.
+  window.chess_portal_combo = function chess_portal_combo() {
+    if (!window.isChessActive || !window.isChessActive()) return false;
+    const g = window.__remixGame;
+    if (!g || !g.settings) return false;
+    const s = g.settings;
+    if (s.ub === 2 || s.ob === 2) return true;
+    if (
+      (s.ub === 22 || window.CurrentModeNum === 22 || s.ob === 22) &&
+      s.rSa &&
+      typeof s.rSa.has === "function" &&
+      s.rSa.has(2)
+    ) {
+      return true;
+    }
+    return false;
   };
 
   window.head_pos = [{ y: 0, x: 0 }];
@@ -10591,6 +10624,9 @@ window.ChessMod.alterSnakeCode = function (code) {
   window.selectedFruit = 0;
   window.dice_doubler = 1;
   window.muted = false;
+  window.__chessPortalNeedRespawn = false;
+  window.__chessPortalTwinKey = null;
+  window.__chessPortalTwinApple = null;
 
   // Shield field name on apple objects in v12
   window.chess_shield_field = "nba";
@@ -10674,6 +10710,12 @@ window.ChessMod.alterSnakeCode = function (code) {
 
         if (!window.muted && window.capture_sound) {
           window.capture_sound.play();
+        }
+        // Chess+Portal: unlocked fruit needs a portal twin apple.
+        if (window.chess_portal_combo && window.chess_portal_combo()) {
+          try {
+            window.chess_spawn_unlock_twin(apple, index);
+          } catch (_e) {}
         }
         return true;
       }
@@ -11146,6 +11188,298 @@ window.ChessMod.alterSnakeCode = function (code) {
     return 2;
   };
 
+  // Build a non-piece twin apple for Chess+Portal unlock (clone when g7 is not exposed).
+  window.chess_clone_as_fruit = function chess_clone_as_fruit(src, pos) {
+    if (!src) return null;
+    const make = window.__chessMakeApple;
+    const game = window.__remixGame;
+    const mgr = game && game.wa;
+    let dup = null;
+    if (typeof make === "function" && mgr) {
+      try {
+        dup = make(mgr, 0, 0);
+      } catch (_e) {
+        dup = null;
+      }
+    }
+    if (!dup) {
+      dup = {};
+      for (const key in src) {
+        if (!Object.prototype.hasOwnProperty.call(src, key)) continue;
+        if (key === "pos") continue;
+        try {
+          dup[key] = src[key];
+        } catch (_e2) {}
+      }
+    }
+    if (pos) {
+      if (typeof pos.clone === "function") {
+        dup.pos = pos.clone();
+      } else if (src.pos && typeof src.pos.constructor === "function") {
+        try {
+          dup.pos = new src.pos.constructor(pos.x, pos.y);
+        } catch (_e3) {
+          dup.pos = window.chess_make_pos(pos.x, pos.y);
+        }
+      } else {
+        dup.pos = window.chess_make_pos(pos.x, pos.y);
+      }
+    }
+    dup.isPiece = false;
+    dup.type = src.type;
+    // Tally / numbered counts: twin must share the unlocked fruit's index.
+    if (src.sequenceNumber !== undefined) {
+      dup.sequenceNumber = src.sequenceNumber;
+    }
+    dup.nba = undefined;
+    dup.wm = true;
+    dup.cM = 0;
+    dup.nD = 0;
+    return dup;
+  };
+
+  // After unlock convert: place a non-piece twin in the portal pair slot of the
+  // unlocked fruit (even/odd indices). Mid-list insert breaks later pairs when
+  // the unlock index is odd, so replace the existing pair partner instead.
+  window.chess_spawn_unlock_twin = function chess_spawn_unlock_twin(
+    unlockedApple,
+    unlockedIndex
+  ) {
+    const game = window.__remixGame;
+    if (!game || !game.wa || !unlockedApple) return null;
+    const mgr = game.wa;
+    const board = mgr.oa;
+    window.appleArray = mgr.ka;
+    const occ = window.chess_occupied_keys(game, mgr.ka, new Set());
+    const freePos =
+      typeof window.__chessFreePos === "function"
+        ? window.__chessFreePos
+        : typeof d4E === "function"
+          ? d4E
+          : null;
+    const pos = window.chess_find_legal_spawn(board, freePos, occ, null);
+    if (!pos) return null;
+    const twin = window.chess_clone_as_fruit(unlockedApple, pos);
+    if (!twin) return null;
+    let at =
+      typeof unlockedIndex === "number"
+        ? unlockedIndex
+        : mgr.ka.indexOf(unlockedApple);
+    if (at < 0) at = mgr.ka.indexOf(unlockedApple);
+    if (at < 0) at = mgr.ka.length - 1;
+    const partner = at % 2 === 0 ? at + 1 : at - 1;
+    if (partner >= 0 && partner < mgr.ka.length) {
+      const displaced = mgr.ka[partner];
+      mgr.ka[partner] = twin;
+      // Keep the displaced piece when the board has more than this portal pair
+      // (Dice/Bomb start at 2: partner becomes the twin; don't leave an orphan).
+      if (
+        displaced &&
+        displaced !== unlockedApple &&
+        displaced !== twin &&
+        mgr.ka.length > 2
+      ) {
+        mgr.ka.push(displaced);
+      }
+    } else {
+      // No pair slot (empty/odd orphan): leave unlocked unpaired only if push fails.
+      mgr.ka.push(twin);
+    }
+    window.appleArray = mgr.ka;
+    return twin;
+  };
+
+  // Before splice: remember portal twin so Chess+Portal fruit eats can clear it.
+  window.chess_portal_note_fruit_twin = function chess_portal_note_fruit_twin(
+    mgr,
+    eatenIndex
+  ) {
+    window.__chessPortalNeedRespawn = false;
+    window.__chessPortalTwinKey = null;
+    window.__chessPortalTwinApple = null;
+    if (!mgr || !mgr.ka || eatenIndex == null) return;
+    const twin = eatenIndex % 2 === 0 ? eatenIndex + 1 : eatenIndex - 1;
+    if (twin < 0 || twin >= mgr.ka.length) return;
+    const el = mgr.ka[twin];
+    if (!el || !el.pos) return;
+    window.__chessPortalTwinApple = el;
+    window.__chessPortalTwinKey =
+      typeof window.chess_pos_key === "function"
+        ? window.chess_pos_key(el.pos)
+        : el.pos.x + "," + el.pos.y;
+    window.__chessPortalNeedRespawn = true;
+  };
+
+  // Spawn `pairCount` legal chess pairs (2 * pairCount pieces). Stops early if
+  // the board has no room. Optional assignSeq(a, b, pairIndex) for tally nums.
+  window.chess_spawn_n_pairs = function chess_spawn_n_pairs(
+    mgr,
+    makeApple,
+    freePos,
+    pickType,
+    pairCount,
+    assignSeq
+  ) {
+    if (!mgr || !mgr.ka || typeof makeApple !== "function") return 0;
+    let added = 0;
+    const n = Math.max(0, pairCount | 0);
+    for (let i = 0; i < n; i++) {
+      const got = window.chess_fruit_respawn(mgr, makeApple, freePos, pickType);
+      if (got < 2) break;
+      if (typeof assignSeq === "function") {
+        const a = mgr.ka[mgr.ka.length - 2];
+        const b = mgr.ka[mgr.ka.length - 1];
+        try {
+          assignSeq(a, b, i);
+        } catch (_e) {}
+      }
+      added += got;
+    }
+    window.appleArray = mgr.ka;
+    return added;
+  };
+
+  // Chess+Portal post-fruit refill: bomb first → 48; dice/tally on empty board;
+  // otherwise +2 like vanilla Chess fruit.
+  window.chess_portal_combo_respawn = function chess_portal_combo_respawn(
+    mgr,
+    game,
+    makeApple,
+    freePos,
+    pickType
+  ) {
+    if (!mgr || !mgr.ka || typeof makeApple !== "function") return 0;
+    const ka = game && game.settings ? game.settings.ka : null;
+    const empty = mgr.ka.length === 0;
+
+    // Bomb: first fruit → 24 pairs (48 pieces), then normal +2.
+    if (ka === 5 && game && !game.kc) {
+      const n = window.chess_spawn_n_pairs(
+        mgr,
+        makeApple,
+        freePos,
+        pickType,
+        24,
+        null
+      );
+      game.kc = true;
+      return n;
+    }
+
+    // Dice: last pair left (board empty after twin clear) → roll R, spawn 2R.
+    if (ka === 4) {
+      if (!empty) return 0;
+      let R = Math.ceil(Math.random() * 6);
+      if (
+        window.remixIsColoredDice &&
+        window.remixIsColoredDice(ka) &&
+        typeof window.remixColoredDiceRoll === "function"
+      ) {
+        R = window.remixColoredDiceRoll(ka) || R;
+      }
+      return window.chess_spawn_n_pairs(
+        mgr,
+        makeApple,
+        freePos,
+        pickType,
+        R,
+        null
+      );
+    }
+
+    // Tally: last index / empty board → 5 pairs (10 pieces), paired sequence nums.
+    if (ka === 6) {
+      if (!empty) return 0;
+      const n = window.chess_spawn_n_pairs(
+        mgr,
+        makeApple,
+        freePos,
+        pickType,
+        5,
+        function (a, b, i) {
+          const seq = i;
+          if (a) a.sequenceNumber = seq;
+          if (b) b.sequenceNumber = seq;
+        }
+      );
+      // Point the tally counter at a living sequence so the wave is edible.
+      if (mgr.ka.length > 0 && mgr.ka[0]) {
+        mgr.wa = mgr.ka[0].sequenceNumber;
+      }
+      return n;
+    }
+
+    return window.chess_fruit_respawn(mgr, makeApple, freePos, pickType);
+  };
+
+  // After native splice(k,1): drop noted twin, then count-aware combo respawn.
+  window.chess_portal_after_fruit_splice = function chess_portal_after_fruit_splice(
+    mgr,
+    game
+  ) {
+    if (!window.__chessPortalNeedRespawn) return;
+    window.__chessPortalNeedRespawn = false;
+    const key = window.__chessPortalTwinKey;
+    const twinApple = window.__chessPortalTwinApple;
+    window.__chessPortalTwinKey = null;
+    window.__chessPortalTwinApple = null;
+    if (!mgr || !mgr.ka) return;
+    let removed = false;
+    if (twinApple) {
+      const byRef = mgr.ka.indexOf(twinApple);
+      if (byRef >= 0) {
+        mgr.ka.splice(byRef, 1);
+        removed = true;
+      }
+    }
+    if (!removed && key != null) {
+      for (let i = mgr.ka.length - 1; i >= 0; i--) {
+        const el = mgr.ka[i];
+        if (!el || !el.pos) continue;
+        const k =
+          typeof window.chess_pos_key === "function"
+            ? window.chess_pos_key(el.pos)
+            : el.pos.x + "," + el.pos.y;
+        if (k === key) {
+          mgr.ka.splice(i, 1);
+          break;
+        }
+      }
+    }
+    window.appleArray = mgr.ka;
+    const make =
+      typeof window.__chessMakeApple === "function"
+        ? window.__chessMakeApple
+        : typeof g7 === "function"
+          ? g7
+          : null;
+    const freePos =
+      typeof window.__chessFreePos === "function"
+        ? window.__chessFreePos
+        : typeof d4E === "function"
+          ? d4E
+          : null;
+    const pickType =
+      typeof window.__chessPickType === "function"
+        ? window.__chessPickType
+        : typeof Q3E === "function"
+          ? Q3E
+          : null;
+    if (typeof make === "function") {
+      window.chess_portal_combo_respawn(mgr, game, make, freePos, pickType);
+    }
+    if (
+      game &&
+      window.isBurgerActive &&
+      window.isBurgerActive() &&
+      typeof window.burger_after_respawn === "function"
+    ) {
+      try {
+        window.burger_after_respawn(game);
+      } catch (_e) {}
+    }
+  };
+
   // Convert newly spawned apples (trailing count from qaF) into alternating pieces.
   // Relocate illegal cells; drop what cannot be placed; keep an even count.
   window.chess_convert_new_apples = function chess_convert_new_apples(mgr, added) {
@@ -11346,21 +11680,52 @@ window.ChessMod.alterSnakeCode = function (code) {
     );
   }
 
+  // Gate Portal teleport / odd wipe for Chess+Portal:
+  // - piece eats: skip entire portal branch (no P6E)
+  // - while Chess active: never wipe the board on odd apple count
+  // - only call P6E when the even/odd twin apple exists (odd Chess boards
+  //   after piece eats / unlock can leave a lone apple; native P6E crashes on .pos)
+  let portal_teleport = new RegExp(
+    /if\(e7\(a\.settings,2\)\)if\(a\.wa\.ka\.length%2!==0\)\{a\.wa\.ka\.splice\(0,a\.wa\.ka\.length\);break\}else b=!0,P6E\(a\.Sa,k,f,e,g\),f&&e7\(a\.settings,20\)&&p5E\(a\.Ga\);/
+  );
+  if (code.match(portal_teleport)) {
+    code = code.assertReplace(
+      portal_teleport,
+      `if(e7(a.settings,2)&&!(window.isChessActive&&window.isChessActive()&&window.just_ate==='piece'))if(a.wa.ka.length%2!==0&&!(window.isChessActive&&window.isChessActive())){a.wa.ka.splice(0,a.wa.ka.length);break}else{let _ti=k%2===0?k+1:k-1;if(_ti>=0&&_ti<a.wa.ka.length&&a.wa.ka[_ti])b=!0,P6E(a.Sa,k,f,e,g),f&&e7(a.settings,20)&&p5E(a.Ga);}`
+    );
+  } else {
+    console.error("ChessMod: failed to find portal P6E teleport gate");
+  }
+
   // Chess never uses native Vm reposition: e=!1 splices the eaten apple, so a
   // piece eat removes only that piece and a fruit eat spawns exactly 2 fresh
   // pieces through chess_fruit_respawn.
-  // Dice (ka 4), Tally (ka 6) and pre-first-explosion Bomb (ka 5) keep their own
-  // refills; Key/Soko spawn elsewhere.
+  // Chess+Portal fruit (incl. Dice/Tally/Bomb): note twin, splice clears it, then
+  // 2-piece respawn. Solo Chess still leaves Dice/Tally/pre-bomb to native refill.
+  // Key/Soko stay excluded for now.
   let spawn = new RegExp(
     /e=!1;e7\(a\.settings,2\)\?e=!0:e7\(a\.settings,10\)&&d\.Oka\?e=!1:\(e=a\.settings\.ka!==6&&\(d7\(a\.settings\)\|\|e7\(a\.settings,7\)\),e=a\.Vm\(k,\s*!e,null\)\);/
   );
   if (code.match(spawn)) {
     code = code.assertReplace(
       spawn,
-      `e=!1;if(window.isChessActive&&window.isChessActive()){e=!1;if(window.just_ate==='fruit'&&!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.kc)||e7(a.settings,8)||e7(a.settings,9))){window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);}}else e7(a.settings,2)?e=!0:e7(a.settings,10)&&d.Oka?e=!1:(e=a.settings.ka!==6&&(d7(a.settings)||e7(a.settings,7)),e=a.Vm(k,!e,null));`
+      `e=!1;if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;e=!1;if(window.just_ate==='fruit'&&!(e7(a.settings,8)||e7(a.settings,9))){if(window.chess_portal_combo&&window.chess_portal_combo()){window.chess_portal_note_fruit_twin(a.wa,k);}else if(!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.kc))){window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);}}}else e7(a.settings,2)?e=!0:e7(a.settings,10)&&d.Oka?e=!1:(e=a.settings.ka!==6&&(d7(a.settings)||e7(a.settings,7)),e=a.Vm(k,!e,null));`
     );
   } else {
     console.error("ChessMod: failed to find Vm respawn path");
+  }
+
+  // After non-portal splice of eaten apple: Chess+Portal clears twin + respawns 2 pieces.
+  let eat_splice = new RegExp(
+    /\(a\.wa\.ka\.splice\(k,1\),k--\)/
+  );
+  if (code.match(eat_splice)) {
+    code = code.assertReplace(
+      eat_splice,
+      `(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a))`
+    );
+  } else {
+    console.error("ChessMod: failed to find eat splice for portal twin clear");
   }
 
   // Tally wave refill spawns 5 slots; Chess needs 10 pieces per wave.
@@ -13200,8 +13565,8 @@ window.MexicoMod.alterSnakeCode = function (code) {
   // mexico_constrain_new_apples (all counts: 1/3/5/10/dice/bomb/tally).
   mexicoReplace(
     "eat respawn mexico as portal",
-    /e=!1;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{e=!1;if\(window\.just_ate==='fruit'&&!\(a\.settings\.ka===4\|\|a\.settings\.ka===6\|\|\(a\.settings\.ka===5&&!a\.kc\)\|\|e7\(a\.settings,8\)\|\|e7\(a\.settings,9\)\)\)\{window\.chess_fruit_respawn\(a\.wa,g7,d4E,Q3E\);if\(window\.isBurgerActive&&window\.isBurgerActive\(\)&&window\.just_ate==='fruit'\)\{window\.burger_after_respawn\(a\);\}\}\}else e7\(a\.settings,2\)\?e=!0:/,
-    "e=!1;if(window.isChessActive&&window.isChessActive()){e=!1;if(window.just_ate==='fruit'&&!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.kc)||e7(a.settings,8)||e7(a.settings,9))){window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);if(window.isBurgerActive&&window.isBurgerActive()&&window.just_ate==='fruit'){window.burger_after_respawn(a);}}}else if(window.isMexicoActive&&window.isMexicoActive()){e=!0;}else e7(a.settings,2)?e=!0:"
+    /e=!1;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{window\.__chessMakeApple=g7;window\.__chessFreePos=d4E;window\.__chessPickType=Q3E;e=!1;if\(window\.just_ate==='fruit'&&!\(e7\(a\.settings,8\)\|\|e7\(a\.settings,9\)\)\)\{if\(window\.chess_portal_combo&&window\.chess_portal_combo\(\)\)\{window\.chess_portal_note_fruit_twin\(a\.wa,k\);\}else if\(!\(a\.settings\.ka===4\|\|a\.settings\.ka===6\|\|\(a\.settings\.ka===5&&!a\.kc\)\)\)\{window\.chess_fruit_respawn\(a\.wa,g7,d4E,Q3E\);if\(window\.isBurgerActive&&window\.isBurgerActive\(\)&&window\.just_ate==='fruit'\)\{window\.burger_after_respawn\(a\);\}\}\}\}else e7\(a\.settings,2\)\?e=!0:/,
+    "e=!1;if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;e=!1;if(window.just_ate==='fruit'&&!(e7(a.settings,8)||e7(a.settings,9))){if(window.chess_portal_combo&&window.chess_portal_combo()){window.chess_portal_note_fruit_twin(a.wa,k);}else if(!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.kc))){window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);if(window.isBurgerActive&&window.isBurgerActive()&&window.just_ate==='fruit'){window.burger_after_respawn(a);}}}}else if(window.isMexicoActive&&window.isMexicoActive()){e=!0;}else e7(a.settings,2)?e=!0:"
   );
 
   // j4E sits inside a ternary — must not insert `;` statements. Comma-op only.
@@ -23517,6 +23882,911 @@ window.UltraPlace.runCodeAfter = function () {
   window.ultraWrapBlitAndClick();
 };
 
+////////////////////////////////////////////////////////////////////
+// Ultra-only Animation Mod (Animated Colours port for v13)
+////////////////////////////////////////////////////////////////////
+
+window.AnimationMod = {};
+
+window.ANIMATED_COLOR_ALT_KEY = null;
+window.ANIMATED_COLOR_INDEX = null;
+
+window.animModApplyTheme = function animModApplyTheme() {
+  const visiTitle = document.getElementById("visi-title");
+  const visiBoxes = document.getElementById("visi-boxes");
+  const flashSel = document.getElementById("flash-snake-timing");
+  const animTitle = document.getElementById("anim-mod-title");
+  const animPanel = document.getElementById("anim-mod-panel");
+  if (!animTitle || !animPanel) return;
+
+  const bar =
+    (visiTitle && visiTitle.style.backgroundColor) ||
+    window.real_topbar_color ||
+    "#4a752c";
+  const btn =
+    (flashSel && flashSel.style.backgroundColor) ||
+    window.button_color ||
+    "#1155CC";
+
+  animTitle.style.backgroundColor = bar;
+  animTitle.style.color = "#fff";
+  animPanel.style.backgroundColor =
+    (visiBoxes && visiBoxes.style.backgroundColor) || bar;
+  animPanel.style.color = "#fff";
+
+  const controlIds = [
+    "anim-snake-pattern",
+    "anim-bg-pattern",
+    "anim-frame-rate",
+  ];
+  for (let i = 0; i < controlIds.length; i++) {
+    const el = document.getElementById(controlIds[i]);
+    if (!el) continue;
+    el.style.backgroundColor = btn;
+    el.style.color = "#fff";
+    el.style.borderColor = btn;
+  }
+};
+
+window.animModSyncColourGate = function animModSyncColourGate() {
+  if (!window.animateSnakeGlobals) return;
+  const on = !!(
+    window.isRainbow &&
+    window.ANIMATED_COLOR_ALT_KEY != null &&
+    Number(window.snakeRainbowOverride) === Number(window.ANIMATED_COLOR_ALT_KEY)
+  );
+  window.animateSnakeGlobals.isPatternDisabled = !on;
+};
+
+////////////////////////////////////////////////////////////////////
+// Pattern + background helpers (ported from AnimatedColors.js)
+////////////////////////////////////////////////////////////////////
+
+window.animModInstallPatternFns = function animModInstallPatternFns() {
+  function componentToHex(c) {
+    const hex = c.toString(16);
+    return hex.length === 1 ? "0" + hex : hex;
+  }
+  function rgbToHex(r, g, b) {
+    return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+  }
+  function hsvToRgb(h, s, v) {
+    let r, g, b;
+    const i = Math.floor(h * 6);
+    const f = h * 6 - i;
+    const p = v * (1 - s);
+    const q = v * (1 - f * s);
+    const t = v * (1 - (1 - f) * s);
+    switch (i % 6) {
+      case 0:
+        r = v;
+        g = t;
+        b = p;
+        break;
+      case 1:
+        r = q;
+        g = v;
+        b = p;
+        break;
+      case 2:
+        r = p;
+        g = v;
+        b = t;
+        break;
+      case 3:
+        r = p;
+        g = q;
+        b = v;
+        break;
+      case 4:
+        r = t;
+        g = p;
+        b = v;
+        break;
+      case 5:
+        r = v;
+        g = p;
+        b = q;
+        break;
+    }
+    return [r * 255, g * 255, b * 255];
+  }
+
+  window.defaultPattern = function defaultPattern() {
+    let randColour = "#";
+    for (let i = 0; i < 6; i++) randColour += Math.floor(Math.random() * 10);
+    const colourArray = [];
+    for (let i = 0; i < 504; i++) colourArray[i] = randColour;
+    return colourArray;
+  };
+
+  window.seizure = function seizure() {
+    const colourArray = [];
+    const randColour = rgbToHex(
+      Math.floor(256 * Math.random()),
+      Math.floor(256 * Math.random()),
+      Math.floor(256 * Math.random())
+    );
+    for (let i = 0; i < 10; i++) colourArray[i] = randColour;
+    return colourArray;
+  };
+
+  window.temporalRainbow = function temporalRainbow(frameNum) {
+    const colourArray = [];
+    const hue = (frameNum % 60) / 60;
+    let rgb = hsvToRgb(hue, 1, 1);
+    rgb = [Math.floor(rgb[0]), Math.floor(rgb[1]), Math.floor(rgb[2])];
+    const hex = rgbToHex(...rgb);
+    for (let i = 0; i < 10; i++) colourArray[i] = hex;
+    return colourArray;
+  };
+
+  window.rollingRainbow = function rollingRainbow(frameNum) {
+    const colourArray = [];
+    for (let i = 0; i < 30; i++) {
+      const hue = ((frameNum + i * 2) % 60) / 60;
+      let rgb = hsvToRgb(hue, 1, 1);
+      rgb = [Math.floor(rgb[0]), Math.floor(rgb[1]), Math.floor(rgb[2])];
+      colourArray[i] = rgbToHex(...rgb);
+    }
+    return colourArray;
+  };
+
+  window.rollingRainbowRev = function rollingRainbowRev(frameNum) {
+    const colourArray = [];
+    for (let i = 0; i < 30; i++) {
+      const hue = ((frameNum - i * 2 + 60) % 60) / 60;
+      let rgb = hsvToRgb(hue, 1, 1);
+      rgb = [Math.floor(rgb[0]), Math.floor(rgb[1]), Math.floor(rgb[2])];
+      colourArray[i] = rgbToHex(...rgb);
+    }
+    return colourArray;
+  };
+
+  window.strobeRainbow = (function () {
+    const colorsSplashes = [];
+    return function strobeRainbow() {
+      if (Math.random() < 0.2) {
+        let splashColour = hsvToRgb(Math.random(), 1, 1);
+        splashColour = [
+          Math.floor(splashColour[0]),
+          Math.floor(splashColour[1]),
+          Math.floor(splashColour[2]),
+        ];
+        colorsSplashes.push({ rgb: splashColour, position: 50, spread: 3 });
+      }
+      const colourArray = [];
+      for (let i = 0; i < 50; i++) {
+        let colourTotal = [0, 0, 0];
+        let weight = 0.1;
+        for (const splash of colorsSplashes) {
+          if (Math.abs(splash.position - i) <= splash.spread) {
+            const splashWeight = 1 / (Math.abs(splash.position - i) + 1);
+            colourTotal = [
+              colourTotal[0] + splashWeight * splash.rgb[0],
+              colourTotal[1] + splashWeight * splash.rgb[1],
+              colourTotal[2] + splashWeight * splash.rgb[2],
+            ];
+            weight += splashWeight;
+          }
+        }
+        colourArray[i] = rgbToHex(
+          Math.floor(colourTotal[0] / weight),
+          Math.floor(colourTotal[1] / weight),
+          Math.floor(colourTotal[2] / weight)
+        );
+      }
+      for (let i = 0; i < colorsSplashes.length; i++) {
+        if (colorsSplashes[i].position > 0) {
+          colorsSplashes[i].position--;
+        } else {
+          colorsSplashes[i].spread++;
+          if (colorsSplashes[i].spread > 5 + Math.floor(4 * Math.random())) {
+            colorsSplashes.splice(i, 1);
+          }
+        }
+      }
+      return colourArray;
+    };
+  })();
+
+  window.variation = (function () {
+    const colorsSplashes = [];
+    const baseColour = [0.3, 1, 1];
+    const patternLength = 50;
+    return function variation(frameNum) {
+      for (let n = 0; n < 4; n++) {
+        const splashColour = [
+          (baseColour[0] + Math.random() * 0.4 - 0.4 + 1) % 1,
+          1,
+          1,
+        ];
+        colorsSplashes.push({
+          hsv: splashColour,
+          position: Math.floor((patternLength - 1) * Math.random()),
+          spread: 4,
+          aliveTime: 0,
+          weightMultiplier: 0.2,
+        });
+      }
+      const colourArray = [];
+      for (let i = 0; i < patternLength; i++) {
+        let weight = 0.1;
+        let hsvTotal = [
+          baseColour[0] * weight,
+          baseColour[1] * weight,
+          baseColour[2] * weight,
+        ];
+        for (const splash of colorsSplashes) {
+          if (Math.abs(splash.position - i) <= splash.spread) {
+            const splashWeight =
+              splash.weightMultiplier *
+              (1 / (Math.abs(splash.position - i) + 1));
+            hsvTotal = [
+              hsvTotal[0] + splashWeight * splash.hsv[0],
+              hsvTotal[1] + splashWeight * splash.hsv[1],
+              hsvTotal[2] + splashWeight * splash.hsv[2],
+            ];
+            weight += splashWeight;
+          }
+        }
+        const hsvColour = [
+          hsvTotal[0] / weight,
+          hsvTotal[1] / weight,
+          0.85 + 0.15 * Math.sin((2 * Math.PI * frameNum) / 120),
+        ];
+        const segmentColour = hsvToRgb(...hsvColour);
+        colourArray[i] = rgbToHex(
+          Math.floor(segmentColour[0]),
+          Math.floor(segmentColour[1]),
+          Math.floor(segmentColour[2])
+        );
+      }
+      for (let i = 0; i < colorsSplashes.length; i++) {
+        colorsSplashes[i].position += Math.random() - 0.5;
+        colorsSplashes[i].position = Math.min(
+          colorsSplashes[i].position,
+          patternLength - 1
+        );
+        colorsSplashes[i].position = Math.max(colorsSplashes[i].position, 0);
+        if (colorsSplashes[i].aliveTime < 15) {
+          colorsSplashes[i].weightMultiplier += 0.08;
+        } else {
+          colorsSplashes[i].weightMultiplier -= 0.08;
+        }
+        colorsSplashes[i].spread += Math.random() - 0.5;
+        colorsSplashes[i].spread = Math.max(colorsSplashes[i].spread, 1);
+        colorsSplashes[i].aliveTime++;
+        if (colorsSplashes[i].aliveTime > 30) colorsSplashes.splice(i, 1);
+      }
+      return colourArray;
+    };
+  })();
+
+  window.variationV2 = (function () {
+    const baseColour = [0, 1, 1];
+    const patternLength = 50;
+    const totalWaveCount = 10;
+    const waves = [];
+    for (let i = 0; i < totalWaveCount; i++) {
+      waves.push({
+        weight: 0.15 * Math.random(),
+        bias: patternLength * Math.random(),
+        wavelength: i + 1,
+        period: 240 * Math.random() + 1,
+        timeBias: 240 * Math.random(),
+      });
+    }
+    return function variationV2(frameNum) {
+      const colourArray = [];
+      for (let i = 0; i < patternLength; i++) {
+        let hue = baseColour[0];
+        for (let j = 0; j < totalWaveCount; j++) {
+          hue +=
+            waves[j].weight *
+            Math.sin(
+              2 * Math.PI * (1 / waves[j].wavelength) * (i + waves[j].bias)
+            ) *
+            Math.sin(
+              2 *
+                Math.PI *
+                (1 / waves[j].period) *
+                (frameNum + waves[j].timeBias)
+            );
+        }
+        hue = (hue % 1) + 1;
+        const vibrance = 0.85 + 0.15 * Math.sin((2 * Math.PI * frameNum) / 120);
+        let colour = hsvToRgb(hue, 1, vibrance);
+        colour = [Math.floor(colour[0]), Math.floor(colour[1]), Math.floor(colour[2])];
+        colourArray[i] = rgbToHex(...colour);
+      }
+      return colourArray;
+    };
+  })();
+
+  window.singleColourFunctionCreator = function singleColourFunctionCreator(hexcode) {
+    if (!/^#[0-9a-f]{6}$/i.test(hexcode)) hexcode = "#ffffff";
+    return function singleColour() {
+      const colourArray = [];
+      for (let i = 0; i < 10; i++) colourArray[i] = hexcode;
+      return colourArray;
+    };
+  };
+
+  window.randomHexBg = function randomHexBg() {
+    let randColour = "#";
+    for (let i = 0; i < 6; i++) randColour += Math.floor(Math.random() * 10);
+    return randColour;
+  };
+
+  window.randomHexSameBg = (function () {
+    let currentFrameNum = 0;
+    let currentColour = "#FFFFFF";
+    return function (a, frameNum) {
+      if (frameNum !== currentFrameNum) {
+        currentFrameNum = frameNum;
+        currentColour = "#";
+        for (let i = 0; i < 6; i++) currentColour += Math.floor(Math.random() * 10);
+      }
+      return currentColour;
+    };
+  })();
+
+  window.temporalBg = function temporalBg(a, frameNum) {
+    const hue = (frameNum % 60) / 60;
+    let rgb = hsvToRgb(hue, 1, 1);
+    rgb = [Math.floor(rgb[0]), Math.floor(rgb[1]), Math.floor(rgb[2])];
+    return rgbToHex(...rgb);
+  };
+
+  window.rollingRainbowBg = function rollingRainbowBg(a, frameNum, x, y) {
+    const hue = ((frameNum + (x + y) * 2) % 60) / 60;
+    let saturation = 0.62;
+    let vibrance = 0.84;
+    if ((x + y) % 2 === 1) {
+      saturation += 0.13;
+      vibrance -= 0.13;
+    }
+    let rgb = hsvToRgb(hue, saturation, vibrance);
+    rgb = [Math.floor(rgb[0]), Math.floor(rgb[1]), Math.floor(rgb[2])];
+    return rgbToHex(...rgb);
+  };
+
+  window.rollingRainbowBgOld = function rollingRainbowBgOld(a, frameNum, x, y) {
+    const hue = ((frameNum + (x + y) * 2) % 60) / 60;
+    let rgb = hsvToRgb(hue, 1, 1);
+    rgb = [Math.floor(rgb[0]), Math.floor(rgb[1]), Math.floor(rgb[2])];
+    return rgbToHex(...rgb);
+  };
+
+  window.getColourArrayFromCurrentPattern = function getColourArrayFromCurrentPattern(
+    frameNum
+  ) {
+    const name = window.animateSnakeGlobals.currentPatternString;
+    const fn = window[name];
+    if (typeof fn !== "function") return window.rollingRainbowRev(frameNum);
+    return fn(frameNum);
+  };
+
+  window.getAnimBgColour = function getAnimBgColour(a, frameNum, x, y) {
+    const name = window.animateSnakeGlobals.currentBackgroundPatternString;
+    if (!name || name === "none") return "#a2d149";
+    const fn = window[name];
+    if (typeof fn !== "function") return "#a2d149";
+    return fn(a, frameNum, x, y);
+  };
+
+  window.updateAnimBackground = function updateAnimBackground(board, frameNum) {
+    if (
+      !board ||
+      !window.animateSnakeGlobals ||
+      window.animateSnakeGlobals.isBackgroundPatternDisabled
+    ) {
+      return;
+    }
+    const w = board.wb.ka.oa.width;
+    const h = board.wb.ka.oa.height;
+    const tile = board.wb.ka.ka;
+    for (let x = 0; x < w; x++) {
+      for (let y = 0; y < h; y++) {
+        board.ka.fillStyle = window.getAnimBgColour(board, frameNum, x, y);
+        board.ka.fillRect(x * tile, y * tile, tile, tile);
+      }
+    }
+  };
+
+  /** Re-paint checkerboard from the current theme (native u4E). */
+  window.restoreAnimBoardTheme = function restoreAnimBoardTheme(board) {
+    board = board || window.__animBoardRef;
+    if (!board) return;
+    if (typeof window.__animPaintThemeBoard === "function") {
+      window.__animPaintThemeBoard(board);
+      return;
+    }
+    // Fallback if paint hook not bound yet (mirrors u4E).
+    try {
+      const light = c7(board.settings, board.settings.oa, 0);
+      const dark = c7(board.settings, board.settings.oa, 1);
+      const tile = board.wb.ka.ka;
+      const w = board.wb.ka.oa.width;
+      const h = board.wb.ka.oa.height;
+      const boxes = window.checkboxes && window.checkboxes.checkboxStatuses;
+      board.ka.fillStyle = light;
+      if (!boxes || boxes.lightTiles) {
+        board.ka.fillRect(0, 0, board.ka.canvas.width, board.ka.canvas.height);
+      }
+      for (let x = 0; x < w; x++) {
+        for (let y = 0; y < h; y++) {
+          if ((x + y) % 2 === 0) continue;
+          board.ka.fillStyle = dark;
+          if (!boxes || boxes.darkTiles) {
+            board.ka.fillRect(x * tile, y * tile, tile, tile);
+          }
+        }
+      }
+    } catch (_) {
+      /* c7 may be out of scope */
+    }
+  };
+};
+
+window.changePatterns = function changePatterns(pattern, backgroundPattern) {
+  if (!window.animateSnakeGlobals) return;
+  window.animateSnakeGlobals.currentPatternString = pattern;
+  window.animateSnakeGlobals.currentBackgroundPatternString = backgroundPattern;
+  window.animateSnakeGlobals.cacheMode = [
+    "temporalRainbow",
+    "rollingRainbow",
+    "rollingRainbowRev",
+    "none",
+  ].includes(pattern);
+  if (String(pattern).startsWith("singleColourFunctionCreator")) {
+    window.animateSnakeGlobals.cacheMode = true;
+  }
+  // New pattern → allow head tint even if first colour matches previous.
+  window.__animLastHeadHex = null;
+  window.animateSnakeGlobals.isBackgroundPatternDisabled =
+    backgroundPattern === "none";
+  if (window.animateSnakeGlobals.isBackgroundPatternDisabled) {
+    if (typeof window.restoreAnimBoardTheme === "function") {
+      window.restoreAnimBoardTheme();
+    }
+  }
+  window.animModSyncColourGate();
+};
+
+/**
+ * Wrap game a7 recolour: ImageData cache + skip huge die sheet on the hot path.
+ * Blink/eat/tongue are small; die.png is ~130×4292 and was the main FPS killer.
+ */
+window.animModBindHeadRecolor = function animModBindHeadRecolor(recolor) {
+  if (typeof recolor !== "function") return;
+  const cacheOrder = [];
+
+  function cachedRecolor(sprite, fromHex, toHex, threshold) {
+    if (!sprite) return;
+    if (threshold === undefined) threshold = -1;
+    // Deferred-tint sprites (ka>0): keep native path.
+    if (sprite.ka > 0) {
+      recolor(sprite, fromHex, toHex, threshold);
+      return;
+    }
+    const g = window.animateSnakeGlobals;
+    const path = (sprite.oa && sprite.oa.path) || "";
+    const key = path + "|" + fromHex + "|" + toHex + "|" + threshold;
+    const hit = g && g.cache && g.cache[key];
+    if (hit && hit.main && sprite.oa && sprite.oa.ka) {
+      try {
+        sprite.oa.ka.putImageData(hit.main, 0, 0);
+        if (hit.ba && sprite.Ba && sprite.Ba.ka) {
+          sprite.Ba.ka.putImageData(hit.ba, 0, 0);
+        }
+        return;
+      } catch (_) {
+        /* fall through to full recolour */
+      }
+    }
+    recolor(sprite, fromHex, toHex, threshold);
+    if (!g || !sprite.oa || !sprite.oa.ka) return;
+    if (!g.cache) g.cache = {};
+    try {
+      const mainCtx = sprite.oa.ka;
+      const entry = {
+        main: mainCtx.getImageData(
+          0,
+          0,
+          mainCtx.canvas.width,
+          mainCtx.canvas.height
+        ),
+        ba: null,
+      };
+      if (sprite.Ba && sprite.Ba.ka) {
+        const baCtx = sprite.Ba.ka;
+        entry.ba = baCtx.getImageData(
+          0,
+          0,
+          baCtx.canvas.width,
+          baCtx.canvas.height
+        );
+      }
+      if (!g.cache[key]) cacheOrder.push(key);
+      g.cache[key] = entry;
+      const max = g.cacheMode ? 200 : 48;
+      while (cacheOrder.length > max) {
+        const old = cacheOrder.shift();
+        delete g.cache[old];
+      }
+    } catch (_) {
+      /* tainted canvas / size mismatch — skip cache */
+    }
+  }
+
+  window.updateAnimHeadColour = function updateAnimHeadColour(face, headColour) {
+    face = face || window.__animFaceRef;
+    if (!face || !headColour) return;
+    if (window.__animLastHeadHex === headColour) return;
+    window.__animLastHeadHex = headColour;
+
+    // Hot path: blink + eat + tongue only. Skip die (face.Ba) — enormous sheet.
+    cachedRecolor(face.oa, "#5282F2", headColour);
+    cachedRecolor(face.Aa, "#5282F2", headColour);
+    const hue = _.AKd(headColour);
+    const tongue = _.AKd("#C73104");
+    tongue[0] = (hue[0] + 180) % 360;
+    cachedRecolor(
+      face.wa,
+      "#C73104",
+      _.HG(_.yKd(tongue[0], tongue[1], tongue[2]))
+    );
+  };
+};
+
+window.animModApplyFrameRate = function animModApplyFrameRate(raw) {
+  const frameRate = parseFloat(raw);
+  if (isNaN(frameRate) || frameRate < 0.00001) return false;
+  if (frameRate > 60) {
+    if (!confirm("This frame rate may be buggy/laggy")) return false;
+  }
+  window.animateSnakeGlobals.framesPerSecond = frameRate;
+  const cur = document.getElementById("anim-current-frame-rate");
+  if (cur) cur.textContent = String(frameRate);
+  return true;
+};
+
+window.ANIMATED_COLOR_ICON =
+  "data:image/png;base64,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";
+
+window.animModInjectPanel = function animModInjectPanel() {
+  const drag = document.getElementById("delete-stuff-draggable");
+  if (!drag || document.getElementById("anim-mod-panel")) return;
+
+  drag.style.width = "740px";
+
+  const kids = [...drag.children];
+  let visiWrap = null;
+  for (let i = 0; i < kids.length; i++) {
+    if (kids[i].id === "drag-handle") continue;
+    if (kids[i].querySelector && kids[i].querySelector("#visi-title")) {
+      visiWrap = kids[i];
+      break;
+    }
+  }
+  if (!visiWrap && kids.length > 1) visiWrap = kids[1];
+  if (visiWrap) {
+    visiWrap.style.display = "inline-block";
+    visiWrap.style.verticalAlign = "top";
+    visiWrap.style.boxSizing = "border-box";
+  }
+
+  const wrap = document.createElement("div");
+  wrap.id = "anim-mod-wrap";
+  wrap.style.cssText =
+    "display:inline-block;vertical-align:top;padding:10px;width:350px;margin:0;box-sizing:border-box;";
+  const controlStyle =
+    "margin-top:4px;width:100%;max-width:300px;box-sizing:border-box;" +
+    "background-color:#1155CC;color:white;font-family:Roboto,Arial,sans-serif;" +
+    "font-size:inherit;border:none;border-radius:0.375rem;padding:3px 6px;";
+  const fpsStyle =
+    "width:3.5em;background-color:#1155CC;color:white;font-family:Roboto,Arial,sans-serif;" +
+    "font-size:inherit;border:none;border-radius:0.375rem;padding:3px 6px;text-align:center;";
+
+  wrap.innerHTML =
+    '<div id="anim-mod-title" class="form-check-label" style="text-align:center;padding:5px;background-color:rgb(74,117,44);color:white;font-size:20px;">Animation Mod</div>' +
+    '<div id="anim-mod-panel" class="form-check-label" style="background-color:rgb(74,117,44);margin-top:5px;padding:8px 10px 12px;color:white;font-family:Roboto,Arial,sans-serif;">' +
+    '<p class="form-check-label" style="margin:0 0 8px;"><span style="color:#ffb4b4;">Warning: flashing lights.</span></p>' +
+    '<div class="form-check-label" style="margin:0 0 8px;">Snake Pattern<br>' +
+    '<span style="opacity:0.9;font-size:0.9em;">Requires the Animated snake colour.</span><br>' +
+    '<select id="anim-snake-pattern" style="' +
+    controlStyle +
+    '">' +
+    '<option value="temporalRainbow">temporalRainbow</option>' +
+    '<option value="rollingRainbow">rollingRainbow</option>' +
+    '<option value="rollingRainbowRev" selected>rollingRainbowRev</option>' +
+    "</select>" +
+    "</div>" +
+    '<div class="form-check-label" style="margin:0 0 8px;">Background Pattern<br>' +
+    '<select id="anim-bg-pattern" style="' +
+    controlStyle +
+    '">' +
+    '<option value="none" selected>none</option>' +
+    '<option value="randomHexBg">randomHexBg</option>' +
+    '<option value="randomHexSameBg">randomHexSameBg</option>' +
+    '<option value="temporalBg">temporalBg</option>' +
+    '<option value="rollingRainbowBg">rollingRainbowBg</option>' +
+    '<option value="rollingRainbowBgOld">rollingRainbowBgOld</option>' +
+    "</select>" +
+    "</div>" +
+    '<div class="form-check-label" style="margin:0 0 4px;">Frame rate ' +
+    '<input id="anim-frame-rate" type="text" inputmode="decimal" size="3" value="30" style="' +
+    fpsStyle +
+    '">' +
+    ' <span>| Current Value: <span id="anim-current-frame-rate">30</span></span>' +
+    "</div>" +
+    "</div>";
+
+  drag.appendChild(wrap);
+
+  const snakeSel = document.getElementById("anim-snake-pattern");
+  const bgSel = document.getElementById("anim-bg-pattern");
+  const fpsInput = document.getElementById("anim-frame-rate");
+
+  if (snakeSel) {
+    snakeSel.addEventListener("change", function () {
+      window.changePatterns(
+        this.value,
+        window.animateSnakeGlobals.currentBackgroundPatternString
+      );
+    });
+  }
+  if (bgSel) {
+    bgSel.addEventListener("change", function () {
+      window.changePatterns(
+        window.animateSnakeGlobals.currentPatternString,
+        this.value
+      );
+    });
+  }
+  function onFps() {
+    window.animModApplyFrameRate(fpsInput.value);
+  }
+  if (fpsInput) {
+    // Text field (no spinner). Apply on commit — not on every keystroke.
+    fpsInput.addEventListener("change", onFps);
+    fpsInput.addEventListener("blur", onFps);
+    fpsInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        onFps();
+        fpsInput.blur();
+      }
+    });
+  }
+
+  window.changePatterns(
+    (snakeSel && snakeSel.value) || "rollingRainbowRev",
+    (bgSel && bgSel.value) || "none"
+  );
+  window.animModApplyTheme();
+};
+
+////////////////////////////////////////////////////////////////////
+// RUNCODEBEFORE
+////////////////////////////////////////////////////////////////////
+
+window.AnimationMod.runCodeBefore = function () {
+  window.animModInstallPatternFns();
+
+  const colourArr = [
+    "#4E7CF6",
+    "#5499C7",
+    "#AF7AC5",
+    "#E74C3C",
+    "#F39C12",
+    "#CCC31C",
+    "#27AE60",
+  ];
+  window.animateSnakeGlobals = {
+    startPlayback: true,
+    startingTime: performance.now(),
+    framesPerSecond: 30,
+    frameDoneSoFar: -1,
+    currentColourArray: colourArr.slice(),
+    cacheMode: true,
+    cache: {},
+    currentPatternString: "rollingRainbowRev",
+    isPatternDisabled: true,
+    currentBackgroundPatternString: "none",
+    isBackgroundPatternDisabled: true,
+  };
+
+  window.changePatterns("rollingRainbowRev", "none");
+};
+
+////////////////////////////////////////////////////////////////////
+// ALTERSNAKECODE
+////////////////////////////////////////////////////////////////////
+
+window.AnimationMod.alterSnakeCode = function (code) {
+  const originalCode = code;
+  try {
+    if (!window.animateSnakeGlobals) {
+      window.AnimationMod.runCodeBefore();
+    }
+
+    window.uiImage =
+      window.uiImage ||
+      function (src) {
+        const img = new Image();
+        img.src = src;
+        img.width = 40;
+        img.height = 40;
+        img.classList.add("DqMRee");
+        img.classList.add("SsAred");
+        return img;
+      };
+
+    const colorRoot = document.querySelector("#color");
+    if (colorRoot && !window._animColorIconInserted) {
+      const randomEl = colorRoot.lastChild;
+      const iconSrc = window.ANIMATED_COLOR_ICON;
+      const img = window.uiImage(iconSrc);
+      img.alt = "Animated";
+      img.title = "Animated";
+      colorRoot.insertBefore(img, randomEl);
+      window.ANIMATED_COLOR_INDEX = [...colorRoot.children].indexOf(img);
+      window.allColorsLength = colorRoot.children.length - 1;
+
+      const nextKey =
+        window.rainbowAlts && typeof window.rainbowAlts === "object"
+          ? Math.max.apply(
+              null,
+              Object.keys(window.rainbowAlts).map(Number).concat([0])
+            ) + 1
+          : 12;
+      window.ANIMATED_COLOR_ALT_KEY = nextKey;
+      if (!window.rainbowAlts) window.rainbowAlts = {};
+      window.rainbowAlts[nextKey] = {
+        name: "Animated",
+        set: window.animateSnakeGlobals.currentColourArray,
+        icon: iconSrc,
+        yinyang: 10,
+      };
+      window._animColorIconInserted = true;
+
+      colorRoot.addEventListener("click", function () {
+        setTimeout(window.animModSyncColourGate, 0);
+      });
+    }
+
+    if (code.indexOf("window.__animModPatched") >= 0) return code;
+
+    // Literal first-occurrence replace only — never RegExp (needles contain '.')
+    function safeReplaceOnce(label, needle, replacement) {
+      try {
+        const i = code.indexOf(needle);
+        if (i < 0) {
+          console.error("AnimationMod: missing " + label);
+          return false;
+        }
+        const next = code.slice(0, i) + replacement + code.slice(i + needle.length);
+        try {
+          // eslint-disable-next-line no-new-func
+          new Function(next);
+        } catch (syntaxErr) {
+          console.error(
+            "AnimationMod: patch breaks syntax: " + label,
+            syntaxErr && syntaxErr.message
+          );
+          return false;
+        }
+        code = next;
+        return true;
+      } catch (e) {
+        console.error("AnimationMod: failed " + label, e);
+        return false;
+      }
+    }
+
+    // Capture face + bind cached head recolour (a7 in scope). Classic (wa===0)
+    // takes a different branch, so patch both.
+    safeReplaceOnce(
+      "face-ref-rainbow",
+      "b=a.Ga;var c=a.wb.oa.Sc;",
+      "b=a.Ga;window.__animFaceRef=b;window.__animGameRef=a;" +
+        "if(window.animModBindHeadRecolor)window.animModBindHeadRecolor(a7);" +
+        "var c=a.wb.oa.Sc;"
+    );
+
+    safeReplaceOnce(
+      "face-ref-classic",
+      "b=a.Ga,C3E(b.oa),C3E(b.Aa),C3E(b.Ba),C3E(b.wa);",
+      "b=a.Ga,window.__animFaceRef=b," +
+        "(window.animModBindHeadRecolor&&window.animModBindHeadRecolor(a7))," +
+        "C3E(b.oa),C3E(b.Aa),C3E(b.Ba),C3E(b.wa);"
+    );
+
+    safeReplaceOnce(
+      "u4E-board-ref",
+      "u4E=function(a){a.ka.fillStyle=c7(a.settings,a.settings.oa,0);",
+      "u4E=function(a){window.__animBoardRef=a;window.__animPaintThemeBoard=u4E;" +
+        "a.ka.fillStyle=c7(a.settings,a.settings.oa,0);"
+    );
+
+    // Frame clock + background: run for every snake colour (Ja always called).
+    safeReplaceOnce(
+      "Ja-frame-bg",
+      "Ja(a,b,c,d,e=!0){",
+      "Ja(a,b,c,d,e=!0){" +
+        "if(window.animateSnakeGlobals){" +
+        "if(this.ticks==0){" +
+        "window.animateSnakeGlobals.startPlayback=true;" +
+        "window.animateSnakeGlobals.startingTime=performance.now();" +
+        "window.animateSnakeGlobals.frameDoneSoFar=-1;" +
+        "window.animateSnakeGlobals.__lastColourFrame=-1;" +
+        "window.__animLastHeadHex=null;" +
+        "}" +
+        "if(window.animateSnakeGlobals.startPlayback){" +
+        "var __afn=Math.floor((performance.now()+(0.5*1000/window.animateSnakeGlobals.framesPerSecond)" +
+        "-window.animateSnakeGlobals.startingTime)/(1000/window.animateSnakeGlobals.framesPerSecond));" +
+        "if(__afn!==window.animateSnakeGlobals.frameDoneSoFar){" +
+        "window.animateSnakeGlobals.frameDoneSoFar=__afn;" +
+        "window.animateSnakeGlobals.__lastFrameNum=__afn;" +
+        "if(typeof window.updateAnimBackground==='function'&&window.__animBoardRef)" +
+        "window.updateAnimBackground(window.__animBoardRef,__afn);" +
+        "}" +
+        "}" +
+        "}"
+    );
+
+    // Snake body colours only when Animated rainbow path is active.
+    const gAssign = "var g=d?r3E:q3E;";
+    const inject =
+      "if(window.animModSyncColourGate)window.animModSyncColourGate();" +
+      "if(window.animateSnakeGlobals&&window.animateSnakeGlobals.startPlayback" +
+      "&&!window.animateSnakeGlobals.isPatternDisabled){" +
+      "var __afn=window.animateSnakeGlobals.__lastFrameNum;" +
+      "if(typeof __afn!=='number')__afn=Math.floor((performance.now()" +
+      "+(0.5*1000/window.animateSnakeGlobals.framesPerSecond)" +
+      "-window.animateSnakeGlobals.startingTime)/(1000/window.animateSnakeGlobals.framesPerSecond));" +
+      "if(__afn!==window.animateSnakeGlobals.__lastColourFrame){" +
+      "window.animateSnakeGlobals.__lastColourFrame=__afn;" +
+      "var __cols=window.getColourArrayFromCurrentPattern(__afn);" +
+      "var __dest=window.animateSnakeGlobals.currentColourArray;" +
+      "__dest.length=0;" +
+      "for(var __ai=0;__ai<__cols.length;__ai++)__dest.push(__cols[__ai]);" +
+      "if(this.oa)this.oa.Sc=__dest[0];" +
+      "if(typeof window.updateAnimHeadColour==='function'&&window.__animFaceRef)" +
+      "window.updateAnimHeadColour(window.__animFaceRef,__dest[0]);" +
+      "}" +
+      "}" +
+      gAssign;
+    safeReplaceOnce("rainbow-hijack", gAssign, inject);
+
+    code = "window.__animModPatched=true;" + code;
+    try {
+      // eslint-disable-next-line no-new-func
+      new Function(code);
+    } catch (syntaxErr) {
+      console.error("AnimationMod: final SyntaxError", syntaxErr);
+      return originalCode;
+    }
+    return code;
+  } catch (e) {
+    console.error("AnimationMod.alterSnakeCode failed", e);
+    return originalCode;
+  }
+};
+
+////////////////////////////////////////////////////////////////////
+// RUNCODEAFTER
+////////////////////////////////////////////////////////////////////
+
+window.AnimationMod.runCodeAfter = function () {
+  window.animModInjectPanel();
+  window.animModApplyTheme();
+  window.animModSyncColourGate();
+};
+
 window.RemixUltraMod = {};
 
 window.REMIX_ULTRA_SETTINGS_KEY = "RemixUltraSettings";
@@ -23639,6 +24909,9 @@ window.ultraApplyTheme = function ultraApplyTheme() {
   root.style.setProperty("--ultra-bar", bar);
   root.style.setProperty("--ultra-btn", btn);
   window.ultraPaintTabs();
+  if (typeof window.animModApplyTheme === "function") {
+    window.animModApplyTheme();
+  }
 };
 
 window.ultraInjectThemeCss = function ultraInjectThemeCss() {
@@ -25711,6 +26984,9 @@ window.ultraSetupLayout = function ultraSetupLayout() {
 window.RemixUltraMod.runCodeBefore = function () {
   window.__remixCore.runCodeBefore();
   window.levelEditorMod.runCodeBefore();
+  if (window.AnimationMod && typeof window.AnimationMod.runCodeBefore === "function") {
+    window.AnimationMod.runCodeBefore();
+  }
 };
 
 ////////////////////////////////////////////////////////////////////
@@ -26000,6 +27276,9 @@ window.RemixUltraMod.alterSnakeCode = function (code) {
     code = window.DiceCounts.alterSnakeCode(code);
     code = window.CustomSize.alterSnakeCode(code);
     code = window.CustomColors.alterSnakeCode(code);
+    if (window.AnimationMod && typeof window.AnimationMod.alterSnakeCode === "function") {
+      code = window.AnimationMod.alterSnakeCode(code);
+    }
     code = window.CustomSpeeds.alterSnakeCode(code);
     if (window.CustomFruit && typeof window.CustomFruit.alterSnakeCode === "function") {
       code = window.CustomFruit.alterSnakeCode(code);
@@ -26027,6 +27306,13 @@ window.RemixUltraMod.runCodeAfter = function () {
   window.BurgerMod.runCodeAfter && window.BurgerMod.runCodeAfter();
   window.CatMod.runCodeAfter && window.CatMod.runCodeAfter();
   window.MexicoMod.runCodeAfter && window.MexicoMod.runCodeAfter();
+  // Same as Remix: drop empty blender holes and pack to 6 columns so
+  // Candy…Mexico aren’t clipped below the fold on the native Blender panel.
+  if (typeof window.remixCompactBlenderEmpties === "function") {
+    window.remixCompactBlenderEmpties(0);
+  } else if (typeof window.remixFitBlenderModeGrid === "function") {
+    window.remixFitBlenderModeGrid();
+  }
   window.DiceCounts &&
     window.DiceCounts.runCodeAfter &&
     window.DiceCounts.runCodeAfter();
@@ -26047,8 +27333,16 @@ window.RemixUltraMod.runCodeAfter = function () {
 
   window.ultraSetIndicator();
   window.ultraSetupLayout();
+  if (window.AnimationMod && typeof window.AnimationMod.runCodeAfter === "function") {
+    window.AnimationMod.runCodeAfter();
+  }
   window.ultraSetupGameplayHooks();
   window.ultraInstallChallengeSpeedrun();
+  setTimeout(function () {
+    if (typeof window.remixCompactBlenderEmpties === "function") {
+      window.remixCompactBlenderEmpties(0);
+    }
+  }, 0);
 };
 
 // Custom URL often keeps customModName as RemixMod. Alias so either name

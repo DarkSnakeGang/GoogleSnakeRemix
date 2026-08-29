@@ -120,6 +120,9 @@ window.ultraApplyTheme = function ultraApplyTheme() {
   root.style.setProperty("--ultra-bar", bar);
   root.style.setProperty("--ultra-btn", btn);
   window.ultraPaintTabs();
+  if (typeof window.animModApplyTheme === "function") {
+    window.animModApplyTheme();
+  }
 };
 
 window.ultraInjectThemeCss = function ultraInjectThemeCss() {
@@ -2192,6 +2195,9 @@ window.ultraSetupLayout = function ultraSetupLayout() {
 window.RemixUltraMod.runCodeBefore = function () {
   window.__remixCore.runCodeBefore();
   window.levelEditorMod.runCodeBefore();
+  if (window.AnimationMod && typeof window.AnimationMod.runCodeBefore === "function") {
+    window.AnimationMod.runCodeBefore();
+  }
 };
 
 ////////////////////////////////////////////////////////////////////
@@ -2481,6 +2487,9 @@ window.RemixUltraMod.alterSnakeCode = function (code) {
     code = window.DiceCounts.alterSnakeCode(code);
     code = window.CustomSize.alterSnakeCode(code);
     code = window.CustomColors.alterSnakeCode(code);
+    if (window.AnimationMod && typeof window.AnimationMod.alterSnakeCode === "function") {
+      code = window.AnimationMod.alterSnakeCode(code);
+    }
     code = window.CustomSpeeds.alterSnakeCode(code);
     if (window.CustomFruit && typeof window.CustomFruit.alterSnakeCode === "function") {
       code = window.CustomFruit.alterSnakeCode(code);
@@ -2508,6 +2517,13 @@ window.RemixUltraMod.runCodeAfter = function () {
   window.BurgerMod.runCodeAfter && window.BurgerMod.runCodeAfter();
   window.CatMod.runCodeAfter && window.CatMod.runCodeAfter();
   window.MexicoMod.runCodeAfter && window.MexicoMod.runCodeAfter();
+  // Same as Remix: drop empty blender holes and pack to 6 columns so
+  // Candy…Mexico aren’t clipped below the fold on the native Blender panel.
+  if (typeof window.remixCompactBlenderEmpties === "function") {
+    window.remixCompactBlenderEmpties(0);
+  } else if (typeof window.remixFitBlenderModeGrid === "function") {
+    window.remixFitBlenderModeGrid();
+  }
   window.DiceCounts &&
     window.DiceCounts.runCodeAfter &&
     window.DiceCounts.runCodeAfter();
@@ -2528,8 +2544,16 @@ window.RemixUltraMod.runCodeAfter = function () {
 
   window.ultraSetIndicator();
   window.ultraSetupLayout();
+  if (window.AnimationMod && typeof window.AnimationMod.runCodeAfter === "function") {
+    window.AnimationMod.runCodeAfter();
+  }
   window.ultraSetupGameplayHooks();
   window.ultraInstallChallengeSpeedrun();
+  setTimeout(function () {
+    if (typeof window.remixCompactBlenderEmpties === "function") {
+      window.remixCompactBlenderEmpties(0);
+    }
+  }, 0);
 };
 
 // Custom URL often keeps customModName as RemixMod. Alias so either name

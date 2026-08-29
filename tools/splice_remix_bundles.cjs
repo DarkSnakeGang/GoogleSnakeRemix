@@ -36,6 +36,7 @@ const ULTRA_PARTS = [
   "src/UltraPresetImages.js",
   "src/UltraPresetLevels.js",
   "src/UltraPlaceInit.js",
+  "src/AnimationModInit.js",
   "src/UltraInit.js",
 ];
 
