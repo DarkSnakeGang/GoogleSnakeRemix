@@ -125,10 +125,65 @@ window.BombFruitMod.alterSnakeCode = function (code) {
 
   window.bombFruit_reset_state = function bombFruit_reset_state() {
     window.__bombFruitBootstrapped = false;
-    window.__bombFruitOrphans = [];
+    window.__bombFruitZones = [];
     window.__bombFruitLastPos = null;
     window.__bombFruitAppleSnap = null;
-    window.__bombFruitDrawCache = null;
+    // Compat aliases — same list filtered views updated in sync.
+    window.__bombFruitOrphans = [];
+  };
+
+  /**
+   * Mine radii are cell-bound zones, independent of fruit objects.
+   * Fruit only *places* a zone; eating/moving fruit never moves the zone.
+   *   bombX1a: -1 idle dashed ring, >=0 armed countdown
+   *   linger:  ticks until an idle zone with no fruit is removed (null = keep)
+   */
+  window.BOMB_FRUIT_ZONE_LINGER = 8;
+
+  window.bombFruit_zones = function bombFruit_zones() {
+    if (!window.__bombFruitZones) window.__bombFruitZones = [];
+    return window.__bombFruitZones;
+  };
+
+  window.bombFruit_zone_key = function bombFruit_zone_key(z) {
+    return (z.x | 0) + "," + (z.y | 0);
+  };
+
+  window.bombFruit_find_zone = function bombFruit_find_zone(x, y) {
+    const list = window.bombFruit_zones();
+    const xi = x | 0;
+    const yi = y | 0;
+    for (let i = 0; i < list.length; i++) {
+      if (list[i] && list[i].x === xi && list[i].y === yi) return list[i];
+    }
+    return null;
+  };
+
+  window.bombFruit_ensure_zone = function bombFruit_ensure_zone(x, y, bombX1a) {
+    let z = window.bombFruit_find_zone(x, y);
+    if (!z) {
+      z = {
+        x: x | 0,
+        y: y | 0,
+        bombX1a: bombX1a == null ? -1 : bombX1a | 0,
+        linger: null,
+      };
+      window.bombFruit_zones().push(z);
+      return z;
+    }
+    if (bombX1a != null && (bombX1a | 0) >= 0) {
+      z.bombX1a = Math.max(z.bombX1a | 0, bombX1a | 0);
+    }
+    z.linger = null; // fruit (or armed) owns this cell again
+    return z;
+  };
+
+  /** Armed bomb left behind when a fruit relocates or is removed (eat / dice). */
+  window.bombFruit_detach_bomb = function bombFruit_detach_bomb(oldKey, ticks) {
+    if (!oldKey || ticks == null || ticks < 0) return;
+    const pos = window.bombFruit_parse_pos_key(oldKey);
+    if (!pos) return;
+    window.bombFruit_ensure_zone(pos.x, pos.y, ticks | 0);
   };
 
   window.bombFruit_chebyshev = function bombFruit_chebyshev(a, b) {
@@ -156,28 +211,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     return { x: x, y: y };
   };
 
-  /** Armed bomb left behind when a fruit relocates or is removed (eat / dice). */
-  window.bombFruit_detach_bomb = function bombFruit_detach_bomb(oldKey, ticks) {
-    if (!oldKey || ticks == null || ticks < 0) return;
-    if (!window.__bombFruitOrphans) window.__bombFruitOrphans = [];
-    const pos = window.bombFruit_parse_pos_key(oldKey);
-    if (!pos) return;
-    // Avoid stacking duplicate orphans on the same cell.
-    const list = window.__bombFruitOrphans;
-    for (let i = 0; i < list.length; i++) {
-      if (list[i] && list[i].x === pos.x && list[i].y === pos.y) {
-        list[i].bombX1a = Math.max(list[i].bombX1a | 0, ticks | 0);
-        return;
-      }
-    }
-    list.push({
-      x: pos.x,
-      y: pos.y,
-      bombX1a: ticks | 0,
-    });
-  };
-
-  /** Drop a fruit from the snap so explode doesn't also spawn an orphan. */
+  /** Drop a fruit from the snap so explode doesn't also re-arm that cell. */
   window.bombFruit_forget_apple = function bombFruit_forget_apple(el) {
     const snap = window.__bombFruitAppleSnap;
     if (!snap || !el) return;
@@ -187,11 +221,10 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   };
 
   /**
-   * Keep armed bombs cell-bound:
-   * - same object relocated (classic eat) → orphan at old cell
-   * - object removed (dice/bomb/tally splice) → orphan at last cell
-   * Also enforce shield head-radius on relocated / brand-new fruits only
-   * (start-layout apples that never moved stay put).
+   * Sync cell zones to fruit without moving zones with fruit:
+   * - every fruit cell gets a zone
+   * - zones fruit left behind keep their arm state (or idle linger)
+   * - shield-constrain new/relocated fruit only
    */
   window.bombFruit_sync_fruit_bombs = function bombFruit_sync_fruit_bombs(mgr) {
     if (!mgr || !mgr.ka) return;
@@ -204,20 +237,25 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     for (let i = 0; i < prevSnap.length; i++) {
       if (prevSnap[i] && prevSnap[i].el) prevEls.add(prevSnap[i].el);
     }
-    // First snap only records layout — do not treat start apples as "new".
     const hadSnap = prevSnap.length > 0;
+    const fruitKeys = new Set();
+    const game = window.__remixGame;
+    const linger = window.BOMB_FRUIT_ZONE_LINGER | 8;
 
+    // Fruit that vanished: leave zone on that cell (armed stays armed).
     for (let i = 0; i < prevSnap.length; i++) {
       const entry = prevSnap[i];
-      if (!entry || !entry.el) continue;
-      if (living.has(entry.el)) continue;
-      // Fruit was removed (dice clear / eat splice) while armed — leave blast.
-      if (entry.bombX1a >= 0 && entry.key) {
-        window.bombFruit_detach_bomb(entry.key, entry.bombX1a);
+      if (!entry || !entry.el || living.has(entry.el) || !entry.key) continue;
+      const pos = window.bombFruit_parse_pos_key(entry.key);
+      if (!pos) continue;
+      if (entry.bombX1a >= 0) {
+        window.bombFruit_ensure_zone(pos.x, pos.y, entry.bombX1a | 0);
+      } else {
+        const z = window.bombFruit_ensure_zone(pos.x, pos.y, -1);
+        if (z.linger == null) z.linger = linger;
       }
     }
 
-    const game = window.__remixGame;
     const nextSnap = [];
     for (let i = 0; i < mgr.ka.length; i++) {
       const el = mgr.ka[i];
@@ -229,13 +267,20 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       const relocated = !!(prev && prev !== cur);
       const brandNew = hadSnap && !prevEls.has(el);
 
-      if (relocated && el.bombX1a >= 0) {
-        window.bombFruit_detach_bomb(prev, el.bombX1a);
+      if (relocated && prev) {
+        // Zone stays on the old cell — never teleports with the fruit.
+        const oldPos = window.bombFruit_parse_pos_key(prev);
+        if (oldPos) {
+          if (el.bombX1a >= 0) {
+            window.bombFruit_ensure_zone(oldPos.x, oldPos.y, el.bombX1a | 0);
+          } else {
+            const z = window.bombFruit_ensure_zone(oldPos.x, oldPos.y, -1);
+            if (z.linger == null) z.linger = linger;
+          }
+        }
         el.bombX1a = -1;
       }
 
-      // New or relocated fruit must respect shield head radius. Untouched
-      // start-layout fruit (same object, same cell) is left alone.
       if (
         (relocated || brandNew) &&
         typeof window.chess_outside_spawn_radius === "function" &&
@@ -258,13 +303,50 @@ window.BombFruitMod.alterSnakeCode = function (code) {
         cur = window.bombFruit_pos_key(el.pos);
       }
 
+      fruitKeys.add(cur);
+      // New cell gets its own zone (fruit does not carry the old one).
+      let z = window.bombFruit_find_zone(el.pos.x, el.pos.y);
+      if (!z) {
+        z = window.bombFruit_ensure_zone(
+          el.pos.x,
+          el.pos.y,
+          (el.bombX1a | 0) >= 0 ? el.bombX1a | 0 : -1
+        );
+      } else if ((z.bombX1a | 0) < 0 && (el.bombX1a | 0) >= 0) {
+        // Manual arm before zone caught up (tests) — adopt once while idle.
+        z.bombX1a = el.bombX1a | 0;
+        z.linger = null;
+      } else {
+        z.linger = null;
+      }
+      // Mirror arm state onto fruit for any legacy reads; zone is authoritative.
+      el.bombX1a = z.bombX1a | 0;
       if (cur) last.set(el, cur);
-      nextSnap.push({ el: el, key: cur, bombX1a: el.bombX1a | 0 });
+      nextSnap.push({ el: el, key: cur, bombX1a: z.bombX1a | 0 });
     }
     window.__bombFruitAppleSnap = nextSnap;
+
+    // Idle zones with no fruit start lingering; rebuild orphan alias.
+    const orphans = [];
+    const zones = window.bombFruit_zones();
+    for (let i = 0; i < zones.length; i++) {
+      const z = zones[i];
+      if (!z) continue;
+      const k = window.bombFruit_zone_key(z);
+      if (fruitKeys.has(k)) {
+        z.linger = null;
+        continue;
+      }
+      if ((z.bombX1a | 0) >= 0) {
+        orphans.push(z);
+      } else if (z.linger == null) {
+        z.linger = linger;
+      }
+    }
+    window.__bombFruitOrphans = orphans;
   };
 
-  /** Refresh snap countdowns after tick arm/decrement (no orphan side-effects). */
+  /** Refresh snap after arm tick (zones already hold countdowns). */
   window.bombFruit_refresh_snap = function bombFruit_refresh_snap(mgr) {
     if (!mgr || !mgr.ka) return;
     if (!window.__bombFruitLastPos) window.__bombFruitLastPos = new WeakMap();
@@ -273,11 +355,26 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     for (let i = 0; i < mgr.ka.length; i++) {
       const el = mgr.ka[i];
       if (!el || !el.pos) continue;
-      window.bombFruit_init_apple(el);
       const cur = window.bombFruit_pos_key(el.pos);
       if (!cur) continue;
+      let z = window.bombFruit_find_zone(el.pos.x, el.pos.y);
+      if (!z) {
+        z = window.bombFruit_ensure_zone(
+          el.pos.x,
+          el.pos.y,
+          (el.bombX1a | 0) >= 0 ? el.bombX1a | 0 : -1
+        );
+      } else if ((z.bombX1a | 0) < 0 && (el.bombX1a | 0) >= 0) {
+        // Fruit armed while zone still idle — push once (dice/test path).
+        z.bombX1a = el.bombX1a | 0;
+      }
+      el.bombX1a = z.bombX1a | 0;
       last.set(el, cur);
-      nextSnap.push({ el: el, key: cur, bombX1a: el.bombX1a | 0 });
+      nextSnap.push({
+        el: el,
+        key: cur,
+        bombX1a: el.bombX1a | 0,
+      });
     }
     window.__bombFruitAppleSnap = nextSnap;
   };
@@ -292,6 +389,9 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     if (!list) return;
     for (let i = 0; i < list.length; i++) {
       window.bombFruit_init_apple(list[i]);
+      if (list[i] && list[i].pos) {
+        window.bombFruit_ensure_zone(list[i].pos.x, list[i].pos.y, -1);
+      }
     }
   };
 
@@ -541,6 +641,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       } catch (_r) {}
     }
     // Stop any leftover armed pulses from animating under the death screen.
+    window.__bombFruitZones = [];
     window.__bombFruitOrphans = [];
     try {
       if (typeof game.Dc === "function") game.Dc();
@@ -664,30 +765,99 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     }
   };
 
-  window.bombFruit_tick_orphans = function bombFruit_tick_orphans(game) {
-    const list = window.__bombFruitOrphans;
-    if (!list || !list.length) return;
+  /** Fruit index sitting on a zone cell, or -1. */
+  window.bombFruit_fruit_at = function bombFruit_fruit_at(mgr, x, y) {
+    if (!mgr || !mgr.ka) return -1;
+    const xi = x | 0;
+    const yi = y | 0;
+    for (let i = 0; i < mgr.ka.length; i++) {
+      const el = mgr.ka[i];
+      if (!el || !el.pos) continue;
+      if ((el.pos.x | 0) === xi && (el.pos.y | 0) === yi) return i;
+    }
+    return -1;
+  };
+
+  /** Tick cell zones: linger → arm/decrement/boom. Fruit only mirrors state. */
+  window.bombFruit_tick_zones = function bombFruit_tick_zones(game, mgr) {
+    const zones = window.bombFruit_zones();
+    if (!zones.length) return;
     const head = game.oa && game.oa.ka && game.oa.ka[0];
-    for (let i = list.length - 1; i >= 0; i--) {
-      const o = list[i];
-      if (!o) {
-        list.splice(i, 1);
-        continue;
-      }
-      if (o.bombX1a > 0) o.bombX1a--;
-      if (o.bombX1a === 0) {
-        const dist = window.bombFruit_chebyshev(head, o);
-        if (dist === 0) {
-          // Standing on the eaten center — disarm, no kill.
-          list.splice(i, 1);
-          continue;
-        }
-        window.bombFruit_orphan_boom(game, o);
-        list.splice(i, 1);
-        if (game.nj || game.lj) return;
-        continue;
+    if (!head) return;
+    const fruitKeys = new Set();
+    if (mgr && mgr.ka) {
+      for (let i = 0; i < mgr.ka.length; i++) {
+        const el = mgr.ka[i];
+        if (!el || !el.pos) continue;
+        const k = window.bombFruit_pos_key(el.pos);
+        if (k) fruitKeys.add(k);
       }
     }
+    const orphans = [];
+    for (let i = zones.length - 1; i >= 0; i--) {
+      const z = zones[i];
+      if (!z) {
+        zones.splice(i, 1);
+        continue;
+      }
+      const k = window.bombFruit_zone_key(z);
+      const hasFruit = fruitKeys.has(k);
+      if (!hasFruit && (z.bombX1a | 0) < 0) {
+        if (z.linger == null) z.linger = window.BOMB_FRUIT_ZONE_LINGER | 8;
+        z.linger = (z.linger | 0) - 1;
+        if (z.linger <= 0) {
+          zones.splice(i, 1);
+          continue;
+        }
+      } else if (hasFruit) {
+        z.linger = null;
+      }
+
+      const dist = window.bombFruit_chebyshev(head, z);
+      // Minesweeper order: decrement → boom check → arm.
+      if (z.bombX1a > 0) z.bombX1a--;
+      if (z.bombX1a === 0) {
+        if (dist === 0) {
+          // Standing on center — disarm, no kill.
+          z.bombX1a = -1;
+          if (!hasFruit) {
+            zones.splice(i, 1);
+            continue;
+          }
+        } else {
+          const fi = window.bombFruit_fruit_at(mgr, z.x, z.y);
+          zones.splice(i, 1);
+          if (fi >= 0) {
+            window.bombFruit_explode(game, mgr, fi);
+          } else {
+            window.bombFruit_orphan_boom(game, z);
+          }
+          if (game.nj || game.lj) {
+            window.__bombFruitOrphans = [];
+            return;
+          }
+          // Re-resolve fruit keys after explode may have moved apples.
+          fruitKeys.clear();
+          if (mgr && mgr.ka) {
+            for (let j = 0; j < mgr.ka.length; j++) {
+              const el = mgr.ka[j];
+              if (!el || !el.pos) continue;
+              const fk = window.bombFruit_pos_key(el.pos);
+              if (fk) fruitKeys.add(fk);
+            }
+          }
+          continue;
+        }
+      }
+      if (dist <= 1 && z.bombX1a === -1) {
+        z.bombX1a = window.BOMB_FRUIT_ARM_TICKS | 4;
+        z.linger = null;
+      }
+      if ((z.bombX1a | 0) >= 0 && !fruitKeys.has(window.bombFruit_zone_key(z))) {
+        orphans.push(z);
+      }
+    }
+    window.__bombFruitOrphans = orphans;
   };
 
   window.bombFruit_tick_logic = function bombFruit_tick_logic(game) {
@@ -699,6 +869,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
 
     if (!window.__bombFruitBootstrapped) {
       window.__bombFruitBootstrapped = true;
+      window.__bombFruitZones = [];
       window.__bombFruitOrphans = [];
       // Capture native freePos early (eat path also sets these) so boom
       // spawns use d4E(..., 2) with e7(...,15) Shield head radius.
@@ -712,7 +883,6 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       window.bombFruit_init_all(mgr);
       window.bombFruit_sync_fruit_bombs(mgr);
       window.bombFruit_clear_shields(mgr);
-      window.bombFruit_update_draw_cache(mgr);
     }
 
     // Eat cleared the last fruit and refill failed → empty board = win.
@@ -721,43 +891,16 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       return;
     }
 
-    // Eat reuses apple objects — detach armed bombs before ticking them.
+    // Fruit may have moved — leave zones on old cells, plant on new ones.
     window.bombFruit_sync_fruit_bombs(mgr);
     // Vm/c4E may re-attach nba while e7(...,15) is on — never show Shield bars.
     window.bombFruit_clear_shields(mgr);
 
-    const head = g.oa && g.oa.ka && g.oa.ka[0];
-    if (!head) return;
-
-    window.bombFruit_tick_orphans(g);
+    window.bombFruit_tick_zones(g, mgr);
     if (g.nj) return;
 
-    // Snapshot indices; explode may splice.
-    for (let i = mgr.ka.length - 1; i >= 0; i--) {
-      const el = mgr.ka[i];
-      if (!el || !el.pos) continue;
-      window.bombFruit_init_apple(el);
-      const dist = window.bombFruit_chebyshev(head, el.pos);
-      // Minesweeper order: decrement → boom check → arm.
-      if (el.bombX1a > 0) el.bombX1a--;
-      if (el.bombX1a === 0) {
-        // Center is edible — never boom-kill on the fruit tile itself.
-        if (dist === 0) {
-          el.bombX1a = -1;
-          continue;
-        }
-        window.bombFruit_explode(g, mgr, i);
-        if (g.nj || g.lj) return;
-        continue;
-      }
-      if (dist <= 1 && el.bombX1a === -1) {
-        el.bombX1a = window.BOMB_FRUIT_ARM_TICKS | 4;
-      }
-    }
-    // Keep snap countdowns current so a mid-tick dice/eat removal orphans
-    // with the post-decrement timer, not a stale pre-tick value.
+    // Mirror zone arm state onto fruit for legacy/debug reads.
     window.bombFruit_refresh_snap(mgr);
-    window.bombFruit_update_draw_cache(mgr);
   };
 
   window.bombFruit_draw_one_radius = function bombFruit_draw_one_radius(
@@ -814,45 +957,25 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   };
 
   /**
-   * Stable mine-radius draw list. Eat/refill can leave mgr.ka empty for a
-   * frame (or mid-relocate); keep last rings on screen until new fruit land
-   * so dashed radii never blink out.
+   * Draw list = cell zones only (independent of fruit objects).
+   * Kept as __bombFruitDrawCache for tests / Vm hook naming.
    */
   window.bombFruit_update_draw_cache = function bombFruit_update_draw_cache(
-    mgr
+    _mgr
   ) {
-    const game = window.__remixGame;
+    const zones = window.bombFruit_zones();
     const list = [];
-    if (mgr && mgr.ka && mgr.ka.length) {
-      for (let i = 0; i < mgr.ka.length; i++) {
-        const el = mgr.ka[i];
-        if (!el || !el.pos || el.pos.x == null || el.pos.y == null) continue;
-        list.push({
-          x: el.pos.x | 0,
-          y: el.pos.y | 0,
-          bombX1a: el.bombX1a | 0,
-        });
-      }
-    }
-    const orphans = window.__bombFruitOrphans;
-    if (orphans && orphans.length) {
-      for (let i = 0; i < orphans.length; i++) {
-        const o = orphans[i];
-        if (!o || o.x == null || o.y == null) continue;
-        list.push({
-          x: o.x | 0,
-          y: o.y | 0,
-          bombX1a: o.bombX1a | 0,
-        });
-      }
-    }
-    // Transient empty during eat animation / respawn — keep prior rings.
-    if (!list.length) {
-      if (game && !game.nj && window.__bombFruitDrawCache) return;
-      window.__bombFruitDrawCache = [];
-      return;
+    for (let i = 0; i < zones.length; i++) {
+      const z = zones[i];
+      if (!z || z.x == null || z.y == null) continue;
+      list.push({
+        x: z.x | 0,
+        y: z.y | 0,
+        bombX1a: z.bombX1a | 0,
+      });
     }
     window.__bombFruitDrawCache = list;
+    return list;
   };
 
   /** Draw Minesweeper-style dashed 3×3 rings; gated by Mine Radius checkbox. */
@@ -863,27 +986,17 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     const game = (board && board.wb) || window.__remixGame;
     if (game && game.nj) return;
     if (!board || !board.ka) return;
-    // Refresh from live fruit when present; otherwise reuse cache (eat gap).
-    const mgr = game && game.wa;
-    if (mgr && mgr.ka && mgr.ka.length) {
-      window.bombFruit_update_draw_cache(mgr);
-    } else if (
-      (!window.__bombFruitDrawCache || !window.__bombFruitDrawCache.length) &&
-      mgr
-    ) {
-      window.bombFruit_update_draw_cache(mgr);
-    }
-    const cache = window.__bombFruitDrawCache;
-    if (!cache || !cache.length) return;
+    const zones = window.bombFruit_zones();
+    if (!zones.length) return;
     const ctx = board.ka;
     ctx.save();
-    for (let i = 0; i < cache.length; i++) {
-      const e = cache[i];
-      if (!e) continue;
+    for (let i = 0; i < zones.length; i++) {
+      const z = zones[i];
+      if (!z) continue;
       window.bombFruit_draw_one_radius(
         board,
-        { x: e.x, y: e.y },
-        e.bombX1a | 0,
+        { x: z.x, y: z.y },
+        z.bombX1a | 0,
         game
       );
     }
@@ -931,7 +1044,6 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     }
     // e7(...,15) assigns nba on spawn — strip visuals immediately.
     window.bombFruit_clear_shields(mgr);
-    window.bombFruit_update_draw_cache(mgr);
     // Refill produced nothing and nothing remains → win.
     window.bombFruit_win_if_empty(game, mgr);
   };
@@ -988,6 +1100,15 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     "D5E=function(a,b){if(!window.__bombFruitS5E){try{window.__bombFruitS5E=s5E;window.__bombFruitT6E=t6E;window.__bombFruitX3E=x3E;}catch(_bfAud){}}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}for(var c of a.wb.Ma.Aa){"
   );
 
+  // Root cause of eat flicker: Vm→c4E sets apple.xL=0, and native D5E draws
+  // mine rings with globalAlpha=(xL+frac)/2 — so radii fade in from invisible
+  // every respawn. Keep Bomb Fruit rings fully opaque (fruit sprite fade unchanged).
+  bfReplace(
+    "D5E apple radius no xL fade",
+    /d\.ka\.globalAlpha=Math\.min\(1,\(h\.xL\+f\)\/2\)\*e;d\.ka\.strokeStyle="#f23606"/,
+    'd.ka.globalAlpha=(window.isBombFruitActive&&window.isBombFruitActive()?1:Math.min(1,(h.xL+f)/2))*e;d.ka.strokeStyle="#f23606"'
+  );
+
   // Capture apple helpers early on eat (before Chess branch).
   bfReplace(
     "eat capture helpers",
@@ -1025,12 +1146,12 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     );
   }
 
-  // Classic Vm reposition: strip shield bars + refresh radius cache in the same
-  // turn as the eat so mine rings never blank for a frame.
+  // Classic Vm reposition: strip shield bars + sync cell zones (fruit left
+  // behind keeps its radius; new cell gets its own).
   bfReplace(
-    "Vm clear shields + radius cache",
+    "Vm clear shields + sync zones",
     /e=window\.isCatActive&&window\.isCatActive\(\)&&window\.cat_allows_fruit_spawn&&!window\.cat_allows_fruit_spawn\(a,1,1\)\?!1:a\.Vm\(k,!e,null\)\);/,
-    "e=window.isCatActive&&window.isCatActive()&&window.cat_allows_fruit_spawn&&!window.cat_allows_fruit_spawn(a,1,1)?!1:a.Vm(k,!e,null));if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_clear_shields(a.wa);window.bombFruit_update_draw_cache(a.wa);}catch(_bf){}}"
+    "e=window.isCatActive&&window.isCatActive()&&window.cat_allows_fruit_spawn&&!window.cat_allows_fruit_spawn(a,1,1)?!1:a.Vm(k,!e,null));if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_clear_shields(a.wa);window.bombFruit_sync_fruit_bombs(a.wa);}catch(_bf){}}"
   );
 
   // Classic Vm fail splices the eaten apple — after that, empty board = Shield win.

@@ -32,8 +32,10 @@ describe("Bomb Fruit mode (offline)", () => {
     assert.match(init, /bombFruit_after_respawn\(a\.wa,0\)/);
     assert.match(init, /bombFruit_win_if_empty/);
     assert.match(init, /bombFruit_clear_shields/);
-    assert.match(init, /bombFruit_update_draw_cache/);
-    assert.match(init, /__bombFruitDrawCache/);
+    assert.match(init, /__bombFruitZones/);
+    assert.match(init, /bombFruit_ensure_zone/);
+    assert.match(init, /BOMB_FRUIT_ZONE_LINGER/);
+    assert.match(init, /isBombFruitActive\(\)\?1:Math\.min\(1,\(h\.xL\+f\)\/2\)/);
     assert.match(init, /b===15&&window\.BOMB_FRUIT_MODE/);
     assert.match(init, /game\.ub\s*=\s*true/);
     assert.match(init, /same end state as Shield/);
@@ -407,7 +409,61 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
     }
   });
 
-  it("mine radius draw cache survives transient empty apple list", async () => {
+  it("eat leaves a zone radius at the old cell", async () => {
+    const { COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launch("RemixMod.js", 120);
+    try {
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
+      const r = await h.page.evaluate(() => {
+        const mode = window.BOMB_FRUIT_MODE;
+        window.CurrentModeNum = mode;
+        const g = window.__remixGame;
+        g.settings.ub = mode;
+        g.settings.ob = mode;
+        window.bombFruit_reset_state();
+        window.__bombFruitBootstrapped = true;
+        const mgr = g.wa;
+        const apple = mgr.ka[0];
+        window.bombFruit_init_apple(apple);
+        apple.bombX1a = -1; // unarmed
+        const oldX = apple.pos.x;
+        const oldY = apple.pos.y;
+        window.__bombFruitLastPos = new WeakMap();
+        window.__bombFruitLastPos.set(apple, oldX + "," + oldY);
+        window.__bombFruitAppleSnap = [
+          { el: apple, key: oldX + "," + oldY, bombX1a: -1 },
+        ];
+        apple.pos.x = (oldX + 5) % 17;
+        apple.pos.y = (oldY + 4) % 15;
+        window.bombFruit_sync_fruit_bombs(mgr);
+        window.bombFruit_update_draw_cache(mgr);
+        const zones = window.__bombFruitZones || [];
+        const cache = window.__bombFruitDrawCache || [];
+        const oldZone = zones.find((z) => z.x === oldX && z.y === oldY);
+        const cacheOld = cache.some((e) => e.x === oldX && e.y === oldY);
+        const cacheNew = cache.some(
+          (e) => e.x === apple.pos.x && e.y === apple.pos.y
+        );
+        return {
+          oldZone: !!oldZone,
+          oldLinger: oldZone ? oldZone.linger : null,
+          cacheOld,
+          cacheNew,
+          fruitBomb: apple.bombX1a,
+          zoneCount: zones.length,
+        };
+      });
+      assert.equal(r.oldZone, true, "zone at old cell: " + JSON.stringify(r));
+      assert.equal(r.cacheOld, true, "draw still has old ring: " + JSON.stringify(r));
+      assert.equal(r.cacheNew, true, "draw has new fruit ring: " + JSON.stringify(r));
+      assert.ok(r.oldLinger == null || r.oldLinger > 0, JSON.stringify(r));
+      assert.equal(r.fruitBomb, -1, JSON.stringify(r));
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("mine radius zones survive transient empty apple list", async () => {
     const { COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launch("RemixMod.js", 119);
     try {
@@ -422,18 +478,17 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
         window.__bombFruitBootstrapped = true;
         const mgr = g.wa;
         window.bombFruit_init_all(mgr);
+        window.bombFruit_sync_fruit_bombs(mgr);
         window.bombFruit_update_draw_cache(mgr);
         const before = (window.__bombFruitDrawCache || []).map((e) => e.x + "," + e.y);
         // Simulate eat gap: apples cleared for a frame, game not over.
+        // Zones stay — radii are cell-bound, not fruit-bound.
         const saved = mgr.ka.splice(0, mgr.ka.length);
         g.nj = false;
         window.bombFruit_update_draw_cache(mgr);
         const mid = (window.__bombFruitDrawCache || []).map((e) => e.x + "," + e.y);
-        // Restore + relocate one fruit like a respawn.
+        // Restore fruit without sync — zones unchanged.
         for (let i = 0; i < saved.length; i++) mgr.ka.push(saved[i]);
-        if (mgr.ka[0] && mgr.ka[0].pos) {
-          mgr.ka[0].pos.x = (mgr.ka[0].pos.x + 3) % 17;
-        }
         window.bombFruit_update_draw_cache(mgr);
         const after = (window.__bombFruitDrawCache || []).map((e) => e.x + "," + e.y);
         return {
@@ -441,14 +496,14 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
           midN: mid.length,
           midSame: mid.join("|") === before.join("|"),
           afterN: after.length,
-          afterChanged: after.join("|") !== before.join("|"),
+          afterSame: after.join("|") === before.join("|"),
         };
       });
       assert.equal(r.beforeN, 3, JSON.stringify(r));
-      assert.equal(r.midN, 3, "cache kept during empty: " + JSON.stringify(r));
+      assert.equal(r.midN, 3, "zones kept during empty: " + JSON.stringify(r));
       assert.equal(r.midSame, true, JSON.stringify(r));
       assert.equal(r.afterN, 3, JSON.stringify(r));
-      assert.equal(r.afterChanged, true, "cache refreshes when fruit back: " + JSON.stringify(r));
+      assert.equal(r.afterSame, true, "emptying fruit does not move zones: " + JSON.stringify(r));
     } finally {
       await h.close();
     }
