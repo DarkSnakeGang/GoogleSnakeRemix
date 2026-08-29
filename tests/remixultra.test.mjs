@@ -499,7 +499,7 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       assert.equal(chrome.leftTabs.display, "flex", JSON.stringify(chrome));
       assert.notEqual(chrome.place.radius, "0px", JSON.stringify(chrome));
       assert.equal(chrome.speedTab, null, JSON.stringify(chrome));
-      assert.equal(chrome.speedInfoWrap, "none", JSON.stringify(chrome));
+      assert.notEqual(chrome.speedInfoWrap, "none", JSON.stringify(chrome));
       assert.equal(chrome.splitWrap, "none", JSON.stringify(chrome));
       assert.ok(
         !chrome.scrollbarWrap || chrome.scrollbarWrap === "none",

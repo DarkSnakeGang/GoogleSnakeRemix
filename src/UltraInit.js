@@ -2467,6 +2467,16 @@ window.RemixUltraMod.alterSnakeCode = function (code) {
     code = window.CandyMod.alterSnakeCode(code);
     code = window.ChessMod.alterSnakeCode(code);
     code = window.BurgerMod.alterSnakeCode(code);
+    try {
+      code = window.CatMod.alterSnakeCode(code);
+    } catch (e) {
+      console.error("RemixUltraMod: CatMod.alterSnakeCode failed", e);
+    }
+    try {
+      code = window.MexicoMod.alterSnakeCode(code);
+    } catch (e) {
+      console.error("RemixUltraMod: MexicoMod.alterSnakeCode failed", e);
+    }
     code = window.CatSpeed.alterSnakeCode(code);
     code = window.DiceCounts.alterSnakeCode(code);
     code = window.CustomSize.alterSnakeCode(code);
@@ -2496,6 +2506,8 @@ window.RemixUltraMod.runCodeAfter = function () {
   window.CandyMod.runCodeAfter && window.CandyMod.runCodeAfter();
   window.ChessMod.runCodeAfter && window.ChessMod.runCodeAfter();
   window.BurgerMod.runCodeAfter && window.BurgerMod.runCodeAfter();
+  window.CatMod.runCodeAfter && window.CatMod.runCodeAfter();
+  window.MexicoMod.runCodeAfter && window.MexicoMod.runCodeAfter();
   window.DiceCounts &&
     window.DiceCounts.runCodeAfter &&
     window.DiceCounts.runCodeAfter();

@@ -1,5 +1,12 @@
 window.REMIX_CUSTOM_FRUIT_PRESETS = [
   {
+    id: "cat",
+    label: "Cat",
+    normal: (window.__REMIX_CAT_FRUIT_URIS || {})["cat-normal"] || "",
+    pixel: (window.__REMIX_CAT_FRUIT_URIS || {})["cat-pixel"] || "",
+    real: (window.__REMIX_CAT_FRUIT_URIS || {})["cat-real"] || "",
+  },
+  {
     id: "blackberries",
     label: "Blackberries",
     normal: "https://i.postimg.cc/hPTVGdNX/blackberries.png",

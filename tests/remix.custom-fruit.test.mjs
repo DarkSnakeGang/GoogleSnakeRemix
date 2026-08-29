@@ -14,6 +14,9 @@ describe("Custom fruit presets + validator (offline)", () => {
     eval(
       fs.readFileSync(path.join(ROOT, "src/PacmanGhostUris.js"), "utf8")
     );
+    eval(
+      fs.readFileSync(path.join(ROOT, "src/CatFruitUris.js"), "utf8")
+    );
     const src = fs.readFileSync(
       path.join(ROOT, "src/CustomFruitPresets.js"),
       "utf8"
@@ -23,9 +26,15 @@ describe("Custom fruit presets + validator (offline)", () => {
     const poison = globalThis.REMIX_CUSTOM_POISON_PRESETS;
     assert.ok(Array.isArray(fruit));
     assert.ok(fruit.length >= 10);
+    const cat = fruit.find((p) => p.id === "cat");
+    assert.ok(cat, "cat fruit preset");
+    assert.match(cat.normal, /^data:image\/png;base64,/);
+    assert.match(cat.pixel, /^data:image\/png;base64,/);
+    assert.match(cat.real, /^data:image\/png;base64,/);
     for (const p of fruit) {
       assert.match(p.id, /^[a-z0-9-]+$/);
       assert.ok(p.label);
+      if (p.id === "cat") continue;
       assert.match(p.normal, /^https:\/\//);
       assert.match(p.pixel, /^https:\/\//);
       assert.match(p.real, /^https:\/\//);
@@ -55,6 +64,21 @@ describe("Custom fruit presets + validator (offline)", () => {
       assert.match(g.poisonReal, /^data:image\/png;base64,/);
     }
     assert.ok(poison.some((p) => p.id === "skull-poison"));
+  });
+
+  it("cat fruit preset PNGs are exact Normal/Pixel/Real sizes", () => {
+    globalThis.window = globalThis;
+    eval(fs.readFileSync(path.join(ROOT, "src/CatFruitUris.js"), "utf8"));
+    const uris = globalThis.__REMIX_CAT_FRUIT_URIS;
+    assert.ok(uris);
+    function pngSize(dataUrl) {
+      const b64 = dataUrl.replace(/^data:image\/png;base64,/, "");
+      const buf = Buffer.from(b64, "base64");
+      return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+    }
+    assert.deepEqual(pngSize(uris["cat-normal"]), { w: 128, h: 128 });
+    assert.deepEqual(pngSize(uris["cat-pixel"]), { w: 170, h: 170 });
+    assert.deepEqual(pngSize(uris["cat-real"]), { w: 128, h: 128 });
   });
 
   it("remixCustomFruitSlotSize uses 170 for pixel slots", () => {
@@ -128,6 +152,9 @@ describe("Custom fruit presets + validator (offline)", () => {
     globalThis.prompt = () => "My Upload";
     eval(
       fs.readFileSync(path.join(ROOT, "src/PacmanGhostUris.js"), "utf8")
+    );
+    eval(
+      fs.readFileSync(path.join(ROOT, "src/CatFruitUris.js"), "utf8")
     );
     eval(
       fs.readFileSync(path.join(ROOT, "src/CustomFruitPresets.js"), "utf8")

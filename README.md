@@ -1,19 +1,21 @@
 # GoogleSnakeRemix
 
-Remix Mod for Google Snake — adds **Chess Mode**, **Candy Mode** and **Burger Mode** on top of **More Pudding Mod**, targeting game **v13** (`googlesnakemods.com/v/current`).
+Remix Mod for Google Snake — adds **Chess Mode**, **Candy Mode**, **Burger Mode**, **Cat Mode**, and **Mexico Mode** on top of **More Pudding Mod**, targeting game **v13** (`googlesnakemods.com/v/current`).
 
 ## Features
 
 - **Candy Mode** — extra snake length (+1..+6) per fruit; own trophy after Blender
 - **Chess Mode** — chess-piece apples with attack/unlock rules; own trophy (does **not** replace Shield)
 - **Burger Mode** — every fruit carries a timer; it greys out as it ages, turns into a skull poison when it runs out, and a fresh one spawns. Eating a fresh fruit clears every poison on the board; eating a poison costs you control like native Poison mode.
+- **Cat Mode** — nine lives: bank +1 life every 5 apples (cap 9); a fatal hit spends a life and grants temporary Peaceful for `ceil((score + 3) / 2)` ticks (snake drawn at 75% opacity). Game over only with 0 lives and no grace left.
+- **Mexico Mode** — Portal physics with a hard north/south split: each fruit pair is one apple in the top half and one in the bottom. After the first apple, the middle row fills with walls once (no ongoing Wall Mode spawns). If a required half cannot spawn, you win.
 - **Cat Speed** — between Normal and Fast in feel (`0.85×`), appended after MoreMenu speeds
 - **Blue / Green / Black Dice** — DiceMod-style counts (roll **1–12** / **4–9** / **custom spawn range**) when the last apple is eaten; tinted game dice icons after Nuke. **Black Dice** min/max fruits per roll (default **6–24**, clamp **1–10000**) are set in Pudding Settings.
-- **Blender** — separate Candy, Chess and Burger toggles with their own icons in the Blender panel. In Burger+Chess, expired pieces become plain skull poisons (no chess-piece status, cannot be unlocked).
+- **Blender** — separate Candy, Chess, Burger, Cat, and Mexico toggles with their own icons in the Blender panel (panel expands to fit). In Burger+Chess, expired pieces become plain skull poisons (no chess-piece status, cannot be unlocked).
 - **Custom board size** — index 11 on `#size`; default **17×15**, clamp **2–10000** W/H (Custom → Board)
 - **Custom colors** — two-tone gradient body+shade and a custom rainbow palette (Custom → Colors)
 - **Custom speeds** — global multiplier plus A/B switcher that flips every apple (Custom → Speeds)
-- **Custom fruit** — modloader icon on `#apple`; Custom → **Fruit** for Normal/Real (128×128) and Pixel (170×170) with fruit presets (Load auto-applies; **Save preset** after a successful Apply, including uploads). Custom → **Poison** for poison sprites with separate presets, enable toggle, and the same Load/Apply/Save flow (overrides Skull when on).
+- **Custom fruit** — modloader icon on `#apple`; Custom → **Fruit** for Normal/Real (128×128) and Pixel (170×170) with fruit presets including **Cat** (Load auto-applies; **Save preset** after a successful Apply, including uploads). Custom → **Poison** for poison sprites with separate presets, enable toggle, and the same Load/Apply/Save flow (overrides Skull when on).
 - **Hamilton tour** — Play checkbox (default off). In **wall mode**, after each wall spawn, solves the live pattern (WallSolver HamiltonMod) and paints a red tour polyline; recolors the score-bar wall trophy while searching. Vendored from [GoogleSnakeWallSolver](https://github.com/DarkSnakeGang/GoogleSnakeWallSolver) (`src/HamiltonMod.js`; refresh with `node tools/sync_hamilton_mod.cjs`).
 - **Pause** — press **Q** to pause/unpause (PauseMod, included in both Remix and Remix Ultra)
 
@@ -30,20 +32,24 @@ This downloads `MorePudding.js` (and bootstrap CSS) from [GoogleSnakePudding](ht
 1. `src/CandyInit.js`
 2. `src/ChessInit.js`
 3. `src/BurgerInit.js`
-4. `src/CatSpeedInit.js`
-5. `src/DiceCountsInit.js`
-6. `src/CustomSettingsInit.js`
-7. `src/CustomSizeInit.js`
-8. `src/CustomColorsInit.js`
-9. `src/CustomSpeedsInit.js`
-10. `src/CustomFruitPresets.js`
-11. `src/CustomFruitInit.js`
-12. `src/HamiltonMod.js`
-13. `src/HamiltonInit.js`
-14. `src/RemixSpeedInfoInit.js`
-15. `src/CspMenuIcons.js`
-16. `src/PauseInit.js`
-17. `src/RemixInit.js`
+4. `src/CatInit.js`
+5. `src/MexicoInit.js`
+6. `src/CatSpeedInit.js`
+7. `src/DiceCountsInit.js`
+8. `src/CustomSettingsInit.js`
+9. `src/CustomSizeInit.js`
+10. `src/CustomColorsInit.js`
+11. `src/CustomSpeedsInit.js`
+12. `src/PacmanGhostUris.js`
+13. `src/CatFruitUris.js`
+14. `src/CustomFruitPresets.js`
+15. `src/CustomFruitInit.js`
+16. `src/HamiltonMod.js`
+17. `src/HamiltonInit.js`
+18. `src/RemixSpeedInfoInit.js`
+19. `src/CspMenuIcons.js`
+20. `src/PauseInit.js`
+21. `src/RemixInit.js`
 
 Output: **`RemixMod.js`** at repo root (committed for raw-GitHub / custom URL use). The same command also writes **`RemixUltraMod.js`** (Remix + Level Editor v13 + Ultra modules). See RemixUltra below.
 
@@ -53,13 +59,13 @@ More Pudding already bundles Pudding Mod, Visibility Mod and More Menu Mod and r
 
 **Settings isolation:** Remix persists to `RemixSettings` and `snake_timeKeeper_remix` (seeded once from Pudding’s keys if empty) so extra trophies/counts/speeds and Remix-only options never overwrite plain PuddingMod’s `PuddingSettings` / `snake_timeKeeper`.
 
-**Pudding Settings:** The sidebar uses **Play | Setup | Custom** tabs in Remix (**Modes** is added in Ultra). Stats live on Setup. Speed Info / split panel / scrollbar toggles stay hidden; Black Dice min/max moved to Custom → Dice. Setup has a **Show / Hide Visibility settings** button for the Visibility overlay. Custom sub-tabs (3 per row): **Board | Colors | Speeds | Dice | Fruit | Poison**.
+**Pudding Settings:** The sidebar uses **Play | Setup | Custom** tabs in Remix (**Modes** is added in Ultra). Stats live on Setup. **Speed Info** is available again (gated to Chess/Burger data); split panel / scrollbar toggles stay hidden. Black Dice min/max moved to Custom → Dice. Setup has a **Show / Hide Visibility settings** button for the Visibility overlay. Custom sub-tabs (3 per row): **Board | Colors | Speeds | Dice | Fruit | Poison**.
 
-**ModeRegistry:** Upstream TimeKeeper / SpeedInfo now use stable mode keys (`chess`, `wall+burger`, …). Remix registers Candy/Chess/Burger, detects Blender by `random.png` (not “last trophy”), and keeps blender mix keys in sync with the Remix blend toggles.
+**ModeRegistry:** Upstream TimeKeeper / SpeedInfo now use stable mode keys (`chess`, `wall+burger`, …). Remix registers Candy/Chess/Burger/Cat/Mexico, detects Blender by `random.png` (not “last trophy”), and keeps blender mix keys in sync with the Remix blend toggles.
 
-**SpeedInfo:** Remix keeps the toggle usable and shows TimeKeeper / SRC data only in **Chess** and **Burger**; every other mode shows `Switch to PuddingMod`. Chess/Burger map to Category Extensions level boards (including High Score), matching FastSnakeStats. TimeKeeper for those modes only tracks **official counts through Tally** (plus Normal/Fast/Slow and Standard/Small/Large) — not MoreMenu or colored-dice counts.
+**SpeedInfo:** Remix keeps the toggle usable and shows TimeKeeper / SRC data only in **Chess** and **Burger**; every other mode (including **Cat**) shows `Switch to PuddingMod`. Chess/Burger map to Category Extensions level boards (including High Score), matching FastSnakeStats. Cat has no CE/SRC boards. TimeKeeper for Chess/Burger only tracks **official counts through Tally** (plus Normal/Fast/Slow and Standard/Small/Large) — not MoreMenu or colored-dice counts.
 
-**Timer settings:** The Custom Timer/Splits dialog's mode row adds **Candy**, **Chess**, and **Burger** so those modes can store PBs/splits like the vanilla ones.
+**Timer settings:** The Custom Timer/Splits dialog's mode row adds **Candy**, **Chess**, **Burger**, **Cat**, and **Mexico** so those modes can store PBs/splits like the vanilla ones.
 
 ## Load
 
@@ -105,6 +111,8 @@ Build still uses `python RemixBuilder.py` — it writes both `RemixMod.js` and `
 | Candy   | 23 (appended) |
 | Chess   | 24 (appended) |
 | Burger  | 25 (appended) |
+| Cat     | 26 (appended) |
+| Mexico  | 27 (appended) |
 
 Modes claim their trophy slots after More Pudding has added its own, so the ids sit at the end of the list. Shield (15) remains a normal playable mode. Chess uses Shield **physics** only while Chess (or Chess-in-Blender) is active.
 
@@ -171,13 +179,16 @@ npm run capture            # dump original ChessMod on /v/3
 | `src/CandyInit.js` | Candy mode + blender toggle |
 | `src/ChessInit.js` | Chess mode + blender toggle + fruit inject |
 | `src/BurgerInit.js` | Burger mode + blender toggle |
+| `src/CatInit.js` | Cat mode (nine lives + temporary Peaceful) + blender toggle |
+| `src/MexicoInit.js` | Mexico mode (split Portal board + one-shot mid-row walls) + blender toggle |
 | `src/CatSpeedInit.js` | Cat speed menu entry |
 | `src/DiceCountsInit.js` | Blue/Green/Black dice counts |
 | `src/CustomSettingsInit.js` | Custom settings tab host + number-input helpers |
 | `src/CustomSizeInit.js` | Custom board size (index 11) |
 | `src/CustomColorsInit.js` | Custom gradient + rainbow colors |
 | `src/CustomSpeedsInit.js` | Custom speed multiplier + A/B switcher |
-| `src/CustomFruitPresets.js` | Deprecated Pudding fruit presets + poison presets |
+| `src/CatFruitUris.js` | Embedded Cat fruit Normal/Pixel/Real data URIs |
+| `src/CustomFruitPresets.js` | Fruit presets (incl. Cat) + poison presets |
 | `src/CustomFruitInit.js` | Custom fruit/poison tabs, Poison-tab enable checkbox, Apply validation |
 | `src/RemixSpeedInfoInit.js` | SpeedInfo / TimeKeeper integration |
 | `src/CspMenuIcons.js` | CSP-safe inlined size icons |

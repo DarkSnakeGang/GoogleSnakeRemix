@@ -114,8 +114,6 @@ window.remixInjectSettingsCss = function remixInjectSettingsCss() {
 #settings-popup-pudding .form-check.ultra-hide,
 #settings-popup-pudding .form-check-inline.ultra-hide,
 #settings-popup-pudding .ultra-hide,
-#AlwaysOnTimeKeeper,
-label[for="AlwaysOnTimeKeeper"],
 #ShowSplitPanel,
 label[for="ShowSplitPanel"],
 #RemoveScrollbar,
@@ -423,9 +421,15 @@ window.remixEnsureWallEveryAppleSetting = function remixEnsureWallEveryAppleSett
   return s;
 };
 
+// Mexico enables e7(1) for mid-wall collision only — never native wall spawns.
+window.remixMexicoBlocksWallSpawn = function remixMexicoBlocksWallSpawn() {
+  return !!(window.isMexicoActive && window.isMexicoActive());
+};
+
 window.remixShouldSpawnWallEveryApple = function remixShouldSpawnWallEveryApple() {
   window.remixEnsureWallEveryAppleSetting();
   if (window.disableWallMode) return false;
+  if (window.remixMexicoBlocksWallSpawn()) return false;
   return !!window.pudding_settings.WallEveryApple;
 };
 
@@ -470,7 +474,7 @@ window.remixPatchWallEveryApple = function remixPatchWallEveryApple(code) {
   }
   return code.replace(
     re,
-    "$1=!$2.nj&&!$3&&($2.Sh%2===1||e7($2.settings,11));e7($2.settings,1)&&($1||window.remixShouldSpawnWallEveryApple()&&!$2.nj&&!$3)&&"
+    "$1=!$2.nj&&!$3&&($2.Sh%2===1||e7($2.settings,11));e7($2.settings,1)&&!window.remixMexicoBlocksWallSpawn()&&($1||window.remixShouldSpawnWallEveryApple()&&!$2.nj&&!$3)&&"
   );
 };
 
@@ -689,7 +693,7 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     root.appendChild(bin);
   }
 
-  window.remixHideSettingsNode(window.remixSettingsWrap("AlwaysOnTimeKeeper", root), bin);
+  // Speed Info (#AlwaysOnTimeKeeper) stays visible — RemixSpeedInfo gates data.
   window.remixHideSettingsNode(window.remixSettingsWrap("ShowSplitPanel", root), bin);
   window.remixHideSettingsNode(window.remixSettingsWrap("RemoveScrollbar", root), bin);
   window.remixHideSettingsNode(window.remixSettingsEl("ScrollLeftBtn", root), bin);
@@ -835,9 +839,75 @@ window.RemixMod.runCodeBefore = function () {
   // The list is cached per panel because claiming a cell drops its "empty"
   // marker class — rescanning would renumber the slots for every later mode,
   // which used to leave the third mode with no slot at all.
+  // Expand capacity (extra column + cloned empties) so Cat/Mexico + future modes fit.
+  window.remixEnsureBlenderCapacity = function remixEnsureBlenderCapacity(minEmptySlots) {
+    const need = typeof minEmptySlots === "number" ? minEmptySlots : 6;
+    let panel = document.querySelector(".PWIidc");
+    if (!panel) return null;
+
+    // Prefer 6 columns so one extra empty column fits after the vanilla 5×5.
+    try {
+      panel.style.gridTemplateColumns = "repeat(6, minmax(0, 1fr))";
+    } catch (_e) {}
+
+    let peacefulImg = panel.querySelector('img[src$="trophy_21.png"]');
+    if (!peacefulImg) return null;
+    let outer =
+      (peacefulImg.closest &&
+        peacefulImg.closest(".vuOknd") &&
+        peacefulImg.closest(".vuOknd").parentElement) ||
+      (peacefulImg.parentElement && peacefulImg.parentElement.parentElement);
+    if (!outer || outer.parentElement !== panel) return null;
+
+    function collectEmpties() {
+      let empties = [];
+      let sib = outer.nextElementSibling;
+      while (sib) {
+        let inner = sib.querySelector(":scope > .vuOknd");
+        if (inner && inner.classList.contains("oBBKec")) {
+          empties.push(inner);
+        }
+        sib = sib.nextElementSibling;
+      }
+      return empties;
+    }
+
+    let empties = collectEmpties();
+    let templateOuter = outer.nextElementSibling;
+    // Prefer cloning a still-empty sibling; fall back to Peaceful's outer shell.
+    if (!templateOuter) templateOuter = outer;
+    while (empties.length < need) {
+      let clone = templateOuter.cloneNode(true);
+      let inner = clone.querySelector(".vuOknd") || clone;
+      if (inner) {
+        inner.removeAttribute("id");
+        inner.className = "vuOknd oBBKec";
+        inner.innerHTML = "";
+        inner.removeAttribute("aria-label");
+        inner.removeAttribute("role");
+        inner.removeAttribute("tabindex");
+      }
+      panel.appendChild(clone);
+      empties = collectEmpties();
+      if (empties.length === 0) break;
+    }
+
+    // Invalidate slot cache so claimPeacefulFollowSlot rescans.
+    window.remixBlenderSlots = null;
+    return collectEmpties();
+  };
+
   window.claimPeacefulFollowSlot = function claimPeacefulFollowSlot(slotIndex) {
     let panel = document.querySelector(".PWIidc");
     if (!panel) return null;
+
+    // Ensure Cat (slot 3) + a couple spares exist before first claim.
+    if (
+      typeof window.remixEnsureBlenderCapacity === "function" &&
+      (!window.remixBlenderSlots || window.remixBlenderSlots.panel !== panel)
+    ) {
+      window.remixEnsureBlenderCapacity(7);
+    }
 
     let cached = window.remixBlenderSlots;
     if (!cached || cached.panel !== panel) {
@@ -908,7 +978,10 @@ window.RemixMod.runCodeBefore = function () {
   window.CustomFruit.runCodeBefore();
   window.ChessMod.runCodeBefore();
   window.BurgerMod.runCodeBefore();
+  // Cat Speed first so CAT_SPEED_ICON exists for Cat Mode trophy art.
   window.CatSpeed.runCodeBefore();
+  window.CatMod.runCodeBefore();
+  window.MexicoMod.runCodeBefore();
   window.DiceCounts.runCodeBefore();
   window.CustomSettings.runCodeBefore();
   window.CustomSize.runCodeBefore();
@@ -926,10 +999,20 @@ window.RemixMod.runCodeBefore = function () {
 
 window.RemixMod.alterSnakeCode = function (code) {
   code = window.remixBaseAlterSnakeCode(code);
-  // Candy → Chess → Burger (Burger builds on Chess-patched tick/f7/score)
+  // Candy → Chess → Burger → Cat → Mexico (Mexico builds on Cat-patched e7/tick/reset)
   code = window.CandyMod.alterSnakeCode(code);
   code = window.ChessMod.alterSnakeCode(code);
   code = window.BurgerMod.alterSnakeCode(code);
+  try {
+    code = window.CatMod.alterSnakeCode(code);
+  } catch (e) {
+    console.error("RemixMod: CatMod.alterSnakeCode failed", e);
+  }
+  try {
+    code = window.MexicoMod.alterSnakeCode(code);
+  } catch (e) {
+    console.error("RemixMod: MexicoMod.alterSnakeCode failed", e);
+  }
   code = window.CatSpeed.alterSnakeCode(code);
   code = window.DiceCounts.alterSnakeCode(code);
   code = window.CustomSize.alterSnakeCode(code);
@@ -953,6 +1036,8 @@ window.RemixMod.runCodeAfter = function () {
   window.CandyMod.runCodeAfter && window.CandyMod.runCodeAfter();
   window.ChessMod.runCodeAfter && window.ChessMod.runCodeAfter();
   window.BurgerMod.runCodeAfter && window.BurgerMod.runCodeAfter();
+  window.CatMod.runCodeAfter && window.CatMod.runCodeAfter();
+  window.MexicoMod.runCodeAfter && window.MexicoMod.runCodeAfter();
   window.RemixSpeedInfo.runCodeAfter && window.RemixSpeedInfo.runCodeAfter();
   window.PauseMod.runCodeAfter && window.PauseMod.runCodeAfter();
   window.HamiltonRemix.runCodeAfter && window.HamiltonRemix.runCodeAfter();

@@ -11,8 +11,9 @@ window.RemixSpeedInfo = {};
 // Chess/Burger TimeKeeper only tracks official apple counts 0..Tally (6),
 // plus Normal/Fast/Slow and Standard/Small/Large — not MoreMenu / colored dice.
 //
-// Timer settings (#edit-mode) is hardcoded Classic…Peaceful; we add only
-// Candy/Chess/Burger (index-aligned; gaps stay hidden so PB keys match).
+// Timer settings (#edit-mode) is hardcoded Classic…Peaceful; we add
+// Candy/Chess/Burger/Cat/Mexico (index-aligned; gaps stay hidden so PB keys match).
+// Cat/Candy/Mexico have no CE/SRC boards — SpeedInfo stays gated to Chess/Burger.
 window.RemixSpeedInfo.runCodeBefore = function () {
   window.remixNativeBlenderMode = 22;
   // Last vanilla count index (1 / 3 / 5 / 10 / Dice / Bomb / Tally).
@@ -87,6 +88,12 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     if (window.BURGER_MODE != null) {
       window.modeToTxt[window.BURGER_MODE] = { name: "Burger" };
     }
+    if (window.CAT_MODE != null) {
+      window.modeToTxt[window.CAT_MODE] = { name: "Cat" };
+    }
+    if (window.MEXICO_MODE != null) {
+      window.modeToTxt[window.MEXICO_MODE] = { name: "Mexico" };
+    }
   };
 
   // Teach ModeRegistry about trophies Remix appends after Blender.
@@ -97,6 +104,8 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     window.ModeRegistry.LABELS.candy = "Candy";
     window.ModeRegistry.LABELS.chess = "Chess";
     window.ModeRegistry.LABELS.burger = "Burger";
+    window.ModeRegistry.LABELS.cat = "Cat";
+    window.ModeRegistry.LABELS.mexico = "Mexico";
 
     if (window.ModeRegistry.listActiveModes.__remix) return;
 
@@ -134,6 +143,10 @@ window.RemixSpeedInfo.runCodeBefore = function () {
           id = "chess";
         } else if (window.BURGER_MODE != null && i === window.BURGER_MODE) {
           id = "burger";
+        } else if (window.CAT_MODE != null && i === window.CAT_MODE) {
+          id = "cat";
+        } else if (window.MEXICO_MODE != null && i === window.MEXICO_MODE) {
+          id = "mexico";
         } else {
           id = window.ModeRegistry._matchMiddleId(src);
           if (!id) {
@@ -197,6 +210,10 @@ window.RemixSpeedInfo.runCodeBefore = function () {
         if (window.chess_blending && ids.indexOf("chess") < 0) ids.push("chess");
         if (window.burger_blending && ids.indexOf("burger") < 0) {
           ids.push("burger");
+        }
+        if (window.cat_blending && ids.indexOf("cat") < 0) ids.push("cat");
+        if (window.mexico_blending && ids.indexOf("mexico") < 0) {
+          ids.push("mexico");
         }
         if (!ids.length) return "blender";
         return ids.slice().sort().join("+");
@@ -445,6 +462,16 @@ window.RemixSpeedInfo.runCodeBefore = function () {
         id: window.BURGER_MODE,
         icon: window.BURGER_ICON,
         name: "Burger",
+      },
+      {
+        id: window.CAT_MODE,
+        icon: window.CAT_ICON || window.CAT_SPEED_ICON,
+        name: "Cat",
+      },
+      {
+        id: window.MEXICO_MODE,
+        icon: window.MEXICO_ICON,
+        name: "Mexico",
       },
     ].filter(function (m) {
       return typeof m.id === "number" && m.icon;

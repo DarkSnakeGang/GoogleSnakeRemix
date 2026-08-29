@@ -12213,6 +12213,1117 @@ window.BurgerMod.runCodeAfter = function () {
   window.add_burger_blender_toggle && window.add_burger_blender_toggle();
 };
 
+window.CatMod = {};
+
+////////////////////////////////////////////////////////////////////
+//RUNCODEBEFORE
+////////////////////////////////////////////////////////////////////
+
+window.CatMod.runCodeBefore = function () {
+  console.log("Adding Cat Mode (v13)");
+
+  window.CAT_PEACEFUL_ALPHA = 0.75;
+  window.CAT_LIFE_EVERY = 5;
+  window.CAT_MAX_LIVES = 9;
+  window.CAT_GRACE_EXTRA = 3;
+
+  // Same CSP-safe cat art as Cat Speed (#speed). Prefer live CatSpeed icon;
+  // fall back if run order ever drifts.
+  window.CAT_ICON = window.CAT_SPEED_ICON || window.CAT_ICON || "";
+  if (!window.CAT_ICON && typeof window.CatSpeed === "object") {
+    // CatSpeedInit may not have run yet — it will fill CAT_SPEED_ICON first.
+  }
+
+  window.uiImage =
+    window.uiImage ||
+    function (src) {
+      let img = new Image();
+      img.src = src;
+      img.classList.add("DqMRee");
+      img.classList.add("SsAred");
+      return img;
+    };
+
+  function catEnsureTrophy() {
+    if (window.CAT_MODE != null) return;
+    window.CAT_ICON = window.CAT_SPEED_ICON || window.CAT_ICON || "";
+    if (!window.CAT_ICON) return;
+    const root = document.querySelector("#trophy");
+    if (!root) return;
+    root.appendChild(uiImage(window.CAT_ICON));
+    window.CAT_MODE = root.children.length - 1;
+  }
+  catEnsureTrophy();
+
+  let trophyEl = document.querySelector('img[src$="trophy_00.png"]');
+  if (trophyEl) {
+    let trophy_jsname = trophyEl.getAttribute("jsname");
+    window.trophy_src =
+      window.trophy_src ||
+      `document.querySelector('img[jsname="${trophy_jsname}"]').src `;
+  }
+
+  window.cat_blending = false;
+  window.cat_lives = 0;
+  window.cat_peaceful_ticks = 0;
+  window.__catLastSh = null;
+
+  window.toggle_cat_blender = function () {
+    window.cat_blending = !window.cat_blending;
+    window.correct_cat_selection();
+  };
+
+  window.correct_cat_selection = function correct_cat_selection() {
+    let el = document.getElementById("remix-cat-blend");
+    if (!el) return;
+    if (window.cat_blending) {
+      el.setAttribute("class", "vuOknd lH9Ipd blender_icon blender_icon_on");
+      el.innerHTML =
+        `<img class="DEvgAc FMN3L blender_icon_img blender_icon_img_selected" src="` +
+        window.CAT_ICON +
+        `" alt="">`;
+    } else {
+      el.setAttribute("class", "vuOknd blender_icon");
+      el.innerHTML =
+        `<img class="DEvgAc blender_icon_img" src="` +
+        window.CAT_ICON +
+        `" alt="">`;
+    }
+  };
+
+  window.add_cat_blender_toggle = function add_cat_blender_toggle() {
+    if (document.getElementById("remix-cat-blend")) return;
+    if (!window.populateRemixBlenderSlot) return;
+    if (typeof window.remixEnsureBlenderCapacity === "function") {
+      window.remixEnsureBlenderCapacity(6);
+    }
+    window.populateRemixBlenderSlot({
+      id: "remix-cat-blend",
+      slotIndex: 3,
+      icon: window.CAT_ICON,
+      ariaLabel: "Toggle Cat in Blender",
+      onToggle: window.toggle_cat_blender,
+    });
+    window.correct_cat_selection();
+  };
+
+  window.catEnsureLivesHud = function catEnsureLivesHud() {
+    if (document.getElementById("remix-cat-lives")) return;
+    const hud = document.createElement("div");
+    hud.id = "remix-cat-lives";
+    hud.setAttribute("aria-label", "Cat lives");
+    // Match Remix Mod / Remix Ultra indicator row (static absolute position,
+    // same padding-top) — centered under the score/timer.
+    hud.style.cssText =
+      "position:absolute;left:50%;transform:translateX(-50%);" +
+      "font-family:Arial,sans-serif;padding-top:4px;display:none;" +
+      "gap:3px;align-items:center;justify-content:center;" +
+      "z-index:5;pointer-events:none;user-select:none;";
+    const parent = document.getElementsByClassName("EjCLSb")[0];
+    const canvasNode = document.getElementsByClassName("jNB0Ic")[0];
+    if (parent && canvasNode && canvasNode.parentElement === parent) {
+      parent.insertBefore(hud, canvasNode);
+    } else if (parent) {
+      parent.appendChild(hud);
+    } else {
+      document.body.appendChild(hud);
+    }
+  };
+
+  window.catUpdateLivesHud = function catUpdateLivesHud() {
+    window.catEnsureLivesHud();
+    const hud = document.getElementById("remix-cat-lives");
+    if (!hud) return;
+    const active = window.isCatActive && window.isCatActive();
+    if (!active) {
+      hud.style.display = "none";
+      return;
+    }
+    hud.style.display = "flex";
+    const lives = window.cat_lives | 0;
+    const max = window.CAT_MAX_LIVES | 9;
+    let html = "";
+    const icon = window.CAT_ICON || "";
+    for (let i = 0; i < max; i++) {
+      const on = i < lives;
+      html +=
+        `<img src="` +
+        icon +
+        `" alt="" style="width:14px;height:14px;object-fit:contain;opacity:` +
+        (on ? "1" : "0.22") +
+        `;filter:` +
+        (on ? "none" : "grayscale(1)") +
+        `;">`;
+    }
+    if (window.cat_peaceful_ticks > 0) {
+      html +=
+        `<span style="margin-left:6px;font:11px/1 Arial,sans-serif;color:#cfe8ff;opacity:0.9;">` +
+        (window.cat_peaceful_ticks | 0) +
+        `</span>`;
+    }
+    hud.innerHTML = html;
+  };
+
+  window.add_cat_blender_toggle();
+  window.catEnsureLivesHud();
+};
+
+////////////////////////////////////////////////////////////////////
+//ALTERSNAKECODE
+////////////////////////////////////////////////////////////////////
+
+window.CatMod.alterSnakeCode = function (code) {
+  console.log("Coding Cat Mode into the game (v13)");
+
+  // Never abort the whole Ultra/Remix alter chain on a missed optional patch.
+  function catReplace(label, re, replacement) {
+    if (!code.match(re)) {
+      console.error("CatMod: failed to find " + label);
+      return false;
+    }
+    try {
+      code = code.assertReplace(re, replacement);
+      return true;
+    } catch (e) {
+      console.error("CatMod: replace failed for " + label, e);
+      return false;
+    }
+  }
+
+  window.isCatActive = function isCatActive() {
+    if (window.CAT_MODE == null) return false;
+    if (window.CurrentModeNum === window.CAT_MODE) return true;
+    if (window.CurrentModeNum === 22 && window.cat_blending) return true;
+    const g = window.__remixGame;
+    const mode =
+      g && g.settings
+        ? g.settings.ub != null
+          ? g.settings.ub
+          : g.settings.ob
+        : null;
+    if (mode === window.CAT_MODE) return true;
+    if (mode === 22 && window.cat_blending) return true;
+    return false;
+  };
+
+  window.updateCatTrophySRC = function updateCatTrophySRC() {
+    if (window.trophy_src && window.CAT_ICON) {
+      eval(window.trophy_src + `= window.CAT_ICON`);
+    }
+  };
+
+  window.cat_reset_state = function cat_reset_state() {
+    window.cat_lives = 0;
+    window.cat_peaceful_ticks = 0;
+    window.__catLastSh = null;
+    window.catUpdateLivesHud && window.catUpdateLivesHud();
+  };
+
+  window.cat_on_apple_eaten = function cat_on_apple_eaten(game) {
+    if (!window.isCatActive || !window.isCatActive()) return;
+    const sh = (game && game.Sh) | 0;
+    const every = window.CAT_LIFE_EVERY | 5;
+    const max = window.CAT_MAX_LIVES | 9;
+    // +1 life every 5 apples (not floor(Sh/5) — spending must stick).
+    if (sh > 0 && sh % every === 0) {
+      window.cat_lives = Math.min(max, (window.cat_lives | 0) + 1);
+    }
+    window.catUpdateLivesHud && window.catUpdateLivesHud();
+  };
+
+  // Spend a life instead of dying. Returns true if death should be cancelled.
+  // Oa() runs after the fatal cell is already applied, so border hits land
+  // off-board (e.g. x=-1) before e7(21) can wrap. Re-apply Peaceful wrap
+  // immediately so the same tick teleports like native Peaceful.
+  window.cat_board_size = function cat_board_size(game) {
+    const g = game || window.__remixGame;
+    if (g && g.Ca && Array.isArray(g.Ca.wa) && g.Ca.wa.length) {
+      return {
+        width: g.Ca.wa[0] ? g.Ca.wa[0].length : 0,
+        height: g.Ca.wa.length,
+      };
+    }
+    if (typeof window.chess_board_size === "function" && g) {
+      return window.chess_board_size(g) || { width: 0, height: 0 };
+    }
+    return { width: 0, height: 0 };
+  };
+
+  window.cat_wrap_head_if_needed = function cat_wrap_head_if_needed(game) {
+    const g = game || window.__remixGame;
+    if (!g || !g.oa || !Array.isArray(g.oa.ka) || !g.oa.ka.length) return false;
+    const head = g.oa.ka[0];
+    if (!head || head.x == null || head.y == null) return false;
+    const sz = window.cat_board_size(g);
+    const w = sz.width | 0;
+    const h = sz.height | 0;
+    if (!w || !h) return false;
+    let x = head.x | 0;
+    let y = head.y | 0;
+    let wrapped = false;
+    if (x < 0 || x >= w) {
+      x = ((x % w) + w) % w;
+      wrapped = true;
+    }
+    if (y < 0 || y >= h) {
+      y = ((y % h) + h) % h;
+      wrapped = true;
+    }
+    if (!wrapped) return false;
+    head.x = x;
+    head.y = y;
+    return true;
+  };
+
+  window.cat_try_spend_life = function cat_try_spend_life(game) {
+    if (!window.isCatActive || !window.isCatActive()) return false;
+    if ((window.cat_peaceful_ticks | 0) > 0) {
+      window.cat_wrap_head_if_needed(game);
+      return true;
+    }
+    if ((window.cat_lives | 0) <= 0) return false;
+    window.cat_lives = (window.cat_lives | 0) - 1;
+    const sh = (game && game.Sh) | 0;
+    // Half of (score + extra), rounded up.
+    const grace = Math.ceil((sh + (window.CAT_GRACE_EXTRA | 3)) / 2);
+    window.cat_peaceful_ticks = Math.max(window.cat_peaceful_ticks | 0, grace);
+    window.cat_wrap_head_if_needed(game);
+    window.catUpdateLivesHud && window.catUpdateLivesHud();
+    return true;
+  };
+
+  window.cat_tick_logic = function cat_tick_logic(game) {
+    if (!window.isCatActive || !window.isCatActive()) {
+      window.catUpdateLivesHud && window.catUpdateLivesHud();
+      return;
+    }
+    const g = game || window.__remixGame;
+    if (!g) return;
+    if (window.__catLastSh != null && g.Sh > window.__catLastSh) {
+      window.cat_on_apple_eaten(g);
+    }
+    window.__catLastSh = g.Sh;
+    if ((window.cat_peaceful_ticks | 0) > 0) {
+      window.cat_peaceful_ticks = (window.cat_peaceful_ticks | 0) - 1;
+    }
+    window.catUpdateLivesHud && window.catUpdateLivesHud();
+  };
+
+  // --- Border wrap on life-spend (same tick as Peaceful) ---
+  // Sc(a) checks m7 then Oa; the off-board cell `a` is applied after Oa returns,
+  // so cancelling death alone leaves the head at x=-1 until the next tick.
+  // When Cat can absorb the hit, wrap `a` via native i7 before the m7/Oa check.
+  catReplace(
+    "Sc border wrap on life",
+    /Sc\(a\)\{m7\(this\.ka,a\)\|\|this\.Oa\(\);/,
+    `Sc(a){if(window.isCatActive&&window.isCatActive()&&!m7(this.ka,a)&&((window.cat_peaceful_ticks|0)>0||(window.cat_lives|0)>0)){if((window.cat_peaceful_ticks|0)<=0){window.cat_try_spend_life(this);}i7(this.ka,a);}m7(this.ka,a)||this.Oa();`
+  );
+
+  // --- e7: temporary Peaceful (mode 21) while grace ticks remain ---
+  catReplace(
+    "e7 temporary Peaceful",
+    /if\(!r&&b===10&&window\.BURGER_MODE!=null\)\{if\(a\.ub===window\.BURGER_MODE\)return!0;if\(a\.ub===22&&a\.rSa&&a\.rSa\.has\(window\.BURGER_MODE\)\)return!0;\}return r\}/,
+    `if(!r&&b===10&&window.BURGER_MODE!=null){if(a.ub===window.BURGER_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BURGER_MODE))return!0;}if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;return r}`
+  );
+
+  // --- Death intercept: Oa() is the real kill path (wall/self/poison crash) ---
+  catReplace(
+    "Oa() death entry",
+    /Oa\(\)\{if\(!this\.nj\)\{/,
+    `Oa(){if(window.isCatActive&&window.isCatActive()&&window.cat_try_spend_life(this))return;if(!this.nj){`
+  );
+
+  // --- Tick: cat logic (always run so HUD hides when Cat is off) ---
+  if (
+    !catReplace(
+      "tick with __remixGame",
+      /\}tick\(\)\{window\.__remixGame=this;/,
+      `}tick(){window.__remixGame=this;try{window.cat_tick_logic(this);}catch(_cat){console.error("CatMod: tick failed",_cat);}`
+    )
+  ) {
+    // Last-resort: only patch the main game tick that already has chess/burger hooks.
+    catReplace(
+      "tick fallback",
+      /\}tick\(\)\{window\.__remixGame=this;if\(window\.is/,
+      `}tick(){window.__remixGame=this;try{window.cat_tick_logic(this);}catch(_cat){}if(window.is`
+    );
+  }
+
+  // --- Reset state (burger shield-init + tally paths) ---
+  // Prefer the console.error form; also cover the quieter tally inject.
+  if (
+    !catReplace(
+      "burger reset hook",
+      /if\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{console\.error\("BurgerMod: reset failed",_be\);\}\}/,
+      `if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
+    )
+  ) {
+    catReplace(
+      "burger reset hook quiet",
+      /if\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/,
+      `if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
+    );
+  }
+
+  // Play-start: refresh HUD whenever mode changes (hide if not Cat).
+  if (code.indexOf("updateCatTrophySRC()") < 0) {
+    if (
+      !catReplace(
+        "play-start after Burger trophy",
+        /if\(window\.CurrentModeNum===window\.BURGER_MODE\)\{window\.updateBurgerTrophySRC\(\);\}/,
+        `if(window.CurrentModeNum===window.BURGER_MODE){window.updateBurgerTrophySRC();}if(window.CurrentModeNum===window.CAT_MODE){window.updateCatTrophySRC();window.cat_reset_state();}else{window.catUpdateLivesHud&&window.catUpdateLivesHud();}`
+      )
+    ) {
+      catReplace(
+        "play-start after Candy trophy",
+        /if\(window\.CurrentModeNum===window\.CANDY_MODE\)\{window\.updateCandyTrophySRC\(\);\}/,
+        `if(window.CurrentModeNum===window.CANDY_MODE){window.updateCandyTrophySRC();}if(window.CurrentModeNum===window.CAT_MODE){window.updateCatTrophySRC();window.cat_reset_state();}else{window.catUpdateLivesHud&&window.catUpdateLivesHud();}`
+      );
+    }
+  } else if (code.indexOf("catUpdateLivesHud&&window.catUpdateLivesHud()") < 0) {
+    catReplace(
+      "play-start cat hud refresh",
+      /if\(window\.CurrentModeNum===window\.CAT_MODE\)\{window\.updateCatTrophySRC\(\);window\.cat_reset_state\(\);\}/,
+      `if(window.CurrentModeNum===window.CAT_MODE){window.updateCatTrophySRC();window.cat_reset_state();}else{window.catUpdateLivesHud&&window.catUpdateLivesHud();}`
+    );
+  }
+
+  // Tally reset: Burger may have already injected, or the raw ka===6 line remains.
+  // Match quietly — missing Burger inject is expected when its patch drifts.
+  {
+    const tallyBurger =
+      /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\);if\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/;
+    const tallyRaw = /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\)\}/;
+    if (code.match(tallyBurger)) {
+      catReplace(
+        "tally reset after burger",
+        tallyBurger,
+        `this.settings.ka===6&&($3E(this),this.Ca=!1);if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
+      );
+    } else if (code.match(tallyRaw)) {
+      catReplace(
+        "tally reset raw",
+        tallyRaw,
+        `this.settings.ka===6&&($3E(this),this.Ca=!1);if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}}`
+      );
+    }
+  }
+
+  // --- Snake transparency during grace ---
+  if (
+    catReplace(
+      "snake render alpha",
+      /render\(a,b,c\)\{var d=a,e=Math\.pow\(d,\.2\);this\.wb\.nj&&/,
+      `render(a,b,c){var _catGa=this.ka.globalAlpha;if(window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)this.ka.globalAlpha=_catGa*(window.CAT_PEACEFUL_ALPHA||.75);var d=a,e=Math.pow(d,.2);this.wb.nj&&`
+    )
+  ) {
+    catReplace(
+      "snake render alpha restore",
+      /J5E\(this,f,d,!1,!1\)\}/,
+      `J5E(this,f,d,!1,!1);this.ka.globalAlpha=_catGa;}`
+    );
+  }
+
+  // --- Deathscreen / blender icons (each optional; never use indexOf of icon URL hashes) ---
+  if (code.indexOf("window.CAT_MODE)?window.CAT_ICON") < 0) {
+    catReplace(
+      "deathscreen Zb cat icon",
+      /\(a\.settings\.ob===window\.BURGER_MODE\)\?window\.BURGER_ICON:/,
+      `(a.settings.ob===window.BURGER_MODE)?window.BURGER_ICON:(a.settings.ob===window.CAT_MODE)?window.CAT_ICON:`
+    );
+    catReplace(
+      "blender b3E cat icon",
+      /\(c===window\.BURGER_MODE\)\?window\.BURGER_ICON:/,
+      `(c===window.BURGER_MODE)?window.BURGER_ICON:(c===window.CAT_MODE)?window.CAT_ICON:`
+    );
+  }
+
+  catReplace(
+    "blender mode push",
+    /if\(window\.burger_blending&&window\.BURGER_MODE!=null\)b\.push\(window\.BURGER_MODE\)/,
+    `if(window.burger_blending&&window.BURGER_MODE!=null)b.push(window.BURGER_MODE);if(window.cat_blending&&window.CAT_MODE!=null)b.push(window.CAT_MODE)`
+  );
+
+  // Match the Ta blender line specifically — do NOT key off "13m2Cr16" alone
+  // (that hash also appears inside Burger fruit URLs, so Burger often skips its
+  // Ta inject). Fall back to Candy/Chess Ta like Mexico does.
+  if (code.indexOf('el.id==="remix-cat-blend"') < 0) {
+    const taBurger =
+      /else if\(window\.BURGER_MODE!=null&&s\.indexOf\("13m2Cr16"\)>=0\)m=window\.BURGER_MODE;/;
+    const taChess =
+      /else if\(window\.CHESS_MODE!=null&&s\.indexOf\("ZqK0CB95"\)>=0\)m=window\.CHESS_MODE;/;
+    if (code.match(taBurger)) {
+      catReplace(
+        "Ta blender cat after burger",
+        taBurger,
+        `else if(window.BURGER_MODE!=null&&s.indexOf("13m2Cr16")>=0)m=window.BURGER_MODE;else if(window.CAT_MODE!=null&&el.id==="remix-cat-blend")m=window.CAT_MODE;`
+      );
+    } else if (code.match(taChess)) {
+      catReplace(
+        "Ta blender cat after chess",
+        taChess,
+        `else if(window.CHESS_MODE!=null&&s.indexOf("ZqK0CB95")>=0)m=window.CHESS_MODE;else if(window.BURGER_MODE!=null&&el.id==="remix-burger-blend")m=window.BURGER_MODE;else if(window.CAT_MODE!=null&&el.id==="remix-cat-blend")m=window.CAT_MODE;`
+      );
+    } else {
+      console.error("CatMod: failed to find Ta blender cat slot");
+    }
+  }
+
+  return code;
+};
+
+////////////////////////////////////////////////////////////////////
+//RUNCODEAFTER
+////////////////////////////////////////////////////////////////////
+
+window.CatMod.runCodeAfter = function () {
+  if (!window.CAT_ICON && window.CAT_SPEED_ICON) {
+    window.CAT_ICON = window.CAT_SPEED_ICON;
+  }
+  if (window.CAT_MODE == null && window.CAT_ICON) {
+    const root = document.querySelector("#trophy");
+    if (root) {
+      root.appendChild(uiImage(window.CAT_ICON));
+      window.CAT_MODE = root.children.length - 1;
+    }
+  }
+  window.add_cat_blender_toggle && window.add_cat_blender_toggle();
+  window.catEnsureLivesHud && window.catEnsureLivesHud();
+};
+
+window.MexicoMod = {};
+
+////////////////////////////////////////////////////////////////////
+//RUNCODEBEFORE
+////////////////////////////////////////////////////////////////////
+
+window.MexicoMod.runCodeBefore = function () {
+  console.log("Adding Mexico Mode (v13)");
+
+  window.MEXICO_ICON = "data:image/png;base64,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";
+
+  window.uiImage =
+    window.uiImage ||
+    function (src) {
+      let img = new Image();
+      img.src = src;
+      img.classList.add("DqMRee");
+      img.classList.add("SsAred");
+      return img;
+    };
+
+  function mexicoEnsureTrophy() {
+    if (window.MEXICO_MODE != null) return;
+    if (!window.MEXICO_ICON) return;
+    const root = document.querySelector("#trophy");
+    if (!root) return;
+    root.appendChild(uiImage(window.MEXICO_ICON));
+    window.MEXICO_MODE = root.children.length - 1;
+  }
+  mexicoEnsureTrophy();
+
+  let trophyEl = document.querySelector('img[src$="trophy_00.png"]');
+  if (trophyEl) {
+    let trophy_jsname = trophyEl.getAttribute("jsname");
+    window.trophy_src =
+      window.trophy_src ||
+      `document.querySelector('img[jsname="${trophy_jsname}"]').src `;
+  }
+
+  window.mexico_blending = false;
+  window.__mexicoWallDone = false;
+  window.__mexicoLastSh = null;
+
+  window.toggle_mexico_blender = function () {
+    window.mexico_blending = !window.mexico_blending;
+    window.correct_mexico_selection();
+  };
+
+  window.correct_mexico_selection = function correct_mexico_selection() {
+    let el = document.getElementById("remix-mexico-blend");
+    if (!el) return;
+    if (window.mexico_blending) {
+      el.setAttribute("class", "vuOknd lH9Ipd blender_icon blender_icon_on");
+      el.innerHTML =
+        `<img class="DEvgAc FMN3L blender_icon_img blender_icon_img_selected" src="` +
+        window.MEXICO_ICON +
+        `" alt="">`;
+    } else {
+      el.setAttribute("class", "vuOknd blender_icon");
+      el.innerHTML =
+        `<img class="DEvgAc blender_icon_img" src="` +
+        window.MEXICO_ICON +
+        `" alt="">`;
+    }
+  };
+
+  window.add_mexico_blender_toggle = function add_mexico_blender_toggle() {
+    if (document.getElementById("remix-mexico-blend")) return;
+    if (!window.populateRemixBlenderSlot) return;
+    if (typeof window.remixEnsureBlenderCapacity === "function") {
+      window.remixEnsureBlenderCapacity(7);
+    }
+    window.populateRemixBlenderSlot({
+      id: "remix-mexico-blend",
+      slotIndex: 4,
+      icon: window.MEXICO_ICON,
+      ariaLabel: "Toggle Mexico in Blender",
+      onToggle: window.toggle_mexico_blender,
+    });
+    window.correct_mexico_selection();
+  };
+
+  window.add_mexico_blender_toggle();
+};
+
+////////////////////////////////////////////////////////////////////
+//ALTERSNAKECODE
+////////////////////////////////////////////////////////////////////
+
+window.MexicoMod.alterSnakeCode = function (code) {
+  console.log("Coding Mexico Mode into the game (v13)");
+  // Soft-fail debug stash for harness probes (no behavior change).
+  if (window.RemixDebug) window.__remixPreMexicoCode = code;
+
+  function mexicoReplace(label, re, replacement) {
+    if (!code.match(re)) {
+      console.error("MexicoMod: failed to find " + label);
+      return false;
+    }
+    try {
+      code = code.assertReplace(re, replacement);
+      return true;
+    } catch (e) {
+      console.error("MexicoMod: replace failed for " + label, e);
+      return false;
+    }
+  }
+
+  window.isMexicoActive = function isMexicoActive() {
+    if (window.MEXICO_MODE == null) return false;
+    if (window.CurrentModeNum === window.MEXICO_MODE) return true;
+    if (window.CurrentModeNum === 22 && window.mexico_blending) return true;
+    const g = window.__remixGame;
+    const mode =
+      g && g.settings
+        ? g.settings.ub != null
+          ? g.settings.ub
+          : g.settings.ob
+        : null;
+    if (mode === window.MEXICO_MODE) return true;
+    if (mode === 22 && window.mexico_blending) return true;
+    return false;
+  };
+
+  window.updateMexicoTrophySRC = function updateMexicoTrophySRC() {
+    if (window.trophy_src && window.MEXICO_ICON) {
+      eval(window.trophy_src + `= window.MEXICO_ICON`);
+    }
+  };
+
+  window.mexico_reset_state = function mexico_reset_state() {
+    window.__mexicoWallDone = false;
+    window.__mexicoLastSh = null;
+  };
+
+  window.mexico_trigger_win = function mexico_trigger_win(game) {
+    if (!game) return;
+    if (game.nj || game.lj) return;
+    try {
+      if (typeof Q4E !== "undefined" && Q4E.rWd && Q4E.rWd.play) Q4E.rWd.play();
+      else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
+    } catch (_e) {}
+    game.nj = true;
+    game.lj = true;
+    try {
+      const score = game.Sh != null ? game.Sh : game.Oh;
+      if (typeof A7E === "function") A7E(game.menu, 1400, score);
+      else if (typeof vdF === "function") vdF(game.menu, 1400, score);
+    } catch (_e2) {}
+  };
+
+  // Win only when the board has no fruit left — a failed half-spawn alone is
+  // not a win (drop the incomplete pair and keep any remaining fruit).
+  window.mexico_win_if_empty = function mexico_win_if_empty(game, mgr) {
+    const list = mgr && mgr.ka;
+    if (list && list.length > 0) return false;
+    window.mexico_trigger_win(game || window.__remixGame);
+    return true;
+  };
+
+  window.mexico_drop_pair_at = function mexico_drop_pair_at(mgr, pairBase) {
+    if (!mgr || !mgr.ka || pairBase < 0) return 0;
+    if (pairBase >= mgr.ka.length) return 0;
+    const n = Math.min(2, mgr.ka.length - pairBase);
+    mgr.ka.splice(pairBase, n);
+    window.appleArray = mgr.ka;
+    return n;
+  };
+
+  window.mexico_mid_y = function mexico_mid_y(boardOrGame) {
+    let h = 0;
+    if (boardOrGame && Array.isArray(boardOrGame) && boardOrGame.length) {
+      h = boardOrGame.length;
+    } else if (
+      boardOrGame &&
+      boardOrGame.wa &&
+      Array.isArray(boardOrGame.wa) &&
+      boardOrGame.wa.length
+    ) {
+      h = boardOrGame.wa.length;
+    } else if (typeof window.chess_board_size === "function" && boardOrGame) {
+      const sz = window.chess_board_size(boardOrGame);
+      if (sz && sz.height) h = sz.height;
+    }
+    if (!h) {
+      const g = window.__remixGame;
+      if (g && g.Ca && Array.isArray(g.Ca.wa) && g.Ca.wa.length) {
+        h = g.Ca.wa.length;
+      }
+    }
+    return Math.floor((h | 0) / 2);
+  };
+
+  window.mexico_serial_coord = function mexico_serial_coord(pos) {
+    if (!pos) return 0;
+    return (pos.x << 16) | pos.y;
+  };
+
+  window.mexico_make_pos = function mexico_make_pos(x, y) {
+    if (typeof window.chess_make_pos === "function") {
+      return window.chess_make_pos(x, y);
+    }
+    return { x: x, y: y };
+  };
+
+  // True if pos sits on a wall cell (incl. Mexico mid-row walls).
+  window.mexico_pos_on_wall = function mexico_pos_on_wall(game, pos) {
+    if (!pos || pos.x == null || pos.y == null) return false;
+    const walls = game && game.Ca;
+    if (!walls || !Array.isArray(walls.wa) || !walls.wa[pos.y]) return false;
+    return (walls.wa[pos.y][pos.x] | 0) > 0;
+  };
+
+  // One-shot middle row — never enables Wall Mode spawn (e7 bit 1).
+  window.mexico_place_mid_walls = function mexico_place_mid_walls(game) {
+    if (!game || window.__mexicoWallDone) return;
+    const walls = game.Ca;
+    if (!walls || !walls.Aa || !Array.isArray(walls.wa) || !walls.wa.length) {
+      console.error("MexicoMod: wall manager missing");
+      return;
+    }
+    const h = walls.wa.length;
+    const w = walls.wa[0] ? walls.wa[0].length : 0;
+    if (!w) return;
+    const mid = Math.floor(h / 2);
+    for (let x = 0; x < w; x++) {
+      if (walls.wa[mid] && walls.wa[mid][x] > 0) continue;
+      const pos = window.mexico_make_pos(x, mid);
+      const obj = { pos: pos, wm: false, m0: false, Lh: true };
+      try {
+        walls.Aa.set(window.mexico_serial_coord(pos), obj);
+        if (walls.wa[mid]) walls.wa[mid][x]++;
+      } catch (_e) {}
+    }
+    window.__mexicoWallDone = true;
+  };
+
+  window.mexico_find_spawn = function mexico_find_spawn(
+    board,
+    freePos,
+    occupiedKeys,
+    half
+  ) {
+    const game = window.__remixGame;
+    const mid = window.mexico_mid_y(board || (game && game.Ca));
+    const ok = function (p) {
+      if (!p || p.y == null) return false;
+      if (p.y === mid) return false;
+      if (half === "top" && !(p.y < mid)) return false;
+      if (half === "bottom" && !(p.y > mid)) return false;
+      if (typeof window.chess_is_legal_spawn === "function") {
+        if (!window.chess_is_legal_spawn(board, p, occupiedKeys)) return false;
+      } else if (occupiedKeys) {
+        const k =
+          typeof window.chess_pos_key === "function"
+            ? window.chess_pos_key(p)
+            : p.x + "," + p.y;
+        if (occupiedKeys.has(k)) return false;
+      }
+      if (window.mexico_pos_on_wall(game, p)) return false;
+      if (
+        typeof window.chess_outside_spawn_radius === "function" &&
+        !window.chess_outside_spawn_radius(game, p)
+      ) {
+        return false;
+      }
+      return true;
+    };
+    if (typeof freePos === "function" && board) {
+      for (let attempt = 0; attempt < 24; attempt++) {
+        const p = freePos(board, null, 2);
+        if (ok(p)) return p;
+      }
+    }
+    const nativeFree =
+      game && typeof game.Rb === "function"
+        ? game.Rb.bind(game)
+        : game && typeof game.Tb === "function"
+          ? game.Tb.bind(game)
+          : null;
+    if (nativeFree) {
+      for (let attempt = 0; attempt < 16; attempt++) {
+        const p = nativeFree(null, 2);
+        if (ok(p)) return p;
+      }
+    }
+    let width = 0;
+    let height = 0;
+    if (typeof window.chess_board_size === "function" && board) {
+      const sz = window.chess_board_size(board);
+      if (sz) {
+        width = sz.width | 0;
+        height = sz.height | 0;
+      }
+    }
+    if ((!width || !height) && game && game.Ca && game.Ca.wa) {
+      height = game.Ca.wa.length;
+      width = game.Ca.wa[0] ? game.Ca.wa[0].length : 0;
+    }
+    if (!width || !height) return null;
+    const y0 = half === "top" ? 0 : mid + 1;
+    const y1 = half === "top" ? mid : height;
+    const cells = [];
+    for (let y = y0; y < y1; y++) {
+      for (let x = 0; x < width; x++) cells.push([x, y]);
+    }
+    for (let i = cells.length - 1; i > 0; i--) {
+      const j = (Math.random() * (i + 1)) | 0;
+      const t = cells[i];
+      cells[i] = cells[j];
+      cells[j] = t;
+    }
+    for (let n = 0; n < cells.length; n++) {
+      const pos = window.mexico_make_pos(cells[n][0], cells[n][1]);
+      if (ok(pos)) return pos;
+    }
+    return null;
+  };
+
+  window.mexico_fruit_respawn = function mexico_fruit_respawn(
+    mgr,
+    makeApple,
+    freePos,
+    pickType
+  ) {
+    if (!mgr || !mgr.ka) return 0;
+    if (typeof makeApple !== "function") return 0;
+    const game = window.__remixGame;
+    if (game && (game.Sh | 0) >= 1 && !window.__mexicoWallDone) {
+      window.mexico_place_mid_walls(game);
+    }
+    const board = mgr.oa;
+    window.appleArray = mgr.ka;
+    const occ =
+      typeof window.chess_occupied_keys === "function"
+        ? window.chess_occupied_keys(game, mgr.ka, new Set())
+        : new Set();
+
+    const posTop = window.mexico_find_spawn(board, freePos, occ, "top");
+    if (!posTop) {
+      window.mexico_win_if_empty(game, mgr);
+      return 0;
+    }
+    const keyTop =
+      typeof window.chess_pos_key === "function"
+        ? window.chess_pos_key(posTop)
+        : posTop.x + "," + posTop.y;
+    occ.add(keyTop);
+    const posBot = window.mexico_find_spawn(board, freePos, occ, "bottom");
+    if (!posBot) {
+      // Pair incomplete — do not leave a lone top apple; win only if empty.
+      window.mexico_win_if_empty(game, mgr);
+      return 0;
+    }
+
+    const mk = function (pos) {
+      let dup = makeApple(mgr, 0, 0);
+      if (typeof pos.clone === "function") {
+        dup.pos = pos.clone();
+      } else {
+        dup.pos.x = pos.x;
+        dup.pos.y = pos.y;
+      }
+      if (typeof pickType === "function") {
+        try {
+          dup.type = pickType(mgr);
+        } catch (_e) {}
+      }
+      return dup;
+    };
+    mgr.ka.push(mk(posTop));
+    mgr.ka.push(mk(posBot));
+    window.appleArray = mgr.ka;
+    return 2;
+  };
+
+  window.mexico_constrain_new_apples = function mexico_constrain_new_apples(
+    mgr,
+    count
+  ) {
+    if (!mgr || !mgr.ka) return;
+    if (!window.isMexicoActive || !window.isMexicoActive()) return;
+    const game = window.__remixGame;
+    if (game && (game.Sh | 0) >= 1 && !window.__mexicoWallDone) {
+      window.mexico_place_mid_walls(game);
+    }
+    // Native portal may leave a singleton when the twin half fails — drop it.
+    // Win only if that leaves the board empty (not on a transient empty between
+    // j4E clearing the eaten pair and bomb/dice f4E pushing new pairs).
+    if (mgr.ka.length % 2 !== 0) {
+      mgr.ka.pop();
+      window.appleArray = mgr.ka;
+      if (window.mexico_win_if_empty(game, mgr)) return;
+    }
+    if (!mgr.ka.length) return;
+    if (!count || count < 1) return;
+    const board = mgr.oa;
+    const mid = window.mexico_mid_y(board || (game && game.Ca));
+    let start = Math.max(0, mgr.ka.length - count);
+    // Keep start on a pair boundary so we never orphan a twin.
+    if (start % 2 !== 0) start -= 1;
+    const freePos = typeof d4E === "function" ? d4E : null;
+
+    // Portal pairs are consecutive even/odd indices: even → top, odd → bottom.
+    // Relocate when wrong half OR illegal (snake / other fruit / wall). If a
+    // required half has no cell, drop that whole pair and keep other fruit;
+    // win only when nothing remains.
+    for (let i = start; i < mgr.ka.length; ) {
+      const el = mgr.ka[i];
+      if (!el || !el.pos) {
+        i++;
+        continue;
+      }
+      const wantTop = i % 2 === 0;
+      const half = wantTop ? "top" : "bottom";
+      const y = el.pos.y;
+      const okHalf = y !== mid && (wantTop ? y < mid : y > mid);
+      const occ =
+        typeof window.chess_occupied_keys === "function"
+          ? window.chess_occupied_keys(game, mgr.ka, new Set([i]))
+          : new Set();
+      let okCell = okHalf;
+      if (okCell && typeof window.chess_is_legal_spawn === "function") {
+        okCell = window.chess_is_legal_spawn(board, el.pos, occ);
+      } else if (okCell && occ) {
+        const k =
+          typeof window.chess_pos_key === "function"
+            ? window.chess_pos_key(el.pos)
+            : el.pos.x + "," + el.pos.y;
+        if (k != null && occ.has(k)) okCell = false;
+      }
+      if (okCell && window.mexico_pos_on_wall(game, el.pos)) okCell = false;
+      if (okCell) {
+        i++;
+        continue;
+      }
+      const pos = window.mexico_find_spawn(board, freePos, occ, half);
+      if (!pos) {
+        const pairBase = i - (i % 2);
+        window.mexico_drop_pair_at(mgr, pairBase);
+        if (window.mexico_win_if_empty(game, mgr)) return;
+        // Next apple shifted into pairBase; re-check from there.
+        i = pairBase;
+        continue;
+      }
+      if (typeof el.pos.clone === "function" && pos.clone) {
+        el.pos = pos.clone();
+      } else {
+        el.pos.x = pos.x;
+        el.pos.y = pos.y;
+      }
+      i++;
+    }
+  };
+
+  window.mexico_tick_logic = function mexico_tick_logic(game) {
+    if (!window.isMexicoActive || !window.isMexicoActive()) return;
+    const g = game || window.__remixGame;
+    if (!g) return;
+    if (window.__mexicoLastSh != null && g.Sh > window.__mexicoLastSh) {
+      if ((g.Sh | 0) >= 1 && !window.__mexicoWallDone) {
+        window.mexico_place_mid_walls(g);
+      }
+      // After the eat/respawn pipeline finishes: empty board → win; otherwise
+      // re-validate pairs (illegal/wrong-half fruit).
+      if (g.wa && g.wa.ka) {
+        try {
+          if (g.wa.ka.length === 0) {
+            window.mexico_win_if_empty(g, g.wa);
+          } else {
+            window.mexico_constrain_new_apples(g.wa, g.wa.ka.length);
+          }
+        } catch (_e) {}
+      }
+    }
+    window.__mexicoLastSh = g.Sh;
+  };
+
+  // Force Portal physics. Also force Wall Mode bit for collision with the
+  // one-shot mid-row walls — spawn is gated off separately (see RemixInit
+  // remixPatchWallEveryApple / remixMexicoBlocksWallSpawn).
+  mexicoReplace(
+    "e7 portal + wall collide",
+    /if\(!r&&b===21&&window\.isCatActive&&window\.isCatActive\(\)&&\(window\.cat_peaceful_ticks\|0\)>0\)return!0;return r\}/,
+    "if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;if(!r&&b===2&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===1&&window.isMexicoActive&&window.isMexicoActive())return!0;return r}"
+  );
+
+  mexicoReplace(
+    "Y3E mexico",
+    /Y3E\(this\.settings\)\|\|!!\(window\.isChessActive&&window\.isChessActive\(\)\)/,
+    "Y3E(this.settings)||!!(window.isChessActive&&window.isChessActive())||!!(window.isMexicoActive&&window.isMexicoActive())"
+  );
+  mexicoReplace(
+    "pair-splice mexico",
+    /\(e7\(this\.settings,2\)\|\|\(window\.isChessActive&&window\.isChessActive\(\)\)\)/,
+    "(e7(this.settings,2)||(window.isChessActive&&window.isChessActive())||(window.isMexicoActive&&window.isMexicoActive()))"
+  );
+  mexicoReplace(
+    "f4E portal pair mexico",
+    /\(e7\(a\.settings,2\)\|\|\(window\.isChessActive&&window\.isChessActive\(\)\)\)&&!f\?/,
+    "(e7(a.settings,2)||(window.isChessActive&&window.isChessActive())||(window.isMexicoActive&&window.isMexicoActive()))&&!f?"
+  );
+
+  mexicoReplace(
+    "f4E mexico constrain",
+    /if\(window\.isChessActive&&window\.isChessActive\(\)&&g>0\)\{window\.chess_convert_new_apples\(a,g\);\}/,
+    "if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(window.isMexicoActive&&window.isMexicoActive()&&g>0){try{window.mexico_constrain_new_apples(a,g);}catch(_mx){}}"
+  );
+
+  // Mexico uses native Portal twin respawn (j4E via e=!0). Do NOT Chess-style
+  // takeover with mexico_fruit_respawn — that splices only the eaten apple and
+  // leaves the exit twin on the board. Half placement is enforced in f4E via
+  // mexico_constrain_new_apples (all counts: 1/3/5/10/dice/bomb/tally).
+  mexicoReplace(
+    "eat respawn mexico as portal",
+    /e=!1;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{e=!1;if\(window\.just_ate==='fruit'&&!\(a\.settings\.ka===4\|\|a\.settings\.ka===6\|\|\(a\.settings\.ka===5&&!a\.kc\)\|\|e7\(a\.settings,8\)\|\|e7\(a\.settings,9\)\)\)\{window\.chess_fruit_respawn\(a\.wa,g7,d4E,Q3E\);if\(window\.isBurgerActive&&window\.isBurgerActive\(\)&&window\.just_ate==='fruit'\)\{window\.burger_after_respawn\(a\);\}\}\}else e7\(a\.settings,2\)\?e=!0:/,
+    "e=!1;if(window.isChessActive&&window.isChessActive()){e=!1;if(window.just_ate==='fruit'&&!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.kc)||e7(a.settings,8)||e7(a.settings,9))){window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);if(window.isBurgerActive&&window.isBurgerActive()&&window.just_ate==='fruit'){window.burger_after_respawn(a);}}}else if(window.isMexicoActive&&window.isMexicoActive()){e=!0;}else e7(a.settings,2)?e=!0:"
+  );
+
+  // j4E sits inside a ternary — must not insert `;` statements. Comma-op only.
+  mexicoReplace(
+    "j4E mexico constrain pair",
+    /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\)/,
+    "j4E(a.wa,k,d,a.Vm.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.wa.ka.length>0&&(window.mexico_constrain_new_apples(a.wa,a.wa.ka.length),0)"
+  );
+
+  if (
+    !mexicoReplace(
+      "tick mexico",
+      /\}tick\(\)\{window\.__remixGame=this;try\{window\.cat_tick_logic\(this\);\}catch\(_cat\)\{console\.error\("CatMod: tick failed",_cat\);\}/,
+      "}tick(){window.__remixGame=this;try{window.cat_tick_logic(this);}catch(_cat){console.error(\"CatMod: tick failed\",_cat);}if(window.isMexicoActive&&window.isMexicoActive()){try{window.mexico_tick_logic(this);}catch(_mx){}}"
+    )
+  ) {
+    if (
+      !mexicoReplace(
+        "tick mexico after cat-gated",
+        /\}tick\(\)\{window\.__remixGame=this;if\(window\.isCatActive&&window\.isCatActive\(\)\)\{try\{window\.cat_tick_logic\(this\);\}catch\(_cat\)\{console\.error\("CatMod: tick failed",_cat\);\}\}/,
+        "}tick(){window.__remixGame=this;if(window.isCatActive&&window.isCatActive()){try{window.cat_tick_logic(this);}catch(_cat){console.error(\"CatMod: tick failed\",_cat);}}if(window.isMexicoActive&&window.isMexicoActive()){try{window.mexico_tick_logic(this);}catch(_mx){}}"
+      )
+    ) {
+      mexicoReplace(
+        "tick mexico fallback",
+        /\}tick\(\)\{window\.__remixGame=this;/,
+        "}tick(){window.__remixGame=this;if(window.isMexicoActive&&window.isMexicoActive()){try{window.mexico_tick_logic(this);}catch(_mx){}}"
+      );
+    }
+  }
+
+  // Both burger + tally reset hooks share this Cat suffix.
+  try {
+    const resetRe =
+      /if\(window\.isCatActive&&window\.isCatActive\(\)\)\{try\{window\.cat_reset_state\(\);\}catch\(_cat\)\{\}\}/g;
+    if (code.match(resetRe)) {
+      code = code.replace(
+        resetRe,
+        "if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}if(window.isMexicoActive&&window.isMexicoActive()){try{window.mexico_reset_state();}catch(_mx){}}"
+      );
+    } else {
+      console.error("MexicoMod: failed to find reset mexico");
+    }
+  } catch (e) {
+    console.error("MexicoMod: replace failed for reset mexico", e);
+  }
+
+  if (code.indexOf("updateMexicoTrophySRC()") < 0) {
+    mexicoReplace(
+      "play-start mexico trophy",
+      /if\(window\.CurrentModeNum===window\.CAT_MODE\)\{window\.updateCatTrophySRC\(\);window\.cat_reset_state\(\);\}/,
+      "if(window.CurrentModeNum===window.CAT_MODE){window.updateCatTrophySRC();window.cat_reset_state();}if(window.CurrentModeNum===window.MEXICO_MODE){window.updateMexicoTrophySRC();window.mexico_reset_state();}"
+    );
+  }
+
+  if (code.indexOf("window.MEXICO_MODE)?window.MEXICO_ICON") < 0) {
+    mexicoReplace(
+      "deathscreen Zb mexico icon",
+      /\(a\.settings\.ob===window\.CAT_MODE\)\?window\.CAT_ICON:/,
+      "(a.settings.ob===window.CAT_MODE)?window.CAT_ICON:(a.settings.ob===window.MEXICO_MODE)?window.MEXICO_ICON:"
+    );
+    mexicoReplace(
+      "blender b3E mexico icon",
+      /\(c===window\.CAT_MODE\)\?window\.CAT_ICON:/,
+      "(c===window.CAT_MODE)?window.CAT_ICON:(c===window.MEXICO_MODE)?window.MEXICO_ICON:"
+    );
+  }
+
+  mexicoReplace(
+    "blender mode push mexico",
+    /if\(window\.cat_blending&&window\.CAT_MODE!=null\)b\.push\(window\.CAT_MODE\)/,
+    "if(window.cat_blending&&window.CAT_MODE!=null)b.push(window.CAT_MODE);if(window.mexico_blending&&window.MEXICO_MODE!=null)b.push(window.MEXICO_MODE)"
+  );
+
+  if (code.indexOf('el.id==="remix-mexico-blend"') < 0) {
+    // Prefer Cat's el.id chain; fall back to Candy/Chess Ta (Burger/Cat URL
+    // patches often skip when fruit URLs already appear in new_fruit).
+    const taCat =
+      /else if\(window\.CAT_MODE!=null&&el\.id==="remix-cat-blend"\)m=window\.CAT_MODE;/;
+    const taChess =
+      /else if\(window\.CHESS_MODE!=null&&s\.indexOf\("ZqK0CB95"\)>=0\)m=window\.CHESS_MODE;/;
+    if (code.match(taCat)) {
+      mexicoReplace(
+        "Ta blender mexico after cat",
+        taCat,
+        'else if(window.CAT_MODE!=null&&el.id==="remix-cat-blend")m=window.CAT_MODE;else if(window.MEXICO_MODE!=null&&el.id==="remix-mexico-blend")m=window.MEXICO_MODE;'
+      );
+    } else if (code.match(taChess)) {
+      mexicoReplace(
+        "Ta blender mexico after chess",
+        taChess,
+        'else if(window.CHESS_MODE!=null&&s.indexOf("ZqK0CB95")>=0)m=window.CHESS_MODE;else if(window.BURGER_MODE!=null&&el.id==="remix-burger-blend")m=window.BURGER_MODE;else if(window.CAT_MODE!=null&&el.id==="remix-cat-blend")m=window.CAT_MODE;else if(window.MEXICO_MODE!=null&&el.id==="remix-mexico-blend")m=window.MEXICO_MODE;'
+      );
+    } else {
+      console.error("MexicoMod: failed to find Ta blender mexico slot");
+    }
+  }
+
+  return code;
+};
+
+////////////////////////////////////////////////////////////////////
+//RUNCODEAFTER
+////////////////////////////////////////////////////////////////////
+
+window.MexicoMod.runCodeAfter = function () {
+  if (window.MEXICO_MODE == null && window.MEXICO_ICON) {
+    const root = document.querySelector("#trophy");
+    if (root) {
+      root.appendChild(uiImage(window.MEXICO_ICON));
+      window.MEXICO_MODE = root.children.length - 1;
+    }
+  }
+  window.add_mexico_blender_toggle && window.add_mexico_blender_toggle();
+};
+
 window.CatSpeed = {};
 
 ////////////////////////////////////////////////////////////////////
@@ -14073,7 +15184,21 @@ window.__REMIX_PACMAN_GHOST_URIS = {
   "clyde-real": "data:image/png;base64,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"
 };
 
+// Generated by tools/gen_cat_fruit.mjs — do not hand-edit URIs.
+window.__REMIX_CAT_FRUIT_URIS = {
+  "cat-normal": "data:image/png;base64,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",
+  "cat-pixel": "data:image/png;base64,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",
+  "cat-real": "data:image/png;base64,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"
+};
+
 window.REMIX_CUSTOM_FRUIT_PRESETS = [
+  {
+    id: "cat",
+    label: "Cat",
+    normal: (window.__REMIX_CAT_FRUIT_URIS || {})["cat-normal"] || "",
+    pixel: (window.__REMIX_CAT_FRUIT_URIS || {})["cat-pixel"] || "",
+    real: (window.__REMIX_CAT_FRUIT_URIS || {})["cat-real"] || "",
+  },
   {
     id: "blackberries",
     label: "Blackberries",
@@ -16723,8 +17848,9 @@ window.RemixSpeedInfo = {};
 // Chess/Burger TimeKeeper only tracks official apple counts 0..Tally (6),
 // plus Normal/Fast/Slow and Standard/Small/Large — not MoreMenu / colored dice.
 //
-// Timer settings (#edit-mode) is hardcoded Classic…Peaceful; we add only
-// Candy/Chess/Burger (index-aligned; gaps stay hidden so PB keys match).
+// Timer settings (#edit-mode) is hardcoded Classic…Peaceful; we add
+// Candy/Chess/Burger/Cat/Mexico (index-aligned; gaps stay hidden so PB keys match).
+// Cat/Candy/Mexico have no CE/SRC boards — SpeedInfo stays gated to Chess/Burger.
 window.RemixSpeedInfo.runCodeBefore = function () {
   window.remixNativeBlenderMode = 22;
   // Last vanilla count index (1 / 3 / 5 / 10 / Dice / Bomb / Tally).
@@ -16799,6 +17925,12 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     if (window.BURGER_MODE != null) {
       window.modeToTxt[window.BURGER_MODE] = { name: "Burger" };
     }
+    if (window.CAT_MODE != null) {
+      window.modeToTxt[window.CAT_MODE] = { name: "Cat" };
+    }
+    if (window.MEXICO_MODE != null) {
+      window.modeToTxt[window.MEXICO_MODE] = { name: "Mexico" };
+    }
   };
 
   // Teach ModeRegistry about trophies Remix appends after Blender.
@@ -16809,6 +17941,8 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     window.ModeRegistry.LABELS.candy = "Candy";
     window.ModeRegistry.LABELS.chess = "Chess";
     window.ModeRegistry.LABELS.burger = "Burger";
+    window.ModeRegistry.LABELS.cat = "Cat";
+    window.ModeRegistry.LABELS.mexico = "Mexico";
 
     if (window.ModeRegistry.listActiveModes.__remix) return;
 
@@ -16846,6 +17980,10 @@ window.RemixSpeedInfo.runCodeBefore = function () {
           id = "chess";
         } else if (window.BURGER_MODE != null && i === window.BURGER_MODE) {
           id = "burger";
+        } else if (window.CAT_MODE != null && i === window.CAT_MODE) {
+          id = "cat";
+        } else if (window.MEXICO_MODE != null && i === window.MEXICO_MODE) {
+          id = "mexico";
         } else {
           id = window.ModeRegistry._matchMiddleId(src);
           if (!id) {
@@ -16909,6 +18047,10 @@ window.RemixSpeedInfo.runCodeBefore = function () {
         if (window.chess_blending && ids.indexOf("chess") < 0) ids.push("chess");
         if (window.burger_blending && ids.indexOf("burger") < 0) {
           ids.push("burger");
+        }
+        if (window.cat_blending && ids.indexOf("cat") < 0) ids.push("cat");
+        if (window.mexico_blending && ids.indexOf("mexico") < 0) {
+          ids.push("mexico");
         }
         if (!ids.length) return "blender";
         return ids.slice().sort().join("+");
@@ -17157,6 +18299,16 @@ window.RemixSpeedInfo.runCodeBefore = function () {
         id: window.BURGER_MODE,
         icon: window.BURGER_ICON,
         name: "Burger",
+      },
+      {
+        id: window.CAT_MODE,
+        icon: window.CAT_ICON || window.CAT_SPEED_ICON,
+        name: "Cat",
+      },
+      {
+        id: window.MEXICO_MODE,
+        icon: window.MEXICO_ICON,
+        name: "Mexico",
       },
     ].filter(function (m) {
       return typeof m.id === "number" && m.icon;
@@ -17584,8 +18736,6 @@ window.remixInjectSettingsCss = function remixInjectSettingsCss() {
 #settings-popup-pudding .form-check.ultra-hide,
 #settings-popup-pudding .form-check-inline.ultra-hide,
 #settings-popup-pudding .ultra-hide,
-#AlwaysOnTimeKeeper,
-label[for="AlwaysOnTimeKeeper"],
 #ShowSplitPanel,
 label[for="ShowSplitPanel"],
 #RemoveScrollbar,
@@ -17893,9 +19043,15 @@ window.remixEnsureWallEveryAppleSetting = function remixEnsureWallEveryAppleSett
   return s;
 };
 
+// Mexico enables e7(1) for mid-wall collision only — never native wall spawns.
+window.remixMexicoBlocksWallSpawn = function remixMexicoBlocksWallSpawn() {
+  return !!(window.isMexicoActive && window.isMexicoActive());
+};
+
 window.remixShouldSpawnWallEveryApple = function remixShouldSpawnWallEveryApple() {
   window.remixEnsureWallEveryAppleSetting();
   if (window.disableWallMode) return false;
+  if (window.remixMexicoBlocksWallSpawn()) return false;
   return !!window.pudding_settings.WallEveryApple;
 };
 
@@ -17940,7 +19096,7 @@ window.remixPatchWallEveryApple = function remixPatchWallEveryApple(code) {
   }
   return code.replace(
     re,
-    "$1=!$2.nj&&!$3&&($2.Sh%2===1||e7($2.settings,11));e7($2.settings,1)&&($1||window.remixShouldSpawnWallEveryApple()&&!$2.nj&&!$3)&&"
+    "$1=!$2.nj&&!$3&&($2.Sh%2===1||e7($2.settings,11));e7($2.settings,1)&&!window.remixMexicoBlocksWallSpawn()&&($1||window.remixShouldSpawnWallEveryApple()&&!$2.nj&&!$3)&&"
   );
 };
 
@@ -18159,7 +19315,7 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     root.appendChild(bin);
   }
 
-  window.remixHideSettingsNode(window.remixSettingsWrap("AlwaysOnTimeKeeper", root), bin);
+  // Speed Info (#AlwaysOnTimeKeeper) stays visible — RemixSpeedInfo gates data.
   window.remixHideSettingsNode(window.remixSettingsWrap("ShowSplitPanel", root), bin);
   window.remixHideSettingsNode(window.remixSettingsWrap("RemoveScrollbar", root), bin);
   window.remixHideSettingsNode(window.remixSettingsEl("ScrollLeftBtn", root), bin);
@@ -18305,9 +19461,75 @@ window.RemixMod.runCodeBefore = function () {
   // The list is cached per panel because claiming a cell drops its "empty"
   // marker class — rescanning would renumber the slots for every later mode,
   // which used to leave the third mode with no slot at all.
+  // Expand capacity (extra column + cloned empties) so Cat/Mexico + future modes fit.
+  window.remixEnsureBlenderCapacity = function remixEnsureBlenderCapacity(minEmptySlots) {
+    const need = typeof minEmptySlots === "number" ? minEmptySlots : 6;
+    let panel = document.querySelector(".PWIidc");
+    if (!panel) return null;
+
+    // Prefer 6 columns so one extra empty column fits after the vanilla 5×5.
+    try {
+      panel.style.gridTemplateColumns = "repeat(6, minmax(0, 1fr))";
+    } catch (_e) {}
+
+    let peacefulImg = panel.querySelector('img[src$="trophy_21.png"]');
+    if (!peacefulImg) return null;
+    let outer =
+      (peacefulImg.closest &&
+        peacefulImg.closest(".vuOknd") &&
+        peacefulImg.closest(".vuOknd").parentElement) ||
+      (peacefulImg.parentElement && peacefulImg.parentElement.parentElement);
+    if (!outer || outer.parentElement !== panel) return null;
+
+    function collectEmpties() {
+      let empties = [];
+      let sib = outer.nextElementSibling;
+      while (sib) {
+        let inner = sib.querySelector(":scope > .vuOknd");
+        if (inner && inner.classList.contains("oBBKec")) {
+          empties.push(inner);
+        }
+        sib = sib.nextElementSibling;
+      }
+      return empties;
+    }
+
+    let empties = collectEmpties();
+    let templateOuter = outer.nextElementSibling;
+    // Prefer cloning a still-empty sibling; fall back to Peaceful's outer shell.
+    if (!templateOuter) templateOuter = outer;
+    while (empties.length < need) {
+      let clone = templateOuter.cloneNode(true);
+      let inner = clone.querySelector(".vuOknd") || clone;
+      if (inner) {
+        inner.removeAttribute("id");
+        inner.className = "vuOknd oBBKec";
+        inner.innerHTML = "";
+        inner.removeAttribute("aria-label");
+        inner.removeAttribute("role");
+        inner.removeAttribute("tabindex");
+      }
+      panel.appendChild(clone);
+      empties = collectEmpties();
+      if (empties.length === 0) break;
+    }
+
+    // Invalidate slot cache so claimPeacefulFollowSlot rescans.
+    window.remixBlenderSlots = null;
+    return collectEmpties();
+  };
+
   window.claimPeacefulFollowSlot = function claimPeacefulFollowSlot(slotIndex) {
     let panel = document.querySelector(".PWIidc");
     if (!panel) return null;
+
+    // Ensure Cat (slot 3) + a couple spares exist before first claim.
+    if (
+      typeof window.remixEnsureBlenderCapacity === "function" &&
+      (!window.remixBlenderSlots || window.remixBlenderSlots.panel !== panel)
+    ) {
+      window.remixEnsureBlenderCapacity(7);
+    }
 
     let cached = window.remixBlenderSlots;
     if (!cached || cached.panel !== panel) {
@@ -18378,7 +19600,10 @@ window.RemixMod.runCodeBefore = function () {
   window.CustomFruit.runCodeBefore();
   window.ChessMod.runCodeBefore();
   window.BurgerMod.runCodeBefore();
+  // Cat Speed first so CAT_SPEED_ICON exists for Cat Mode trophy art.
   window.CatSpeed.runCodeBefore();
+  window.CatMod.runCodeBefore();
+  window.MexicoMod.runCodeBefore();
   window.DiceCounts.runCodeBefore();
   window.CustomSettings.runCodeBefore();
   window.CustomSize.runCodeBefore();
@@ -18396,10 +19621,20 @@ window.RemixMod.runCodeBefore = function () {
 
 window.RemixMod.alterSnakeCode = function (code) {
   code = window.remixBaseAlterSnakeCode(code);
-  // Candy → Chess → Burger (Burger builds on Chess-patched tick/f7/score)
+  // Candy → Chess → Burger → Cat → Mexico (Mexico builds on Cat-patched e7/tick/reset)
   code = window.CandyMod.alterSnakeCode(code);
   code = window.ChessMod.alterSnakeCode(code);
   code = window.BurgerMod.alterSnakeCode(code);
+  try {
+    code = window.CatMod.alterSnakeCode(code);
+  } catch (e) {
+    console.error("RemixMod: CatMod.alterSnakeCode failed", e);
+  }
+  try {
+    code = window.MexicoMod.alterSnakeCode(code);
+  } catch (e) {
+    console.error("RemixMod: MexicoMod.alterSnakeCode failed", e);
+  }
   code = window.CatSpeed.alterSnakeCode(code);
   code = window.DiceCounts.alterSnakeCode(code);
   code = window.CustomSize.alterSnakeCode(code);
@@ -18423,6 +19658,8 @@ window.RemixMod.runCodeAfter = function () {
   window.CandyMod.runCodeAfter && window.CandyMod.runCodeAfter();
   window.ChessMod.runCodeAfter && window.ChessMod.runCodeAfter();
   window.BurgerMod.runCodeAfter && window.BurgerMod.runCodeAfter();
+  window.CatMod.runCodeAfter && window.CatMod.runCodeAfter();
+  window.MexicoMod.runCodeAfter && window.MexicoMod.runCodeAfter();
   window.RemixSpeedInfo.runCodeAfter && window.RemixSpeedInfo.runCodeAfter();
   window.PauseMod.runCodeAfter && window.PauseMod.runCodeAfter();
   window.HamiltonRemix.runCodeAfter && window.HamiltonRemix.runCodeAfter();

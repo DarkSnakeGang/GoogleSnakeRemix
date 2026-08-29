@@ -181,7 +181,7 @@ export async function launchHarness(opts = {}) {
         (e) =>
           e.type === "pageerror" ||
           (e.type === "error" &&
-            (/^(CandyMod|ChessMod|BurgerMod|RemixMod|RemixUltraMod):/.test(
+            (/^(CandyMod|ChessMod|BurgerMod|CatMod|MexicoMod|RemixMod|RemixUltraMod):/.test(
               e.text
             ) ||
               /failed to (find|patch|expose)/i.test(e.text) ||
@@ -240,6 +240,8 @@ export async function launchHarness(opts = {}) {
           if (mode === "chess") modeId = window.CHESS_MODE;
           if (mode === "candy") modeId = window.CANDY_MODE;
           if (mode === "burger") modeId = window.BURGER_MODE;
+          if (mode === "cat") modeId = window.CAT_MODE;
+          if (mode === "mexico") modeId = window.MEXICO_MODE;
           if (mode === "portal") modeId = 2;
           if (mode === "shield") modeId = 15;
           if (mode === "classic") modeId = 0;
