@@ -128,6 +128,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     window.__bombFruitOrphans = [];
     window.__bombFruitLastPos = null;
     window.__bombFruitAppleSnap = null;
+    window.__bombFruitDrawCache = null;
   };
 
   window.bombFruit_chebyshev = function bombFruit_chebyshev(a, b) {
@@ -711,6 +712,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       window.bombFruit_init_all(mgr);
       window.bombFruit_sync_fruit_bombs(mgr);
       window.bombFruit_clear_shields(mgr);
+      window.bombFruit_update_draw_cache(mgr);
     }
 
     // Eat cleared the last fruit and refill failed → empty board = win.
@@ -755,6 +757,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     // Keep snap countdowns current so a mid-tick dice/eat removal orphans
     // with the post-decrement timer, not a stale pre-tick value.
     window.bombFruit_refresh_snap(mgr);
+    window.bombFruit_update_draw_cache(mgr);
   };
 
   window.bombFruit_draw_one_radius = function bombFruit_draw_one_radius(
@@ -810,6 +813,48 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     }
   };
 
+  /**
+   * Stable mine-radius draw list. Eat/refill can leave mgr.ka empty for a
+   * frame (or mid-relocate); keep last rings on screen until new fruit land
+   * so dashed radii never blink out.
+   */
+  window.bombFruit_update_draw_cache = function bombFruit_update_draw_cache(
+    mgr
+  ) {
+    const game = window.__remixGame;
+    const list = [];
+    if (mgr && mgr.ka && mgr.ka.length) {
+      for (let i = 0; i < mgr.ka.length; i++) {
+        const el = mgr.ka[i];
+        if (!el || !el.pos || el.pos.x == null || el.pos.y == null) continue;
+        list.push({
+          x: el.pos.x | 0,
+          y: el.pos.y | 0,
+          bombX1a: el.bombX1a | 0,
+        });
+      }
+    }
+    const orphans = window.__bombFruitOrphans;
+    if (orphans && orphans.length) {
+      for (let i = 0; i < orphans.length; i++) {
+        const o = orphans[i];
+        if (!o || o.x == null || o.y == null) continue;
+        list.push({
+          x: o.x | 0,
+          y: o.y | 0,
+          bombX1a: o.bombX1a | 0,
+        });
+      }
+    }
+    // Transient empty during eat animation / respawn — keep prior rings.
+    if (!list.length) {
+      if (game && !game.nj && window.__bombFruitDrawCache) return;
+      window.__bombFruitDrawCache = [];
+      return;
+    }
+    window.__bombFruitDrawCache = list;
+  };
+
   /** Draw Minesweeper-style dashed 3×3 rings; gated by Mine Radius checkbox. */
   window.bombFruit_drawRadii = function bombFruit_drawRadii(board, _frac) {
     if (!window.isBombFruitActive || !window.isBombFruitActive()) return;
@@ -817,28 +862,30 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     if (boxes && boxes.mineRadius === false) return;
     const game = (board && board.wb) || window.__remixGame;
     if (game && game.nj) return;
+    if (!board || !board.ka) return;
+    // Refresh from live fruit when present; otherwise reuse cache (eat gap).
     const mgr = game && game.wa;
-    if (!board || !board.ka || !mgr || !mgr.ka) return;
+    if (mgr && mgr.ka && mgr.ka.length) {
+      window.bombFruit_update_draw_cache(mgr);
+    } else if (
+      (!window.__bombFruitDrawCache || !window.__bombFruitDrawCache.length) &&
+      mgr
+    ) {
+      window.bombFruit_update_draw_cache(mgr);
+    }
+    const cache = window.__bombFruitDrawCache;
+    if (!cache || !cache.length) return;
     const ctx = board.ka;
     ctx.save();
-    for (let i = 0; i < mgr.ka.length; i++) {
-      const el = mgr.ka[i];
-      if (!el || !el.pos) continue;
-      window.bombFruit_draw_one_radius(board, el.pos, el.bombX1a | 0, game);
-    }
-    // Orphan armed radii stay on the eaten cell (do not follow the new fruit).
-    const orphans = window.__bombFruitOrphans;
-    if (orphans && orphans.length) {
-      for (let i = 0; i < orphans.length; i++) {
-        const o = orphans[i];
-        if (!o) continue;
-        window.bombFruit_draw_one_radius(
-          board,
-          { x: o.x, y: o.y },
-          o.bombX1a | 0,
-          game
-        );
-      }
+    for (let i = 0; i < cache.length; i++) {
+      const e = cache[i];
+      if (!e) continue;
+      window.bombFruit_draw_one_radius(
+        board,
+        { x: e.x, y: e.y },
+        e.bombX1a | 0,
+        game
+      );
     }
     ctx.setLineDash([]);
     ctx.restore();
@@ -884,6 +931,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     }
     // e7(...,15) assigns nba on spawn — strip visuals immediately.
     window.bombFruit_clear_shields(mgr);
+    window.bombFruit_update_draw_cache(mgr);
     // Refill produced nothing and nothing remains → win.
     window.bombFruit_win_if_empty(game, mgr);
   };
@@ -976,6 +1024,14 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       "j4E(a.wa,k,d,a.Vm.bind(a)),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0),0)"
     );
   }
+
+  // Classic Vm reposition: strip shield bars + refresh radius cache in the same
+  // turn as the eat so mine rings never blank for a frame.
+  bfReplace(
+    "Vm clear shields + radius cache",
+    /e=window\.isCatActive&&window\.isCatActive\(\)&&window\.cat_allows_fruit_spawn&&!window\.cat_allows_fruit_spawn\(a,1,1\)\?!1:a\.Vm\(k,!e,null\)\);/,
+    "e=window.isCatActive&&window.isCatActive()&&window.cat_allows_fruit_spawn&&!window.cat_allows_fruit_spawn(a,1,1)?!1:a.Vm(k,!e,null));if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_clear_shields(a.wa);window.bombFruit_update_draw_cache(a.wa);}catch(_bf){}}"
+  );
 
   // Classic Vm fail splices the eaten apple — after that, empty board = Shield win.
   bfReplace(
