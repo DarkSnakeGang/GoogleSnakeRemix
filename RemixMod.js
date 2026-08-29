@@ -14297,6 +14297,39 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     }
   };
 
+  /**
+   * Plant idle zones under current apples (menu / pre-start / count change).
+   * Does not relocate fruit or run spawn-radius — draw-safe.
+   * When pruneIdle, drop idle zones with no fruit (5a→1a on the menu).
+   * Never prune during play — linger / armed zones are tick-owned.
+   */
+  window.bombFruit_plant_layout_zones = function bombFruit_plant_layout_zones(
+    mgr,
+    pruneIdle
+  ) {
+    if (!mgr || !mgr.ka) return;
+    const keys = new Set();
+    for (let i = 0; i < mgr.ka.length; i++) {
+      const el = mgr.ka[i];
+      if (!el || !el.pos || el.pos.x == null || el.pos.y == null) continue;
+      window.bombFruit_init_apple(el);
+      window.bombFruit_ensure_zone(el.pos.x, el.pos.y, -1);
+      const k = window.bombFruit_pos_key(el.pos);
+      if (k) keys.add(k);
+    }
+    if (!pruneIdle) return;
+    const zones = window.bombFruit_zones();
+    for (let i = zones.length - 1; i >= 0; i--) {
+      const z = zones[i];
+      if (!z) {
+        zones.splice(i, 1);
+        continue;
+      }
+      if ((z.bombX1a | 0) >= 0) continue; // armed stays until boom
+      if (!keys.has(window.bombFruit_zone_key(z))) zones.splice(i, 1);
+    }
+  };
+
   /** Strip Shield bars — Bomb Fruit only borrows e7(...,15) spawn physics. */
   window.bombFruit_clear_shields = function bombFruit_clear_shields(mgr) {
     const list = (mgr && mgr.ka) || window.appleArray;
@@ -14771,8 +14804,9 @@ window.BombFruitMod.alterSnakeCode = function (code) {
 
     if (!window.__bombFruitBootstrapped) {
       window.__bombFruitBootstrapped = true;
-      window.__bombFruitZones = [];
-      window.__bombFruitOrphans = [];
+      // Keep any pre-start layout zones already planted by draw.
+      if (!window.__bombFruitZones) window.__bombFruitZones = [];
+      if (!window.__bombFruitOrphans) window.__bombFruitOrphans = [];
       // Capture native freePos early (eat path also sets these) so boom
       // spawns use d4E(..., 2) with e7(...,15) Shield head radius.
       try {
@@ -14888,6 +14922,16 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     const game = (board && board.wb) || window.__remixGame;
     if (game && game.nj) return;
     if (!board || !board.ka) return;
+    // Menu / pre-start: apples exist but tick hasn't run — plant zones now.
+    // Prune only before play so count changes drop stale rings; during play
+    // tick owns linger/armed zones.
+    const mgr = (game && game.wa) || (board.wb && board.wb.wa);
+    if (mgr && mgr.ka && mgr.ka.length) {
+      window.bombFruit_plant_layout_zones(
+        mgr,
+        !window.__bombFruitBootstrapped
+      );
+    }
     const zones = window.bombFruit_zones();
     if (!zones.length) return;
     const ctx = board.ka;

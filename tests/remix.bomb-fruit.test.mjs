@@ -34,6 +34,7 @@ describe("Bomb Fruit mode (offline)", () => {
     assert.match(init, /bombFruit_clear_shields/);
     assert.match(init, /__bombFruitZones/);
     assert.match(init, /bombFruit_ensure_zone/);
+    assert.match(init, /bombFruit_plant_layout_zones/);
     assert.match(init, /BOMB_FRUIT_ZONE_LINGER/);
     assert.match(init, /isBombFruitActive\(\)\?1:Math\.min\(1,\(h\.xL\+f\)\/2\)/);
     assert.match(init, /b===15&&window\.BOMB_FRUIT_MODE/);
@@ -80,6 +81,48 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
     const { launchHarness } = await import("../tools/harness.mjs");
     return launchHarness({ seed, headless: true, modFile });
   }
+
+  it("pre-start layout apples get mine radii without ticking", async () => {
+    const { COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launch("RemixMod.js", 121);
+    try {
+      await h.start({ mode: "classic", count: COUNT.THREE, size: SIZE.NORMAL });
+      const r = await h.page.evaluate(() => {
+        const mode = window.BOMB_FRUIT_MODE;
+        window.CurrentModeNum = mode;
+        const g = window.__remixGame;
+        g.settings.ub = mode;
+        g.settings.ob = mode;
+        window.bombFruit_reset_state();
+        // No tick — simulate menu board paint.
+        const mgr = g.wa;
+        const appleN = mgr.ka.length;
+        window.bombFruit_plant_layout_zones(mgr, true);
+        const zones = window.__bombFruitZones || [];
+        const keys = new Set(mgr.ka.map((a) => a.pos.x + "," + a.pos.y));
+        const allMatch =
+          zones.length === appleN &&
+          zones.every((z) => keys.has(z.x + "," + z.y) && z.bombX1a === -1);
+        return {
+          appleN,
+          zoneN: zones.length,
+          boot: !!window.__bombFruitBootstrapped,
+          allMatch,
+          active: window.isBombFruitActive(),
+        };
+      });
+      assert.equal(r.active, true, JSON.stringify(r));
+      assert.equal(
+        r.boot,
+        false,
+        "must not require tick bootstrap: " + JSON.stringify(r)
+      );
+      assert.equal(r.zoneN, r.appleN, JSON.stringify(r));
+      assert.equal(r.allMatch, true, JSON.stringify(r));
+    } finally {
+      await h.close();
+    }
+  });
 
   it("trophy + blender slot; arm to 4; eat is safe; boom kills in-radius", async () => {
     const { COUNT, SIZE } = await import("../tools/harness.mjs");
