@@ -11,6 +11,8 @@ window.CatMod.runCodeBefore = function () {
   window.CAT_LIFE_EVERY = 5;
   window.CAT_MAX_LIVES = 9;
   window.CAT_GRACE_EXTRA = 3;
+  // Initial snake length — max score = board cells − this (fill the board).
+  window.CAT_SNAKE_START_LEN = 3;
 
   // Same CSP-safe cat art as Cat Speed (#speed). Prefer live CatSpeed icon;
   // fall back if run order ever drifts.
@@ -211,6 +213,7 @@ window.CatMod.alterSnakeCode = function (code) {
       window.cat_lives = Math.min(max, (window.cat_lives | 0) + 1);
     }
     window.catUpdateLivesHud && window.catUpdateLivesHud();
+    window.cat_check_score_win(game);
   };
 
   // Spend a life instead of dying. Returns true if death should be cancelled.
@@ -219,6 +222,13 @@ window.CatMod.alterSnakeCode = function (code) {
   // immediately so the same tick teleports like native Peaceful.
   window.cat_board_size = function cat_board_size(game) {
     const g = game || window.__remixGame;
+    // Prefer playable board box (works for custom sizes too).
+    if (g && g.ka && g.ka.oa && g.ka.oa.width && g.ka.oa.height) {
+      return {
+        width: g.ka.oa.width | 0,
+        height: g.ka.oa.height | 0,
+      };
+    }
     if (g && g.Ca && Array.isArray(g.Ca.wa) && g.Ca.wa.length) {
       return {
         width: g.Ca.wa[0] ? g.Ca.wa[0].length : 0,
@@ -226,9 +236,48 @@ window.CatMod.alterSnakeCode = function (code) {
       };
     }
     if (typeof window.chess_board_size === "function" && g) {
-      return window.chess_board_size(g) || { width: 0, height: 0 };
+      const board = g.ka || g.wa || g;
+      return window.chess_board_size(board) || { width: 0, height: 0 };
     }
     return { width: 0, height: 0 };
+  };
+
+  /** Max score to fill the board: width × height − starting snake length. */
+  window.cat_max_score = function cat_max_score(game) {
+    const sz = window.cat_board_size(game);
+    const w = sz.width | 0;
+    const h = sz.height | 0;
+    if (!w || !h) return 0;
+    return w * h - (window.CAT_SNAKE_START_LEN | 3);
+  };
+
+  window.cat_trigger_win = function cat_trigger_win(game) {
+    if (!game) return;
+    if (game.nj || game.lj) return;
+    try {
+      if (typeof Q4E !== "undefined" && Q4E.rWd && Q4E.rWd.play) Q4E.rWd.play();
+      else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
+    } catch (_e) {}
+    game.nj = true;
+    game.lj = true;
+    try {
+      const score = game.Sh != null ? game.Sh : game.Oh;
+      if (typeof A7E === "function") A7E(game.menu, 1400, score);
+      else if (typeof vdF === "function") vdF(game.menu, 1400, score);
+    } catch (_e2) {}
+  };
+
+  /** Hard cap: reaching board-fill score wins the run. */
+  window.cat_check_score_win = function cat_check_score_win(game) {
+    if (!window.isCatActive || !window.isCatActive()) return false;
+    const g = game || window.__remixGame;
+    if (!g || g.nj || g.lj) return false;
+    const cap = window.cat_max_score(g);
+    if (!cap) return false;
+    const score = (g.Sh != null ? g.Sh : g.Oh) | 0;
+    if (score < cap) return false;
+    window.cat_trigger_win(g);
+    return true;
   };
 
   window.cat_wrap_head_if_needed = function cat_wrap_head_if_needed(game) {
@@ -288,6 +337,7 @@ window.CatMod.alterSnakeCode = function (code) {
     if ((window.cat_peaceful_ticks | 0) > 0) {
       window.cat_peaceful_ticks = (window.cat_peaceful_ticks | 0) - 1;
     }
+    window.cat_check_score_win(g);
     window.catUpdateLivesHud && window.catUpdateLivesHud();
   };
 

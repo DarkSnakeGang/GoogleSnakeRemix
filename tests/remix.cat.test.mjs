@@ -31,6 +31,10 @@ describe("Cat Mode (offline)", () => {
     assert.match(cat, /CAT_LIFE_EVERY\s*=\s*5/);
     assert.match(cat, /CAT_MAX_LIVES\s*=\s*9/);
     assert.match(cat, /CAT_GRACE_EXTRA\s*=\s*3/);
+    assert.match(cat, /CAT_SNAKE_START_LEN\s*=\s*3/);
+    assert.match(cat, /cat_max_score/);
+    assert.match(cat, /cat_check_score_win/);
+    assert.match(cat, /cat_trigger_win/);
     assert.match(cat, /Math\.ceil\(\(sh\s*\+\s*\(window\.CAT_GRACE_EXTRA/);
     assert.match(cat, /cat_try_spend_life\(this\)/);
     assert.match(cat, /b===21&&window\.isCatActive/);
@@ -98,9 +102,76 @@ describe("Cat Mode (offline)", () => {
     assert.match(cat, /cat_lives\s*=\s*Math\.min\(max,\s*\(window\.cat_lives\s*\|\s*0\)\s*\+\s*1\)/);
     assert.doesNotMatch(cat, /Math\.floor\(sh\s*\/\s*every\)/);
   });
+
+  it("board-fill score win is width×height−3", () => {
+    const cat = read("src/CatInit.js");
+    assert.match(cat, /w\s*\*\s*h\s*-\s*\(window\.CAT_SNAKE_START_LEN/);
+    assert.match(cat, /cat_check_score_win\(g\)/);
+    // Sanity: known stock sizes
+    assert.equal(10 * 9 - 3, 87);
+    assert.equal(17 * 15 - 3, 252);
+    assert.equal(24 * 21 - 3, 501);
+  });
 });
 
 describe("Cat Mode (browser)", { skip: !runBrowser }, () => {
+  it("board-fill score win uses live board size", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 42, headless: true });
+    try {
+      await h.start({ mode: "cat", count: COUNT.ONE, size: SIZE.NORMAL });
+      const r = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        window.CurrentModeNum = window.CAT_MODE;
+        const sz = window.cat_board_size(g);
+        const cap = window.cat_max_score(g);
+        const expect = (sz.width | 0) * (sz.height | 0) - 3;
+
+        g.nj = false;
+        g.lj = false;
+        g.Sh = expect - 1;
+        const noWin = window.cat_check_score_win(g);
+        const nj1 = !!g.nj;
+        g.Sh = expect;
+        const won = window.cat_check_score_win(g);
+
+        // Custom / other sizes: formula is automatic from board box.
+        const orig = window.cat_board_size;
+        window.cat_board_size = () => ({ width: 10, height: 9 });
+        const smallCap = window.cat_max_score(g);
+        window.cat_board_size = () => ({ width: 24, height: 21 });
+        const largeCap = window.cat_max_score(g);
+        window.cat_board_size = () => ({ width: 12, height: 12 });
+        const customCap = window.cat_max_score(g);
+        window.cat_board_size = orig;
+
+        return {
+          sz,
+          cap,
+          expect,
+          noWin,
+          nj1,
+          won,
+          nj2: !!g.nj,
+          smallCap,
+          largeCap,
+          customCap,
+        };
+      });
+      assert.equal(r.cap, r.expect, JSON.stringify(r));
+      assert.equal(r.cap, 252, "normal board fill: " + JSON.stringify(r));
+      assert.equal(r.noWin, false, JSON.stringify(r));
+      assert.equal(r.nj1, false, JSON.stringify(r));
+      assert.equal(r.won, true, JSON.stringify(r));
+      assert.equal(r.nj2, true, JSON.stringify(r));
+      assert.equal(r.smallCap, 87, JSON.stringify(r));
+      assert.equal(r.largeCap, 501, JSON.stringify(r));
+      assert.equal(r.customCap, 141, JSON.stringify(r)); // 12×12−3
+    } finally {
+      await h.close();
+    }
+  });
+
   it("banks lives, spends into grace with alpha, then dies at 0", async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 42, headless: true });

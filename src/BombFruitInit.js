@@ -189,7 +189,8 @@ window.BombFruitMod.alterSnakeCode = function (code) {
    * Keep armed bombs cell-bound:
    * - same object relocated (classic eat) → orphan at old cell
    * - object removed (dice/bomb/tally splice) → orphan at last cell
-   * WeakMap alone can't see deletions; __bombFruitAppleSnap tracks them.
+   * Also enforce shield head-radius on relocated / brand-new fruits only
+   * (start-layout apples that never moved stay put).
    */
   window.bombFruit_sync_fruit_bombs = function bombFruit_sync_fruit_bombs(mgr) {
     if (!mgr || !mgr.ka) return;
@@ -198,6 +199,12 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     const prevSnap = window.__bombFruitAppleSnap || [];
     const living = new Set();
     for (let i = 0; i < mgr.ka.length; i++) living.add(mgr.ka[i]);
+    const prevEls = new Set();
+    for (let i = 0; i < prevSnap.length; i++) {
+      if (prevSnap[i] && prevSnap[i].el) prevEls.add(prevSnap[i].el);
+    }
+    // First snap only records layout — do not treat start apples as "new".
+    const hadSnap = prevSnap.length > 0;
 
     for (let i = 0; i < prevSnap.length; i++) {
       const entry = prevSnap[i];
@@ -209,19 +216,48 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       }
     }
 
+    const game = window.__remixGame;
     const nextSnap = [];
     for (let i = 0; i < mgr.ka.length; i++) {
       const el = mgr.ka[i];
       if (!el || !el.pos) continue;
       window.bombFruit_init_apple(el);
-      const cur = window.bombFruit_pos_key(el.pos);
+      let cur = window.bombFruit_pos_key(el.pos);
       if (!cur) continue;
       const prev = last.get(el);
-      if (prev && prev !== cur && el.bombX1a >= 0) {
+      const relocated = !!(prev && prev !== cur);
+      const brandNew = hadSnap && !prevEls.has(el);
+
+      if (relocated && el.bombX1a >= 0) {
         window.bombFruit_detach_bomb(prev, el.bombX1a);
         el.bombX1a = -1;
       }
-      last.set(el, cur);
+
+      // New or relocated fruit must respect shield head radius. Untouched
+      // start-layout fruit (same object, same cell) is left alone.
+      if (
+        (relocated || brandNew) &&
+        typeof window.chess_outside_spawn_radius === "function" &&
+        !window.chess_outside_spawn_radius(game, el.pos)
+      ) {
+        const pos = window.bombFruit_find_spawn(mgr, i);
+        if (!pos) {
+          mgr.ka.splice(i, 1);
+          i--;
+          window.appleArray = mgr.ka;
+          window.bombFruit_win_if_empty(game, mgr);
+          continue;
+        }
+        if (typeof el.pos.clone === "function" && pos.clone) {
+          el.pos = pos.clone();
+        } else {
+          el.pos.x = pos.x;
+          el.pos.y = pos.y;
+        }
+        cur = window.bombFruit_pos_key(el.pos);
+      }
+
+      if (cur) last.set(el, cur);
       nextSnap.push({ el: el, key: cur, bombX1a: el.bombX1a | 0 });
     }
     window.__bombFruitAppleSnap = nextSnap;
