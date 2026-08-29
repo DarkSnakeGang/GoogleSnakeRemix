@@ -14955,7 +14955,15 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   // ONLY those new apples (start layout stays put).
   // Works for every apple count (1/3/5/10/dice/bomb/tally + colored dice):
   // pass `added` = newly pushed count from f4E, or 0/omit from j4E board sync.
-  window.bombFruit_after_respawn = function bombFruit_after_respawn(mgr, added) {
+  //
+  // IMPORTANT: j4E/splice call this with added=0 while the board is briefly
+  // empty BEFORE bomb/dice f4E refills (24 apples / dice roll). Never win
+  // there — only after f4E (or constrain/explode) when the board stays empty.
+  window.bombFruit_after_respawn = function bombFruit_after_respawn(
+    mgr,
+    added,
+    allowEmptyWin
+  ) {
     if (!window.isBombFruitActive || !window.isBombFruitActive()) return;
     if (!mgr) return;
     window.bombFruit_sync_fruit_bombs(mgr);
@@ -14990,8 +14998,12 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     }
     // e7(...,15) assigns nba on spawn — strip visuals immediately.
     window.bombFruit_clear_shields(mgr);
-    // Refill produced nothing and nothing remains → win.
-    window.bombFruit_win_if_empty(game, mgr);
+    // Win only when a refill path finished and the board is still empty
+    // (f4E g=0, or constrain wiped the last fruit). Mid-eat j4E/splice
+    // pass allowEmptyWin=false so bomb→24 / dice rolls can run.
+    if (allowEmptyWin) {
+      window.bombFruit_win_if_empty(game, mgr);
+    }
   };
 
   // --- Borrow Shield spawn radius via e7(...,15); strip nba so no bars. ---
@@ -15066,29 +15078,29 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     !bfReplace(
       "f4E bomb fruit after mexico",
       /if\(window\.isMexicoActive&&window\.isMexicoActive\(\)&&g>0\)\{try\{window\.mexico_constrain_new_apples\(a,g\);\}catch\(_mx\)\{\}\}/,
-      "if(window.isMexicoActive&&window.isMexicoActive()&&g>0){try{window.mexico_constrain_new_apples(a,g);}catch(_mx){}}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_after_respawn(a,g);}catch(_bf){}}"
+      "if(window.isMexicoActive&&window.isMexicoActive()&&g>0){try{window.mexico_constrain_new_apples(a,g);}catch(_mx){}}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_after_respawn(a,g,!0);}catch(_bf){}}"
     )
   ) {
     bfReplace(
       "f4E bomb fruit after chess",
       /if\(window\.isChessActive&&window\.isChessActive\(\)&&g>0\)\{window\.chess_convert_new_apples\(a,g\);\}/,
-      "if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_after_respawn(a,g);}catch(_bf){}}"
+      "if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_after_respawn(a,g,!0);}catch(_bf){}}"
     );
   }
 
-  // j4E / portal twin path: sync after eat even when the board is empty so a
-  // failed last-pair spawn can still trip the empty-board win.
+  // j4E / portal twin path: sync zones after eat. Board may be empty here
+  // before bomb/dice f4E runs — do NOT win on that transient empty.
   if (
     !bfReplace(
       "j4E bomb fruit after mexico",
       /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&a\.wa\.ka\.length>0&&\(window\.mexico_constrain_new_apples\(a\.wa,a\.wa\.ka\.length\),0\)/,
-      "j4E(a.wa,k,d,a.Vm.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.wa.ka.length>0&&(window.mexico_constrain_new_apples(a.wa,a.wa.ka.length),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0),0)"
+      "j4E(a.wa,k,d,a.Vm.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.wa.ka.length>0&&(window.mexico_constrain_new_apples(a.wa,a.wa.ka.length),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0)"
     )
   ) {
     bfReplace(
       "j4E bomb fruit",
       /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\)/,
-      "j4E(a.wa,k,d,a.Vm.bind(a)),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0),0)"
+      "j4E(a.wa,k,d,a.Vm.bind(a)),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0)"
     );
   }
 
@@ -15100,11 +15112,12 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     "e=window.isCatActive&&window.isCatActive()&&window.cat_allows_fruit_spawn&&!window.cat_allows_fruit_spawn(a,1,1)?!1:a.Vm(k,!e,null));if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_clear_shields(a.wa);window.bombFruit_sync_fruit_bombs(a.wa);}catch(_bf){}}"
   );
 
-  // Classic Vm fail splices the eaten apple — after that, empty board = Shield win.
+  // Classic Vm fail splices the eaten apple — board may be empty before
+  // bomb/dice refill. Sync only; empty win is deferred to f4E / next tick.
   bfReplace(
     "splice empty win after chess portal",
     /\(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\)\)/,
-    "(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0),0))"
+    "(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
   );
 
   // Tick after Mexico.

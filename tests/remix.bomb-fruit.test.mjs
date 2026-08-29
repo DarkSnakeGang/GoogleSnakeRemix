@@ -28,8 +28,8 @@ describe("Bomb Fruit mode (offline)", () => {
     assert.match(init, /__bombFruitOrphans/);
     assert.match(init, /bombFruit_sync_fruit_bombs/);
     assert.match(init, /bombFruit_orphan_boom/);
-    assert.match(init, /bombFruit_after_respawn\(a,g\)/);
-    assert.match(init, /bombFruit_after_respawn\(a\.wa,0\)/);
+    assert.match(init, /bombFruit_after_respawn\(a,g,!0\)/);
+    assert.match(init, /bombFruit_after_respawn\(a\.wa,0,!1\)/);
     assert.match(init, /bombFruit_win_if_empty/);
     assert.match(init, /bombFruit_clear_shields/);
     assert.match(init, /__bombFruitZones/);
@@ -81,6 +81,111 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
     const { launchHarness } = await import("../tools/harness.mjs");
     return launchHarness({ seed, headless: true, modFile });
   }
+
+  it("bomb count first eat spawns 24 without winning; dice refills without winning", async () => {
+    const { COUNT, SIZE } = await import("../tools/harness.mjs");
+    const hBomb = await launch("RemixMod.js", 130);
+    try {
+      await hBomb.start({
+        mode: "classic",
+        count: COUNT.BOMB,
+        size: SIZE.NORMAL,
+      });
+      const bomb = await hBomb.page.evaluate(() => {
+        const mode = window.BOMB_FRUIT_MODE;
+        window.CurrentModeNum = mode;
+        const g = window.__remixGame;
+        g.settings.ub = mode;
+        g.settings.ob = mode;
+        window.bombFruit_reset_state();
+        g.wa.reset();
+        const before = g.wa.ka.length;
+        const apple = g.wa.ka[0];
+        for (let i = 0; i < g.oa.ka.length; i++) {
+          g.oa.ka[i].x = apple.pos.x - 1;
+          g.oa.ka[i].y = apple.pos.y;
+        }
+        g.oa.direction = "RIGHT";
+        g.nj = false;
+        g.lj = false;
+        g.ub = false;
+        const sh0 = g.Sh | 0;
+        for (let t = 0; t < 25 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
+        if (!g.nj) g.tick();
+        return {
+          before,
+          after: g.wa.ka.length,
+          sh: g.Sh | 0,
+          nj: !!g.nj,
+          ub: !!g.ub,
+        };
+      });
+      assert.equal(bomb.before, 1, JSON.stringify(bomb));
+      assert.equal(
+        bomb.after,
+        24,
+        "bomb count should refill to 24: " + JSON.stringify(bomb)
+      );
+      assert.equal(bomb.sh, 1, JSON.stringify(bomb));
+      assert.equal(
+        bomb.nj,
+        false,
+        "must not win mid-refill: " + JSON.stringify(bomb)
+      );
+      assert.equal(bomb.ub, false, JSON.stringify(bomb));
+    } finally {
+      await hBomb.close();
+    }
+
+    const hDice = await launch("RemixMod.js", 131);
+    try {
+      await hDice.start({
+        mode: "classic",
+        count: COUNT.DICE,
+        size: SIZE.NORMAL,
+      });
+      const dice = await hDice.page.evaluate(() => {
+        const mode = window.BOMB_FRUIT_MODE;
+        window.CurrentModeNum = mode;
+        const g = window.__remixGame;
+        g.settings.ub = mode;
+        g.settings.ob = mode;
+        window.bombFruit_reset_state();
+        g.wa.reset();
+        const before = g.wa.ka.length;
+        const apple = g.wa.ka[0];
+        for (let i = 0; i < g.oa.ka.length; i++) {
+          g.oa.ka[i].x = apple.pos.x - 1;
+          g.oa.ka[i].y = apple.pos.y;
+        }
+        g.oa.direction = "RIGHT";
+        g.nj = false;
+        g.lj = false;
+        g.ub = false;
+        const sh0 = g.Sh | 0;
+        for (let t = 0; t < 25 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
+        if (!g.nj) g.tick();
+        return {
+          before,
+          after: g.wa.ka.length,
+          sh: g.Sh | 0,
+          nj: !!g.nj,
+          ub: !!g.ub,
+        };
+      });
+      assert.equal(dice.before, 1, JSON.stringify(dice));
+      assert.ok(dice.after >= 1, "dice should refill: " + JSON.stringify(dice));
+      assert.equal(dice.sh, 1, JSON.stringify(dice));
+      assert.equal(
+        dice.nj,
+        false,
+        "must not win mid-dice refill: " + JSON.stringify(dice)
+      );
+      assert.equal(dice.ub, false, JSON.stringify(dice));
+    } finally {
+      await hDice.close();
+    }
+  });
 
   it("pre-start layout apples get mine radii without ticking", async () => {
     const { COUNT, SIZE } = await import("../tools/harness.mjs");
