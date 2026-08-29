@@ -156,12 +156,15 @@ describe("MorePudding base (browser)", { skip: !runBrowser }, () => {
     }
   });
 
-  it("gives Candy, Chess and Burger consecutive blender slots", async () => {
+  it("gives Candy, Chess, Burger, Cat and Mexico consecutive blender slots", async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 7, headless: true });
     try {
       await h.start({ mode: "burger", count: COUNT.ONE, size: SIZE.NORMAL });
       const slots = await h.page.evaluate(() => {
+        if (typeof window.remixCompactBlenderEmpties === "function") {
+          window.remixCompactBlenderEmpties(0);
+        }
         const panel = document.querySelector(".PWIidc");
         const cells = [...panel.children];
         const idOf = (id) =>
@@ -173,11 +176,19 @@ describe("MorePudding base (browser)", { skip: !runBrowser }, () => {
           candy: idOf("remix-candy-blend"),
           chess: idOf("remix-chess-blend"),
           burger: idOf("remix-burger-blend"),
+          cat: idOf("remix-cat-blend"),
+          mexico: idOf("remix-mexico-blend"),
+          empties: panel.querySelectorAll(".vuOknd.oBBKec").length,
+          forcedGrid: panel.style.gridTemplateColumns || "",
         };
       });
       assert.ok(slots.candy > 0, "candy slot claimed: " + JSON.stringify(slots));
       assert.equal(slots.chess, slots.candy + 1, JSON.stringify(slots));
       assert.equal(slots.burger, slots.chess + 1, JSON.stringify(slots));
+      assert.equal(slots.cat, slots.burger + 1, JSON.stringify(slots));
+      assert.equal(slots.mexico, slots.cat + 1, JSON.stringify(slots));
+      assert.equal(slots.empties, 0, JSON.stringify(slots));
+      assert.equal(slots.forcedGrid, "", JSON.stringify(slots));
     } finally {
       await h.close();
     }

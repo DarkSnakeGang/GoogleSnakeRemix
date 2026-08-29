@@ -44,10 +44,12 @@ describe("Cat Mode (offline)", () => {
     );
   });
 
-  it("RemixInit expands blender capacity and unhides Speed Info", () => {
+  it("RemixInit claims next blender empty and unhides Speed Info", () => {
     const remix = read("src/RemixInit.js");
     assert.match(remix, /remixEnsureBlenderCapacity/);
-    assert.match(remix, /gridTemplateColumns\s*=\s*"repeat\(6,/);
+    assert.match(remix, /remixCompactBlenderEmpties/);
+    assert.match(remix, /remixCollectBlenderEmpties/);
+    assert.doesNotMatch(remix, /gridTemplateColumns\s*=\s*"repeat\(6,/);
     assert.match(remix, /window\.CatMod\.runCodeBefore/);
     assert.match(remix, /window\.CatMod\.alterSnakeCode/);
     // Speed Info must not be CSS-hidden or binned.
@@ -275,23 +277,31 @@ describe("Cat Mode (browser)", { skip: !runBrowser }, () => {
     }
   });
 
-  it("blender has Cat toggle + spare empties; Speed Info visible", async () => {
+  it("blender has Cat toggle flush after Burger; Speed Info visible", async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 43, headless: true });
     try {
       await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
 
       const ui = await h.page.evaluate(() => {
-        if (typeof window.remixEnsureBlenderCapacity === "function") {
-          window.remixEnsureBlenderCapacity(6);
+        if (typeof window.remixCompactBlenderEmpties === "function") {
+          window.remixCompactBlenderEmpties(0);
         }
         window.add_cat_blender_toggle && window.add_cat_blender_toggle();
-        const panel = document.querySelector(".PWIidc");
-        const cat = document.getElementById("remix-cat-blend");
-        let emptyCount = 0;
-        if (panel) {
-          emptyCount = panel.querySelectorAll(".vuOknd.oBBKec").length;
+        window.add_mexico_blender_toggle && window.add_mexico_blender_toggle();
+        if (typeof window.remixCompactBlenderEmpties === "function") {
+          window.remixCompactBlenderEmpties(0);
         }
+        const panel = document.querySelector(".PWIidc");
+        const cells = panel ? [...panel.children] : [];
+        const idOf = (id) =>
+          cells.findIndex((c) => {
+            const inner = c.querySelector(":scope > .vuOknd");
+            return inner && inner.id === id;
+          });
+        const emptyCount = panel
+          ? panel.querySelectorAll(".vuOknd.oBBKec").length
+          : -1;
         const cb = document.getElementById("AlwaysOnTimeKeeper");
         const wrap =
           cb &&
@@ -303,7 +313,11 @@ describe("Cat Mode (browser)", { skip: !runBrowser }, () => {
         const inBin = !!(cb && cb.closest("#ultra-settings-hidden"));
         return {
           hasPanel: !!panel,
-          hasCat: !!cat,
+          candy: idOf("remix-candy-blend"),
+          chess: idOf("remix-chess-blend"),
+          burger: idOf("remix-burger-blend"),
+          cat: idOf("remix-cat-blend"),
+          mexico: idOf("remix-mexico-blend"),
           emptyCount,
           hasCb: !!cb,
           wrapDisplay,
@@ -313,12 +327,18 @@ describe("Cat Mode (browser)", { skip: !runBrowser }, () => {
         };
       });
       assert.equal(ui.hasPanel, true, JSON.stringify(ui));
-      assert.equal(ui.hasCat, true, JSON.stringify(ui));
-      assert.ok(ui.emptyCount >= 1, "spare empty for future modes: " + JSON.stringify(ui));
+      assert.ok(ui.candy > 0, JSON.stringify(ui));
+      assert.equal(ui.chess, ui.candy + 1, JSON.stringify(ui));
+      assert.equal(ui.burger, ui.chess + 1, JSON.stringify(ui));
+      assert.equal(ui.cat, ui.burger + 1, JSON.stringify(ui));
+      assert.equal(ui.mexico, ui.cat + 1, JSON.stringify(ui));
+      assert.equal(ui.emptyCount, 0, JSON.stringify(ui));
       assert.equal(ui.hasCb, true, JSON.stringify(ui));
       assert.equal(ui.inBin, false, JSON.stringify(ui));
       assert.notEqual(ui.wrapDisplay, "none", JSON.stringify(ui));
       assert.notEqual(ui.cbDisplay, "none", JSON.stringify(ui));
+      // Do not force a 6-column blender grid (that caused sparse holes).
+      assert.equal(ui.grid, "", JSON.stringify(ui));
 
       assert.deepEqual(
         h.modErrors().filter((e) => !/CatMod: failed to find/.test(e.text)),

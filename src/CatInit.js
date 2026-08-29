@@ -79,9 +79,6 @@ window.CatMod.runCodeBefore = function () {
   window.add_cat_blender_toggle = function add_cat_blender_toggle() {
     if (document.getElementById("remix-cat-blend")) return;
     if (!window.populateRemixBlenderSlot) return;
-    if (typeof window.remixEnsureBlenderCapacity === "function") {
-      window.remixEnsureBlenderCapacity(6);
-    }
     window.populateRemixBlenderSlot({
       id: "remix-cat-blend",
       slotIndex: 3,

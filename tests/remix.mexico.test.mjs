@@ -36,7 +36,7 @@ describe("Mexico Mode (offline)", () => {
     assert.match(mx, /if\(!r&&b===1&&window\.isMexicoActive/);
     assert.doesNotMatch(mx, /if\(r&&b===1&&window\.isMexicoActive/);
     assert.match(mx, /slotIndex:\s*4/);
-    assert.match(mx, /remixEnsureBlenderCapacity\(7\)/);
+    assert.doesNotMatch(mx, /remixEnsureBlenderCapacity\(7\)/);
     assert.match(mx, /mexicoReplace/);
     assert.doesNotMatch(mx, /ensureGameMode\s*\(\s*1\s*\)/);
     assert.doesNotMatch(mx, /placeWall/);
@@ -48,7 +48,8 @@ describe("Mexico Mode (offline)", () => {
     assert.match(remix, /window\.MexicoMod\.runCodeBefore/);
     assert.match(remix, /window\.MexicoMod\.alterSnakeCode/);
     assert.match(remix, /window\.MexicoMod\.runCodeAfter/);
-    assert.match(remix, /remixEnsureBlenderCapacity\(7\)/);
+    assert.match(remix, /remixEnsureBlenderCapacity/);
+    assert.match(remix, /remixCompactBlenderEmpties/);
     assert.match(ultra, /window\.MexicoMod\.alterSnakeCode/);
     assert.match(ultra, /window\.MexicoMod\.runCodeAfter/);
     const catAlter = remix.indexOf("window.CatMod.alterSnakeCode");

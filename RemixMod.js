@@ -12294,9 +12294,6 @@ window.CatMod.runCodeBefore = function () {
   window.add_cat_blender_toggle = function add_cat_blender_toggle() {
     if (document.getElementById("remix-cat-blend")) return;
     if (!window.populateRemixBlenderSlot) return;
-    if (typeof window.remixEnsureBlenderCapacity === "function") {
-      window.remixEnsureBlenderCapacity(6);
-    }
     window.populateRemixBlenderSlot({
       id: "remix-cat-blend",
       slotIndex: 3,
@@ -12760,9 +12757,6 @@ window.MexicoMod.runCodeBefore = function () {
   window.add_mexico_blender_toggle = function add_mexico_blender_toggle() {
     if (document.getElementById("remix-mexico-blend")) return;
     if (!window.populateRemixBlenderSlot) return;
-    if (typeof window.remixEnsureBlenderCapacity === "function") {
-      window.remixEnsureBlenderCapacity(7);
-    }
     window.populateRemixBlenderSlot({
       id: "remix-mexico-blend",
       slotIndex: 4,
@@ -19457,50 +19451,54 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
 };
 
 window.RemixMod.runCodeBefore = function () {
-  // Shared Blender placement: fill existing empty cells after Peaceful (trophy_21).
-  // The list is cached per panel because claiming a cell drops its "empty"
-  // marker class — rescanning would renumber the slots for every later mode,
-  // which used to leave the third mode with no slot at all.
-  // Expand capacity (extra column + cloned empties) so Cat/Mexico + future modes fit.
-  window.remixEnsureBlenderCapacity = function remixEnsureBlenderCapacity(minEmptySlots) {
-    const need = typeof minEmptySlots === "number" ? minEmptySlots : 6;
-    let panel = document.querySelector(".PWIidc");
-    if (!panel) return null;
-
-    // Prefer 6 columns so one extra empty column fits after the vanilla 5×5.
-    try {
-      panel.style.gridTemplateColumns = "repeat(6, minmax(0, 1fr))";
-    } catch (_e) {}
-
-    let peacefulImg = panel.querySelector('img[src$="trophy_21.png"]');
+  // Shared Blender placement: fill empty cells after Peaceful (trophy_21).
+  // Always claim the next remaining empty — never an absolute slotIndex into a
+  // rebuilt empties list (that skipped cells and left holes once Cat/Mexico
+  // grew capacity after Candy/Chess/Burger had already claimed).
+  window.remixBlenderPeacefulOuter = function remixBlenderPeacefulOuter(panel) {
+    const root = panel || document.querySelector(".PWIidc");
+    if (!root) return null;
+    const peacefulImg = root.querySelector('img[src$="trophy_21.png"]');
     if (!peacefulImg) return null;
-    let outer =
+    const outer =
       (peacefulImg.closest &&
         peacefulImg.closest(".vuOknd") &&
         peacefulImg.closest(".vuOknd").parentElement) ||
       (peacefulImg.parentElement && peacefulImg.parentElement.parentElement);
-    if (!outer || outer.parentElement !== panel) return null;
+    if (!outer || outer.parentElement !== root) return null;
+    return { panel: root, outer: outer };
+  };
 
-    function collectEmpties() {
-      let empties = [];
-      let sib = outer.nextElementSibling;
-      while (sib) {
-        let inner = sib.querySelector(":scope > .vuOknd");
-        if (inner && inner.classList.contains("oBBKec")) {
-          empties.push(inner);
-        }
-        sib = sib.nextElementSibling;
+  window.remixCollectBlenderEmpties = function remixCollectBlenderEmpties(panel) {
+    const ctx = window.remixBlenderPeacefulOuter(panel);
+    if (!ctx) return [];
+    const empties = [];
+    let sib = ctx.outer.nextElementSibling;
+    while (sib) {
+      const inner = sib.querySelector(":scope > .vuOknd");
+      if (inner && inner.classList.contains("oBBKec")) {
+        empties.push(inner);
       }
-      return empties;
+      sib = sib.nextElementSibling;
     }
+    return empties;
+  };
 
-    let empties = collectEmpties();
-    let templateOuter = outer.nextElementSibling;
-    // Prefer cloning a still-empty sibling; fall back to Peaceful's outer shell.
-    if (!templateOuter) templateOuter = outer;
-    while (empties.length < need) {
-      let clone = templateOuter.cloneNode(true);
-      let inner = clone.querySelector(".vuOknd") || clone;
+  window.remixEnsureBlenderCapacity = function remixEnsureBlenderCapacity(
+    minEmptySlots
+  ) {
+    const need = typeof minEmptySlots === "number" ? minEmptySlots : 1;
+    const ctx = window.remixBlenderPeacefulOuter();
+    if (!ctx) return null;
+    const panel = ctx.panel;
+    const outer = ctx.outer;
+
+    let empties = window.remixCollectBlenderEmpties(panel);
+    let templateOuter = outer.nextElementSibling || outer;
+    let guard = 0;
+    while (empties.length < need && guard++ < 24) {
+      const clone = templateOuter.cloneNode(true);
+      const inner = clone.querySelector(".vuOknd") || clone;
       if (inner) {
         inner.removeAttribute("id");
         inner.className = "vuOknd oBBKec";
@@ -19510,50 +19508,40 @@ window.RemixMod.runCodeBefore = function () {
         inner.removeAttribute("tabindex");
       }
       panel.appendChild(clone);
-      empties = collectEmpties();
-      if (empties.length === 0) break;
+      empties = window.remixCollectBlenderEmpties(panel);
     }
-
-    // Invalidate slot cache so claimPeacefulFollowSlot rescans.
-    window.remixBlenderSlots = null;
-    return collectEmpties();
+    return empties;
   };
 
-  window.claimPeacefulFollowSlot = function claimPeacefulFollowSlot(slotIndex) {
-    let panel = document.querySelector(".PWIidc");
-    if (!panel) return null;
-
-    // Ensure Cat (slot 3) + a couple spares exist before first claim.
-    if (
-      typeof window.remixEnsureBlenderCapacity === "function" &&
-      (!window.remixBlenderSlots || window.remixBlenderSlots.panel !== panel)
-    ) {
-      window.remixEnsureBlenderCapacity(7);
-    }
-
-    let cached = window.remixBlenderSlots;
-    if (!cached || cached.panel !== panel) {
-      let peacefulImg = panel.querySelector('img[src$="trophy_21.png"]');
-      if (!peacefulImg) return null;
-      let outer =
-        (peacefulImg.closest &&
-          peacefulImg.closest(".vuOknd") &&
-          peacefulImg.closest(".vuOknd").parentElement) ||
-        (peacefulImg.parentElement && peacefulImg.parentElement.parentElement);
-      if (!outer || outer.parentElement !== panel) return null;
-      let empties = [];
-      let sib = outer.nextElementSibling;
-      while (sib) {
-        let inner = sib.querySelector(":scope > .vuOknd");
-        if (inner && inner.classList.contains("oBBKec")) {
-          empties.push(inner);
-        }
-        sib = sib.nextElementSibling;
+  // Drop unused empty placeholders so they do not show as holes in the grid.
+  window.remixCompactBlenderEmpties = function remixCompactBlenderEmpties(
+    keepSpare
+  ) {
+    const keep = typeof keepSpare === "number" ? keepSpare : 0;
+    const ctx = window.remixBlenderPeacefulOuter();
+    if (!ctx) return 0;
+    const empties = window.remixCollectBlenderEmpties(ctx.panel);
+    let removed = 0;
+    for (let i = keep; i < empties.length; i++) {
+      const inner = empties[i];
+      const shell = inner.parentElement;
+      if (shell && shell.parentElement === ctx.panel && shell !== ctx.outer) {
+        shell.remove();
+        removed++;
+      } else if (inner.parentElement === ctx.panel) {
+        inner.remove();
+        removed++;
       }
-      cached = window.remixBlenderSlots = { panel: panel, slots: empties };
     }
+    return removed;
+  };
 
-    return cached.slots[slotIndex] || null;
+  window.claimPeacefulFollowSlot = function claimPeacefulFollowSlot(_slotIndex) {
+    if (typeof window.remixEnsureBlenderCapacity === "function") {
+      window.remixEnsureBlenderCapacity(1);
+    }
+    const empties = window.remixCollectBlenderEmpties();
+    return empties[0] || null;
   };
 
   window.populateRemixBlenderSlot = function populateRemixBlenderSlot(opts) {
@@ -19660,6 +19648,10 @@ window.RemixMod.runCodeAfter = function () {
   window.BurgerMod.runCodeAfter && window.BurgerMod.runCodeAfter();
   window.CatMod.runCodeAfter && window.CatMod.runCodeAfter();
   window.MexicoMod.runCodeAfter && window.MexicoMod.runCodeAfter();
+  // Remove leftover empty placeholders so Cat/Mexico sit flush after Burger.
+  if (typeof window.remixCompactBlenderEmpties === "function") {
+    window.remixCompactBlenderEmpties(0);
+  }
   window.RemixSpeedInfo.runCodeAfter && window.RemixSpeedInfo.runCodeAfter();
   window.PauseMod.runCodeAfter && window.PauseMod.runCodeAfter();
   window.HamiltonRemix.runCodeAfter && window.HamiltonRemix.runCodeAfter();
@@ -19668,6 +19660,9 @@ window.RemixMod.runCodeAfter = function () {
   window.remixOrganizeSettings();
   setTimeout(function () {
     window.remixOrganizeSettings();
+    if (typeof window.remixCompactBlenderEmpties === "function") {
+      window.remixCompactBlenderEmpties(0);
+    }
   }, 0);
 
   let modIndicator = document.createElement("div");

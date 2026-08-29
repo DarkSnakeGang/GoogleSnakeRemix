@@ -67,9 +67,6 @@ window.MexicoMod.runCodeBefore = function () {
   window.add_mexico_blender_toggle = function add_mexico_blender_toggle() {
     if (document.getElementById("remix-mexico-blend")) return;
     if (!window.populateRemixBlenderSlot) return;
-    if (typeof window.remixEnsureBlenderCapacity === "function") {
-      window.remixEnsureBlenderCapacity(7);
-    }
     window.populateRemixBlenderSlot({
       id: "remix-mexico-blend",
       slotIndex: 4,
