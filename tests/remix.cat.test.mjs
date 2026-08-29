@@ -49,7 +49,8 @@ describe("Cat Mode (offline)", () => {
     assert.match(remix, /remixEnsureBlenderCapacity/);
     assert.match(remix, /remixCompactBlenderEmpties/);
     assert.match(remix, /remixCollectBlenderEmpties/);
-    assert.doesNotMatch(remix, /gridTemplateColumns\s*=\s*"repeat\(6,/);
+    assert.match(remix, /remixFitBlenderModeGrid/);
+    assert.match(remix, /gridTemplateColumns\s*=\s*"repeat\(6,/);
     assert.match(remix, /window\.CatMod\.runCodeBefore/);
     assert.match(remix, /window\.CatMod\.alterSnakeCode/);
     // Speed Info must not be CSS-hidden or binned.
@@ -337,8 +338,8 @@ describe("Cat Mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(ui.inBin, false, JSON.stringify(ui));
       assert.notEqual(ui.wrapDisplay, "none", JSON.stringify(ui));
       assert.notEqual(ui.cbDisplay, "none", JSON.stringify(ui));
-      // Do not force a 6-column blender grid (that caused sparse holes).
-      assert.equal(ui.grid, "", JSON.stringify(ui));
+      // 6 columns so Cat/Mexico fit in the stock viewport (no scroll / clip).
+      assert.match(ui.grid || "", /repeat\(6/, JSON.stringify(ui));
 
       assert.deepEqual(
         h.modErrors().filter((e) => !/CatMod: failed to find/.test(e.text)),

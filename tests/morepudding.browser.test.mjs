@@ -188,7 +188,7 @@ describe("MorePudding base (browser)", { skip: !runBrowser }, () => {
       assert.equal(slots.cat, slots.burger + 1, JSON.stringify(slots));
       assert.equal(slots.mexico, slots.cat + 1, JSON.stringify(slots));
       assert.equal(slots.empties, 0, JSON.stringify(slots));
-      assert.equal(slots.forcedGrid, "", JSON.stringify(slots));
+      assert.match(slots.forcedGrid || "", /repeat\(6/, JSON.stringify(slots));
     } finally {
       await h.close();
     }

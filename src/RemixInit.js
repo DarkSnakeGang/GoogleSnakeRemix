@@ -898,6 +898,20 @@ window.RemixMod.runCodeBefore = function () {
   };
 
   // Drop unused empty placeholders so they do not show as holes in the grid.
+  // Pack into 6 columns so Candy…Mexico still fit in the stock 5-row viewport
+  // (5 columns overflows into a clipped 6th row). No scrolling.
+  window.remixFitBlenderModeGrid = function remixFitBlenderModeGrid(panel) {
+    const root = panel || document.querySelector(".PWIidc");
+    if (!root) return false;
+    try {
+      root.style.gridTemplateColumns = "repeat(6, minmax(0, 1fr))";
+      root.style.overflow = "hidden";
+    } catch (_e) {
+      return false;
+    }
+    return true;
+  };
+
   window.remixCompactBlenderEmpties = function remixCompactBlenderEmpties(
     keepSpare
   ) {
@@ -917,6 +931,7 @@ window.RemixMod.runCodeBefore = function () {
         removed++;
       }
     }
+    window.remixFitBlenderModeGrid(ctx.panel);
     return removed;
   };
 
@@ -1033,8 +1048,11 @@ window.RemixMod.runCodeAfter = function () {
   window.CatMod.runCodeAfter && window.CatMod.runCodeAfter();
   window.MexicoMod.runCodeAfter && window.MexicoMod.runCodeAfter();
   // Remove leftover empty placeholders so Cat/Mexico sit flush after Burger.
+  // Also pack to 6 columns so the extra modes fit without a clipped 6th row.
   if (typeof window.remixCompactBlenderEmpties === "function") {
     window.remixCompactBlenderEmpties(0);
+  } else if (typeof window.remixFitBlenderModeGrid === "function") {
+    window.remixFitBlenderModeGrid();
   }
   window.RemixSpeedInfo.runCodeAfter && window.RemixSpeedInfo.runCodeAfter();
   window.PauseMod.runCodeAfter && window.PauseMod.runCodeAfter();
