@@ -31,7 +31,10 @@ describe("Bomb Fruit mode (offline)", () => {
     assert.match(init, /bombFruit_after_respawn\(a,g\)/);
     assert.match(init, /bombFruit_after_respawn\(a\.wa,0\)/);
     assert.match(init, /bombFruit_win_if_empty/);
-    assert.match(init, /Win requires BOTH/);
+    assert.match(init, /bombFruit_clear_shields/);
+    assert.match(init, /b===15&&window\.BOMB_FRUIT_MODE/);
+    assert.match(init, /game\.ub\s*=\s*true/);
+    assert.match(init, /same end state as Shield/);
 
     for (const [name, body] of [
       ["Remix", remix],
@@ -49,6 +52,8 @@ describe("Bomb Fruit mode (offline)", () => {
       );
       assert.match(body, /bombFruit_sync_fruit_bombs/, name + " eat detach");
       assert.match(body, /__bombFruitOrphans/, name + " orphan list");
+      assert.match(body, /b===15&&window\.BOMB_FRUIT_MODE/, name + " shield e7");
+      assert.match(body, /bombFruit_clear_shields/, name + " no shield bars");
     }
   });
 
@@ -410,13 +415,37 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
         window.CurrentModeNum = mode;
         const g = window.__remixGame;
         g.settings.ob = mode;
+        g.settings.ub = mode;
         window.bombFruit_reset_state();
         window.__bombFruitBootstrapped = true;
         const mgr = g.wa;
         window.bombFruit_init_all(mgr);
 
-        // Spawn fail with siblings still present → no win.
+        // Shield physics via e7(...,15): Rb(...,2) must ban Manhattan ≤3.
         const head = g.oa.ka[0];
+        head.x = 8;
+        head.y = 7;
+        const free =
+          typeof g.Rb === "function"
+            ? g.Rb.bind(g)
+            : typeof g.Tb === "function"
+              ? g.Tb.bind(g)
+              : null;
+        const dists = [];
+        if (free) {
+          for (let i = 0; i < 30; i++) {
+            const p = free(null, 2);
+            if (!p) continue;
+            dists.push(Math.abs(p.x - head.x) + Math.abs(p.y - head.y));
+          }
+        }
+        const shieldRadius =
+          dists.length > 0 && dists.every((d) => d > 3);
+
+        window.bombFruit_clear_shields(mgr);
+        const noBars = mgr.ka.every((a) => !a || a.nba == null);
+
+        // Spawn fail with siblings still present → no win.
         head.x = 0;
         head.y = 0;
         const origFind = window.bombFruit_find_spawn;
@@ -425,21 +454,104 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
         const afterSiblings = {
           n: mgr.ka.length,
           nj: !!g.nj,
-          lj: !!g.lj,
+          ub: !!g.ub,
         };
 
-        // Empty board + spawn fail → win.
+        // Empty board + spawn fail → native-style win (ub+nj).
         mgr.ka.length = 0;
         window.appleArray = mgr.ka;
         g.nj = false;
-        g.lj = false;
+        g.ub = false;
         const wonEmpty = window.bombFruit_win_if_empty(g, mgr);
         window.bombFruit_find_spawn = origFind;
-        return { afterSiblings, wonEmpty, nj: !!g.nj };
+        return {
+          shieldRadius,
+          minDist: dists.length ? Math.min(...dists) : null,
+          noBars,
+          afterSiblings,
+          wonEmpty,
+          nj: !!g.nj,
+          ub: !!g.ub,
+        };
       });
+      assert.equal(r.shieldRadius, true, "Rb bans ≤3: " + JSON.stringify(r));
+      assert.equal(r.noBars, true, "no shield bars: " + JSON.stringify(r));
       assert.equal(r.afterSiblings.n, 2, "siblings kept: " + JSON.stringify(r));
       assert.equal(r.afterSiblings.nj, false, "no win with fruit left: " + JSON.stringify(r));
       assert.equal(r.wonEmpty, true, JSON.stringify(r));
+      assert.equal(r.nj, true, JSON.stringify(r));
+      assert.equal(r.ub, true, "win needs ub: " + JSON.stringify(r));
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("native free-cell radius matches Shield; empty board wins", async () => {
+    const { COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launch("RemixMod.js", 118);
+    try {
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.SMALL });
+      const r = await h.page.evaluate(() => {
+        const mode = window.BOMB_FRUIT_MODE;
+        window.CurrentModeNum = mode;
+        const g = window.__remixGame;
+        g.settings.ob = mode;
+        g.settings.ub = mode;
+        window.bombFruit_reset_state();
+        window.__bombFruitBootstrapped = true;
+        const mgr = g.wa;
+        const head = g.oa.ka[0];
+        head.x = 5;
+        head.y = 4;
+
+        const free =
+          typeof g.Rb === "function"
+            ? g.Rb.bind(g)
+            : typeof g.Tb === "function"
+              ? g.Tb.bind(g)
+              : null;
+        const on = [];
+        for (let i = 0; i < 25 && free; i++) {
+          const p = free(null, 2);
+          if (p) on.push(Math.abs(p.x - head.x) + Math.abs(p.y - head.y));
+        }
+
+        g.settings.ub = 0;
+        const off = [];
+        for (let i = 0; i < 25 && free; i++) {
+          const p = free(null, 2);
+          if (p) off.push(Math.abs(p.x - head.x) + Math.abs(p.y - head.y));
+        }
+        g.settings.ub = mode;
+
+        // Soft find also refuses near-head cells.
+        mgr.ka.length = 1;
+        mgr.ka[0].pos.x = head.x;
+        mgr.ka[0].pos.y = head.y;
+        const softNear = window.bombFruit_find_spawn(mgr, 0);
+        const softOk =
+          !softNear ||
+          Math.abs(softNear.x - head.x) + Math.abs(softNear.y - head.y) > 3;
+
+        mgr.ka.length = 0;
+        window.appleArray = mgr.ka;
+        g.nj = false;
+        g.ub = false;
+        const won = window.bombFruit_win_if_empty(g, mgr);
+        return {
+          onMin: on.length ? Math.min(...on) : null,
+          offMin: off.length ? Math.min(...off) : null,
+          softOk,
+          won,
+          ub: !!g.ub,
+          nj: !!g.nj,
+        };
+      });
+      assert.ok(r.onMin != null && r.onMin > 3, "bomb on: " + JSON.stringify(r));
+      assert.ok(r.offMin != null && r.offMin <= 3, "classic off: " + JSON.stringify(r));
+      assert.equal(r.softOk, true, JSON.stringify(r));
+      assert.equal(r.won, true, JSON.stringify(r));
+      assert.equal(r.ub, true, JSON.stringify(r));
       assert.equal(r.nj, true, JSON.stringify(r));
     } finally {
       await h.close();

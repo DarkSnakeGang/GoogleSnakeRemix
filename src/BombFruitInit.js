@@ -294,15 +294,32 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     }
   };
 
+  /** Strip Shield bars — Bomb Fruit only borrows e7(...,15) spawn physics. */
+  window.bombFruit_clear_shields = function bombFruit_clear_shields(mgr) {
+    const list = (mgr && mgr.ka) || window.appleArray;
+    if (!list) return;
+    for (let i = 0; i < list.length; i++) {
+      if (list[i]) list[i].nba = undefined;
+    }
+  };
+
+  /**
+   * Native Shield win flags: ub+nj (nj alone is death). Prefer s5E.WIN.
+   */
   window.bombFruit_trigger_win = function bombFruit_trigger_win(game) {
     if (!game) return;
-    if (game.nj || game.lj) return;
+    if (game.nj) return;
     try {
-      if (typeof Q4E !== "undefined" && Q4E.rWd && Q4E.rWd.play) Q4E.rWd.play();
+      const winBank =
+        (typeof s5E !== "undefined" && s5E) || window.__bombFruitS5E;
+      if (winBank && winBank.WIN && winBank.WIN.play) winBank.WIN.play();
+      else if (typeof Q4E !== "undefined" && Q4E.rWd && Q4E.rWd.play)
+        Q4E.rWd.play();
       else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
     } catch (_e) {}
+    // Match native r7E===0 win: ub + nj (not lj / not nj-only death).
+    game.ub = true;
     game.nj = true;
-    game.lj = true;
     try {
       const score = game.Sh != null ? game.Sh : game.Oh;
       if (typeof A7E === "function") A7E(game.menu, 1400, score);
@@ -311,11 +328,12 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   };
 
   /**
-   * Win requires BOTH: a needed spawn could not place, AND no fruit remains.
+   * Win when the board is empty after a needed spawn could not place
+   * (same end state as Shield when Vm/Rb fails on the last apple).
    * Spawn failure alone while siblings exist is not a win — keep playing.
    */
   window.bombFruit_win_if_empty = function bombFruit_win_if_empty(game, mgr) {
-    if (!game || (game.nj || game.lj)) return false;
+    if (!game || game.nj) return false;
     if (!mgr || !mgr.ka || mgr.ka.length > 0) return false;
     window.bombFruit_trigger_win(game);
     return true;
@@ -674,7 +692,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   window.bombFruit_tick_logic = function bombFruit_tick_logic(game) {
     if (!window.isBombFruitActive || !window.isBombFruitActive()) return;
     const g = game || window.__remixGame;
-    if (!g || g.nj || g.lj) return;
+    if (!g || g.nj) return;
     const mgr = g.wa;
     if (!mgr || !mgr.ka) return;
 
@@ -682,7 +700,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       window.__bombFruitBootstrapped = true;
       window.__bombFruitOrphans = [];
       // Capture native freePos early (eat path also sets these) so boom
-      // spawns use d4E(..., 2) shield head radius without waiting for an eat.
+      // spawns use d4E(..., 2) with e7(...,15) Shield head radius.
       try {
         if (typeof g7 === "function") window.__bombFruitMakeApple = g7;
         if (typeof d4E === "function") window.__bombFruitFreePos = d4E;
@@ -692,6 +710,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       // Spawn radius applies only to new fruits (eat / boom refill).
       window.bombFruit_init_all(mgr);
       window.bombFruit_sync_fruit_bombs(mgr);
+      window.bombFruit_clear_shields(mgr);
     }
 
     // Eat cleared the last fruit and refill failed → empty board = win.
@@ -702,12 +721,14 @@ window.BombFruitMod.alterSnakeCode = function (code) {
 
     // Eat reuses apple objects — detach armed bombs before ticking them.
     window.bombFruit_sync_fruit_bombs(mgr);
+    // Vm/c4E may re-attach nba while e7(...,15) is on — never show Shield bars.
+    window.bombFruit_clear_shields(mgr);
 
     const head = g.oa && g.oa.ka && g.oa.ka[0];
     if (!head) return;
 
     window.bombFruit_tick_orphans(g);
-    if (g.nj || g.lj) return;
+    if (g.nj) return;
 
     // Snapshot indices; explode may splice.
     for (let i = mgr.ka.length - 1; i >= 0; i--) {
@@ -861,9 +882,43 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     } else {
       window.bombFruit_init_all(mgr);
     }
+    // e7(...,15) assigns nba on spawn — strip visuals immediately.
+    window.bombFruit_clear_shields(mgr);
     // Refill produced nothing and nothing remains → win.
     window.bombFruit_win_if_empty(game, mgr);
   };
+
+  // --- Borrow Shield spawn radius via e7(...,15); strip nba so no bars. ---
+  // Native Rb only bans Manhattan ≤3 when e7(settings,15)&&radiusFlag===2.
+  // Chess already ORs Chess into b===15; Mexico ends the e7 chain — append here.
+  if (
+    !bfReplace(
+      "e7 shield spawn physics",
+      /if\(!r&&b===2&&window\.isMexicoActive&&window\.isMexicoActive\(\)\)return!0;if\(!r&&b===1&&window\.isMexicoActive&&window\.isMexicoActive\(\)\)return!0;return r\}/,
+      "if(!r&&b===2&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===1&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.ub===window.BOMB_FRUIT_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BOMB_FRUIT_MODE))return!0;}return r}"
+    )
+  ) {
+    bfReplace(
+      "e7 shield spawn physics fallback",
+      /if\(!r&&b===21&&window\.isCatActive&&window\.isCatActive\(\)&&\(window\.cat_peaceful_ticks\|0\)>0\)return!0;return r\}/,
+      "if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.ub===window.BOMB_FRUIT_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BOMB_FRUIT_MODE))return!0;}return r}"
+    );
+  }
+
+  // After reset P3E shield bars: strip them when Bomb Fruit is on.
+  if (
+    !bfReplace(
+      "reset clear shields after cat",
+      /if\(window\.isCatActive&&window\.isCatActive\(\)\)\{try\{window\.cat_reset_state\(\);\}catch\(_cat\)\{\}\}/,
+      'if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_clear_shields(this);}catch(_bf){}}'
+    )
+  ) {
+    bfReplace(
+      "reset clear shields after burger",
+      /if\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{console\.error\("BurgerMod: reset failed",_be\);\}\}/,
+      'if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_clear_shields(this);}catch(_bf){}}'
+    );
+  }
 
   // --- Draw: D5E is only invoked when Minesweeper (e7 12) is on. Also call
   // it for Bomb Fruit so fruit radii render without enabling real mines.
@@ -906,21 +961,28 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     );
   }
 
-  // j4E runs for every count (1/3/5/10/dice/bomb/tally): sync board after eat
-  // without mass-disarming (added=0). Mexico may already have comma-patched j4E.
+  // j4E / portal twin path: sync after eat even when the board is empty so a
+  // failed last-pair spawn can still trip the empty-board win.
   if (
     !bfReplace(
       "j4E bomb fruit after mexico",
       /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&a\.wa\.ka\.length>0&&\(window\.mexico_constrain_new_apples\(a\.wa,a\.wa\.ka\.length\),0\)/,
-      "j4E(a.wa,k,d,a.Vm.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.wa.ka.length>0&&(window.mexico_constrain_new_apples(a.wa,a.wa.ka.length),0),window.isBombFruitActive&&window.isBombFruitActive()&&a.wa.ka.length>0&&(window.bombFruit_after_respawn(a.wa,0),0)"
+      "j4E(a.wa,k,d,a.Vm.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.wa.ka.length>0&&(window.mexico_constrain_new_apples(a.wa,a.wa.ka.length),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0),0)"
     )
   ) {
     bfReplace(
       "j4E bomb fruit",
       /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\)/,
-      "j4E(a.wa,k,d,a.Vm.bind(a)),window.isBombFruitActive&&window.isBombFruitActive()&&a.wa.ka.length>0&&(window.bombFruit_after_respawn(a.wa,0),0)"
+      "j4E(a.wa,k,d,a.Vm.bind(a)),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0),0)"
     );
   }
+
+  // Classic Vm fail splices the eaten apple — after that, empty board = Shield win.
+  bfReplace(
+    "splice empty win after chess portal",
+    /\(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\)\)/,
+    "(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0),0))"
+  );
 
   // Tick after Mexico.
   if (
