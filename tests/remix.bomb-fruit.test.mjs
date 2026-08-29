@@ -30,8 +30,8 @@ describe("Bomb Fruit mode (offline)", () => {
     assert.match(init, /bombFruit_orphan_boom/);
     assert.match(init, /bombFruit_after_respawn\(a,g\)/);
     assert.match(init, /bombFruit_after_respawn\(a\.wa,0\)/);
-    assert.match(init, /__bombFruitAppleSnap/);
-    assert.match(init, /bombFruit_forget_apple/);
+    assert.match(init, /bombFruit_win_if_empty/);
+    assert.match(init, /Win requires BOTH/);
 
     for (const [name, body] of [
       ["Remix", remix],
@@ -395,6 +395,52 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(r.orphan.y, r.old.y, JSON.stringify(r));
       assert.equal(r.orphan.ticks, 3, JSON.stringify(r));
       assert.equal(r.fruitBomb, -1, JSON.stringify(r));
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("wins only when spawn fails and no fruit remain", async () => {
+    const { COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launch("RemixMod.js", 117);
+    try {
+      await h.start({ mode: "classic", count: COUNT.THREE, size: SIZE.NORMAL });
+      const r = await h.page.evaluate(() => {
+        const mode = window.BOMB_FRUIT_MODE;
+        window.CurrentModeNum = mode;
+        const g = window.__remixGame;
+        g.settings.ob = mode;
+        window.bombFruit_reset_state();
+        window.__bombFruitBootstrapped = true;
+        const mgr = g.wa;
+        window.bombFruit_init_all(mgr);
+
+        // Spawn fail with siblings still present → no win.
+        const head = g.oa.ka[0];
+        head.x = 0;
+        head.y = 0;
+        const origFind = window.bombFruit_find_spawn;
+        window.bombFruit_find_spawn = () => null;
+        window.bombFruit_explode(g, mgr, 0);
+        const afterSiblings = {
+          n: mgr.ka.length,
+          nj: !!g.nj,
+          lj: !!g.lj,
+        };
+
+        // Empty board + spawn fail → win.
+        mgr.ka.length = 0;
+        window.appleArray = mgr.ka;
+        g.nj = false;
+        g.lj = false;
+        const wonEmpty = window.bombFruit_win_if_empty(g, mgr);
+        window.bombFruit_find_spawn = origFind;
+        return { afterSiblings, wonEmpty, nj: !!g.nj };
+      });
+      assert.equal(r.afterSiblings.n, 2, "siblings kept: " + JSON.stringify(r));
+      assert.equal(r.afterSiblings.nj, false, "no win with fruit left: " + JSON.stringify(r));
+      assert.equal(r.wonEmpty, true, JSON.stringify(r));
+      assert.equal(r.nj, true, JSON.stringify(r));
     } finally {
       await h.close();
     }

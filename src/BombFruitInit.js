@@ -274,6 +274,17 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     } catch (_e2) {}
   };
 
+  /**
+   * Win requires BOTH: a needed spawn could not place, AND no fruit remains.
+   * Spawn failure alone while siblings exist is not a win — keep playing.
+   */
+  window.bombFruit_win_if_empty = function bombFruit_win_if_empty(game, mgr) {
+    if (!game || (game.nj || game.lj)) return false;
+    if (!mgr || !mgr.ka || mgr.ka.length > 0) return false;
+    window.bombFruit_trigger_win(game);
+    return true;
+  };
+
   window.bombFruit_find_spawn = function bombFruit_find_spawn(mgr, excludeIdx) {
     const board = mgr && mgr.oa;
     const game = window.__remixGame;
@@ -346,15 +357,11 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       if (ok) continue;
       const pos = window.bombFruit_find_spawn(mgr, i);
       if (!pos) {
-        // Can't legally keep this apple — drop it. Win only if none remain
-        // (so 3/5/10/dice/bomb/tally don't false-win while siblings exist).
+        // Can't legally keep this apple — drop it. Win only if none remain.
         mgr.ka.splice(i, 1);
         i--;
         window.appleArray = mgr.ka;
-        if (!mgr.ka.length) {
-          window.bombFruit_trigger_win(game);
-          return false;
-        }
+        if (window.bombFruit_win_if_empty(game, mgr)) return false;
         continue;
       }
       const oldKey =
@@ -564,13 +571,13 @@ window.BombFruitMod.alterSnakeCode = function (code) {
 
     const spawn = window.bombFruit_find_spawn(mgr, null);
     if (!spawn) {
-      // Multi-count: keep remaining fruit; win only when the board is empty.
-      if (mgr.ka.length === 0) window.bombFruit_trigger_win(game);
+      // Needed refill failed — win only with no siblings left on the board.
+      window.bombFruit_win_if_empty(game, mgr);
       return;
     }
     const neu = window.bombFruit_make_apple_at(mgr, spawn, apple);
     if (!neu) {
-      if (mgr.ka.length === 0) window.bombFruit_trigger_win(game);
+      window.bombFruit_win_if_empty(game, mgr);
       return;
     }
     // makeApple must not wipe siblings — re-assert others then append.
@@ -649,6 +656,12 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       // Spawn radius applies only to new fruits (eat / boom refill).
       window.bombFruit_init_all(mgr);
       window.bombFruit_sync_fruit_bombs(mgr);
+    }
+
+    // Eat cleared the last fruit and refill failed → empty board = win.
+    if (!mgr.ka.length) {
+      window.bombFruit_win_if_empty(g, mgr);
+      return;
     }
 
     // Eat reuses apple objects — detach armed bombs before ticking them.
@@ -783,6 +796,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     if (!window.isBombFruitActive || !window.isBombFruitActive()) return;
     if (!mgr) return;
     window.bombFruit_sync_fruit_bombs(mgr);
+    const game = window.__remixGame;
     const n = added | 0;
     if (n > 0 && mgr.ka) {
       const start = Math.max(0, mgr.ka.length - n);
@@ -811,6 +825,8 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     } else {
       window.bombFruit_init_all(mgr);
     }
+    // Refill produced nothing and nothing remains → win.
+    window.bombFruit_win_if_empty(game, mgr);
   };
 
   // --- Draw: D5E is only invoked when Minesweeper (e7 12) is on. Also call
