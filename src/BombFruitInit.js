@@ -629,9 +629,9 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     return dup;
   };
 
+  /** Mirror native y6E: clear queued turn / direction lock. */
   window.bombFruit_inlineY6E = function bombFruit_inlineY6E(snake) {
     if (!snake) return;
-    // Mirror native y6E(snake): clear queued turn / direction lock.
     try {
       snake.yb = "NONE";
       snake.Qb = false;
@@ -643,13 +643,15 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   };
 
   /**
-   * Same kill sequence A6E uses for mines:
+   * Minesweeper A6E kill pose:
    *   s5E.Ktc.play(), Ub(), y6E(snake), snake.Ka=0, Dc()
-   * Ka=0 skips the Oa() crumple (Ka 3→2→1 body-shift). Also freeze the
-   * idle head blink (R6E + Ub=0) so death doesn't keep "looping" the face.
+   * Also lock Ca=direction after y6E so a turn on the last living tick
+   * does not leave the head oscillating between old and new facing.
    */
   window.bombFruit_mineStyleDeath = function bombFruit_mineStyleDeath(game) {
     if (!game || game.nj) return;
+    window.__bombFruitZones = [];
+    window.__bombFruitOrphans = [];
     try {
       const deathBank =
         (typeof s5E !== "undefined" && s5E) || window.__bombFruitS5E;
@@ -666,16 +668,12 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       window.bombFruit_inlineY6E(snake);
     }
     if (snake) {
-      snake.Ka = 0;
+      // Lock facing after turn ticks (A6E does not do this — Bomb Fruit needs it).
       try {
-        snake.Ub = 0;
-        snake.Zb = 0;
-        if (typeof R6E === "function") R6E(snake);
-      } catch (_r) {}
+        snake.Ca = snake.direction;
+      } catch (_ca) {}
+      snake.Ka = 0;
     }
-    // Stop any leftover armed pulses from animating under the death screen.
-    window.__bombFruitZones = [];
-    window.__bombFruitOrphans = [];
     try {
       if (typeof game.Dc === "function") game.Dc();
       else {

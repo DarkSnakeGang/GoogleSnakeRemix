@@ -36,6 +36,8 @@ describe("Bomb Fruit mode (offline)", () => {
     assert.match(init, /bombFruit_ensure_zone/);
     assert.match(init, /bombFruit_plant_layout_zones/);
     assert.match(init, /BOMB_FRUIT_ZONE_LINGER/);
+    assert.match(init, /snake\.Ca\s*=\s*snake\.direction/);
+    assert.match(init, /y6E\(snake\)/);
     assert.match(init, /isBombFruitActive\(\)\?1:Math\.min\(1,\(h\.xL\+f\)\/2\)/);
     assert.match(init, /b===15&&window\.BOMB_FRUIT_MODE/);
     assert.match(init, /game\.ub\s*=\s*true/);
@@ -299,6 +301,9 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
           ),
           active: window.isBombFruitActive(),
           finalX1a: apple.bombX1a,
+          deathKa: game.oa ? game.oa.Ka | 0 : -1,
+          deathCa: game.oa ? game.oa.Ca : null,
+          deathDir: game.oa ? game.oa.direction : null,
         };
       });
       assert.equal(r.hasTrophy, true, JSON.stringify(r));
@@ -307,6 +312,61 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(r.cheb, 1);
       assert.equal(r.armed, 4, "should arm to 4 on enter: " + JSON.stringify(r));
       assert.equal(r.died, true, "in-radius boom should kill: " + JSON.stringify(r));
+      assert.equal(
+        r.deathKa,
+        0,
+        "A6E mine kill Ka=0: " + JSON.stringify(r)
+      );
+      assert.equal(
+        r.deathCa,
+        r.deathDir,
+        "facing locked Ca===direction: " + JSON.stringify(r)
+      );
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("mine death after a turn tick locks Ca to direction", async () => {
+    const { COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launch("RemixMod.js", 132);
+    try {
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
+      const r = await h.page.evaluate(() => {
+        const mode = window.BOMB_FRUIT_MODE;
+        window.CurrentModeNum = mode;
+        const g = window.__remixGame;
+        g.settings.ub = mode;
+        g.settings.ob = mode;
+        window.bombFruit_reset_state();
+        window.__bombFruitBootstrapped = true;
+        g.nj = false;
+        g.ub = false;
+        const snake = g.oa;
+        // Simulate last living tick was a turn: direction updated, Ca still old.
+        snake.direction = "DOWN";
+        snake.Ca = "RIGHT";
+        snake.Ga = "NONE";
+        snake.yb = "NONE";
+        snake.Qb = false;
+        window.bombFruit_mineStyleDeath(g);
+        return {
+          nj: !!g.nj,
+          Ka: snake.Ka | 0,
+          direction: snake.direction,
+          Ca: snake.Ca,
+          freeze: !!window.__bombFruitDeathFreeze,
+          tickPatched: Function.prototype.toString
+            .call(g.tick)
+            .includes("__bombFruitDeathFreeze"),
+        };
+      });
+      assert.equal(r.nj, true, JSON.stringify(r));
+      assert.equal(r.Ka, 0, JSON.stringify(r));
+      assert.equal(r.Ca, r.direction, "turn-tick death locks facing: " + JSON.stringify(r));
+      assert.equal(r.direction, "DOWN", JSON.stringify(r));
+      assert.equal(r.freeze, false, JSON.stringify(r));
+      assert.equal(r.tickPatched, false, "no death-tick freeze patch: " + JSON.stringify(r));
     } finally {
       await h.close();
     }
