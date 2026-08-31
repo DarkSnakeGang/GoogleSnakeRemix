@@ -363,8 +363,15 @@ window.ChessMod.alterSnakeCode = function (code) {
 
   window.shield_all = function shield_all() {
     if (!window.appleArray) return;
-    // Peaceful / Cat grace: keep board unlocked so collision eats pieces.
-    if (window.chess_peaceful_active && window.chess_peaceful_active()) {
+    // Peaceful / Cat grace: unlock leftover pieces only when head is OPEN.
+    // While carrying a piece, keep full Chess locks regardless of peaceful.
+    const carrying =
+      !!window.head_state && window.head_state !== "OPEN";
+    if (
+      !carrying &&
+      window.chess_peaceful_active &&
+      window.chess_peaceful_active()
+    ) {
       window.shield_empty_all();
       return;
     }
@@ -386,9 +393,8 @@ window.ChessMod.alterSnakeCode = function (code) {
     });
   };
 
-  // Sc shield hit: under Peaceful/Cat, drop the lock so the same-tick eat can
-  // land instead of ghosting through (Sc is skipped entirely when e7(21), but
-  // Cat life-spend still enters Sc before grace flips Peaceful on).
+  // Sc shield hit: under Peaceful/Cat with OPEN head, drop the lock so the
+  // same-tick eat can land. While carrying, do not clear locks via peaceful.
   window.chess_shield_hit_absorb = function chess_shield_hit_absorb(
     game,
     fruit
@@ -396,11 +402,18 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (!fruit) return false;
     // Only chess piece locks — not Shield-badge fruit leftovers.
     if (!fruit.isPiece) return false;
-    if (window.chess_peaceful_active && window.chess_peaceful_active(game)) {
+    const carrying =
+      !!window.head_state && window.head_state !== "OPEN";
+    if (
+      !carrying &&
+      window.chess_peaceful_active &&
+      window.chess_peaceful_active(game)
+    ) {
       fruit[window.chess_shield_field || "nba"] = undefined;
       return true;
     }
     if (
+      !carrying &&
       window.isCatActive &&
       window.isCatActive() &&
       ((window.cat_peaceful_ticks | 0) > 0 || (window.cat_lives | 0) > 0)
@@ -421,8 +434,15 @@ window.ChessMod.alterSnakeCode = function (code) {
   window.chess_tick_logic = function chess_tick_logic() {
     if (!window.isChessActive()) return;
 
-    // Under Peaceful, skip the lock/unlock dance — pieces are normal pickups.
-    if (window.chess_peaceful_active && window.chess_peaceful_active()) {
+    const carrying =
+      !!window.head_state && window.head_state !== "OPEN";
+    // Peaceful: leftover pieces are edible pickups only when head is OPEN.
+    // Piece mode always runs the lock/unlock dance.
+    if (
+      !carrying &&
+      window.chess_peaceful_active &&
+      window.chess_peaceful_active()
+    ) {
       window.shield_empty_all();
       return;
     }
@@ -884,6 +904,8 @@ window.ChessMod.alterSnakeCode = function (code) {
 
   // Relocate an eaten piece identity to a different legal cell. Returns true
   // if a new apple was pushed onto mgr.ka.
+  // Does NOT remove the eaten apple — native eat splice owns that (splicing
+  // here would desync the eat index and drop the wrong apple).
   window.chess_respawn_eaten_piece = function chess_respawn_eaten_piece(
     snapshot,
     mgr
@@ -894,29 +916,54 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (!piece || (color !== "w" && color !== "b")) return false;
     const game = window.__remixGame;
     const board = mgr.oa;
-    const freePos =
-      typeof window.__chessFreePos === "function"
-        ? window.__chessFreePos
-        : typeof d4E === "function"
-          ? d4E
+    const eatenKey =
+      snapshot.pos && window.chess_pos_key
+        ? window.chess_pos_key(snapshot.pos)
+        : snapshot.pos
+          ? (snapshot.pos.x | 0) + "," + (snapshot.pos.y | 0)
           : null;
-    const occ = window.chess_occupied_keys(game, mgr.ka, new Set());
-    // Also ban the eaten cell explicitly (still in ka until native splice).
-    if (snapshot.pos) {
-      const ban = window.chess_pos_key(snapshot.pos);
-      if (ban != null) occ.add(ban);
-    }
-    const pos = window.chess_find_legal_spawn(board, freePos, occ, null);
-    if (!pos) return false;
-    if (
-      snapshot.pos &&
-      (pos.x | 0) === (snapshot.pos.x | 0) &&
-      (pos.y | 0) === (snapshot.pos.y | 0)
-    ) {
-      return false;
-    }
+    const sameCell = function (p) {
+      if (!p || !snapshot.pos) return false;
+      return (
+        (p.x | 0) === (snapshot.pos.x | 0) &&
+        (p.y | 0) === (snapshot.pos.y | 0)
+      );
+    };
 
-    const make = window.__chessMakeApple;
+    let pos = null;
+    // Slot leftovers (fruit/walls/bridges/soko): prefer slot_free_pos.
+    if (
+      window.isSlotMachineActive &&
+      window.isSlotMachineActive() &&
+      typeof window.slot_free_pos === "function"
+    ) {
+      for (let attempt = 0; attempt < 24 && !pos; attempt++) {
+        const p = window.slot_free_pos(mgr);
+        if (!p || p.x == null || p.y == null) break;
+        if (sameCell(p)) continue;
+        if (eatenKey && (p.x | 0) + "," + (p.y | 0) === eatenKey) continue;
+        pos = p;
+      }
+    }
+    if (!pos) {
+      const freePos =
+        typeof window.__chessFreePos === "function"
+          ? window.__chessFreePos
+          : typeof d4E === "function"
+            ? d4E
+            : null;
+      const occ = window.chess_occupied_keys(game, mgr.ka, new Set());
+      // Also ban the eaten cell explicitly (still in ka until native splice).
+      if (eatenKey != null) occ.add(eatenKey);
+      pos = window.chess_find_legal_spawn(board, freePos, occ, null);
+      if (pos && sameCell(pos)) pos = null;
+    }
+    if (!pos) return false;
+
+    const make =
+      window.__chessMakeApple ||
+      window.__bombFruitMakeApple ||
+      null;
     let dup = null;
     if (typeof make === "function") {
       try {
@@ -991,6 +1038,8 @@ window.ChessMod.alterSnakeCode = function (code) {
   // Law: eating a piece while already carrying.
   // Success relocating → keep current carry. Fail + opposite → exit.
   // Fail + same → become eaten piece; remove one random opposite for balance.
+  // Native eat splice always removes the eaten apple from its cell — this law
+  // must never re-plant at that cell on fail (relocate only pushes a *new* apple).
   window.chess_on_second_piece_eat = function chess_on_second_piece_eat(eaten) {
     if (!eaten || !eaten.isPiece) return;
     if (window.head_state === "OPEN") return;

@@ -84,10 +84,12 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /slot_has_sokoboxes/);
     assert.match(init, /slot_soko_resolve_body_overlaps/);
     assert.match(init, /slot_soko_pos_on_snake/);
+    assert.match(init, /slot_soko_pos_on_fruit/);
     assert.match(init, /slot_soko_snap_box_positions/);
     assert.match(init, /slot_U3E_guard/);
     assert.match(init, /slot_W4E_head_guard/);
-    assert.match(init, /Box pushed onto the snake body/);
+    assert.match(init, /Box on snake body or fruit/);
+    assert.match(init, /Native e5E ignores leftover fruit/);
     assert.match(init, /slot_has_bridges/);
     assert.match(init, /slot_has_gates/);
     assert.match(init, /slot_has_shields/);
@@ -97,6 +99,9 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /slot_snapshot_shield_nba_for_chess_lock/);
     assert.match(init, /slot_restore_shield_nba_after_chess_lock/);
     assert.match(init, /chess_peaceful_active/);
+    assert.match(init, /Peaceful unlocks leftovers only when head is OPEN/);
+    assert.match(init, /__chessMakeApple=g7/);
+    assert.match(init, /slot capture chess helpers on eat/);
     assert.match(init, /__slotNbaPrior/);
     assert.match(init, /Only while Shield is the active roll/);
     assert.match(init, /slot_g7_shield_gate/);
@@ -2158,6 +2163,112 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(result.afterRelocate.nearHead, false, JSON.stringify(result));
       assert.equal(result.boxesAfterFail, 0, JSON.stringify(result));
       assert.equal(result.won, true, JSON.stringify(result));
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("sokobox plant with leftover fruit never lands on fruit", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 61, headless: true });
+    try {
+      await h.start({
+        mode: "slot_machine",
+        count: COUNT.ONE,
+        size: SIZE.NORMAL,
+      });
+      const result = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        window.__remixGame = g;
+        window.CurrentModeNum = window.SLOT_MACHINE_MODE;
+        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.nj = false;
+        g.ub = false;
+        window.slot_reset_state();
+
+        try {
+          if (g.Aa && g.Aa.oa && g.Aa.oa.clear) g.Aa.oa.clear();
+          if (g.Aa && g.Aa.d_ && g.Aa.d_.clear) g.Aa.d_.clear();
+        } catch (_e) {}
+
+        // Keep fruit on the board while planting sokoban.
+        g.wa.ka.length = 0;
+        const fruitPos = { x: 10, y: 6 };
+        const fruit = window.slot_make_apple(g.wa, fruitPos);
+        fruit.Lh = true;
+        fruit.slotMode = 3;
+        g.wa.ka.push(fruit);
+        window.appleArray = g.wa.ka;
+
+        // Hostile native plant: always drops the box on the fruit cell.
+        window.__slotE5E = function (aa) {
+          aa.oa.add({
+            pos: window.slot_make_pos(fruitPos.x, fruitPos.y),
+            prev: null,
+            wm: true,
+            Lh: true,
+            sequenceNumber: 0,
+          });
+          aa.d_.add(window.slot_make_pos(fruitPos.x + 2, fruitPos.y));
+        };
+
+        const planted = window.slot_plant_special_unit(9, g);
+        const boxes = [];
+        try {
+          for (const b of g.Aa.oa) {
+            boxes.push({
+              x: b.pos && (b.pos.x | 0),
+              y: b.pos && (b.pos.y | 0),
+              onFruit: !!(
+                b &&
+                b.pos &&
+                window.slot_soko_pos_on_fruit(g, b.pos)
+              ),
+            });
+          }
+        } catch (_e2) {}
+
+        // Also cover the resolve path if a box is forced onto fruit later.
+        const forced = {
+          pos: window.slot_make_pos(fruitPos.x, fruitPos.y),
+          prev: null,
+          wm: true,
+          Lh: true,
+          sequenceNumber: 1,
+        };
+        g.Aa.oa.add(forced);
+        window.slot_soko_resolve_body_overlaps(g);
+        let forcedOnFruit = false;
+        try {
+          for (const b of g.Aa.oa) {
+            if (b === forced || (b.pos && (b.pos.x | 0) === fruitPos.x && (b.pos.y | 0) === fruitPos.y)) {
+              forcedOnFruit = window.slot_soko_pos_on_fruit(g, b.pos);
+            }
+          }
+          forcedOnFruit =
+            forcedOnFruit ||
+            [...g.Aa.oa].some(
+              (b) =>
+                b &&
+                b.pos &&
+                (b.pos.x | 0) === fruitPos.x &&
+                (b.pos.y | 0) === fruitPos.y
+            );
+        } catch (_e3) {}
+
+        return {
+          planted,
+          fruitLeft: g.wa.ka.length,
+          boxes,
+          anyOnFruit: boxes.some((b) => b.onFruit),
+          forcedStillOnFruit: forcedOnFruit,
+        };
+      });
+      assert.equal(result.planted, true, JSON.stringify(result));
+      assert.equal(result.fruitLeft, 1, JSON.stringify(result));
+      assert.ok(result.boxes.length >= 1, JSON.stringify(result));
+      assert.equal(result.anyOnFruit, false, JSON.stringify(result));
+      assert.equal(result.forcedStillOnFruit, false, JSON.stringify(result));
     } finally {
       await h.close();
     }
@@ -5485,6 +5596,143 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(result.nj, false, JSON.stringify(result));
       assert.equal(result.just_ate, "piece", JSON.stringify(result));
       assert.equal(result.head_state, "knight", JSON.stringify(result));
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("carrying ignores peaceful: locks stay; second eat relocates and clears old cell", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 47, headless: true });
+    try {
+      await h.start({
+        mode: "slot_machine",
+        count: COUNT.ONE,
+        size: SIZE.NORMAL,
+      });
+      const result = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        window.__remixGame = g;
+        window.CurrentModeNum = window.SLOT_MACHINE_MODE;
+        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.nj = false;
+        window.slot_reset_state();
+        window.__slotWrapActives && window.__slotWrapActives();
+        // Peaceful roll while already carrying must not wipe Chess locks.
+        window.setSlotActive(21, g);
+        window.cat_peaceful_ticks = 40;
+
+        g.wa.ka.length = 0;
+        const white = window.slot_make_apple(g.wa, { x: 10, y: 8 });
+        white.isPiece = true;
+        white.ChessPiece = "rook";
+        white.ChessColor = "w";
+        white.type = window.wrook != null ? window.wrook : 1;
+        const black = window.slot_make_apple(g.wa, { x: 12, y: 8 });
+        black.isPiece = true;
+        black.ChessPiece = "pawn";
+        black.ChessColor = "b";
+        black.type = window.bpawn != null ? window.bpawn : 2;
+        const keep = window.slot_make_apple(g.wa, { x: 14, y: 10 });
+        keep.isPiece = true;
+        keep.ChessPiece = "bishop";
+        keep.ChessColor = "w";
+        keep.type = window.wbishop != null ? window.wbishop : 3;
+        g.wa.ka.push(white, black, keep);
+        window.appleArray = g.wa.ka;
+
+        window.head_state = "queen";
+        window.head_color = "w";
+        window.shield_all();
+        const lockSize =
+          black.nba && typeof black.nba.size === "number" ? black.nba.size : 0;
+
+        const counts = () => {
+          let w = 0;
+          let b = 0;
+          for (const f of g.wa.ka) {
+            if (!f || !f.isPiece) continue;
+            if (f.ChessColor === "w") w++;
+            if (f.ChessColor === "b") b++;
+          }
+          return { w, b, n: g.wa.ka.filter((f) => f && f.isPiece).length };
+        };
+        const before = counts();
+
+        // Force relocate success via slot_free_pos far from black.
+        const savedFree = window.slot_free_pos;
+        window.slot_free_pos = () => window.slot_make_pos(3, 3);
+        const eatenCell = { x: black.pos.x | 0, y: black.pos.y | 0 };
+        window.chess_on_second_piece_eat(black);
+        // Simulate native splice of the eaten apple.
+        const ix = g.wa.ka.indexOf(black);
+        if (ix >= 0) g.wa.ka.splice(ix, 1);
+        window.appleArray = g.wa.ka;
+        window.slot_free_pos = savedFree;
+
+        const after = counts();
+        const atOld = g.wa.ka.some(
+          (f) =>
+            f &&
+            f.pos &&
+            (f.pos.x | 0) === eatenCell.x &&
+            (f.pos.y | 0) === eatenCell.y
+        );
+        const relocated = g.wa.ka.some(
+          (f) =>
+            f &&
+            f.isPiece &&
+            f.ChessColor === "b" &&
+            (f.pos.x | 0) === 3 &&
+            (f.pos.y | 0) === 3
+        );
+        const headAfterRelocate = window.head_state;
+
+        // Fail path: no free cell → opposite exit; eaten still spliced away.
+        window.head_state = "rook";
+        window.head_color = "w";
+        const opp = window.slot_make_apple(g.wa, { x: 11, y: 6 });
+        opp.isPiece = true;
+        opp.ChessPiece = "knight";
+        opp.ChessColor = "b";
+        g.wa.ka.push(opp);
+        window.appleArray = g.wa.ka;
+        window.slot_free_pos = () => null;
+        const savedFind = window.chess_find_legal_spawn;
+        window.chess_find_legal_spawn = () => null;
+        window.chess_on_second_piece_eat(opp);
+        const failIx = g.wa.ka.indexOf(opp);
+        if (failIx >= 0) g.wa.ka.splice(failIx, 1);
+        window.appleArray = g.wa.ka;
+        window.slot_free_pos = savedFree;
+        window.chess_find_legal_spawn = savedFind;
+        const failAtOld = g.wa.ka.some(
+          (f) =>
+            f && f.pos && (f.pos.x | 0) === 11 && (f.pos.y | 0) === 6
+        );
+
+        return {
+          peaceful: window.chess_peaceful_active(g),
+          lockSize,
+          before,
+          after,
+          atOld,
+          relocated,
+          headAfterRelocate,
+          headAfterFail: window.head_state,
+          failAtOld,
+        };
+      });
+
+      assert.equal(result.peaceful, true, JSON.stringify(result));
+      assert.equal(result.lockSize, 4, "carry+peaceful must lock: " + JSON.stringify(result));
+      assert.equal(result.atOld, false, JSON.stringify(result));
+      assert.equal(result.relocated, true, JSON.stringify(result));
+      assert.equal(result.headAfterRelocate, "queen", JSON.stringify(result));
+      assert.equal(result.after.w, result.before.w, JSON.stringify(result));
+      assert.equal(result.after.b, result.before.b, JSON.stringify(result));
+      assert.equal(result.failAtOld, false, JSON.stringify(result));
+      assert.equal(result.headAfterFail, "OPEN", JSON.stringify(result));
     } finally {
       await h.close();
     }

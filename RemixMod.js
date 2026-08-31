@@ -10662,8 +10662,15 @@ window.ChessMod.alterSnakeCode = function (code) {
 
   window.shield_all = function shield_all() {
     if (!window.appleArray) return;
-    // Peaceful / Cat grace: keep board unlocked so collision eats pieces.
-    if (window.chess_peaceful_active && window.chess_peaceful_active()) {
+    // Peaceful / Cat grace: unlock leftover pieces only when head is OPEN.
+    // While carrying a piece, keep full Chess locks regardless of peaceful.
+    const carrying =
+      !!window.head_state && window.head_state !== "OPEN";
+    if (
+      !carrying &&
+      window.chess_peaceful_active &&
+      window.chess_peaceful_active()
+    ) {
       window.shield_empty_all();
       return;
     }
@@ -10685,9 +10692,8 @@ window.ChessMod.alterSnakeCode = function (code) {
     });
   };
 
-  // Sc shield hit: under Peaceful/Cat, drop the lock so the same-tick eat can
-  // land instead of ghosting through (Sc is skipped entirely when e7(21), but
-  // Cat life-spend still enters Sc before grace flips Peaceful on).
+  // Sc shield hit: under Peaceful/Cat with OPEN head, drop the lock so the
+  // same-tick eat can land. While carrying, do not clear locks via peaceful.
   window.chess_shield_hit_absorb = function chess_shield_hit_absorb(
     game,
     fruit
@@ -10695,11 +10701,18 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (!fruit) return false;
     // Only chess piece locks — not Shield-badge fruit leftovers.
     if (!fruit.isPiece) return false;
-    if (window.chess_peaceful_active && window.chess_peaceful_active(game)) {
+    const carrying =
+      !!window.head_state && window.head_state !== "OPEN";
+    if (
+      !carrying &&
+      window.chess_peaceful_active &&
+      window.chess_peaceful_active(game)
+    ) {
       fruit[window.chess_shield_field || "nba"] = undefined;
       return true;
     }
     if (
+      !carrying &&
       window.isCatActive &&
       window.isCatActive() &&
       ((window.cat_peaceful_ticks | 0) > 0 || (window.cat_lives | 0) > 0)
@@ -10720,8 +10733,15 @@ window.ChessMod.alterSnakeCode = function (code) {
   window.chess_tick_logic = function chess_tick_logic() {
     if (!window.isChessActive()) return;
 
-    // Under Peaceful, skip the lock/unlock dance — pieces are normal pickups.
-    if (window.chess_peaceful_active && window.chess_peaceful_active()) {
+    const carrying =
+      !!window.head_state && window.head_state !== "OPEN";
+    // Peaceful: leftover pieces are edible pickups only when head is OPEN.
+    // Piece mode always runs the lock/unlock dance.
+    if (
+      !carrying &&
+      window.chess_peaceful_active &&
+      window.chess_peaceful_active()
+    ) {
       window.shield_empty_all();
       return;
     }
@@ -11183,6 +11203,8 @@ window.ChessMod.alterSnakeCode = function (code) {
 
   // Relocate an eaten piece identity to a different legal cell. Returns true
   // if a new apple was pushed onto mgr.ka.
+  // Does NOT remove the eaten apple — native eat splice owns that (splicing
+  // here would desync the eat index and drop the wrong apple).
   window.chess_respawn_eaten_piece = function chess_respawn_eaten_piece(
     snapshot,
     mgr
@@ -11193,29 +11215,54 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (!piece || (color !== "w" && color !== "b")) return false;
     const game = window.__remixGame;
     const board = mgr.oa;
-    const freePos =
-      typeof window.__chessFreePos === "function"
-        ? window.__chessFreePos
-        : typeof d4E === "function"
-          ? d4E
+    const eatenKey =
+      snapshot.pos && window.chess_pos_key
+        ? window.chess_pos_key(snapshot.pos)
+        : snapshot.pos
+          ? (snapshot.pos.x | 0) + "," + (snapshot.pos.y | 0)
           : null;
-    const occ = window.chess_occupied_keys(game, mgr.ka, new Set());
-    // Also ban the eaten cell explicitly (still in ka until native splice).
-    if (snapshot.pos) {
-      const ban = window.chess_pos_key(snapshot.pos);
-      if (ban != null) occ.add(ban);
-    }
-    const pos = window.chess_find_legal_spawn(board, freePos, occ, null);
-    if (!pos) return false;
-    if (
-      snapshot.pos &&
-      (pos.x | 0) === (snapshot.pos.x | 0) &&
-      (pos.y | 0) === (snapshot.pos.y | 0)
-    ) {
-      return false;
-    }
+    const sameCell = function (p) {
+      if (!p || !snapshot.pos) return false;
+      return (
+        (p.x | 0) === (snapshot.pos.x | 0) &&
+        (p.y | 0) === (snapshot.pos.y | 0)
+      );
+    };
 
-    const make = window.__chessMakeApple;
+    let pos = null;
+    // Slot leftovers (fruit/walls/bridges/soko): prefer slot_free_pos.
+    if (
+      window.isSlotMachineActive &&
+      window.isSlotMachineActive() &&
+      typeof window.slot_free_pos === "function"
+    ) {
+      for (let attempt = 0; attempt < 24 && !pos; attempt++) {
+        const p = window.slot_free_pos(mgr);
+        if (!p || p.x == null || p.y == null) break;
+        if (sameCell(p)) continue;
+        if (eatenKey && (p.x | 0) + "," + (p.y | 0) === eatenKey) continue;
+        pos = p;
+      }
+    }
+    if (!pos) {
+      const freePos =
+        typeof window.__chessFreePos === "function"
+          ? window.__chessFreePos
+          : typeof d4E === "function"
+            ? d4E
+            : null;
+      const occ = window.chess_occupied_keys(game, mgr.ka, new Set());
+      // Also ban the eaten cell explicitly (still in ka until native splice).
+      if (eatenKey != null) occ.add(eatenKey);
+      pos = window.chess_find_legal_spawn(board, freePos, occ, null);
+      if (pos && sameCell(pos)) pos = null;
+    }
+    if (!pos) return false;
+
+    const make =
+      window.__chessMakeApple ||
+      window.__bombFruitMakeApple ||
+      null;
     let dup = null;
     if (typeof make === "function") {
       try {
@@ -11290,6 +11337,8 @@ window.ChessMod.alterSnakeCode = function (code) {
   // Law: eating a piece while already carrying.
   // Success relocating → keep current carry. Fail + opposite → exit.
   // Fail + same → become eaten piece; remove one random opposite for balance.
+  // Native eat splice always removes the eaten apple from its cell — this law
+  // must never re-plant at that cell on fail (relocate only pushes a *new* apple).
   window.chess_on_second_piece_eat = function chess_on_second_piece_eat(eaten) {
     if (!eaten || !eaten.isPiece) return;
     if (window.head_state === "OPEN") return;
@@ -18246,7 +18295,24 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     return false;
   };
 
-  // Box pushed onto the snake body: relocate outside head spawn radius, or
+  window.slot_soko_pos_on_fruit = function slot_soko_pos_on_fruit(game, pos) {
+    if (!pos || pos.x == null || pos.y == null) return false;
+    const g = game || window.__remixGame;
+    const list =
+      (g && g.wa && g.wa.ka) ||
+      (window.appleArray && window.appleArray.length ? window.appleArray : null);
+    if (!list || !list.length) return false;
+    const x = pos.x | 0;
+    const y = pos.y | 0;
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      if (!f || !f.pos) continue;
+      if ((f.pos.x | 0) === x && (f.pos.y | 0) === y) return true;
+    }
+    return false;
+  };
+
+  // Box on snake body or fruit: relocate outside head spawn radius, or
   // delete. Empty board (no fruit / key+keyblock / sokobox) → win.
   window.slot_soko_snap_box_positions = function slot_soko_snap_box_positions(
     game
@@ -18278,7 +18344,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     try {
       for (const box of aa.oa) {
         if (!box || !box.Lh || !box.pos) continue;
-        if (window.slot_soko_pos_on_snake(g, box.pos)) hits.push(box);
+        if (
+          window.slot_soko_pos_on_snake(g, box.pos) ||
+          window.slot_soko_pos_on_fruit(g, box.pos)
+        ) {
+          hits.push(box);
+        }
       }
     } catch (_e) {
       return;
@@ -18289,7 +18360,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       const box = hits[i];
       let moved = false;
       try {
-        // Prefer slot_free_pos (radius + walls); also ban other boxes/goals.
+        // Prefer slot_free_pos (radius + walls + fruit); also ban other boxes/goals.
         const occ = new Set();
         window.slot_add_soko_keys(g, occ, box);
         let pos = null;
@@ -18302,6 +18373,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           const key = (p.x | 0) + "," + (p.y | 0);
           if (occ.has(key)) continue;
           if (window.slot_soko_pos_on_snake(g, p)) continue;
+          if (window.slot_soko_pos_on_fruit(g, p)) continue;
           pos = p;
         }
         if (pos) {
@@ -18321,7 +18393,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
             box.pos.y = pos.y | 0;
           }
           box.wm = true;
-          if (!window.slot_soko_pos_on_snake(g, box.pos)) moved = true;
+          if (
+            !window.slot_soko_pos_on_snake(g, box.pos) &&
+            !window.slot_soko_pos_on_fruit(g, box.pos)
+          ) {
+            moved = true;
+          }
         }
       } catch (_m) {
         moved = false;
@@ -19234,10 +19311,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       };
       const beforeBoxes = sokoSize(aa && aa.oa);
       const beforeGoals = sokoSize(aa && aa.d_);
+      const hasFruit = !!(mgr.ka && mgr.ka.length);
       const plant =
         window.__slotE5E ||
         (typeof e5E === "function" ? e5E : null);
-      if (aa && typeof plant === "function") {
+      // Native e5E ignores leftover fruit and can stack a box on an apple.
+      // With fruit on the board, plant via slot_free_pos only.
+      if (!hasFruit && aa && typeof plant === "function") {
         window.__slotAllowSokoPlant = true;
         try {
           plant(aa, (g.Ba && g.Ba.keys && g.Ba.keys.length) | 0, true, true);
@@ -19248,7 +19328,15 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       }
       let boxes = sokoSize(aa && aa.oa);
       let goals = sokoSize(aa && aa.d_);
-      if (boxes > beforeBoxes || goals > beforeGoals) return true;
+      if (boxes > beforeBoxes || goals > beforeGoals) {
+        try {
+          window.slot_soko_resolve_body_overlaps &&
+            window.slot_soko_resolve_body_overlaps(g);
+        } catch (_r) {}
+        boxes = sokoSize(aa && aa.oa);
+        goals = sokoSize(aa && aa.d_);
+        if (boxes > beforeBoxes || goals > beforeGoals) return true;
+      }
 
       const bp = window.slot_free_pos(mgr, 8) || window.slot_free_pos(mgr, 0);
       if (bp && aa) {
@@ -19272,7 +19360,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           }
           boxes = sokoSize(aa.oa);
           goals = sokoSize(aa.d_);
-          if (boxes > beforeBoxes || goals > beforeGoals) return true;
+          if (boxes > beforeBoxes || goals > beforeGoals) {
+            try {
+              window.slot_soko_resolve_body_overlaps &&
+                window.slot_soko_resolve_body_overlaps(g);
+            } catch (_r2) {}
+            return true;
+          }
           window.__slotAllowSokoPlant = true;
           try {
             if (aa.oa && typeof aa.oa.add === "function") {
@@ -19292,7 +19386,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           }
           boxes = sokoSize(aa.oa);
           goals = sokoSize(aa.d_);
-          if (boxes > beforeBoxes || goals > beforeGoals) return true;
+          if (boxes > beforeBoxes || goals > beforeGoals) {
+            try {
+              window.slot_soko_resolve_body_overlaps &&
+                window.slot_soko_resolve_body_overlaps(g);
+            } catch (_r3) {}
+            return true;
+          }
         }
       }
       return false;
@@ -19770,7 +19870,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       window.slot_sync_ultra_disables && window.slot_sync_ultra_disables();
     } catch (_u) {}
 
-    // Sokobox pushed onto snake body → relocate or despawn (+ win if empty).
+    // Sokobox on snake body or fruit → relocate or despawn (+ win if empty).
     try {
       window.slot_soko_resolve_body_overlaps &&
         window.slot_soko_resolve_body_overlaps(game);
@@ -21055,6 +21155,24 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   }
 
   // Native Vm relocates the same apple; Chess leftover steals once pieces exist.
+  // Slot also captures Chess freePos/makeApple so second-eat relocate works.
+  const slotChessHelpers =
+    "window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;";
+  if (
+    code.indexOf(
+      "isSlotMachineActive&&window.isSlotMachineActive()){window.__bombFruitMakeApple=g7"
+    ) >= 0 &&
+    code.indexOf(
+      "isSlotMachineActive&&window.isSlotMachineActive()){window.__bombFruitMakeApple=g7;window.__bombFruitFreePos=d4E;window.__bombFruitPickType=Q3E;window.__chessMakeApple=g7"
+    ) < 0
+  ) {
+    smReplace(
+      "slot capture chess helpers on eat (upgrade)",
+      /if\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)\)\{window\.__bombFruitMakeApple=g7;window\.__bombFruitFreePos=d4E;window\.__bombFruitPickType=Q3E;/,
+      "if(window.isSlotMachineActive&&window.isSlotMachineActive()){window.__bombFruitMakeApple=g7;window.__bombFruitFreePos=d4E;window.__bombFruitPickType=Q3E;" +
+        slotChessHelpers
+    );
+  }
   if (
     code.indexOf(
       "isSlotMachineActive&&window.isSlotMachineActive()){window.__bombFruitMakeApple=g7"
@@ -21066,6 +21184,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         "slot capture + eat before chess",
         /e=!1;if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{window\.__bombFruitMakeApple=g7;window\.__bombFruitFreePos=d4E;window\.__bombFruitPickType=Q3E;\}if\(window\.isChessActive&&window\.isChessActive\(\)\)\{/,
         "e=!1;if(window.isBombFruitActive&&window.isBombFruitActive()){window.__bombFruitMakeApple=g7;window.__bombFruitFreePos=d4E;window.__bombFruitPickType=Q3E;}if(window.isSlotMachineActive&&window.isSlotMachineActive()){window.__bombFruitMakeApple=g7;window.__bombFruitFreePos=d4E;window.__bombFruitPickType=Q3E;" +
+          slotChessHelpers +
           slotEatCapture +
           ";}else if(window.isChessActive&&window.isChessActive()){"
       )
@@ -21075,6 +21194,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           "slot eat before mexico/portal",
           /else if\(window\.isMexicoActive&&window\.isMexicoActive\(\)\)\{e=!window\.cat_allows_pair_spawn\|\|window\.cat_allows_pair_spawn\(a\);\}else e7\(a\.settings,2\)\?/,
           "else if(window.isSlotMachineActive&&window.isSlotMachineActive()){" +
+            slotChessHelpers +
             slotEatCapture +
             ";}else if(window.isMexicoActive&&window.isMexicoActive()){e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a);}else e7(a.settings,2)?"
         )
@@ -21701,16 +21821,21 @@ window.SlotMachineMod.runCodeAfter = function () {
     window.shield_all = function () {
       if (!window.appleArray) return;
       if (window.isSlotMachineActive && window.isSlotMachineActive()) {
-        // Peaceful / Cat grace: never keep piece locks (same as Chess shield_all).
-        if (window.chess_peaceful_active && window.chess_peaceful_active()) {
-          if (window.shield_empty_all) window.shield_empty_all();
-          return;
-        }
         const chessRoll =
           window.slot_is_chess_mode &&
           window.slot_is_chess_mode(window.__slotActive);
         const carrying =
           !!window.head_state && window.head_state !== "OPEN";
+        // Peaceful unlocks leftovers only when head is OPEN (not carrying).
+        if (
+          !carrying &&
+          !chessRoll &&
+          window.chess_peaceful_active &&
+          window.chess_peaceful_active()
+        ) {
+          if (window.shield_empty_all) window.shield_empty_all();
+          return;
+        }
         // Carrying a piece (or Chess roll): lock every apple like Chess mode.
         if (chessRoll || carrying) {
           window.slot_chess_board_lock = 1;

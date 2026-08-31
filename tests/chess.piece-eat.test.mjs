@@ -22,6 +22,13 @@ describe("chess double-eat law (offline)", () => {
       /head_state!=='OPEN'&&window\.chess_on_second_piece_eat/
     );
     assert.match(chess, /chess_on_second_piece_eat\(_ae\)/);
+    assert.match(chess, /While carrying a piece, keep full Chess locks/);
+    assert.match(chess, /Piece mode always runs the lock\/unlock dance/);
+    assert.match(chess, /prefer slot_free_pos/);
+    assert.match(
+      chess,
+      /must never re-plant at that cell on fail/
+    );
   });
 
   it("unit: chess spawn rejects bridge tiles", () => {
@@ -83,6 +90,8 @@ describe("chess double-eat law (offline)", () => {
     };
     const sandbox = { window: {}, Math, Object, Set, console };
     const src = `
+      window.isSlotMachineActive = function(){ return !!window.__slotOn; };
+      window.slot_free_pos = function(){ return window.__slotFreePos || null; };
       window.chess_pos_key = function(p){ return p ? ((p.x|0)+","+(p.y|0)) : null; };
       window.chess_make_pos = function(x,y){ return { x:x|0, y:y|0 }; };
       window.chess_occupied_keys = function(game, list, skip){
@@ -116,6 +125,7 @@ describe("chess double-eat law (offline)", () => {
     const w = sandbox.window;
 
     // --- success: relocate, keep carry ---
+    w.__slotOn = false;
     w.__remixGame = { wa: { ka: [], oa: { width: 8, height: 8 } } };
     w.head_state = "rook";
     w.head_color = "w";
@@ -142,24 +152,58 @@ describe("chess double-eat law (offline)", () => {
     assert.equal(relocated[0].pos.x, 5);
     assert.equal(relocated[0].pos.y, 5);
 
-    // --- fail + opposite → exit ---
+    // --- Slot: prefer slot_free_pos ---
+    w.__slotOn = true;
+    w.__testSpawnPos = null;
+    w.__slotFreePos = { x: 7, y: 2 };
+    w.head_state = "rook";
+    w.head_color = "w";
+    const eatenSlot = {
+      isPiece: true,
+      ChessPiece: "bishop",
+      ChessColor: "b",
+      type: 103,
+      pos: { x: 1, y: 2 },
+    };
+    w.__remixGame.wa.ka = [eatenSlot];
+    w.chess_on_second_piece_eat(eatenSlot);
+    assert.equal(w.head_state, "rook", "slot freePos keeps carry");
+    const slotReloc = w.__remixGame.wa.ka.filter(
+      (f) => f && f !== eatenSlot && f.isPiece
+    );
+    assert.equal(slotReloc.length, 1);
+    assert.equal(slotReloc[0].pos.x, 7);
+    assert.equal(slotReloc[0].pos.y, 2);
+    // Fail must never re-plant at eaten cell.
+    assert.equal(
+      slotReloc.some((f) => (f.pos.x | 0) === 1 && (f.pos.y | 0) === 2),
+      false
+    );
+
+    // --- fail + opposite → exit; no new piece at eaten cell ---
+    w.__slotOn = false;
+    w.__slotFreePos = null;
     w.__testSpawnPos = null;
     w.head_state = "knight";
     w.head_color = "w";
     w.__shieldEmpty = 0;
-    w.__remixGame.wa.ka = [
-      {
-        isPiece: true,
-        ChessPiece: "bishop",
-        ChessColor: "b",
-        type: 102,
-        pos: { x: 2, y: 2 },
-      },
-    ];
-    w.chess_on_second_piece_eat(w.__remixGame.wa.ka[0]);
+    const eatenOpp = {
+      isPiece: true,
+      ChessPiece: "bishop",
+      ChessColor: "b",
+      type: 102,
+      pos: { x: 2, y: 2 },
+    };
+    w.__remixGame.wa.ka = [eatenOpp];
+    w.chess_on_second_piece_eat(eatenOpp);
     assert.equal(w.head_state, "OPEN");
     assert.equal(w.head_color, "NONE");
     assert.ok(w.__shieldEmpty > 0);
+    assert.equal(
+      w.__remixGame.wa.ka.filter((f) => f && f !== eatenOpp && f.isPiece).length,
+      0,
+      "fail opposite must not plant a replacement"
+    );
 
     // --- fail + same → become eaten; cull opposite ---
     w.__testSpawnPos = null;
@@ -198,6 +242,60 @@ describe("chess double-eat law (offline)", () => {
     // same is still in list (native splice not simulated); one opposite removed
     const blackLeft = left.filter((f) => f.ChessColor === "b");
     assert.equal(blackLeft.length, 1, JSON.stringify(left));
+    assert.equal(
+      left.filter((f) => f !== same && (f.pos.x | 0) === 3 && (f.pos.y | 0) === 3)
+        .length,
+      0,
+      "fail same must not plant at eaten cell"
+    );
+  });
+
+  it("unit: peaceful does not wipe locks while carrying", () => {
+    const extract = (name) => {
+      const re = new RegExp(
+        `window\\.${name} = function ${name}\\([\\s\\S]*?\\n  \\};`
+      );
+      const m = chess.match(re);
+      assert.ok(m, "missing " + name);
+      return m[0];
+    };
+    const sandbox = { window: {}, Math, Object, Set, console };
+    const src = `
+      window.chess_shield_field = "nba";
+      window.chess_peaceful_active = function(){ return !!window.__peaceful; };
+      window.isChessActive = function(){ return true; };
+      window.head_pos = [{ x: 4, y: 4 }];
+      window.pawn_open = function(){ window.__opened = "pawn"; return false; };
+      window.rook_open = function(){ window.__opened = "rook"; return false; };
+      window.bishop_open = function(){ window.__opened = "bishop"; return false; };
+      window.knight_open = function(){ window.__opened = "knight"; return false; };
+      window.king_open = function(){ window.__opened = "king"; return false; };
+      ${extract("shield_empty_all")}
+      ${extract("shield_all")}
+      ${extract("chess_tick_logic")}
+    `;
+    const fn = new Function("window", "Math", "Object", "Set", src);
+    fn(sandbox.window, Math, Object, Set);
+    const w = sandbox.window;
+    const piece = { isPiece: true, nba: new Set(["UP"]) };
+    w.appleArray = [piece];
+
+    // OPEN + peaceful → empty
+    w.head_state = "OPEN";
+    w.__peaceful = true;
+    w.shield_all();
+    assert.equal(piece.nba, undefined, "OPEN+peaceful clears");
+
+    // Carrying + peaceful → still lock
+    piece.nba = undefined;
+    w.head_state = "rook";
+    w.__peaceful = true;
+    w.__opened = null;
+    w.shield_all();
+    assert.ok(piece.nba && piece.nba.size === 4, "carry+peaceful locks");
+    w.chess_tick_logic();
+    assert.equal(w.__opened, "rook", "carry+peaceful still runs unlock rays");
+    assert.ok(piece.nba && piece.nba.size === 4, "tick keeps locks while carrying");
   });
 });
 
@@ -419,12 +517,21 @@ describe("chess piece eat (browser)", { skip: !runBrowser }, () => {
       });
 
       assert.equal(r.peaceful, true, JSON.stringify(r));
-      assert.equal(r.lockedAfterShieldAll, 0, "shield_all clears under peaceful");
-      assert.equal(r.removed, 1, JSON.stringify(r));
+      // Carrying after first pickup: peaceful must NOT wipe Chess locks.
+      assert.equal(
+        r.lockedAfterShieldAll,
+        4,
+        "carry+peaceful keeps locks: " + JSON.stringify(r)
+      );
       assert.equal(r.targetStill, false, JSON.stringify(r));
       assert.equal(r.nj, false, JSON.stringify(r));
       assert.equal(r.just_ate, "piece", JSON.stringify(r));
       assert.equal(r.headOn, true, JSON.stringify(r));
+      // Relocate success → net count unchanged; fail → −1. Either is fine.
+      assert.ok(
+        r.removed === 0 || r.removed === 1,
+        "second-eat removes eaten cell: " + JSON.stringify(r)
+      );
     } finally {
       await h.close();
     }
@@ -492,7 +599,11 @@ describe("chess piece eat (browser)", { skip: !runBrowser }, () => {
         };
       });
 
-      assert.equal(r.removed, 1, JSON.stringify(r));
+      // Second piece while carrying: relocate may keep net count; eaten cell gone.
+      assert.ok(
+        r.removed === 0 || r.removed === 1,
+        "second-eat board delta: " + JSON.stringify(r)
+      );
       assert.equal(r.targetStill, false, JSON.stringify(r));
       assert.equal(r.nj, false, JSON.stringify(r));
       assert.equal(r.just_ate, "piece", JSON.stringify(r));
