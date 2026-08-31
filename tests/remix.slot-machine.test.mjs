@@ -43,6 +43,8 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /slot_flush_portal_twin/);
     assert.match(init, /slot_portal_twin_index/);
     assert.match(init, /slot_ensure_unique_fruit_types/);
+    assert.match(init, /Reserve types already owned by non-portal/);
+    assert.match(init, /Never retag fruit that already has one/);
     assert.match(init, /SLOT_MACHINE_MODE_LABELS/);
     assert.match(init, /slot_enabled_pool/);
     assert.match(init, /slot_get_enabled_modes/);
@@ -139,6 +141,14 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /slot_is_chess_piece_type/);
     assert.match(init, /slot_skip_key_soko_refill/);
     assert.match(init, /slot_key_unlock_fruit/);
+    assert.match(
+      init,
+      /slot_key_unlock_fruit \|\| window\.slot_soko_unlock_fruit/
+    );
+    assert.match(
+      init,
+      /Key\/soko unlock must stay a regular badged fruit/
+    );
     assert.match(init, /slot_soko_unlock_fruit/);
     assert.match(init, /slot_stamp_tally_unlock_index/);
     assert.match(init, /slot_tally_board_max_sequence/);
@@ -179,6 +189,7 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /__slotActive\|0\)===12\)&&v6E/);
     assert.match(init, /__slotAllowKeyPlant/);
     assert.match(init, /__slotAllowSokoPlant/);
+    assert.match(init, /slot_skip_key_soko_goal/);
     assert.match(init, /__slotActivatedFruit/);
     assert.match(init, /__slotRespawnedThisEat/);
     assert.match(init, /slot_block_key_soko_bulk/);
@@ -218,6 +229,12 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /makeApple\(mgr, 0, 0\)/);
     assert.match(init, /slot_draw_badges/);
     assert.match(init, /slot_win_if_empty/);
+    assert.match(init, /slot_board_has_playable_content/);
+    assert.match(init, /slot_clear_arrow_at/);
+    assert.match(init, /slot_clear_arrows_under_fruit/);
+    assert.match(init, /slot_has_sokogoals/);
+    assert.match(init, /bombFruit_win_if_empty\.__slotGate/);
+    assert.match(init, /f\.Oka\) continue; \/\/ poison/);
     assert.match(init, /game\.ub\s*=\s*true/);
     assert.match(init, /__slotEatenFruit/);
     assert.match(init, /__slotCatFruitEaten/);
@@ -248,18 +265,401 @@ describe("Slot Machine mode (offline)", () => {
       /vuOknd remix-slot-mode-cell/
     );
     assert.match(init, /data:image\/png;base64,/);
-    // Excluded modes not in pool (Classic 0, Yin Yang 7, Dimension 11, Blender, Mexico)
+    // Pool includes Yin Yang 7, Dimension 11, Mexico 27; excludes Classic 0 / Blender 22
     assert.match(
       init,
       /SLOT_MACHINE_POOL\s*=\s*\[[^\]]*1,\s*2,\s*3,\s*4,\s*5/
     );
+    assert.match(init, /7:\s*"Yin Yang"/);
+    assert.match(init, /11:\s*"Dimension"/);
+    assert.match(init, /27:\s*"Mexico"/);
     assert.match(init, /4:\s*"Borderless"/);
     assert.match(init, /slot_borderless_wrap/);
-    assert.match(init, /b!==5&&b!==4/);
+    assert.match(init, /b!==5&&b!==4&&b!==7&&b!==11&&b!==27/);
+    assert.match(init, /SLOT_BADGE_POLARITY/);
+    assert.match(init, /slot_roll_yy_pair/);
+    assert.match(init, /slot_yy_swap_board/);
+    assert.match(init, /slot_flip_yy_snake_colors/);
+    assert.match(init, /slot_yy_apply_snake_color_index/);
+    assert.match(init, /__slotYyColorFieldSkip/);
+    assert.match(init, /slot_yy_gradient_for_index/);
+    assert.match(init, /slot_yy_recolor_face/);
+    assert.match(init, /slot_yy_read_color_index/);
+    assert.match(init, /__slotA7/);
+    assert.match(init, /__slotFaceRef/);
+    assert.match(init, /slot_yy_is_face_atlas/);
+    assert.match(init, /slot_yy_resolve_face/);
+    assert.match(init, /snake\.Sc/);
+    assert.match(init, /settings\.wa/);
+    assert.match(init, /BOARD THEME/);
+    assert.match(init, /updateAnimHeadColour/);
+    assert.match(init, /__slotYyColorField = \"wa\"/);
+    assert.match(init, /slot capture a7 sprite recolor/);
+    assert.match(init, /slot capture face atlas on construct/);
+    assert.match(init, /__slotYyColorIndex=d/);
+    assert.match(init, /slot_dimension_activate_grace/);
+    assert.match(init, /slot_mexico_on_eat/);
+    assert.match(init, /slot_mexico_plant_portal_pair/);
+    assert.match(init, /slot_mexico_place_partial_mid/);
+    assert.match(init, /slot_mexico_clear_mid/);
+    assert.match(init, /slot_mexico_tick_cross/);
+    assert.match(init, /slot_fruit_on_mid/);
+    assert.match(init, /slot_update_active_trophy/);
+    assert.match(init, /m === 27 && window\.MEXICO_ICON/);
     assert.doesNotMatch(
       init,
       /SLOT_MACHINE_POOL\s*=\s*\[[^\]]*[^0-9]0\s*,/
     );
+  });
+
+  it("Yin Yang / Dimension / Mexico / trophy helpers behave", () => {
+    const init = fs.readFileSync(
+      path.join(ROOT, "src", "SlotMachineInit.js"),
+      "utf8"
+    );
+    // Extract and eval helper bodies in a minimal sandbox is heavy; assert
+    // key control-flow strings instead.
+    assert.match(init, /__slotYinYangPair/);
+    assert.match(init, /f\.slotMode = pair/);
+    assert.match(init, /burgerTimer = null/);
+    assert.match(init, /slot_yy_flip_chess_piece/);
+    assert.match(init, /atMax/);
+    assert.match(init, /At 9: free/);
+    assert.match(init, /__slotMexicoPortal/);
+    assert.match(init, /__slotMexicoStartSide/);
+    assert.match(init, /__slotMexicoMidUp/);
+    assert.match(init, /Mexico is never assigned to mid-row/);
+    assert.match(init, /slot_mexico_relocate_pair_halves/);
+    assert.match(init, /neither twin may sit on the middle row/);
+    assert.match(init, /slot_mexico_blocks_mid_fruit/);
+    assert.match(init, /slot_portal_pair_ban/);
+    assert.match(init, /Portal pairs never roll Twin/);
+    assert.match(init, /non-Mexico \/ non-Twin/);
+    assert.match(init, /window\.slot_tick_logic = function slot_tick_logic/);
+    assert.match(init, /do not spawn\/rebuild mid/);
+    assert.match(init, /updateTrophySRC\.__slotWrap/);
+    assert.match(init, /slot_update_active_trophy/);
+    // Polarity table includes both for Yin Yang
+    assert.match(init, /7:\s*"both"/);
+    assert.match(init, /11:\s*"good"/);
+    assert.match(init, /27:\s*"bad"/);
+  });
+
+  it("YY swap / Dimension grace / Mexico mid helpers (unit)", () => {
+    // Minimal window stubs + eval selected helpers from SlotMachineInit.
+    const init = fs.readFileSync(
+      path.join(ROOT, "src", "SlotMachineInit.js"),
+      "utf8"
+    );
+    const sandbox = { window: {}, Math, Object, Set, JSON, console };
+    // Pull polarity + core helpers by executing runCodeBefore fragment via Function.
+    // Only the symbols we need for unit checks.
+    const src = `
+      window.SLOT_BADGE_POLARITY = {1:"bad",3:"good",7:"both",11:"good",27:"bad",26:"good"};
+      window.SLOT_MACHINE_POOL = [1,3,7,11,26,27];
+      window.slot_enabled_pool = function(){ return window.SLOT_MACHINE_POOL.slice(); };
+      window.slot_badge_polarity = function(mode){
+        return (window.SLOT_BADGE_POLARITY||{})[mode|0]||"bad";
+      };
+      window.slot_roll_yy_pair = ${init.match(/window\.slot_roll_yy_pair = function slot_roll_yy_pair\(primary(?:, exclude)?\) \{[\s\S]*?\n  \};/)[0].replace(/^window\.slot_roll_yy_pair = /, "")};
+      window.slot_yy_swap_board = ${init.match(/window\.slot_yy_swap_board = function slot_yy_swap_board\(mgr\) \{[\s\S]*?\n  \};/)[0].replace(/^window\.slot_yy_swap_board = /, "")};
+      window.slot_yy_flip_chess_piece = ${init.match(/window\.slot_yy_flip_chess_piece = function slot_yy_flip_chess_piece\(f\) \{[\s\S]*?\n  \};/)[0].replace(/^window\.slot_yy_flip_chess_piece = /, "")};
+      window.slot_draw_mode_excluding = function(ban){
+        const pool = window.slot_enabled_pool().filter(function(m){
+          return (ban||[]).indexOf(m|0) < 0;
+        });
+        return pool.length ? pool[0] : 1;
+      };
+      window.CAT_MAX_LIVES = 9;
+      window.CAT_GRACE_EXTRA = 3;
+      window.cat_lives = 3;
+      window.cat_peaceful_ticks = 0;
+      window.slot_dimension_activate_grace = ${init.match(/window\.slot_dimension_activate_grace = function slot_dimension_activate_grace\([\s\S]*?\n  \};/)[0].replace(/^window\.slot_dimension_activate_grace = /, "")};
+    `;
+    const fn = new Function("window", "Math", "Object", "Set", src);
+    fn(sandbox.window, Math, Object, Set);
+
+    const w = sandbox.window;
+    // Good primary → bad/both pair
+    const pair = w.slot_roll_yy_pair(3);
+    assert.ok(pair === 1 || pair === 7 || pair === 27, "pair=" + pair);
+
+    // YY swap badges + chess color
+    w.wpawn = 101;
+    w.bpawn = 201;
+    const a = { slotMode: 3, __slotYinYangPair: 1, burgerTimer: 5, burgerTimerMax: 5 };
+    const b = {
+      isPiece: true,
+      ChessColor: "w",
+      ChessPiece: "pawn",
+      type: 101,
+    };
+    const portalA = {
+      slotMode: 3,
+      __slotYinYangPair: 1,
+      __slotPortal: true,
+      __slotPortalPairId: 1,
+    };
+    const portalB = {
+      slotMode: 1,
+      __slotYinYangPair: 3,
+      __slotPortal: true,
+      __slotPortalPairId: 1,
+    };
+    portalA.__slotPortalTwin = portalB;
+    portalB.__slotPortalTwin = portalA;
+    w.slot_yy_swap_board({ ka: [a, b, portalA, portalB] });
+    assert.equal(a.slotMode, 1);
+    assert.equal(a.__slotYinYangPair, 3);
+    assert.equal(a.burgerTimer, null);
+    assert.equal(b.ChessColor, "b");
+    assert.equal(b.type, 201);
+    assert.equal(portalA.slotMode, portalB.slotMode);
+
+    // Dimension below 9: net lives unchanged, grace set
+    w.cat_lives = 3;
+    w.cat_peaceful_ticks = 0;
+    w.slot_dimension_activate_grace({ Sh: 10 });
+    assert.equal(w.cat_lives, 3);
+    assert.ok((w.cat_peaceful_ticks | 0) > 0);
+
+    // Dimension at 9: stay on 9, still grace
+    w.cat_lives = 9;
+    w.cat_peaceful_ticks = 0;
+    w.slot_dimension_activate_grace({ Sh: 10 });
+    assert.equal(w.cat_lives, 9);
+    assert.ok((w.cat_peaceful_ticks | 0) > 0);
+  });
+
+  it("YY snake color flips wa/Sc not board theme oa + recolors face", () => {
+    const init = fs.readFileSync(
+      path.join(ROOT, "src", "SlotMachineInit.js"),
+      "utf8"
+    );
+    const extract = (name) => {
+      const re = new RegExp(
+        `window\\.${name} = function ${name}\\([\\s\\S]*?\\n  \\};`
+      );
+      const m = init.match(re);
+      assert.ok(m, "missing " + name);
+      return m[0];
+    };
+    const sandbox = { window: {}, Math, Object, Set, console };
+    const src = `
+      window.__slotYyBaseColorPairs = [5,4,7,7,1,2,0,3,9,8,0,14,15,15,11,12,17,16];
+      window.__slotSnakeColorTable = [
+        ["#4E7CF6","#17439F"],["#19D8E6","#15B5C1"],["#B648F2","#910FD7"],
+        ["#ED44B5","#C31388"],["#F53D40","#D00B0E"],["#F69C3C","#EA7E0B"],
+        ["#ECD613","#D9C512"],["#35B63E","#298E30"]
+      ];
+      window.__slotYyColorPairs = window.__slotYyBaseColorPairs;
+      window.__slotA7Calls = [];
+      window.__slotA7 = function(sprite, from, to){
+        window.__slotA7Calls.push({ sprite: sprite && sprite.__id, from, to });
+      };
+      ${extract("slot_yy_is_face_atlas")}
+      ${extract("slot_yy_resolve_face")}
+      ${extract("slot_yy_color_field")}
+      ${extract("slot_yy_read_color_index")}
+      ${extract("slot_yy_pair_color_index")}
+      ${extract("slot_yy_gradient_for_index")}
+      ${extract("slot_yy_recolor_face")}
+      ${extract("slot_yy_paint_snake_hex")}
+      ${extract("slot_yy_apply_snake_color_index")}
+      ${extract("slot_flip_yy_snake_colors")}
+    `;
+    const fn = new Function("window", "Math", "Object", "Set", src);
+    fn(sandbox.window, Math, Object, Set);
+    const w = sandbox.window;
+
+    assert.equal(w.slot_yy_pair_color_index(0), 5);
+    assert.equal(w.slot_yy_pair_color_index(5), 2);
+
+    const mkSprite = (id) => ({ __id: id, render() {} });
+    const realFace = {
+      oa: mkSprite("blink"),
+      Aa: mkSprite("eat"),
+      Ba: mkSprite("die"),
+      wa: mkSprite("tongue"),
+    };
+    // Bridges look like game.Ga — must NOT be treated as face.
+    const bridges = { oa: new Map(), Aa: new Set() };
+    assert.equal(w.slot_yy_is_face_atlas(realFace), true);
+    assert.equal(w.slot_yy_is_face_atlas(bridges), false);
+
+    w.__slotFaceRef = realFace;
+    assert.equal(w.slot_yy_resolve_face({ Ga: bridges }), realFace);
+
+    const themeBefore = 3;
+    const g = {
+      settings: { wa: 0, Ja: 0, Jb: 0, kc: 0, oa: themeBefore, Mb: themeBefore },
+      oa: { Sc: "#4E7CF6", Yc: "#17439F" },
+      Ga: bridges,
+    };
+    w.__remixGame = g;
+    w.__slotYyColorBase = null;
+    w.__slotYyColorFlipped = false;
+    w.isRainbow = false;
+
+    w.slot_flip_yy_snake_colors(g);
+    assert.equal(g.settings.wa, 5, "partner orange index");
+    assert.equal(g.settings.Ja, 5);
+    assert.equal(g.settings.oa, themeBefore, "board theme untouched");
+    assert.equal(g.oa.Sc, "#F69C3C");
+    assert.equal(g.oa.Yc, "#EA7E0B");
+    assert.ok(
+      w.__slotA7Calls.some((c) => c.sprite === "blink" && c.to === "#F69C3C"),
+      JSON.stringify(w.__slotA7Calls)
+    );
+    assert.ok(
+      !w.__slotA7Calls.some((c) => c.sprite == null && c.to === "#F69C3C"),
+      "must not a7 bridges"
+    );
+
+    // Flip back to base blue
+    w.slot_flip_yy_snake_colors(g);
+    assert.equal(g.settings.wa, 0);
+    assert.equal(g.settings.oa, themeBefore);
+    assert.equal(g.oa.Sc, "#4E7CF6");
+  });
+
+  it("portal/Mexico unique types do not rewrite existing fruit types", () => {
+    const init = fs.readFileSync(
+      path.join(ROOT, "src", "SlotMachineInit.js"),
+      "utf8"
+    );
+    const extract = (name) => {
+      const re = new RegExp(
+        `window\\.${name} = function ${name}\\([\\s\\S]*?\\n  \\};`
+      );
+      const m = init.match(re);
+      assert.ok(m, "missing " + name);
+      return m[0];
+    };
+    const sandbox = { window: {}, Math, Object, Set, console };
+    const src = `
+      ${extract("slot_pick_unique_type")}
+      ${extract("slot_ensure_unique_fruit_types")}
+    `;
+    const fn = new Function("window", "Math", "Object", "Set", src);
+    fn(sandbox.window, Math, Object, Set);
+    const w = sandbox.window;
+
+    const existing = { type: 3, pos: { x: 1, y: 1 } };
+    const other = { type: 7, pos: { x: 2, y: 2 } };
+    // New portal pair intentionally collides with existing type 3.
+    const a = {
+      type: 3,
+      __slotPortal: true,
+      __slotPortalPairId: 1,
+      pos: { x: 3, y: 3 },
+    };
+    const b = {
+      type: 9,
+      __slotPortal: true,
+      __slotPortalPairId: 1,
+      pos: { x: 4, y: 4 },
+    };
+    a.__slotPortalTwin = b;
+    b.__slotPortalTwin = a;
+    const mgr = { ka: [existing, other, a, b] };
+
+    w.slot_ensure_unique_fruit_types(mgr);
+
+    assert.equal(existing.type, 3, "existing fruit type must stay");
+    assert.equal(other.type, 7, "other fruit type must stay");
+    assert.equal(a.type, b.type, "portal twins share a type");
+    assert.notEqual(a.type, 3, "pair must leave 3 free for existing");
+    assert.notEqual(a.type, 7, "pair must not steal other fruit type");
+  });
+
+  it("arrow clear under fruit + win ignores poison / honors keys-soko-chess", () => {
+    const init = fs.readFileSync(
+      path.join(ROOT, "src", "SlotMachineInit.js"),
+      "utf8"
+    );
+    const extract = (name) => {
+      const re = new RegExp(
+        `window\\.${name} = function ${name}\\([\\s\\S]*?\\n  \\};`
+      );
+      const m = init.match(re);
+      assert.ok(m, "missing " + name);
+      return m[0];
+    };
+    const sandbox = { window: {}, Math, Object, Set, console };
+    const src = `
+      ${extract("slot_clear_arrow_at")}
+      ${extract("slot_clear_arrows_under_fruit")}
+      ${extract("slot_board_has_playable_content")}
+      ${extract("slot_win_if_empty")}
+      window.slot_trigger_win = function(g){ g.nj = true; g.ub = true; };
+      window.slot_has_keys = function(g){ return !!(g && g.__hasKeys); };
+      window.slot_has_sokoboxes = function(g){ return !!(g && g.__hasSoko); };
+      window.slot_has_sokogoals = function(g){ return !!(g && g.__hasGoals); };
+      window.slot_has_arrows = function(){ return true; };
+      window.slot_arrow_host = function(g){ return g && g.__arrowHost; };
+      window.__slotActive = null;
+      window.__slotEatenFruit = null;
+    `;
+    const fn = new Function("window", "Math", "Object", "Set", src);
+    fn(sandbox.window, Math, Object, Set);
+    const w = sandbox.window;
+
+    // Arrow under fruit clears.
+    const host = {
+      ka: [
+        [{ direction: "NONE", wm: false }, { direction: "UP", wm: true }],
+        [{ direction: "LEFT", wm: true }, { direction: "NONE", wm: false }],
+      ],
+    };
+    const game = { __arrowHost: host };
+    assert.equal(w.slot_clear_arrow_at(game, 1, 0), true);
+    assert.equal(host.ka[0][1].direction, "NONE");
+    w.slot_clear_arrows_under_fruit(
+      { ka: [{ pos: { x: 0, y: 1 } }] },
+      game
+    );
+    assert.equal(host.ka[1][0].direction, "NONE");
+
+    // Poison-only board → empty for win.
+    const g = { nj: false, ub: false };
+    assert.equal(
+      w.slot_board_has_playable_content(g, {
+        ka: [{ Oka: true, slotMode: 10 }],
+      }),
+      false
+    );
+    assert.equal(
+      w.slot_win_if_empty(g, { ka: [{ Oka: true }] }),
+      true
+    );
+    assert.equal(g.nj, true);
+
+    // Chess / badged fruit / portals keep playing.
+    g.nj = false;
+    g.ub = false;
+    assert.equal(
+      w.slot_win_if_empty(g, {
+        ka: [{ isPiece: true, ChessPiece: "pawn" }],
+      }),
+      false
+    );
+    assert.equal(
+      w.slot_win_if_empty(g, { ka: [{ slotMode: 1, Oka: false }] }),
+      false
+    );
+
+    // Keys / soko keep playing even with empty apple list.
+    g.__hasKeys = true;
+    assert.equal(w.slot_win_if_empty(g, { ka: [] }), false);
+    g.__hasKeys = false;
+    g.__hasSoko = true;
+    assert.equal(w.slot_win_if_empty(g, { ka: [] }), false);
+    g.__hasSoko = false;
+    g.__hasGoals = true;
+    assert.equal(w.slot_win_if_empty(g, { ka: [] }), false);
+    g.__hasGoals = false;
+    assert.equal(w.slot_win_if_empty(g, { ka: [] }), true);
   });
 
   it("builder / splice / Remix+Ultra wire SlotMachine after BombFruit", () => {
@@ -332,7 +732,7 @@ describe("Slot Machine mode (offline)", () => {
     );
     assert.match(init, /slot_borderless_wrap/);
     assert.match(init, /n7 include slot borderless wrap/);
-    assert.match(init, /b!==5&&b!==4/);
+    assert.match(init, /b!==5&&b!==4&&b!==7&&b!==11&&b!==27/);
     assert.doesNotMatch(init, /slot_borderless_no_camera/);
     let code = "n7=function(a){return e7(a,21)||e7(a,4)}";
     code = code.replace(
@@ -444,7 +844,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       });
       assert.equal(result.active, true);
       assert.equal(typeof result.modeId, "number");
-      assert.equal(result.poolLen, 24);
+      assert.equal(result.poolLen, 27);
       assert.ok(result.fruits.length >= 1);
       assert.ok(result.fruits.every((f) => f.slotMode != null || f.oka || f.piece));
       assert.equal(result.slotActive, result.eatenMode);
@@ -1529,6 +1929,71 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(result.fruitCount, 1, JSON.stringify(result));
       assert.equal(typeof result.fruitBadge, "number", JSON.stringify(result));
       assert.equal(result.fruitAtBlock, true, JSON.stringify(result));
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("key unlock while Chess roll yields badged fruit not a piece", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 44, headless: true });
+    try {
+      await h.start({
+        mode: "slot_machine",
+        count: COUNT.ONE,
+        size: SIZE.NORMAL,
+      });
+      const result = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        window.CurrentModeNum = window.SLOT_MACHINE_MODE;
+        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.nj = false;
+        window.setSlotActive(24, g); // Chess roll active
+        g.wa.ka.length = 0;
+        if (g.Ba && g.Ba.keys) g.Ba.keys.length = 0;
+
+        const pos = { x: 6, y: 6 };
+        window.slot_key_unlock_fruit = 1;
+        let planted = null;
+        if (typeof f4E === "function") {
+          try {
+            const before = g.wa.ka.length;
+            f4E(g.wa, pos, 0, true, 0, true);
+            planted = g.wa.ka[g.wa.ka.length - 1] || null;
+            if (planted && g.wa.ka.length === before) planted = null;
+          } catch (_e) {}
+        }
+        if (!planted) {
+          planted = window.slot_make_apple(g.wa, pos);
+          g.wa.ka.push(planted);
+          // Simulate convert attempting to run under Chess roll + unlock flag.
+          if (typeof window.chess_convert_new_apples === "function") {
+            window.chess_convert_new_apples(g.wa, 1);
+          }
+        }
+        if (typeof window.slot_after_native_respawn === "function") {
+          window.slot_after_native_respawn(g.wa, 1, g);
+        }
+        const f = g.wa.ka[g.wa.ka.length - 1];
+        return {
+          active: window.__slotActive | 0,
+          isPiece: !!(f && f.isPiece),
+          chessPiece: f && f.ChessPiece,
+          chessColor: f && f.ChessColor,
+          hasBadge: !!(f && f.slotMode != null),
+          typeIsPiece: !!(
+            f &&
+            window.slot_is_chess_piece_type &&
+            window.slot_is_chess_piece_type(f.type)
+          ),
+        };
+      });
+      assert.equal(result.active, 24, JSON.stringify(result));
+      assert.equal(result.isPiece, false, JSON.stringify(result));
+      assert.equal(result.chessPiece, undefined, JSON.stringify(result));
+      assert.equal(result.chessColor, undefined, JSON.stringify(result));
+      assert.equal(result.typeIsPiece, false, JSON.stringify(result));
+      assert.equal(result.hasBadge, true, JSON.stringify(result));
     } finally {
       await h.close();
     }

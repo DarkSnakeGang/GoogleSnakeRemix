@@ -1,7 +1,205 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, "..");
 const runBrowser = process.env.RUN_BROWSER_TESTS === "1";
+
+describe("chess double-eat law (offline)", () => {
+  const chess = readFileSync(path.join(ROOT, "src", "ChessInit.js"), "utf8");
+
+  it("ChessInit defines second-piece-eat helpers and score-hook branch", () => {
+    assert.match(chess, /chess_respawn_eaten_piece/);
+    assert.match(chess, /chess_remove_random_opposite_piece/);
+    assert.match(chess, /chess_on_second_piece_eat/);
+    assert.match(chess, /chess_pos_on_bridge/);
+    assert.match(chess, /chess_pos_on_bridge && window\.chess_pos_on_bridge/);
+    assert.match(
+      chess,
+      /head_state!=='OPEN'&&window\.chess_on_second_piece_eat/
+    );
+    assert.match(chess, /chess_on_second_piece_eat\(_ae\)/);
+  });
+
+  it("unit: chess spawn rejects bridge tiles", () => {
+    const extract = (name) => {
+      const re = new RegExp(
+        `window\\.${name} = function ${name}\\([\\s\\S]*?\\n  \\};`
+      );
+      const m = chess.match(re);
+      assert.ok(m, "missing " + name);
+      return m[0];
+    };
+    const sandbox = { window: {}, Math, Object, Set, console };
+    const src = `
+      window.chess_pos_key = function(p){ return p ? ((p.x|0)+","+(p.y|0)) : null; };
+      window.chess_board_size = function(board){
+        return board && board.width != null
+          ? { width: board.width|0, height: board.height|0 }
+          : null;
+      };
+      window.chess_in_bounds = function(board, pos){
+        const size = window.chess_board_size(board);
+        if (!size || !pos || pos.x == null || pos.y == null) return false;
+        return pos.x >= 0 && pos.y >= 0 && pos.x < size.width && pos.y < size.height;
+      };
+      ${extract("chess_pos_on_bridge")}
+      ${extract("chess_is_legal_spawn")}
+    `;
+    const fn = new Function("window", "Math", "Object", "Set", src);
+    fn(sandbox.window, Math, Object, Set);
+    const w = sandbox.window;
+    const board = { width: 8, height: 8 };
+    // Bridge at 2,3
+    const grid = Array.from({ length: 8 }, () => Array(8).fill(null));
+    grid[3][2] = { wm: false };
+    w.__remixGame = { Ga: { oa: grid } };
+
+    assert.equal(w.chess_pos_on_bridge(null, { x: 2, y: 3 }), true);
+    assert.equal(w.chess_pos_on_bridge(null, { x: 1, y: 1 }), false);
+    assert.equal(
+      w.chess_is_legal_spawn(board, { x: 2, y: 3 }, new Set()),
+      false,
+      "bridge cell illegal"
+    );
+    assert.equal(
+      w.chess_is_legal_spawn(board, { x: 1, y: 1 }, new Set()),
+      true,
+      "empty cell legal"
+    );
+  });
+
+  it("unit: respawn success keeps carry; fail opposite exits; fail same swaps+culls", () => {
+    const extract = (name) => {
+      const re = new RegExp(
+        `window\\.${name} = function ${name}\\([\\s\\S]*?\\n  \\};`
+      );
+      const m = chess.match(re);
+      assert.ok(m, "missing " + name);
+      return m[0];
+    };
+    const sandbox = { window: {}, Math, Object, Set, console };
+    const src = `
+      window.chess_pos_key = function(p){ return p ? ((p.x|0)+","+(p.y|0)) : null; };
+      window.chess_make_pos = function(x,y){ return { x:x|0, y:y|0 }; };
+      window.chess_occupied_keys = function(game, list, skip){
+        const s = new Set();
+        for (let i = 0; i < (list||[]).length; i++) {
+          if (skip && skip.has(i)) continue;
+          const f = list[i];
+          if (f && f.pos) s.add(window.chess_pos_key(f.pos));
+        }
+        return s;
+      };
+      window.chess_find_legal_spawn = function(board, freePos, occ){
+        // Controllable via window.__testSpawnPos
+        if (window.__testSpawnPos === null) return null;
+        if (window.__testSpawnPos) return window.__testSpawnPos;
+        for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+          const k = x+","+y;
+          if (!occ.has(k)) return { x, y };
+        }
+        return null;
+      };
+      window.shield_all = function(){ window.__shieldAll = (window.__shieldAll|0)+1; };
+      window.shield_empty_all = function(){ window.__shieldEmpty = (window.__shieldEmpty|0)+1; };
+      window.updateTrophySRC = function(t){ window.__trophy = t; };
+      ${extract("chess_respawn_eaten_piece")}
+      ${extract("chess_remove_random_opposite_piece")}
+      ${extract("chess_on_second_piece_eat")}
+    `;
+    const fn = new Function("window", "Math", "Object", "Set", src);
+    fn(sandbox.window, Math, Object, Set);
+    const w = sandbox.window;
+
+    // --- success: relocate, keep carry ---
+    w.__remixGame = { wa: { ka: [], oa: { width: 8, height: 8 } } };
+    w.head_state = "rook";
+    w.head_color = "w";
+    w.__shieldAll = 0;
+    w.__testSpawnPos = { x: 5, y: 5 };
+    const eatenA = {
+      isPiece: true,
+      ChessPiece: "pawn",
+      ChessColor: "b",
+      type: 101,
+      pos: { x: 1, y: 1 },
+    };
+    w.__remixGame.wa.ka = [eatenA];
+    w.chess_on_second_piece_eat(eatenA);
+    assert.equal(w.head_state, "rook", "keep carry on relocate");
+    assert.equal(w.head_color, "w");
+    assert.ok(w.__shieldAll > 0);
+    const relocated = w.__remixGame.wa.ka.filter(
+      (f) => f && f !== eatenA && f.isPiece
+    );
+    assert.equal(relocated.length, 1);
+    assert.equal(relocated[0].ChessPiece, "pawn");
+    assert.equal(relocated[0].ChessColor, "b");
+    assert.equal(relocated[0].pos.x, 5);
+    assert.equal(relocated[0].pos.y, 5);
+
+    // --- fail + opposite → exit ---
+    w.__testSpawnPos = null;
+    w.head_state = "knight";
+    w.head_color = "w";
+    w.__shieldEmpty = 0;
+    w.__remixGame.wa.ka = [
+      {
+        isPiece: true,
+        ChessPiece: "bishop",
+        ChessColor: "b",
+        type: 102,
+        pos: { x: 2, y: 2 },
+      },
+    ];
+    w.chess_on_second_piece_eat(w.__remixGame.wa.ka[0]);
+    assert.equal(w.head_state, "OPEN");
+    assert.equal(w.head_color, "NONE");
+    assert.ok(w.__shieldEmpty > 0);
+
+    // --- fail + same → become eaten; cull opposite ---
+    w.__testSpawnPos = null;
+    w.head_state = "queen";
+    w.head_color = "w";
+    w.__shieldAll = 0;
+    w.__trophy = null;
+    const same = {
+      isPiece: true,
+      ChessPiece: "king",
+      ChessColor: "w",
+      type: 55,
+      pos: { x: 3, y: 3 },
+    };
+    const opp1 = {
+      isPiece: true,
+      ChessPiece: "pawn",
+      ChessColor: "b",
+      type: 56,
+      pos: { x: 4, y: 4 },
+    };
+    const opp2 = {
+      isPiece: true,
+      ChessPiece: "rook",
+      ChessColor: "b",
+      type: 57,
+      pos: { x: 6, y: 6 },
+    };
+    w.__remixGame.wa.ka = [same, opp1, opp2];
+    w.chess_on_second_piece_eat(same);
+    assert.equal(w.head_state, "king");
+    assert.equal(w.head_color, "w");
+    assert.equal(w.__trophy, 55);
+    assert.ok(w.__shieldAll > 0);
+    const left = w.__remixGame.wa.ka.filter((f) => f && f.isPiece);
+    // same is still in list (native splice not simulated); one opposite removed
+    const blackLeft = left.filter((f) => f.ChessColor === "b");
+    assert.equal(blackLeft.length, 1, JSON.stringify(left));
+  });
+});
 
 /**
  * Place apple[0] one cell ahead of the head, tick once so the snake eats it.

@@ -739,9 +739,30 @@ window.ChessMod.alterSnakeCode = function (code) {
     occupiedKeys
   ) {
     if (!window.chess_in_bounds(board, pos)) return false;
+    // Bridges are solid for fruit/piece spawn (same as Slot freePos).
+    if (window.chess_pos_on_bridge && window.chess_pos_on_bridge(null, pos)) {
+      return false;
+    }
     if (!occupiedKeys) return true;
     const k = window.chess_pos_key(pos);
     return k == null || !occupiedKeys.has(k);
+  };
+
+  // Bridge tiles (game.Ga.oa[y][x]) are not free cells for piece/fruit spawn.
+  window.chess_pos_on_bridge = function chess_pos_on_bridge(game, posOrX, y) {
+    const g = game || window.__remixGame;
+    const grid = g && g.Ga && g.Ga.oa;
+    if (!grid || !grid.length) return false;
+    let xi;
+    let yi;
+    if (posOrX && typeof posOrX === "object") {
+      xi = posOrX.x | 0;
+      yi = posOrX.y | 0;
+    } else {
+      xi = posOrX | 0;
+      yi = y | 0;
+    }
+    return !!(grid[yi] && grid[yi][xi]);
   };
 
   // Native Tb bans cells with l7(board, head, cell) <= 3 when portal/shield
@@ -859,6 +880,184 @@ window.ChessMod.alterSnakeCode = function (code) {
     el.type = window[window.color_turn + el.ChessPiece];
     el.nba = undefined;
     window.SwitchTurn();
+  };
+
+  // Relocate an eaten piece identity to a different legal cell. Returns true
+  // if a new apple was pushed onto mgr.ka.
+  window.chess_respawn_eaten_piece = function chess_respawn_eaten_piece(
+    snapshot,
+    mgr
+  ) {
+    if (!snapshot || !mgr || !mgr.ka) return false;
+    const piece = snapshot.ChessPiece;
+    const color = snapshot.ChessColor;
+    if (!piece || (color !== "w" && color !== "b")) return false;
+    const game = window.__remixGame;
+    const board = mgr.oa;
+    const freePos =
+      typeof window.__chessFreePos === "function"
+        ? window.__chessFreePos
+        : typeof d4E === "function"
+          ? d4E
+          : null;
+    const occ = window.chess_occupied_keys(game, mgr.ka, new Set());
+    // Also ban the eaten cell explicitly (still in ka until native splice).
+    if (snapshot.pos) {
+      const ban = window.chess_pos_key(snapshot.pos);
+      if (ban != null) occ.add(ban);
+    }
+    const pos = window.chess_find_legal_spawn(board, freePos, occ, null);
+    if (!pos) return false;
+    if (
+      snapshot.pos &&
+      (pos.x | 0) === (snapshot.pos.x | 0) &&
+      (pos.y | 0) === (snapshot.pos.y | 0)
+    ) {
+      return false;
+    }
+
+    const make = window.__chessMakeApple;
+    let dup = null;
+    if (typeof make === "function") {
+      try {
+        dup = make(mgr, 0, 0);
+      } catch (_e) {
+        dup = null;
+      }
+    }
+    if (!dup) {
+      dup = {};
+      if (snapshot && typeof snapshot === "object") {
+        for (const key in snapshot) {
+          if (!Object.prototype.hasOwnProperty.call(snapshot, key)) continue;
+          if (key === "pos" || key === "nba" || key === "Oba") continue;
+          try {
+            dup[key] = snapshot[key];
+          } catch (_e2) {}
+        }
+      }
+    }
+    if (typeof pos.clone === "function") {
+      dup.pos = pos.clone();
+    } else {
+      dup.pos = window.chess_make_pos(pos.x, pos.y);
+    }
+    dup.isPiece = true;
+    dup.ChessPiece = piece;
+    dup.ChessColor = color;
+    const typeId =
+      snapshot.type != null
+        ? snapshot.type
+        : window[color + piece];
+    if (typeId != null) dup.type = typeId;
+    dup.nba = undefined;
+    dup.Oba = undefined;
+    dup.wm = true;
+    dup.cM = 0;
+    dup.nD = 0;
+    // Not a Slot badge fruit.
+    try {
+      delete dup.slotMode;
+      delete dup.__slotPortal;
+      delete dup.__slotPortalPairId;
+      delete dup.__slotPortalTwin;
+      delete dup.__slotYinYangPair;
+    } catch (_slot) {}
+    mgr.ka.push(dup);
+    window.appleArray = mgr.ka;
+    return true;
+  };
+
+  window.chess_remove_random_opposite_piece = function chess_remove_random_opposite_piece(
+    mgr,
+    color
+  ) {
+    const list = mgr && mgr.ka;
+    if (!list || !list.length) return false;
+    const opposites = [];
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      if (!f || !f.isPiece || f.Oka) continue;
+      if (f.ChessColor && f.ChessColor !== color) opposites.push(i);
+    }
+    if (!opposites.length) return false;
+    const pick =
+      opposites[Math.floor(Math.random() * opposites.length) | 0];
+    list.splice(pick, 1);
+    window.appleArray = list;
+    return true;
+  };
+
+  // Law: eating a piece while already carrying.
+  // Success relocating → keep current carry. Fail + opposite → exit.
+  // Fail + same → become eaten piece; remove one random opposite for balance.
+  window.chess_on_second_piece_eat = function chess_on_second_piece_eat(eaten) {
+    if (!eaten || !eaten.isPiece) return;
+    if (window.head_state === "OPEN") return;
+
+    const game = window.__remixGame;
+    const mgr = (game && game.wa) || null;
+    const snapshot = {
+      ChessPiece: eaten.ChessPiece,
+      ChessColor: eaten.ChessColor,
+      type: eaten.type,
+      pos: eaten.pos
+        ? typeof eaten.pos.clone === "function"
+          ? eaten.pos.clone()
+          : { x: eaten.pos.x, y: eaten.pos.y }
+        : null,
+    };
+
+    const relocated =
+      !!mgr &&
+      window.chess_respawn_eaten_piece &&
+      window.chess_respawn_eaten_piece(snapshot, mgr);
+
+    if (relocated) {
+      // Keep head_state / head_color; board stays locked.
+      if (typeof window.shield_all === "function") window.shield_all();
+      return;
+    }
+
+    const sameColor =
+      snapshot.ChessColor &&
+      window.head_color &&
+      snapshot.ChessColor === window.head_color;
+
+    if (!sameColor) {
+      // Opposite (or unknown): exit carry.
+      window.head_state = "OPEN";
+      window.head_color = "NONE";
+      if (typeof window.shield_empty_all === "function") {
+        window.shield_empty_all();
+      }
+      try {
+        if (
+          window.isSlotMachineActive &&
+          window.isSlotMachineActive() &&
+          typeof window.slot_update_active_trophy === "function"
+        ) {
+          window.slot_update_active_trophy();
+        }
+      } catch (_t) {}
+      return;
+    }
+
+    // Same color: become the eaten piece; cull one opposite for balance.
+    window.head_state = snapshot.ChessPiece;
+    window.head_color = snapshot.ChessColor;
+    try {
+      if (
+        typeof window.updateTrophySRC === "function" &&
+        snapshot.type != null
+      ) {
+        window.updateTrophySRC(snapshot.type);
+      }
+    } catch (_tr) {}
+    if (mgr && typeof window.chess_remove_random_opposite_piece === "function") {
+      window.chess_remove_random_opposite_piece(mgr, snapshot.ChessColor);
+    }
+    if (typeof window.shield_all === "function") window.shield_all();
   };
 
   // Drop or relocate any apple whose cell is off-board / on snake / overlapping.
@@ -1433,11 +1632,12 @@ window.ChessMod.alterSnakeCode = function (code) {
   // Do NOT multiply dice roll by 2 — Portal pairing already doubles (R apples -> 2R pieces).
 
   // Score / eat: pieces never score; fruit scores. Eat helper uses a.Sh++.
+  // Second piece eat while carrying → chess_on_second_piece_eat law (Chess+Slot).
   let score_regex = new RegExp(/a\.Sh\+\+;/);
   if (code.match(score_regex)) {
     code = code.assertReplace(
       score_regex,
-      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';a.Sh++;}else if(_ae&&_ae.isPiece){window.just_ate='piece';window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}else{window.just_ate='fruit';a.Sh++;}}else{a.Sh++;}`
+      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';a.Sh++;}else if(_ae&&_ae.isPiece){window.just_ate='piece';if(window.head_state!=='OPEN'&&window.chess_on_second_piece_eat){window.chess_on_second_piece_eat(_ae);}else{window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}}else{window.just_ate='fruit';a.Sh++;}}else{a.Sh++;}`
     );
   } else {
     console.error("ChessMod: failed to find score increment");

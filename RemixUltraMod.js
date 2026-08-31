@@ -11038,9 +11038,30 @@ window.ChessMod.alterSnakeCode = function (code) {
     occupiedKeys
   ) {
     if (!window.chess_in_bounds(board, pos)) return false;
+    // Bridges are solid for fruit/piece spawn (same as Slot freePos).
+    if (window.chess_pos_on_bridge && window.chess_pos_on_bridge(null, pos)) {
+      return false;
+    }
     if (!occupiedKeys) return true;
     const k = window.chess_pos_key(pos);
     return k == null || !occupiedKeys.has(k);
+  };
+
+  // Bridge tiles (game.Ga.oa[y][x]) are not free cells for piece/fruit spawn.
+  window.chess_pos_on_bridge = function chess_pos_on_bridge(game, posOrX, y) {
+    const g = game || window.__remixGame;
+    const grid = g && g.Ga && g.Ga.oa;
+    if (!grid || !grid.length) return false;
+    let xi;
+    let yi;
+    if (posOrX && typeof posOrX === "object") {
+      xi = posOrX.x | 0;
+      yi = posOrX.y | 0;
+    } else {
+      xi = posOrX | 0;
+      yi = y | 0;
+    }
+    return !!(grid[yi] && grid[yi][xi]);
   };
 
   // Native Tb bans cells with l7(board, head, cell) <= 3 when portal/shield
@@ -11158,6 +11179,184 @@ window.ChessMod.alterSnakeCode = function (code) {
     el.type = window[window.color_turn + el.ChessPiece];
     el.nba = undefined;
     window.SwitchTurn();
+  };
+
+  // Relocate an eaten piece identity to a different legal cell. Returns true
+  // if a new apple was pushed onto mgr.ka.
+  window.chess_respawn_eaten_piece = function chess_respawn_eaten_piece(
+    snapshot,
+    mgr
+  ) {
+    if (!snapshot || !mgr || !mgr.ka) return false;
+    const piece = snapshot.ChessPiece;
+    const color = snapshot.ChessColor;
+    if (!piece || (color !== "w" && color !== "b")) return false;
+    const game = window.__remixGame;
+    const board = mgr.oa;
+    const freePos =
+      typeof window.__chessFreePos === "function"
+        ? window.__chessFreePos
+        : typeof d4E === "function"
+          ? d4E
+          : null;
+    const occ = window.chess_occupied_keys(game, mgr.ka, new Set());
+    // Also ban the eaten cell explicitly (still in ka until native splice).
+    if (snapshot.pos) {
+      const ban = window.chess_pos_key(snapshot.pos);
+      if (ban != null) occ.add(ban);
+    }
+    const pos = window.chess_find_legal_spawn(board, freePos, occ, null);
+    if (!pos) return false;
+    if (
+      snapshot.pos &&
+      (pos.x | 0) === (snapshot.pos.x | 0) &&
+      (pos.y | 0) === (snapshot.pos.y | 0)
+    ) {
+      return false;
+    }
+
+    const make = window.__chessMakeApple;
+    let dup = null;
+    if (typeof make === "function") {
+      try {
+        dup = make(mgr, 0, 0);
+      } catch (_e) {
+        dup = null;
+      }
+    }
+    if (!dup) {
+      dup = {};
+      if (snapshot && typeof snapshot === "object") {
+        for (const key in snapshot) {
+          if (!Object.prototype.hasOwnProperty.call(snapshot, key)) continue;
+          if (key === "pos" || key === "nba" || key === "Oba") continue;
+          try {
+            dup[key] = snapshot[key];
+          } catch (_e2) {}
+        }
+      }
+    }
+    if (typeof pos.clone === "function") {
+      dup.pos = pos.clone();
+    } else {
+      dup.pos = window.chess_make_pos(pos.x, pos.y);
+    }
+    dup.isPiece = true;
+    dup.ChessPiece = piece;
+    dup.ChessColor = color;
+    const typeId =
+      snapshot.type != null
+        ? snapshot.type
+        : window[color + piece];
+    if (typeId != null) dup.type = typeId;
+    dup.nba = undefined;
+    dup.Oba = undefined;
+    dup.wm = true;
+    dup.cM = 0;
+    dup.nD = 0;
+    // Not a Slot badge fruit.
+    try {
+      delete dup.slotMode;
+      delete dup.__slotPortal;
+      delete dup.__slotPortalPairId;
+      delete dup.__slotPortalTwin;
+      delete dup.__slotYinYangPair;
+    } catch (_slot) {}
+    mgr.ka.push(dup);
+    window.appleArray = mgr.ka;
+    return true;
+  };
+
+  window.chess_remove_random_opposite_piece = function chess_remove_random_opposite_piece(
+    mgr,
+    color
+  ) {
+    const list = mgr && mgr.ka;
+    if (!list || !list.length) return false;
+    const opposites = [];
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      if (!f || !f.isPiece || f.Oka) continue;
+      if (f.ChessColor && f.ChessColor !== color) opposites.push(i);
+    }
+    if (!opposites.length) return false;
+    const pick =
+      opposites[Math.floor(Math.random() * opposites.length) | 0];
+    list.splice(pick, 1);
+    window.appleArray = list;
+    return true;
+  };
+
+  // Law: eating a piece while already carrying.
+  // Success relocating → keep current carry. Fail + opposite → exit.
+  // Fail + same → become eaten piece; remove one random opposite for balance.
+  window.chess_on_second_piece_eat = function chess_on_second_piece_eat(eaten) {
+    if (!eaten || !eaten.isPiece) return;
+    if (window.head_state === "OPEN") return;
+
+    const game = window.__remixGame;
+    const mgr = (game && game.wa) || null;
+    const snapshot = {
+      ChessPiece: eaten.ChessPiece,
+      ChessColor: eaten.ChessColor,
+      type: eaten.type,
+      pos: eaten.pos
+        ? typeof eaten.pos.clone === "function"
+          ? eaten.pos.clone()
+          : { x: eaten.pos.x, y: eaten.pos.y }
+        : null,
+    };
+
+    const relocated =
+      !!mgr &&
+      window.chess_respawn_eaten_piece &&
+      window.chess_respawn_eaten_piece(snapshot, mgr);
+
+    if (relocated) {
+      // Keep head_state / head_color; board stays locked.
+      if (typeof window.shield_all === "function") window.shield_all();
+      return;
+    }
+
+    const sameColor =
+      snapshot.ChessColor &&
+      window.head_color &&
+      snapshot.ChessColor === window.head_color;
+
+    if (!sameColor) {
+      // Opposite (or unknown): exit carry.
+      window.head_state = "OPEN";
+      window.head_color = "NONE";
+      if (typeof window.shield_empty_all === "function") {
+        window.shield_empty_all();
+      }
+      try {
+        if (
+          window.isSlotMachineActive &&
+          window.isSlotMachineActive() &&
+          typeof window.slot_update_active_trophy === "function"
+        ) {
+          window.slot_update_active_trophy();
+        }
+      } catch (_t) {}
+      return;
+    }
+
+    // Same color: become the eaten piece; cull one opposite for balance.
+    window.head_state = snapshot.ChessPiece;
+    window.head_color = snapshot.ChessColor;
+    try {
+      if (
+        typeof window.updateTrophySRC === "function" &&
+        snapshot.type != null
+      ) {
+        window.updateTrophySRC(snapshot.type);
+      }
+    } catch (_tr) {}
+    if (mgr && typeof window.chess_remove_random_opposite_piece === "function") {
+      window.chess_remove_random_opposite_piece(mgr, snapshot.ChessColor);
+    }
+    if (typeof window.shield_all === "function") window.shield_all();
   };
 
   // Drop or relocate any apple whose cell is off-board / on snake / overlapping.
@@ -11732,11 +11931,12 @@ window.ChessMod.alterSnakeCode = function (code) {
   // Do NOT multiply dice roll by 2 — Portal pairing already doubles (R apples -> 2R pieces).
 
   // Score / eat: pieces never score; fruit scores. Eat helper uses a.Sh++.
+  // Second piece eat while carrying → chess_on_second_piece_eat law (Chess+Slot).
   let score_regex = new RegExp(/a\.Sh\+\+;/);
   if (code.match(score_regex)) {
     code = code.assertReplace(
       score_regex,
-      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';a.Sh++;}else if(_ae&&_ae.isPiece){window.just_ate='piece';window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}else{window.just_ate='fruit';a.Sh++;}}else{a.Sh++;}`
+      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';a.Sh++;}else if(_ae&&_ae.isPiece){window.just_ate='piece';if(window.head_state!=='OPEN'&&window.chess_on_second_piece_eat){window.chess_on_second_piece_eat(_ae);}else{window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}}else{window.just_ate='fruit';a.Sh++;}}else{a.Sh++;}`
     );
   } else {
     console.error("ChessMod: failed to find score increment");
@@ -15335,16 +15535,16 @@ window.SlotMachineMod = {};
 ////////////////////////////////////////////////////////////////////
 
 window.SlotMachineMod.runCodeBefore = function () {
-  console.log("Adding Slot Machine Mode (v15)");
+  console.log("Adding Slot Machine Mode (v16)");
 
   window.SLOT_MACHINE_ICON = "data:image/png;base64,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";
 
-  // Eligible bag modes (excludes Classic 0, Yin Yang 7, Dimension 11,
-  // Blender 22, Mexico 27). Borderless (4) is wrap-only (no e7(4) visuals /
-  // camera); Peaceful off; count (settings.ka) unchanged.
+  // Eligible bag modes (excludes Classic 0, Blender 22). Yin Yang 7 /
+  // Dimension 11 / Mexico 27 are Slot-local (no sticky native). Borderless (4)
+  // is wrap-only (no e7(4) visuals / camera); Peaceful off; count unchanged.
   window.SLOT_MACHINE_POOL = [
-    1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24,
-    25, 26, 28,
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+    23, 24, 25, 26, 27, 28,
   ];
 
   window.SLOT_MACHINE_MODE_LABELS = {
@@ -15354,9 +15554,11 @@ window.SlotMachineMod.runCodeBefore = function () {
     4: "Borderless",
     5: "Twin",
     6: "Winged",
+    7: "Yin Yang",
     8: "Key",
     9: "Sokoban",
     10: "Poison",
+    11: "Dimension",
     12: "Minesweeper",
     13: "Statue",
     14: "Light",
@@ -15371,7 +15573,39 @@ window.SlotMachineMod.runCodeBefore = function () {
     24: "Chess",
     25: "Burger",
     26: "Cat",
+    27: "Mexico",
     28: "Bomb Fruit",
+  };
+
+  // Polarity for Yin Yang paired badge flip (7 is both — in good and bad pools).
+  window.SLOT_BADGE_POLARITY = {
+    1: "bad",
+    2: "bad",
+    3: "good",
+    4: "good",
+    5: "bad",
+    6: "bad",
+    7: "both",
+    8: "bad",
+    9: "bad",
+    10: "bad",
+    11: "good",
+    12: "bad",
+    13: "bad",
+    14: "bad",
+    15: "bad",
+    16: "bad",
+    17: "bad",
+    18: "bad",
+    19: "bad",
+    20: "bad",
+    21: "good",
+    23: "good",
+    24: "bad",
+    25: "bad",
+    26: "good",
+    27: "bad",
+    28: "bad",
   };
 
   window.uiImage =
@@ -15410,7 +15644,7 @@ window.SlotMachineMod.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.SlotMachineMod.alterSnakeCode = function (code) {
-  console.log("Coding Slot Machine Mode into the game (v15)");
+  console.log("Coding Slot Machine Mode into the game (v16)");
 
   function smReplace(label, re, replacement, optional) {
     if (!code.match(re)) {
@@ -15426,6 +15660,71 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       console.error("SlotMachineMod: replace failed for " + label, e);
       return false;
     }
+  }
+
+  // Capture native yin-yang color matchmaking + solid snake color table
+  // (pudding may have already extended both).
+  // Snake color index is settings.wa (synced Ja/Jb). settings.oa is BOARD THEME
+  // (c7/s3E) — never treat it as snake color.
+  if (code.indexOf("window.__slotYyColorPairs=") < 0) {
+    smReplace(
+      "slot capture yy color pairs",
+      /(\w+)=(\[5,4,7,7,1,2,0,3,9,8,0,14,15,15,11[^\]]*?\])/,
+      "$1=$2;window.__slotYyColorPairs=$1",
+      true
+    );
+  }
+  if (code.indexOf("window.__slotSnakeColorTable=") < 0) {
+    smReplace(
+      "slot capture snake color table",
+      /(\w+)=(\[\[\"#4E7CF6\",\"#17439F\"\][\s\S]*?\]\])/,
+      "$1=$2;window.__slotSnakeColorTable=$1",
+      true
+    );
+  }
+  // Native sprite recolor (resets via C3E then tints). Used for eyes/mouth.
+  if (code.indexOf("window.__slotA7=a7") < 0) {
+    smReplace(
+      "slot capture a7 sprite recolor",
+      /a7=function\(a,b,c,d=-1\)\{/,
+      "a7=function(a,b,c,d=-1){window.__slotA7=a7;",
+      true
+    );
+  }
+  // Face atlas lives on the canvas renderer (X5E.Ga = P5E blink/eat/die/tongue),
+  // NOT on the game object (__remixGame.Ga is bridges). Capture the real atlas.
+  if (code.indexOf("window.__slotFaceRef=") < 0) {
+    if (
+      !smReplace(
+        "slot capture face atlas on construct",
+        /this\.Ga=new (\w+)\(this\.wb,this\.settings,this\.ka,this\.oa,\s*this\.(\w+)\);/,
+        "this.Ga=new $1(this.wb,this.settings,this.ka,this.oa,this.$2);window.__slotFaceRef=this.Ga;",
+        true
+      )
+    ) {
+      smReplace(
+        "slot capture face on rainbow tint",
+        /b=a\.Ga;var c=a\.wb\.oa\.Sc;/,
+        "b=a.Ga;window.__slotFaceRef=b;var c=a.wb.oa.Sc;",
+        true
+      );
+      smReplace(
+        "slot capture face on classic tint",
+        /b=a\.Ga,C3E\(b\.oa\),C3E\(b\.Aa\),C3E\(b\.Ba\),C3E\(b\.wa\);/,
+        "b=a.Ga,window.__slotFaceRef=b,C3E(b.oa),C3E(b.Aa),C3E(b.Ba),C3E(b.wa);",
+        true
+      );
+    }
+  }
+  // Live snake color index written on menu select (before pudding rainbow inject).
+  window.__slotYyColorField = "wa";
+  if (code.indexOf("window.__slotYyColorIndex=d") < 0) {
+    smReplace(
+      "slot stamp color index on select",
+      /case "color":/,
+      'case "color":window.__slotYyColorIndex=d;',
+      true
+    );
   }
 
   window.isSlotMachineActive = function isSlotMachineActive() {
@@ -15457,6 +15756,23 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     }
   };
 
+  // Top-bar tracks active Slot badge (not Slot icon) while a roll is live.
+  // Chess piece pickup still uses updateTrophySRC(type) while carrying.
+  window.slot_update_active_trophy = function slot_update_active_trophy() {
+    if (!window.isSlotMachineActive || !window.isSlotMachineActive()) return;
+    if (window.head_state && window.head_state !== "OPEN") return;
+    if (window.__slotActive == null) {
+      window.updateSlotMachineTrophySRC();
+      return;
+    }
+    if (!window.trophy_src) return;
+    const url = window.slot_trophy_url_for_mode(window.__slotActive);
+    if (!url) return;
+    try {
+      eval(window.trophy_src + "=(" + JSON.stringify(url) + ")");
+    } catch (_e) {}
+  };
+
   window.slot_reset_state = function slot_reset_state() {
     window.__slotActive = null;
     window.__slotPrevActive = null;
@@ -15476,9 +15792,20 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     window.slot_key_unlock_fruit = 0;
     window.slot_soko_unlock_fruit = 0;
     window.cat_lives = window.cat_lives | 0;
+    window.__slotMexicoMidUp = false;
+    window.__slotMexicoStartSide = null;
+    window.__slotMexicoPairSeq = 0;
+    try {
+      window.slot_yy_restore_snake_colors &&
+        window.slot_yy_restore_snake_colors();
+    } catch (_yy) {}
     try {
       window.slot_sync_ultra_disables && window.slot_sync_ultra_disables();
     } catch (_e) {}
+    try {
+      window.updateSlotMachineTrophySRC &&
+        window.updateSlotMachineTrophySRC();
+    } catch (_t) {}
   };
 
   window.slot_shuffle_bag = function slot_shuffle_bag() {
@@ -15579,6 +15906,95 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     return window.__slotBag.pop();
   };
 
+  window.slot_draw_mode_excluding = function slot_draw_mode_excluding(exclude) {
+    const ban = exclude || [];
+    const banned = function (m) {
+      const v = m | 0;
+      for (let i = 0; i < ban.length; i++) {
+        if ((ban[i] | 0) === v) return true;
+      }
+      return false;
+    };
+    for (let attempt = 0; attempt < 48; attempt++) {
+      const m = window.slot_draw_mode() | 0;
+      if (!banned(m)) return m;
+    }
+    const pool = (window.slot_enabled_pool
+      ? window.slot_enabled_pool()
+      : (window.SLOT_MACHINE_POOL || []).slice()
+    ).filter(function (m) {
+      return !banned(m);
+    });
+    if (!pool.length) return window.slot_draw_mode() | 0;
+    return pool[(Math.random() * pool.length) | 0] | 0;
+  };
+
+  window.slot_badge_polarity = function slot_badge_polarity(mode) {
+    const map = window.SLOT_BADGE_POLARITY || {};
+    return map[mode | 0] || "bad";
+  };
+
+  window.slot_roll_yy_pair = function slot_roll_yy_pair(primary, exclude) {
+    const p = primary | 0;
+    const ban = exclude || [];
+    const banned = function (m) {
+      const v = m | 0;
+      for (let i = 0; i < ban.length; i++) {
+        if ((ban[i] | 0) === v) return true;
+      }
+      return false;
+    };
+    const enabled = window.slot_enabled_pool
+      ? window.slot_enabled_pool()
+      : (window.SLOT_MACHINE_POOL || []).slice();
+    const candidates = [];
+    for (let i = 0; i < enabled.length; i++) {
+      const m = enabled[i] | 0;
+      if (banned(m)) continue;
+      if (p === 7) {
+        if (m !== 7) candidates.push(m);
+        continue;
+      }
+      const pol = window.slot_badge_polarity(p);
+      const q = window.slot_badge_polarity(m);
+      if (pol === "good" && (q === "bad" || q === "both")) candidates.push(m);
+      else if (pol === "bad" && (q === "good" || q === "both"))
+        candidates.push(m);
+      else if (pol === "both" && m !== p) candidates.push(m);
+    }
+    if (!candidates.length) return null;
+    return candidates[(Math.random() * candidates.length) | 0] | 0;
+  };
+
+  // Portal / Mexico portal pairs never roll Twin (5) as badge or YY pair.
+  window.slot_portal_pair_ban = [5];
+  window.slot_is_portal_pair_fruit = function slot_is_portal_pair_fruit(fruit) {
+    return !!(fruit && fruit.__slotPortal);
+  };
+
+  window.slot_mexico_mid_y = function slot_mexico_mid_y(game) {
+    if (typeof window.mexico_mid_y === "function") {
+      try {
+        return window.mexico_mid_y(game && game.Ca) | 0;
+      } catch (_e) {}
+    }
+    const g = game || window.__remixGame;
+    const walls = g && g.Ca && g.Ca.wa;
+    const h = walls && walls.length ? walls.length : 0;
+    return Math.floor((h | 0) / 2);
+  };
+
+  window.slot_fruit_on_mid = function slot_fruit_on_mid(fruit, game) {
+    if (!fruit || !fruit.pos || fruit.pos.y == null) return false;
+    const g = game || window.__remixGame;
+    return (fruit.pos.y | 0) === (window.slot_mexico_mid_y(g) | 0);
+  };
+
+  // True while Slot Mexico mid border is up, or when placing Mexico's pair.
+  window.slot_mexico_blocks_mid_fruit = function slot_mexico_blocks_mid_fruit() {
+    return !!window.__slotMexicoMidUp;
+  };
+
   window.slot_trophy_url_for_mode = function slot_trophy_url_for_mode(mode) {
     const m = mode | 0;
     if (m === 23 && window.CANDY_ICON) return window.CANDY_ICON;
@@ -15590,6 +16006,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     }
     if (m === 25 && window.BURGER_ICON) return window.BURGER_ICON;
     if (m === 26 && window.CAT_ICON) return window.CAT_ICON;
+    if (m === 27 && window.MEXICO_ICON) return window.MEXICO_ICON;
     if (m === 28 && window.BOMB_FRUIT_ICON) return window.BOMB_FRUIT_ICON;
     // Prefer live #trophy src (index === mode id, including Dimension at 11).
     try {
@@ -15611,9 +16028,45 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.assignSlotMode = function assignSlotMode(fruit, sharedMode) {
     if (!fruit || fruit.Oka) return null;
     if (fruit.isPiece) return null;
-    const mode =
+    const portalPair = window.slot_is_portal_pair_fruit(fruit);
+    const portalBan = portalPair ? window.slot_portal_pair_ban || [5] : [];
+    let mode =
       sharedMode != null ? sharedMode | 0 : window.slot_draw_mode() | 0;
+    // Portal / Mexico pairs: Twin badge cannot land on either twin.
+    if (portalPair && (mode | 0) === 5) {
+      mode = window.slot_draw_mode_excluding(portalBan) | 0;
+      if ((mode | 0) === 5) mode = 1;
+    }
+    // Mexico is never assigned to mid-row fruit (start layout / any assign).
+    if (
+      mode === 27 &&
+      window.slot_fruit_on_mid(fruit, window.__remixGame)
+    ) {
+      const ban = portalPair ? [27, 5] : [27];
+      mode = window.slot_draw_mode_excluding(ban) | 0;
+      if (mode === 27 || (portalPair && (mode | 0) === 5)) {
+        const pool = (window.slot_enabled_pool
+          ? window.slot_enabled_pool()
+          : (window.SLOT_MACHINE_POOL || []).slice()
+        ).filter(function (m) {
+          const v = m | 0;
+          if (v === 27) return false;
+          if (portalPair && v === 5) return false;
+          return true;
+        });
+        mode = pool.length
+          ? pool[(Math.random() * pool.length) | 0] | 0
+          : 1;
+      }
+    }
     fruit.slotMode = mode;
+    // YY pair also cannot be Twin on portal pairs (swap would put Twin on them).
+    const yyPair = window.slot_roll_yy_pair(
+      mode,
+      portalPair ? portalBan : null
+    );
+    if (yyPair != null) fruit.__slotYinYangPair = yyPair | 0;
+    else delete fruit.__slotYinYangPair;
     // Only while Shield is the active roll do new spawns get P3E bars
     // (the refill from a Shield-badge eat). Leaving Shield must not strip
     // already-marked leftovers — only bare new fruit stay unshielded.
@@ -15632,8 +16085,63 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     return mode;
   };
 
+  // Relocate a portal pair onto strict top + bottom halves (never mid row).
+  // Used when Mexico is the shared badge so neither twin sits on mid-y.
+  window.slot_mexico_relocate_pair_halves = function slot_mexico_relocate_pair_halves(
+    a,
+    b,
+    mgr
+  ) {
+    if (!a || !b || !mgr) return false;
+    const g = window.__remixGame || (mgr && mgr.wb);
+    const occ = new Set();
+    const list = mgr.ka || [];
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      if (!f || !f.pos || f === a || f === b) continue;
+      occ.add((f.pos.x | 0) + "," + (f.pos.y | 0));
+    }
+    const top = window.slot_mexico_find_half_pos(mgr, "top", occ);
+    if (!top) return false;
+    occ.add((top.x | 0) + "," + (top.y | 0));
+    const bot = window.slot_mexico_find_half_pos(mgr, "bottom", occ);
+    if (!bot) return false;
+    try {
+      a.pos.x = top.x | 0;
+      a.pos.y = top.y | 0;
+      b.pos.x = bot.x | 0;
+      b.pos.y = bot.y | 0;
+      if (window.slot_clear_arrow_at) {
+        window.slot_clear_arrow_at(g, a.pos.x, a.pos.y);
+        window.slot_clear_arrow_at(g, b.pos.x, b.pos.y);
+      }
+    } catch (_e) {
+      return false;
+    }
+    return true;
+  };
+
   window.slot_assign_pair = function slot_assign_pair(a, b) {
-    const mode = window.slot_draw_mode() | 0;
+    // Portal pairs never roll Twin (5).
+    let mode = window.slot_draw_mode_excluding([5]) | 0;
+    if ((mode | 0) === 5) mode = 1;
+    const g = window.__remixGame;
+    const mgr = (g && g.wa) || null;
+    // Mexico badge portal pairs: neither twin may sit on the middle row.
+    // Always pin them to opposite halves; if that fails and either is on mid,
+    // re-roll away from Mexico (still never Twin).
+    if (mode === 27 && a && b) {
+      const ok =
+        window.slot_mexico_relocate_pair_halves &&
+        window.slot_mexico_relocate_pair_halves(a, b, mgr);
+      if (
+        !ok &&
+        (window.slot_fruit_on_mid(a, g) || window.slot_fruit_on_mid(b, g))
+      ) {
+        mode = window.slot_draw_mode_excluding([27, 5]) | 0;
+        if ((mode | 0) === 5 || (mode | 0) === 27) mode = 1;
+      }
+    }
     const pairId = (window.__slotPortalPairSeq =
       (window.__slotPortalPairSeq | 0) + 1);
     if (a) {
@@ -15647,6 +16155,11 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       b.__slotPortalPairId = pairId;
       b.__slotPortalTwin = a || null;
       window.assignSlotMode(b, mode);
+    }
+    // Keep yin-yang pairs matched on portal twins.
+    if (a && b) {
+      if (a.__slotYinYangPair != null) b.__slotYinYangPair = a.__slotYinYangPair;
+      else delete b.__slotYinYangPair;
     }
     // Portal pairs share one fruit type (native R3E); type is finalized by
     // slot_ensure_unique_fruit_types against the full board.
@@ -15719,7 +16232,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     return pool[Math.floor(Math.random() * pool.length) | 0];
   };
 
-  // Like portal R3E: each portal pair shares a type; every other fruit is unique.
+  // Portal pairs share one type. Never rewrite types of fruit already on the
+  // board — only assign/fix portal pairs (and fill null types on new fruit).
   window.slot_ensure_unique_fruit_types = function slot_ensure_unique_fruit_types(
     mgr
   ) {
@@ -15727,6 +16241,14 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (!list || !list.length) return;
     const used = new Set();
     const seenPairs = Object.create(null);
+
+    // Reserve types already owned by non-portal fruit so a new portal/Mexico
+    // pair cannot steal them (and force those fruits to change).
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      if (!f || f.Oka || f.isPiece || f.__slotPortal) continue;
+      if (f.type != null) used.add(f.type | 0);
+    }
 
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
@@ -15766,17 +16288,17 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       if (twin) twin.type = type;
     }
 
+    // Non-portal: only fill missing types. Never retag fruit that already has one.
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
       if (!f || f.Oka || f.isPiece) continue;
       if (f.__slotPortal) continue;
-      const cur = f.type | 0;
-      if (f.type == null || used.has(cur)) {
+      if (f.type == null) {
         const type = window.slot_pick_unique_type(mgr, used);
         used.add(type);
         f.type = type;
       } else {
-        used.add(cur);
+        used.add(f.type | 0);
       }
     }
   };
@@ -16193,6 +16715,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
             f.pos.x = p.x | 0;
             f.pos.y = p.y | 0;
           }
+          try {
+            window.slot_clear_arrow_at &&
+              window.slot_clear_arrow_at(g, f.pos.x, f.pos.y);
+          } catch (_ar) {}
           break;
         }
       } catch (_br) {}
@@ -16245,6 +16771,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     }
     // Magnet/winged can round onto a bridge; fruit must not stay parked there.
     window.slot_relocate_fruit_off_bridges(mgr, game);
+    try {
+      window.slot_clear_arrows_under_fruit &&
+        window.slot_clear_arrows_under_fruit(mgr, game);
+    } catch (_ar) {}
   };
 
   window.slot_clear_slot_poisons = function slot_clear_slot_poisons(mgr) {
@@ -16255,6 +16785,778 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       if (f && f.Oka && f.__slotPoison) {
         list.splice(i, 1);
       }
+    }
+  };
+
+  // --- Yin Yang: paired polarity flip + snake colors ---
+  // Native: h3E[i] = [body, shade]; i3E[i] = partner index.
+  // Live snake color = settings.wa (menu writes Jb/Ja; start copies → wa).
+  // settings.oa / Mb / Qb are BOARD THEME (c7/s3E) — never touch those.
+  window.__slotYyBaseColorPairs = [
+    5, 4, 7, 7, 1, 2, 0, 3, 9, 8, 0, 14, 15, 15, 11, 12, 17, 16,
+  ];
+
+  // Never treat these settings fields as the snake color index.
+  window.__slotYyColorFieldSkip = {
+    // Board theme (was wrongly used before).
+    oa: 1,
+    Mb: 1,
+    Qb: 1,
+    qc: 1,
+    // Speed / size / count / mode / graphics.
+    ka: 1,
+    Ca: 1,
+    Sa: 1,
+    Aa: 1,
+    ub: 1,
+    ob: 1,
+    Ba: 1,
+    Ma: 1,
+    Fb: 1,
+    kc: 1,
+  };
+
+  window.slot_yy_color_field = function slot_yy_color_field(settings) {
+    if (!settings) return null;
+    // Live in-game color index.
+    if (typeof settings.wa === "number") {
+      window.__slotYyColorField = "wa";
+      return "wa";
+    }
+    if (typeof settings.Ja === "number") {
+      window.__slotYyColorField = "Ja";
+      return "Ja";
+    }
+    if (typeof settings.Jb === "number") {
+      window.__slotYyColorField = "Jb";
+      return "Jb";
+    }
+    return null;
+  };
+
+  window.slot_yy_read_color_index = function slot_yy_read_color_index(settings) {
+    if (!settings) {
+      return window.__slotYyColorIndex != null
+        ? window.__slotYyColorIndex | 0
+        : 0;
+    }
+    if (typeof settings.wa === "number") return settings.wa | 0;
+    if (typeof settings.Ja === "number") return settings.Ja | 0;
+    if (typeof settings.Jb === "number") return settings.Jb | 0;
+    return window.__slotYyColorIndex != null
+      ? window.__slotYyColorIndex | 0
+      : 0;
+  };
+
+  window.slot_yy_pair_color_index = function slot_yy_pair_color_index(idx) {
+    const i = idx | 0;
+    const map = window.__slotYyColorPairs || window.__slotYyBaseColorPairs;
+    if (map && map[i] != null) return map[i] | 0;
+    return i;
+  };
+
+  // Resolve [body, shade] from the snake color table (h3E), not board theme.
+  window.slot_yy_gradient_for_index = function slot_yy_gradient_for_index(
+    game,
+    colorIndex,
+    opts
+  ) {
+    const o = opts || {};
+    const idx = colorIndex | 0;
+    if (o.isRainbow && window.rainbowAlts) {
+      const alt =
+        window.rainbowAlts[
+          o.snakeRainbowOverride != null
+            ? o.snakeRainbowOverride | 0
+            : window.snakeRainbowOverride | 0
+        ];
+      if (alt && alt.set && alt.set.length) {
+        return [alt.set[0], alt.set[1] || alt.set[0]];
+      }
+    }
+    const table = window.__slotSnakeColorTable;
+    try {
+      if (table && table[idx]) {
+        const c0 = table[idx][0];
+        const c1 = table[idx][1] || c0;
+        if (c0) return [c0, c1 || c0];
+      }
+    } catch (_t) {}
+    return null;
+  };
+
+  window.slot_yy_restore_snake_colors = function slot_yy_restore_snake_colors(
+    game
+  ) {
+    const g = game || window.__remixGame;
+    const base = window.__slotYyColorBase;
+    if (!base) {
+      window.__slotYyColorFlipped = false;
+      return;
+    }
+    window.__slotYyColorFlipped = false;
+    window.slot_yy_apply_snake_color_index(g, base.color, {
+      isRainbow: base.isRainbow,
+      snakeRainbowOverride: base.snakeRainbowOverride,
+      randomColor: base.randomColor,
+      prevGradient: base.prevGradient || null,
+    });
+    window.__slotYyColorBase = null;
+  };
+
+  // Apply partner snake color: settings.wa (+ Ja/Jb) + Sc/Yc + face sprites.
+  window.slot_yy_apply_snake_color_index = function slot_yy_apply_snake_color_index(
+    game,
+    colorIndex,
+    opts
+  ) {
+    const g = game || window.__remixGame;
+    const s = g && g.settings;
+    const o = opts || {};
+    if (o.randomColor != null) window.randomColor = !!o.randomColor;
+
+    const prev =
+      o.prevGradient ||
+      window.slot_yy_gradient_for_index(g, window.__slotYyColorIndex | 0, {
+        isRainbow: !!window.isRainbow,
+        snakeRainbowOverride: window.snakeRainbowOverride | 0,
+      });
+
+    if (o.isRainbow) {
+      window.isRainbow = true;
+      if (o.snakeRainbowOverride != null) {
+        window.snakeRainbowOverride = o.snakeRainbowOverride | 0;
+      }
+    } else {
+      window.isRainbow = false;
+    }
+
+    const idx = colorIndex | 0;
+    window.__slotYyColorIndex = idx;
+
+    // Sync all three snake-color fields. Never touch theme (oa/Mb/Qb).
+    if (s) {
+      try {
+        if (typeof s.wa === "number") s.wa = idx;
+        if (typeof s.Ja === "number") s.Ja = idx;
+        if (typeof s.Jb === "number") s.Jb = idx;
+        if (typeof s.kc === "number") s.kc = idx;
+      } catch (_e) {}
+    }
+
+    const grad = window.slot_yy_gradient_for_index(g, idx, {
+      isRainbow: !!o.isRainbow,
+      snakeRainbowOverride: o.snakeRainbowOverride,
+    });
+    if (!grad) return;
+    window.slot_yy_paint_snake_hex(
+      g,
+      grad[0],
+      grad[1] || grad[0],
+      prev && prev[0],
+      prev && prev[1]
+    );
+  };
+
+  // True face atlas (P5E): blink/eat/die/tongue are b7 sprites with .render.
+  // game.Ga is bridges — must never be treated as the face.
+  window.slot_yy_is_face_atlas = function slot_yy_is_face_atlas(face) {
+    if (!face || typeof face !== "object") return false;
+    const blink = face.oa;
+    if (!blink || typeof blink.render !== "function") return false;
+    if (!face.Aa || typeof face.Aa.render !== "function") return false;
+    return true;
+  };
+
+  window.slot_yy_resolve_face = function slot_yy_resolve_face(game) {
+    const candidates = [
+      window.__slotFaceRef,
+      window.__animFaceRef,
+      // Renderer sometimes stashed on game by AnimationMod / Ultra.
+      game && game.__slotRenderer && game.__slotRenderer.Ga,
+    ];
+    for (let i = 0; i < candidates.length; i++) {
+      if (window.slot_yy_is_face_atlas(candidates[i])) return candidates[i];
+    }
+    return null;
+  };
+
+  // Recolor eyes / blink / eat / tongue via native a7 (C3E reset + tint).
+  window.slot_yy_recolor_face = function slot_yy_recolor_face(game, primary) {
+    if (!primary) return;
+    const g = game || window.__remixGame;
+    const face = window.slot_yy_resolve_face(g);
+    if (!face) return;
+
+    const a7 = window.__slotA7;
+    // Prefer direct a7 so Remix (no AnimationMod) still tints. AnimationMod
+    // path is a fallback when a7 was not captured yet.
+    if (typeof a7 === "function") {
+      try {
+        window.__animLastHeadHex = null;
+        if (face.oa) a7(face.oa, "#5282F2", primary);
+        if (face.Aa) a7(face.Aa, "#5282F2", primary);
+        if (face.Ba) a7(face.Ba, "#5282F2", primary);
+        // Twin-snake face sheets (native YY); harmless if unused in Slot.
+        if (face.Ga && typeof face.Ga.render === "function") {
+          a7(face.Ga, "#5282F2", primary);
+        }
+        if (face.Ma && typeof face.Ma.render === "function") {
+          a7(face.Ma, "#5282F2", primary);
+        }
+        if (face.Ka && typeof face.Ka.render === "function") {
+          a7(face.Ka, "#5282F2", primary);
+        }
+        if (typeof _ !== "undefined" && _.AKd && _.HG && _.yKd) {
+          const hue = _.AKd(primary);
+          const tongue = _.AKd("#C73104");
+          tongue[0] = (hue[0] + 180) % 360;
+          const tongueHex = _.HG(
+            _.yKd(tongue[0], tongue[1], tongue[2])
+          );
+          if (face.wa) a7(face.wa, "#C73104", tongueHex);
+          if (face.Oa && typeof face.Oa.render === "function") {
+            a7(face.Oa, "#C73104", tongueHex);
+          }
+        }
+        return;
+      } catch (_face) {}
+    }
+
+    try {
+      window.__animLastHeadHex = null;
+      if (typeof window.updateAnimHeadColour === "function") {
+        window.updateAnimHeadColour(face, primary);
+      }
+    } catch (_anim) {}
+  };
+
+  // Set live body/shade hex (Sc/Yc) and recolor the head atlas.
+  window.slot_yy_paint_snake_hex = function slot_yy_paint_snake_hex(
+    game,
+    primary,
+    secondary,
+    prevPrimary,
+    prevSecondary
+  ) {
+    const g = game || window.__remixGame;
+    if (!g || !primary) return;
+    const shade = secondary || primary;
+    const op = prevPrimary ? (prevPrimary + "").toUpperCase() : null;
+    const os = prevSecondary ? (prevSecondary + "").toUpperCase() : null;
+
+    const snake = g.oa;
+    if (snake) {
+      try {
+        // Canonical gradient slots used by the renderer.
+        if (typeof snake.Sc === "string") snake.Sc = primary;
+        if (typeof snake.Yc === "string") snake.Yc = shade;
+      } catch (_sc) {}
+
+      // Remap any other cached hex that still holds the previous gradient.
+      try {
+        for (const k of Object.keys(snake)) {
+          const v = snake[k];
+          if (typeof v !== "string" || !/^#[0-9A-Fa-f]{6}$/i.test(v)) continue;
+          if (k === "Sc" || k === "Yc") continue;
+          const u = v.toUpperCase();
+          if (op && u === op) snake[k] = primary;
+          else if (os && u === os) snake[k] = shade;
+        }
+      } catch (_p) {}
+    }
+
+    window.slot_yy_recolor_face(g, primary);
+  };
+
+  window.slot_flip_yy_snake_colors = function slot_flip_yy_snake_colors(game) {
+    const g = game || window.__remixGame;
+    const s = g && g.settings;
+    if (!window.__slotYyColorBase) {
+      const cur = window.slot_yy_read_color_index(s);
+      window.__slotYyColorBase = {
+        field: "wa",
+        color: cur,
+        isRainbow: !!window.isRainbow,
+        snakeRainbowOverride: window.snakeRainbowOverride | 0,
+        randomColor: !!window.randomColor,
+        prevGradient: window.slot_yy_gradient_for_index(g, cur, {
+          isRainbow: !!window.isRainbow,
+          snakeRainbowOverride: window.snakeRainbowOverride | 0,
+        }),
+      };
+      window.__slotYyColorFlipped = false;
+    }
+    const base = window.__slotYyColorBase;
+    window.__slotYyColorFlipped = !window.__slotYyColorFlipped;
+    if (!window.__slotYyColorFlipped) {
+      window.slot_yy_apply_snake_color_index(g, base.color, {
+        isRainbow: base.isRainbow,
+        snakeRainbowOverride: base.snakeRainbowOverride,
+        randomColor: base.randomColor,
+        prevGradient: window.slot_yy_gradient_for_index(
+          g,
+          window.__slotYyColorIndex | 0,
+          {
+            isRainbow: !!window.isRainbow,
+            snakeRainbowOverride: window.snakeRainbowOverride | 0,
+          }
+        ),
+      });
+      return;
+    }
+    if (base.isRainbow && window.rainbowAlts) {
+      const cur = base.snakeRainbowOverride | 0;
+      const alt = window.rainbowAlts[cur];
+      const partner =
+        alt && alt.yinyang != null ? alt.yinyang | 0 : cur;
+      window.slot_yy_apply_snake_color_index(g, partner, {
+        isRainbow: true,
+        snakeRainbowOverride: partner,
+        randomColor: false,
+        prevGradient: base.prevGradient,
+      });
+      return;
+    }
+    // Rainbow skin (wa===10) without pudding override: pair via i3E[10]→0.
+    const partner = window.slot_yy_pair_color_index(base.color | 0);
+    window.slot_yy_apply_snake_color_index(g, partner, {
+      isRainbow: false,
+      randomColor: false,
+      prevGradient: base.prevGradient,
+    });
+  };
+
+  window.slot_yy_flip_chess_piece = function slot_yy_flip_chess_piece(f) {
+    if (!f || !f.isPiece) return;
+    const col = f.ChessColor === "b" ? "w" : "b";
+    f.ChessColor = col;
+    if (f.ChessPiece && window[col + f.ChessPiece] != null) {
+      f.type = window[col + f.ChessPiece];
+    }
+  };
+
+  window.slot_yy_swap_board = function slot_yy_swap_board(mgr) {
+    const list = mgr && mgr.ka;
+    if (!list) return;
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      if (!f || f.Oka) continue;
+      if (f.isPiece) {
+        window.slot_yy_flip_chess_piece(f);
+        continue;
+      }
+      if (f.__slotYinYangPair == null || f.slotMode == null) continue;
+      const cur = f.slotMode | 0;
+      let pair = f.__slotYinYangPair | 0;
+      const portalPair = !!(f.__slotPortal);
+      // Never put Mexico onto a mid-row fruit via YY flip.
+      // Portal pairs never flip onto Twin (5).
+      const ban = [];
+      if (
+        pair === 27 &&
+        window.slot_fruit_on_mid &&
+        window.slot_fruit_on_mid(f, window.__remixGame)
+      ) {
+        ban.push(27);
+      }
+      if (portalPair && pair === 5) ban.push(5);
+      if (ban.length) {
+        ban.push(cur);
+        const alt =
+          window.slot_draw_mode_excluding &&
+          window.slot_draw_mode_excluding(ban);
+        if (alt == null || ban.indexOf(alt | 0) >= 0) continue;
+        pair = alt | 0;
+      }
+      f.slotMode = pair;
+      f.__slotYinYangPair = cur;
+      // Burger timers: strip on flip (no carry across).
+      f.burgerTimer = null;
+      f.burgerTimerMax = null;
+      // Bomb state unchanged.
+    }
+    // Portal pairs: force both twins to the same showing badge.
+    const seen = Object.create(null);
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      if (!f || !f.__slotPortal || f.slotMode == null) continue;
+      const id = f.__slotPortalPairId;
+      if (id == null || seen[id]) continue;
+      seen[id] = 1;
+      let twin = f.__slotPortalTwin;
+      if (!twin || list.indexOf(twin) < 0) {
+        twin = null;
+        for (let j = 0; j < list.length; j++) {
+          const o = list[j];
+          if (
+            o &&
+            o !== f &&
+            o.__slotPortal &&
+            o.__slotPortalPairId === id
+          ) {
+            twin = o;
+            break;
+          }
+        }
+      }
+      if (!twin) continue;
+      twin.slotMode = f.slotMode;
+      if (f.__slotYinYangPair != null) {
+        twin.__slotYinYangPair = f.__slotYinYangPair;
+      } else {
+        delete twin.__slotYinYangPair;
+      }
+      // Portal pairs never keep Twin after YY sync.
+      if ((f.slotMode | 0) === 5) {
+        const alt =
+          window.slot_draw_mode_excluding &&
+          (window.slot_draw_mode_excluding([5]) | 0);
+        if (alt != null && (alt | 0) !== 5) {
+          f.slotMode = alt | 0;
+          twin.slotMode = alt | 0;
+        }
+      }
+      // Mexico must not remain on a mid-row twin after sync.
+      if (
+        (f.slotMode | 0) === 27 &&
+        window.slot_fruit_on_mid &&
+        (window.slot_fruit_on_mid(f, window.__remixGame) ||
+          window.slot_fruit_on_mid(twin, window.__remixGame))
+      ) {
+        const moved =
+          window.slot_mexico_relocate_pair_halves &&
+          window.slot_mexico_relocate_pair_halves(
+            f,
+            twin,
+            window.__remixGame && window.__remixGame.wa
+          );
+        if (
+          !moved &&
+          (window.slot_fruit_on_mid(f, window.__remixGame) ||
+            window.slot_fruit_on_mid(twin, window.__remixGame))
+        ) {
+          const alt =
+            window.slot_draw_mode_excluding &&
+            (window.slot_draw_mode_excluding([27]) | 0);
+          if (alt != null && (alt | 0) !== 27) {
+            f.slotMode = alt | 0;
+            twin.slotMode = alt | 0;
+          }
+        }
+      }
+    }
+  };
+
+  // --- Dimension: one-shot Cat life grant + immediate grace ---
+  window.slot_dimension_activate_grace = function slot_dimension_activate_grace(
+    game
+  ) {
+    const g = game || window.__remixGame;
+    const max = window.CAT_MAX_LIVES | 9;
+    if (window.cat_lives == null) window.cat_lives = 0;
+    const before = window.cat_lives | 0;
+    const atMax = before >= max;
+    if (!atMax) {
+      window.cat_lives = Math.min(max, before + 1);
+    }
+    const sh = (g && g.Sh) | 0;
+    const grace = Math.ceil((sh + (window.CAT_GRACE_EXTRA | 3)) / 2);
+    window.cat_peaceful_ticks = Math.max(
+      window.cat_peaceful_ticks | 0,
+      grace
+    );
+    // Below 9: spend the life just granted (net lives unchanged). At 9: free.
+    if (!atMax) {
+      window.cat_lives = Math.max(0, (window.cat_lives | 0) - 1);
+    }
+    try {
+      window.cat_wrap_head_if_needed && window.cat_wrap_head_if_needed(g);
+    } catch (_w) {}
+    try {
+      window.catEnsureLivesHud && window.catEnsureLivesHud();
+      window.catUpdateLivesHud && window.catUpdateLivesHud();
+    } catch (_h) {}
+  };
+
+  // --- Mexico: half portals + partial mid border ---
+  window.slot_mexico_head_side = function slot_mexico_head_side(game) {
+    const g = game || window.__remixGame;
+    const mid = window.slot_mexico_mid_y(g);
+    let hy = null;
+    try {
+      if (window.head_pos && window.head_pos[0] && window.head_pos[0].y != null) {
+        hy = window.head_pos[0].y | 0;
+      } else if (g && g.oa && g.oa.ka && g.oa.ka.y != null) {
+        hy = g.oa.ka.y | 0;
+      } else if (g && g.oa && g.oa.x && g.oa.x.y != null) {
+        hy = g.oa.x.y | 0;
+      }
+    } catch (_e) {}
+    if (hy == null) return "top";
+    return hy < mid ? "top" : "bottom";
+  };
+
+  window.slot_mexico_find_half_pos = function slot_mexico_find_half_pos(
+    mgr,
+    half,
+    occupied
+  ) {
+    const g = window.__remixGame;
+    const mid = window.slot_mexico_mid_y(g);
+    const occ = occupied || new Set();
+    const ok = function (p) {
+      if (!p || p.y == null || p.x == null) return false;
+      if ((p.y | 0) === mid) return false;
+      if (half === "top" && !((p.y | 0) < mid)) return false;
+      if (half === "bottom" && !((p.y | 0) > mid)) return false;
+      const k = (p.x | 0) + "," + (p.y | 0);
+      if (occ.has(k)) return false;
+      if (window.slot_pos_in_wall && window.slot_pos_in_wall(g, p.x, p.y))
+        return false;
+      if (window.slot_pos_on_bridge && window.slot_pos_on_bridge(g, p.x, p.y))
+        return false;
+      if (
+        window.chess_outside_spawn_radius &&
+        !window.chess_outside_spawn_radius(g, p)
+      ) {
+        return false;
+      }
+      return true;
+    };
+    for (let attempt = 0; attempt < 48; attempt++) {
+      const p = window.slot_free_pos(mgr, 0);
+      if (ok(p)) return p;
+    }
+    // Sweep board for a legal half cell.
+    try {
+      let w = 0;
+      let h = 0;
+      const walls = g && g.Ca && g.Ca.wa;
+      if (walls && walls.length) {
+        h = walls.length;
+        w = walls[0] ? walls[0].length : 0;
+      }
+      if (w && h) {
+        const y0 = half === "top" ? 0 : mid + 1;
+        const y1 = half === "top" ? mid : h;
+        for (let n = 0; n < 64; n++) {
+          const x = (Math.random() * w) | 0;
+          const y = y0 + ((Math.random() * Math.max(1, y1 - y0)) | 0);
+          const p = window.slot_make_pos ? window.slot_make_pos(x, y) : { x, y };
+          if (ok(p)) return p;
+        }
+      }
+    } catch (_e) {}
+    return null;
+  };
+
+  window.slot_mexico_plant_portal_pair = function slot_mexico_plant_portal_pair(
+    game
+  ) {
+    const g = game || window.__remixGame;
+    const mgr = g && g.wa;
+    if (!mgr || !mgr.ka) return false;
+    const occ = new Set();
+    for (let i = 0; i < mgr.ka.length; i++) {
+      const f = mgr.ka[i];
+      if (!f || !f.pos) continue;
+      occ.add((f.pos.x | 0) + "," + (f.pos.y | 0));
+    }
+    const top = window.slot_mexico_find_half_pos(mgr, "top", occ);
+    if (!top) return false;
+    occ.add((top.x | 0) + "," + (top.y | 0));
+    const bot = window.slot_mexico_find_half_pos(mgr, "bottom", occ);
+    if (!bot) return false;
+    const a = window.slot_make_apple(mgr, top);
+    const b = window.slot_make_apple(mgr, bot);
+    const pairId = (window.__slotPortalPairSeq =
+      (window.__slotPortalPairSeq | 0) + 1);
+    const mexId = (window.__slotMexicoPairSeq =
+      (window.__slotMexicoPairSeq | 0) + 1);
+    a.__slotPortal = true;
+    b.__slotPortal = true;
+    a.__slotPortalPairId = pairId;
+    b.__slotPortalPairId = pairId;
+    a.__slotPortalTwin = b;
+    b.__slotPortalTwin = a;
+    a.__slotMexicoPortal = true;
+    b.__slotMexicoPortal = true;
+    a.__slotMexicoPairId = mexId;
+    b.__slotMexicoPairId = mexId;
+    // Random non-Mexico / non-Twin badge for the pair; keep twins matched.
+    let mode = window.slot_draw_mode_excluding([27, 5]) | 0;
+    if ((mode | 0) === 5 || (mode | 0) === 27) mode = 1;
+    window.assignSlotMode(a, mode);
+    window.assignSlotMode(b, mode);
+    // Keep yin-yang pairs matched on the portal twins.
+    if (a.__slotYinYangPair != null) {
+      b.__slotYinYangPair = a.__slotYinYangPair;
+    } else {
+      delete b.__slotYinYangPair;
+    }
+    mgr.ka.push(a, b);
+    window.slot_ensure_unique_fruit_types(mgr);
+    window.appleArray = mgr.ka;
+    return true;
+  };
+
+  window.slot_mexico_cell_blocked_for_mid = function slot_mexico_cell_blocked_for_mid(
+    game,
+    x,
+    y
+  ) {
+    const g = game || window.__remixGame;
+    const xi = x | 0;
+    const yi = y | 0;
+    const pos = window.slot_make_pos ? window.slot_make_pos(xi, yi) : { x: xi, y: yi };
+    if (
+      window.chess_outside_spawn_radius &&
+      !window.chess_outside_spawn_radius(g, pos)
+    ) {
+      return true;
+    }
+    const mgr = g && g.wa;
+    const list = mgr && mgr.ka;
+    if (list) {
+      for (let i = 0; i < list.length; i++) {
+        const f = list[i];
+        if (f && f.pos && (f.pos.x | 0) === xi && (f.pos.y | 0) === yi)
+          return true;
+      }
+    }
+    try {
+      if (window.head_pos && window.head_pos[0]) {
+        const hp = window.head_pos[0];
+        if ((hp.x | 0) === xi && (hp.y | 0) === yi) return true;
+      }
+    } catch (_e) {}
+    return false;
+  };
+
+  window.slot_mexico_place_partial_mid = function slot_mexico_place_partial_mid(
+    game
+  ) {
+    const g = game || window.__remixGame;
+    if (!g || window.__slotMexicoMidUp) return false;
+    const walls = g.Ca;
+    if (!walls || !Array.isArray(walls.wa) || !walls.wa.length) return false;
+    const h = walls.wa.length;
+    const w = walls.wa[0] ? walls.wa[0].length : 0;
+    if (!w) return false;
+    const mid = Math.floor(h / 2);
+    const serial =
+      typeof window.mexico_serial_coord === "function"
+        ? window.mexico_serial_coord
+        : function (pos) {
+            return (pos.x << 16) | pos.y;
+          };
+    const makePos =
+      typeof window.mexico_make_pos === "function"
+        ? window.mexico_make_pos
+        : window.slot_make_pos ||
+          function (x, y) {
+            return { x: x, y: y };
+          };
+    let planted = 0;
+    for (let x = 0; x < w; x++) {
+      if (walls.wa[mid] && (walls.wa[mid][x] | 0) > 0) continue;
+      if (window.slot_mexico_cell_blocked_for_mid(g, x, mid)) continue;
+      const pos = makePos(x, mid);
+      const obj = { pos: pos, wm: false, m0: false, Lh: true };
+      try {
+        if (walls.Aa && typeof walls.Aa.set === "function") {
+          walls.Aa.set(serial(pos), obj);
+        }
+        if (walls.wa[mid]) walls.wa[mid][x]++;
+        planted++;
+      } catch (_e) {}
+    }
+    if (planted > 0) window.__slotMexicoMidUp = true;
+    return planted > 0;
+  };
+
+  window.slot_mexico_clear_mid = function slot_mexico_clear_mid(game) {
+    const g = game || window.__remixGame;
+    if (!g) return;
+    const walls = g.Ca;
+    if (!walls || !Array.isArray(walls.wa) || !walls.wa.length) {
+      window.__slotMexicoMidUp = false;
+      window.__slotMexicoStartSide = null;
+      return;
+    }
+    const h = walls.wa.length;
+    const w = walls.wa[0] ? walls.wa[0].length : 0;
+    const mid = Math.floor(h / 2);
+    const serial =
+      typeof window.mexico_serial_coord === "function"
+        ? window.mexico_serial_coord
+        : function (pos) {
+            return (pos.x << 16) | pos.y;
+          };
+    const makePos =
+      typeof window.mexico_make_pos === "function"
+        ? window.mexico_make_pos
+        : window.slot_make_pos ||
+          function (x, y) {
+            return { x: x, y: y };
+          };
+    for (let x = 0; x < w; x++) {
+      if (!walls.wa[mid] || (walls.wa[mid][x] | 0) <= 0) continue;
+      const pos = makePos(x, mid);
+      try {
+        if (walls.Aa && typeof walls.Aa.delete === "function") {
+          walls.Aa.delete(serial(pos));
+        }
+      } catch (_e) {}
+      // Animate removal when possible (Lh / decrement).
+      try {
+        if (walls.Aa && typeof walls.Aa.get === "function") {
+          const left = walls.Aa.get(serial(pos));
+          if (left) left.Lh = true;
+        }
+      } catch (_e2) {}
+      walls.wa[mid][x] = 0;
+    }
+    window.__slotMexicoMidUp = false;
+    window.__slotMexicoStartSide = null;
+  };
+
+  window.slot_mexico_on_eat = function slot_mexico_on_eat(game) {
+    const g = game || window.__remixGame;
+    if (!g || !g.wa) return false;
+    window.__slotMexicoStartSide = window.slot_mexico_head_side(g);
+    const midWasUp = !!window.__slotMexicoMidUp;
+    const pairOk = window.slot_mexico_plant_portal_pair(g);
+    if (pairOk) {
+      if (!midWasUp) {
+        window.slot_mexico_place_partial_mid(g);
+      }
+      return true;
+    }
+    // Pair failed: do not spawn/rebuild mid wall. Try regular fruit.
+    if (!midWasUp) {
+      // leave mid alone (still down)
+    }
+    const pos = window.slot_free_pos(g.wa);
+    if (pos) {
+      const fruit = window.slot_make_apple(g.wa, pos);
+      window.assignSlotMode(fruit);
+      g.wa.ka.push(fruit);
+      window.slot_ensure_unique_fruit_types(g.wa);
+      window.appleArray = g.wa.ka;
+      return true;
+    }
+    return false;
+  };
+
+  window.slot_mexico_tick_cross = function slot_mexico_tick_cross(game) {
+    if (!window.__slotMexicoMidUp) return;
+    const start = window.__slotMexicoStartSide;
+    if (!start) return;
+    const side = window.slot_mexico_head_side(game);
+    if (side && side !== start) {
+      window.slot_mexico_clear_mid(game);
     }
   };
 
@@ -16360,6 +17662,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     try {
       window.slot_update_cat_hud && window.slot_update_cat_hud();
     } catch (_e) {}
+    try {
+      window.slot_update_active_trophy && window.slot_update_active_trophy();
+    } catch (_tr) {}
   };
 
   // Twin reverse runs BEFORE setSlotActive in the eat loop — pulse e7(5) for
@@ -16558,6 +17863,37 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     return true;
   };
 
+  // Fruit sitting on an arrow tile removes that arrow (spawn / relocate / drift).
+  window.slot_clear_arrow_at = function slot_clear_arrow_at(game, x, y) {
+    const host = window.slot_arrow_host(game);
+    if (!host || !host.ka) return false;
+    const xi = Math.round(+x) | 0;
+    const yi = Math.round(+y) | 0;
+    const row = host.ka[yi];
+    const cell = row && row[xi];
+    if (!cell || !cell.direction || cell.direction === "NONE") return false;
+    cell.direction = "NONE";
+    cell.wm = false;
+    return true;
+  };
+
+  window.slot_clear_arrows_under_fruit = function slot_clear_arrows_under_fruit(
+    mgr,
+    game
+  ) {
+    const list = mgr && mgr.ka;
+    if (!list || !list.length) return;
+    const g = game || window.__remixGame || (mgr && mgr.wb);
+    if (!window.slot_has_arrows || !window.slot_has_arrows(g)) return;
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      if (!f || !f.pos) continue;
+      try {
+        window.slot_clear_arrow_at(g, f.pos.x, f.pos.y);
+      } catch (_e) {}
+    }
+  };
+
   // Hotdog (17) sidewalls live on the wall manager (Ca.Aa entries with .ty).
   // They exist only while Hotdog is the active roll — clear on leave.
   window.slot_hotdog_wall_host = function slot_hotdog_wall_host(game) {
@@ -16738,7 +18074,24 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       fruit.slotMode != null ? fruit.slotMode | 0 : null;
     if (fruit.slotMode != null) {
       window.setSlotActive(fruit.slotMode, game);
-      if ((fruit.slotMode | 0) === 26) {
+      const m = fruit.slotMode | 0;
+      if (m === 7) {
+        try {
+          window.slot_yy_swap_board &&
+            window.slot_yy_swap_board(game && game.wa);
+        } catch (_yy) {}
+        try {
+          window.slot_flip_yy_snake_colors &&
+            window.slot_flip_yy_snake_colors(game);
+        } catch (_yc) {}
+      }
+      if (m === 11) {
+        try {
+          window.slot_dimension_activate_grace &&
+            window.slot_dimension_activate_grace(game);
+        } catch (_dim) {}
+      }
+      if (m === 26) {
         // Cat badge: +1 life immediately (not every N like native Cat mode).
         const max = window.CAT_MAX_LIVES | 9;
         if (window.cat_lives == null) window.cat_lives = 0;
@@ -16749,6 +18102,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           window.catUpdateLivesHud && window.catUpdateLivesHud();
         } catch (_e) {}
       }
+    }
+    // Eating a Mexico-spawned portal twin clears mid border.
+    if (fruit.__slotMexicoPortal && window.__slotMexicoMidUp) {
+      try {
+        window.slot_mexico_clear_mid && window.slot_mexico_clear_mid(game);
+      } catch (_mx) {}
     }
   };
 
@@ -16832,6 +18191,19 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       if (set && typeof set[Symbol.iterator] === "function") {
         for (const _ of set) return true;
       }
+    } catch (_e) {}
+    return false;
+  };
+
+  window.slot_has_sokogoals = function slot_has_sokogoals(game) {
+    const g = game || window.__remixGame;
+    try {
+      const set = g && g.Aa && g.Aa.d_;
+      if (set && typeof set.size === "number") return set.size > 0;
+      if (set && typeof set[Symbol.iterator] === "function") {
+        for (const _ of set) return true;
+      }
+      if (Array.isArray(set) && set.length) return true;
     } catch (_e) {}
     return false;
   };
@@ -17095,25 +18467,41 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   };
 
   window.slot_win_if_empty = function slot_win_if_empty(game, mgr) {
+    // Playable board content blocks win: badged fruit, portal pairs, chess
+    // pieces, keys/keyblocks, sokoboxes/goals. Poison (Oka) and other hazards
+    // (mines, arrows, walls, etc.) do NOT count — spawn-fail + empty playable
+    // board → win.
+    if (window.slot_board_has_playable_content(game, mgr)) return false;
+    // Poison badge eat intentionally leaves no refill — empty is not a win.
+    if ((window.__slotActive | 0) === 10) return false;
+    const g = game || window.__remixGame;
+    window.slot_trigger_win(g);
+    return true;
+  };
+
+  // True when the board still has something the player must clear (not poison
+  // / mines / arrows / other hazards).
+  window.slot_board_has_playable_content = function slot_board_has_playable_content(
+    game,
+    mgr
+  ) {
     const list = mgr && mgr.ka;
-    // Eat path runs before the splice — ignore the apple being eaten so a
-    // failed refill on the last fruit still counts as an empty board.
+    // Eat path runs before the splice — ignore the apple being eaten.
     const eaten = window.__slotEatenFruit;
     if (list && list.length) {
       for (let i = 0; i < list.length; i++) {
         const f = list[i];
         if (!f) continue;
         if (eaten && f === eaten) continue;
-        return false;
+        if (f.Oka) continue; // poison hazard — not playable fruit
+        return true; // regular / portal / chess piece / badged fruit
       }
     }
     const g = game || window.__remixGame;
-    if (window.slot_has_keys && window.slot_has_keys(g)) return false;
-    if (window.slot_has_sokoboxes && window.slot_has_sokoboxes(g)) return false;
-    // Poison badge eat intentionally leaves no refill — empty is not a win.
-    if ((window.__slotActive | 0) === 10) return false;
-    window.slot_trigger_win(g);
-    return true;
+    if (window.slot_has_keys && window.slot_has_keys(g)) return true;
+    if (window.slot_has_sokoboxes && window.slot_has_sokoboxes(g)) return true;
+    if (window.slot_has_sokogoals && window.slot_has_sokogoals(g)) return true;
+    return false;
   };
 
   window.slot_trigger_win = function slot_trigger_win(game) {
@@ -17279,6 +18667,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     dup.__slotShield = false;
     dup.__ultraKeepShield = false;
     window.slot_ensure_fruit_motion(dup);
+    try {
+      const g = window.__remixGame || (mgr && mgr.wb);
+      if (dup.pos) {
+        window.slot_clear_arrow_at &&
+          window.slot_clear_arrow_at(g, dup.pos.x, dup.pos.y);
+      }
+    } catch (_ar) {}
     return dup;
   };
 
@@ -17297,6 +18692,15 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       if (!p || p.x == null || p.y == null) return false;
       if (window.slot_pos_in_wall(game, p.x, p.y)) return false;
       if (window.slot_pos_on_bridge(game, p.x, p.y)) return false;
+      // While Slot Mexico mid border is up, never spawn fruit on mid-y
+      // (partial wall leaves gaps that freePos would otherwise fill).
+      if (
+        window.slot_mexico_blocks_mid_fruit &&
+        window.slot_mexico_blocks_mid_fruit()
+      ) {
+        const mid = window.slot_mexico_mid_y(game) | 0;
+        if ((p.y | 0) === mid) return false;
+      }
       if (sokoOcc.has((p.x | 0) + "," + (p.y | 0))) return false;
       if (
         window.chess_outside_spawn_radius &&
@@ -17388,6 +18792,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         if (occ.has(x + "," + y)) continue;
         if (window.slot_pos_in_wall(g, x, y)) continue;
         if (window.slot_pos_on_bridge(g, x, y)) continue;
+        if (
+          window.slot_mexico_blocks_mid_fruit &&
+          window.slot_mexico_blocks_mid_fruit() &&
+          (y | 0) === (window.slot_mexico_mid_y(g) | 0)
+        ) {
+          continue;
+        }
         const pos = window.slot_make_pos(x, y);
         if (
           window.chess_outside_spawn_radius &&
@@ -17448,7 +18859,11 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     }
 
     if (eatenMode != null) {
-      window.slotRespawn(eatenMode, g);
+      if ((eatenMode | 0) === 27) {
+        window.slot_mexico_on_eat(g);
+      } else {
+        window.slotRespawn(eatenMode, g);
+      }
     } else if (eaten && !eaten.isPiece && !eaten.Oka) {
       // Unbadged unlock fruit (or missed stamp): still refill one badge fruit.
       const mode = window.slot_draw_mode() | 0;
@@ -17723,10 +19138,32 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     const chessMode = window.slot_is_chess_mode(m);
 
     if (m === 2) {
+      // Portal pairs: while Mexico mid is up, plant strict top+bottom (never mid).
+      // Do not tag as Mexico portals (those clear the mid border on eat).
+      if (window.__slotMexicoMidUp) {
+        const occ = new Set();
+        for (let i = 0; i < mgr.ka.length; i++) {
+          const f = mgr.ka[i];
+          if (!f || !f.pos) continue;
+          occ.add((f.pos.x | 0) + "," + (f.pos.y | 0));
+        }
+        const top = window.slot_mexico_find_half_pos(mgr, "top", occ);
+        if (!top) return false;
+        occ.add((top.x | 0) + "," + (top.y | 0));
+        const bot = window.slot_mexico_find_half_pos(mgr, "bottom", occ);
+        if (!bot) return false;
+        const a = window.slot_make_apple(mgr, top);
+        const b = window.slot_make_apple(mgr, bot);
+        window.slot_assign_pair(a, b);
+        mgr.ka.push(a, b);
+        window.slot_ensure_unique_fruit_types(mgr);
+        window.appleArray = mgr.ka;
+        return true;
+      }
       const p1 = window.slot_free_pos(mgr, 0);
       if (!p1) return false;
-      const occ = window.slot_make_apple(mgr, p1);
-      mgr.ka.push(occ);
+      const hold = window.slot_make_apple(mgr, p1);
+      mgr.ka.push(hold);
       const p2 = window.slot_free_pos(mgr, 0);
       mgr.ka.pop();
       if (!p2) return false;
@@ -18178,6 +19615,28 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     }
 
     if (mgr && mgr.ka) {
+      // Key/soko unlock: never leave a chess piece in the keyblock/goal.
+      // Chess-roll convert can race f4E; demote then badge.
+      const unlock =
+        !!window.slot_key_unlock_fruit || !!window.slot_soko_unlock_fruit;
+      if (unlock) {
+        const n = Math.max(1, addedHint | 0);
+        const from = Math.max(0, mgr.ka.length - n);
+        for (let i = from; i < mgr.ka.length; i++) {
+          const f = mgr.ka[i];
+          if (!f || f.Oka) continue;
+          if (
+            f.isPiece ||
+            f.ChessPiece != null ||
+            f.ChessColor != null ||
+            (window.slot_is_chess_piece_type &&
+              window.slot_is_chess_piece_type(f.type))
+          ) {
+            window.slot_demote_chess_piece_to_fruit(f, mgr);
+          }
+        }
+      }
+
       const justBadged = [];
       for (let i = 0; i < mgr.ka.length; i++) {
         const f = mgr.ka[i];
@@ -18192,8 +19651,6 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       window.slot_ensure_unique_fruit_types(mgr);
 
       // Key / soko unlock under tally: fruit gets max(board index) + 1.
-      const unlock =
-        !!window.slot_key_unlock_fruit || !!window.slot_soko_unlock_fruit;
       window.slot_key_unlock_fruit = 0;
       window.slot_soko_unlock_fruit = 0;
       if (unlock && window.slot_is_tally_count && window.slot_is_tally_count(g)) {
@@ -18243,6 +19700,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     try {
       window.slot_relocate_fruit_off_bridges(mgr);
     } catch (_br) {}
+    try {
+      window.slot_clear_arrows_under_fruit &&
+        window.slot_clear_arrows_under_fruit(mgr);
+    } catch (_ar) {}
   };
 
   window.slot_tick_logic = function slot_tick_logic(game) {
@@ -18320,6 +19781,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       window.slot_relocate_fruit_off_bridges(mgr, game);
     } catch (_br) {}
 
+    // Fruit on an arrow tile clears that arrow.
+    try {
+      window.slot_clear_arrows_under_fruit &&
+        window.slot_clear_arrows_under_fruit(mgr, game);
+    } catch (_ar) {}
+
     // Armed Bomb zones left after leaving Bomb roll still countdown/boom.
     try {
       window.slot_bomb_leftover_tick && window.slot_bomb_leftover_tick(game);
@@ -18330,9 +19797,24 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       window.slot_burger_leftover_tick && window.slot_burger_leftover_tick(game);
     } catch (_bg) {}
 
+    // Mexico: clear mid when head is on the opposite half (teleport intentional).
+    try {
+      window.slot_mexico_tick_cross && window.slot_mexico_tick_cross(game);
+    } catch (_mx) {}
+
       try {
       window.slot_update_cat_hud && window.slot_update_cat_hud();
       } catch (_e) {}
+
+    // After chess unlock (head OPEN again), restore active badge trophy.
+    try {
+      if (
+        (!window.head_state || window.head_state === "OPEN") &&
+        window.__slotActive != null
+      ) {
+        window.slot_update_active_trophy && window.slot_update_active_trophy();
+      }
+    } catch (_tr) {}
 
     if (mgr.ka.length === 0 && !game.nj) {
       window.slot_win_if_empty(game, mgr);
@@ -18450,10 +19932,11 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         window.slot_prune_bomb_zones_to_marked(mgr);
         if (allowEmptyWin) {
           const g = window.__remixGame;
-          if (typeof window.bombFruit_win_if_empty === "function") {
-            window.bombFruit_win_if_empty(g, mgr);
-          } else {
+          // Under Slot, use slot win rules (keys/soko/chess count; poison does not).
+          if (typeof window.slot_win_if_empty === "function") {
             window.slot_win_if_empty(g, mgr);
+          } else if (typeof window.bombFruit_win_if_empty === "function") {
+            window.bombFruit_win_if_empty(g, mgr);
           }
         }
         return;
@@ -18461,6 +19944,51 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       return origBf.apply(this, arguments);
     };
     window.bombFruit_after_respawn.__slotGate = true;
+  }
+
+  // Bomb explode / constrain empty checks must honor Slot playable-content rules
+  // (keys, soko, chess, portals, badged fruit keep playing; poison does not).
+  if (
+    typeof window.bombFruit_win_if_empty === "function" &&
+    !window.bombFruit_win_if_empty.__slotGate
+  ) {
+    const origBfWin = window.bombFruit_win_if_empty;
+    window.bombFruit_win_if_empty = function (game, mgr) {
+      if (window.isSlotMachineActive && window.isSlotMachineActive()) {
+        return !!(
+          window.slot_win_if_empty && window.slot_win_if_empty(game, mgr)
+        );
+      }
+      return origBfWin.apply(this, arguments);
+    };
+    window.bombFruit_win_if_empty.__slotGate = true;
+  }
+
+  if (
+    typeof window.bombFruit_make_apple_at === "function" &&
+    !window.bombFruit_make_apple_at.__slotArrowClear
+  ) {
+    const origMakeAt = window.bombFruit_make_apple_at;
+    window.bombFruit_make_apple_at = function (mgr, pos, template) {
+      const made = origMakeAt.apply(this, arguments);
+      if (
+        made &&
+        made.pos &&
+        window.isSlotMachineActive &&
+        window.isSlotMachineActive()
+      ) {
+        try {
+          window.slot_clear_arrow_at &&
+            window.slot_clear_arrow_at(
+              window.__remixGame || (mgr && mgr.wb),
+              made.pos.x,
+              made.pos.y
+            );
+        } catch (_ar) {}
+      }
+      return made;
+    };
+    window.bombFruit_make_apple_at.__slotArrowClear = true;
   }
 
   if (
@@ -18626,6 +20154,16 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       "slot stamp+gate q6E on call",
       /q6E=function\(a,b,c\)\{(?:window\.__slotQ6E=q6E;)?/,
       "q6E=function(a,b,c){window.__slotQ6E=q6E;if(window.isSlotMachineActive&&window.isSlotMachineActive()&&!window.__slotAllowKeyPlant)return;"
+    );
+  }
+  // Native q6E plants a sokogoal under the key when e7(9) (Key+Sokoban combo).
+  // Under Slot, leftover sokoboxes keep e7(9) true via leftover gates, so a Key
+  // badge eat would spawn an extra goal under the new key. Skip that combo.
+  if (code.indexOf("slot_skip_key_soko_goal") < 0) {
+    smReplace(
+      "slot skip key→sokogoal under leftover soko",
+      /e7\(a\.settings,9\)&&S4E\(a\.Ca,d\.clone\(\),a\.keys\.length\)/,
+      "e7(a.settings,9)&&!(window.isSlotMachineActive&&window.isSlotMachineActive())&&(window.slot_skip_key_soko_goal=1,S4E(a.Ca,d.clone(),a.keys.length))"
     );
   }
   if (code.indexOf("__slotAllowSokoPlant)return;") < 0) {
@@ -18946,42 +20484,43 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
 
   // ---- e7: Slot Machine active roll + leftovers ----
   // Twin (5) must NOT stay on via __slotActive — only the eat-time pulse.
-  // Borderless (4) must NOT stay on via __slotActive — wrap is slot_borderless_wrap.
+  // Borderless (4) wrap-only; Yin Yang (7) / Dimension (11) / Mexico (27)
+  // are Slot-local (no sticky native).
   if (
-    code.indexOf("b===window.__slotActive&&b!==5&&b!==4") < 0 &&
+    code.indexOf("b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27") < 0 &&
     code.indexOf("isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE") >= 0
   ) {
     if (
       !smReplace(
-        "e7 exclude twin+borderless from sticky active",
-        /if\(window\.__slotActive!=null&&b===window\.__slotActive&&b!==5\)return!0;if\(b===5&&window\.__slotTwinLive\)return!0;/,
-        "if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4)return!0;if(b===5&&window.__slotTwinLive)return!0;"
+        "e7 exclude twin+borderless+yy+dim+mex from sticky active",
+        /if\(window\.__slotActive!=null&&b===window\.__slotActive&&b!==5(?:&&b!==4)?(?:&&b!==7&&b!==11&&b!==27)?\)return!0;if\(b===5&&window\.__slotTwinLive\)return!0;/,
+        "if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27)return!0;if(b===5&&window.__slotTwinLive)return!0;"
       )
     ) {
       if (
         !smReplace(
-          "e7 exclude twin+borderless sticky null-safe",
-          /if\(window\.__slotActive!=null&&b===window\.__slotActive\)return!0;/,
-          "if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4)return!0;"
+          "e7 exclude sticky null-safe yy/dim/mex",
+          /if\(window\.__slotActive!=null&&b===window\.__slotActive(?:&&b!==5(?:&&b!==4)?(?:&&b!==7&&b!==11&&b!==27)?)?\)return!0;/,
+          "if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27)return!0;"
         )
       ) {
         smReplace(
-          "e7 exclude twin+borderless sticky legacy",
+          "e7 exclude sticky legacy yy/dim/mex",
           /if\(b===window\.__slotActive\)return!0;if\(b===5&&window\.__slotTwinLive\)return!0;/,
-          "if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4)return!0;if(b===5&&window.__slotTwinLive)return!0;"
+          "if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27)return!0;if(b===5&&window.__slotTwinLive)return!0;"
         );
       }
     }
   }
-  // Upgrade older Slot e7 sticky gates that excluded Twin but not Borderless.
+  // Upgrade older sticky gates missing YY/Dimension/Mexico excludes.
   if (
-    code.indexOf("b===window.__slotActive&&b!==5&&b!==4") < 0 &&
+    code.indexOf("b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27") < 0 &&
     code.indexOf("b===window.__slotActive&&b!==5") >= 0
   ) {
     smReplace(
-      "e7 sticky also exclude borderless",
-      /b===window\.__slotActive&&b!==5(?!&&b!==4)/,
-      "b===window.__slotActive&&b!==5&&b!==4"
+      "e7 sticky also exclude yy/dim/mex",
+      /b===window\.__slotActive&&b!==5(?:&&b!==4)?(?!&&b!==7)/,
+      "b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27"
     );
   }
   if (code.indexOf("slot_has_keys") < 0 &&
@@ -19009,7 +20548,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     smReplace(
       "e7 slot machine add bridge/gate leftovers + null-safe active",
       /if\(!r&&window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)&&a\.ub===window\.SLOT_MACHINE_MODE\)\{if\(b===window\.__slotActive\)return!0;/,
-      "if(!r&&window.isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE){if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4)return!0;"
+      "if(!r&&window.isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE){if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27)return!0;"
     );
     if (code.indexOf("slot_has_bridges") < 0) {
       smReplace(
@@ -19022,7 +20561,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("isSlotMachineActive()&&(b===window.__slotActive") < 0 &&
       code.indexOf("isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE") < 0) {
     const slotE7Tail =
-      "if(!r&&window.isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE){if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4)return!0;if(b===5&&window.__slotTwinLive)return!0;if(b===1&&window.slot_has_walls&&window.slot_has_walls())return!0;if(b===2&&window.slot_has_portal_pairs&&window.slot_has_portal_pairs(window.__remixGame&&window.__remixGame.wa))return!0;if(b===8&&window.slot_has_keys&&window.slot_has_keys())return!0;if(b===9&&window.slot_has_sokoboxes&&window.slot_has_sokoboxes())return!0;if(b===10&&window.slot_has_oka&&window.slot_has_oka(window.__remixGame&&window.__remixGame.wa))return!0;if(b===12&&window.slot_has_mines&&window.slot_has_mines())return!0;if(b===13&&window.slot_has_statues&&window.slot_has_statues())return!0;if(b===16&&window.slot_has_arrows&&window.slot_has_arrows())return!0;if(b===19&&window.slot_has_gates&&window.slot_has_gates())return!0;if(b===20&&window.slot_has_bridges&&window.slot_has_bridges())return!0;if(b===21&&window.__slotActive===21)return!0;if(b===15&&(window.__slotActive===15||window.slot_has_shields&&window.slot_has_shields(window.__remixGame&&window.__remixGame.wa)||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive)||window.__slotActive===28||window.slot_has_armed_bombs&&window.slot_has_armed_bombs()||window.head_state&&window.head_state!==\"OPEN\"))return!0;}return r}";
+      "if(!r&&window.isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE){if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27)return!0;if(b===5&&window.__slotTwinLive)return!0;if(b===1&&window.slot_has_walls&&window.slot_has_walls())return!0;if(b===2&&window.slot_has_portal_pairs&&window.slot_has_portal_pairs(window.__remixGame&&window.__remixGame.wa))return!0;if(b===8&&window.slot_has_keys&&window.slot_has_keys())return!0;if(b===9&&window.slot_has_sokoboxes&&window.slot_has_sokoboxes())return!0;if(b===10&&window.slot_has_oka&&window.slot_has_oka(window.__remixGame&&window.__remixGame.wa))return!0;if(b===12&&window.slot_has_mines&&window.slot_has_mines())return!0;if(b===13&&window.slot_has_statues&&window.slot_has_statues())return!0;if(b===16&&window.slot_has_arrows&&window.slot_has_arrows())return!0;if(b===19&&window.slot_has_gates&&window.slot_has_gates())return!0;if(b===20&&window.slot_has_bridges&&window.slot_has_bridges())return!0;if(b===21&&window.__slotActive===21)return!0;if(b===15&&(window.__slotActive===15||window.slot_has_shields&&window.slot_has_shields(window.__remixGame&&window.__remixGame.wa)||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive)||window.__slotActive===28||window.slot_has_armed_bombs&&window.slot_has_armed_bombs()||window.head_state&&window.head_state!==\"OPEN\"))return!0;}return r}";
     const e7Bomb =
       /if\(!r&&b===15&&window\.BOMB_FRUIT_MODE!=null\)\{if\(a\.ub===window\.BOMB_FRUIT_MODE\)return!0;if\(a\.ub===22&&a\.rSa&&a\.rSa\.has\(window\.BOMB_FRUIT_MODE\)\)return!0;\}return r\}/;
     const e7Mexico =
@@ -19389,15 +20928,26 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       "if(e7($1.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields())&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===15))for"
     );
   }
-  if (
-    code.indexOf("slot_is_chess_mode(window.__slotActive))){window.chess_convert") < 0 &&
-    code.indexOf("chess_convert_new_apples(a,g)") >= 0
-  ) {
-    smReplace(
-      "slot chess convert only on chess roll",
-      /if\(window\.isChessActive&&window\.isChessActive\(\)&&g>0\)\{window\.chess_convert_new_apples\(a,g\);\}/,
-      "if(window.isChessActive&&window.isChessActive()&&g>0&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive))){window.chess_convert_new_apples(a,g);}"
-    );
+  if (code.indexOf("chess_convert_new_apples(a,g)") >= 0) {
+    if (
+      code.indexOf(
+        "!(window.slot_key_unlock_fruit||window.slot_soko_unlock_fruit)"
+      ) < 0
+    ) {
+      if (
+        !smReplace(
+          "slot chess convert skip key/soko unlock (upgrade)",
+          /if\(window\.isChessActive&&window\.isChessActive\(\)&&g>0&&\(\!\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)\)\|\|window\.slot_is_chess_mode&&window\.slot_is_chess_mode\(window\.__slotActive\)\)\)\{window\.chess_convert_new_apples\(a,g\);\}/,
+          "if(window.isChessActive&&window.isChessActive()&&g>0&&!(window.slot_key_unlock_fruit||window.slot_soko_unlock_fruit)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive))){window.chess_convert_new_apples(a,g);}"
+        )
+      ) {
+        smReplace(
+          "slot chess convert only on chess roll (not unlock)",
+          /if\(window\.isChessActive&&window\.isChessActive\(\)&&g>0\)\{window\.chess_convert_new_apples\(a,g\);\}/,
+          "if(window.isChessActive&&window.isChessActive()&&g>0&&!(window.slot_key_unlock_fruit||window.slot_soko_unlock_fruit)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive))){window.chess_convert_new_apples(a,g);}"
+        );
+      }
+    }
   }
   if (
     code.indexOf("slot_is_chess_mode(window.__slotActive))){try{window.appleArray") < 0 &&
@@ -19942,6 +21492,33 @@ window.SlotMachineMod.runCodeAfter = function () {
     window.cat_on_apple_eaten.__slotGate = true;
   }
 
+  // Chess unlock calls updateTrophySRC() with no type → under Slot restore
+  // the active badge icon (piece pickup with a type still shows the piece).
+  if (
+    typeof window.updateTrophySRC === "function" &&
+    !window.updateTrophySRC.__slotWrap
+  ) {
+    const origTrophy = window.updateTrophySRC;
+    window.updateTrophySRC = function (type) {
+      if (
+        window.isSlotMachineActive &&
+        window.isSlotMachineActive() &&
+        (type == null || arguments.length === 0)
+      ) {
+        if (window.__slotActive != null) {
+          window.slot_update_active_trophy &&
+            window.slot_update_active_trophy();
+        } else {
+          window.updateSlotMachineTrophySRC &&
+            window.updateSlotMachineTrophySRC();
+        }
+        return;
+      }
+      return origTrophy.apply(this, arguments);
+    };
+    window.updateTrophySRC.__slotWrap = true;
+  }
+
   // Ultra blocks native arrow turns when the checkbox is off — under Slot
   // Machine only allow new arrows while Arrow (16) is the active roll.
   if (
@@ -20160,12 +21737,20 @@ window.SlotMachineMod.runCodeAfter = function () {
   ) {
     const origConvert = window.chess_convert_new_apples;
     window.chess_convert_new_apples = function () {
-      if (
-        window.isSlotMachineActive &&
-        window.isSlotMachineActive() &&
-        !(window.slot_is_chess_mode && window.slot_is_chess_mode(window.__slotActive))
-      ) {
-        return;
+      if (window.isSlotMachineActive && window.isSlotMachineActive()) {
+        // Key/soko unlock must stay a regular badged fruit — never a piece,
+        // even while the Chess badge roll is active.
+        if (window.slot_key_unlock_fruit || window.slot_soko_unlock_fruit) {
+          return;
+        }
+        if (
+          !(
+            window.slot_is_chess_mode &&
+            window.slot_is_chess_mode(window.__slotActive)
+          )
+        ) {
+          return;
+        }
       }
       return origConvert.apply(this, arguments);
     };
