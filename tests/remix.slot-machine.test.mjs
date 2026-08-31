@@ -72,6 +72,8 @@ describe("Slot Machine mode (offline)", () => {
       init,
       /snake stops \(nj\) but the speedrun timer keeps running/
     );
+    assert.match(init, /__slotShowEndMenu/);
+    assert.match(init, /win dialog never opens/);
     assert.match(init, /slot_n7E_round_fruit/);
     assert.match(init, /slot_n7E_entity_guard/);
     assert.match(init, /slot_n7E_snake_mirror_guard/);
@@ -6162,6 +6164,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.__slotEating = true;
         window.setSlotActive(1, g);
         window.__slotGotAllCalls = 0;
+        window.__slotMenuCalls = 0;
         window.timeKeeper = window.timeKeeper || {};
         window.timeKeeper.playing = true;
         window.timeKeeper.runStarted = true;
@@ -6175,6 +6178,11 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
             } catch (_e) {}
           }
         };
+        g.menu = g.menu || { __slotMenu: 1 };
+        window.__slotShowEndMenu = function (menu, delay, score) {
+          window.__slotMenuCalls = (window.__slotMenuCalls | 0) + 1;
+          window.__slotMenuArgs = [menu, delay, score];
+        };
         window.slot_eat_respawn(g);
         const lastFruit = {
           nj: !!g.nj,
@@ -6186,6 +6194,8 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
             window.timeKeeper && window.timeKeeper.playing === false
           ),
           gotAllCalls: window.__slotGotAllCalls | 0,
+          menuCalls: window.__slotMenuCalls | 0,
+          menuDelay: window.__slotMenuArgs && window.__slotMenuArgs[1],
         };
         if (typeof origGotAll === "function") {
           window.timeKeeper.gotAll = origGotAll;
@@ -6203,6 +6213,8 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(result.lastFruit.lj, false, JSON.stringify(result));
       assert.equal(result.lastFruit.timerStopped, true, JSON.stringify(result));
       assert.ok(result.lastFruit.gotAllCalls >= 1, JSON.stringify(result));
+      assert.ok(result.lastFruit.menuCalls >= 1, JSON.stringify(result));
+      assert.equal(result.lastFruit.menuDelay, 1400, JSON.stringify(result));
     } finally {
       await h.close();
     }

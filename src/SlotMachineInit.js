@@ -3032,9 +3032,16 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     try {
       if (game.ticks != null) game.Mb = game.ticks;
     } catch (_mb) {}
+    // Native menu helper is closure-local (A7E/vdF) — captured as __slotShowEndMenu.
+    // Without it ub/nj + gotAll freeze the run but the win dialog never opens.
     try {
-      if (typeof A7E === "function") A7E(game.menu, 1400, score);
-      else if (typeof vdF === "function") vdF(game.menu, 1400, score);
+      const show =
+        window.__slotShowEndMenu ||
+        (typeof A7E === "function" ? A7E : null) ||
+        (typeof vdF === "function" ? vdF : null);
+      if (typeof show === "function" && game.menu) {
+        show(game.menu, 1400, score);
+      }
     } catch (_e2) {}
   };
 
@@ -4777,6 +4784,24 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   // after a poison-badge eat that left only Okas. Under Slot, skip this win;
   // slot_win_if_empty / tick handle true board-clear instead.
   // MorePudding timeKeeper inserts gotAll(...) between WIN.play() and this.ub.
+  // Capture the end-menu helper (A7E/vdF) — it is not a window global, and Slot
+  // skips the native win block that would otherwise call it.
+  if (code.indexOf("window.__slotShowEndMenu=") < 0) {
+    if (
+      !smReplace(
+        "slot capture end-menu helper",
+        /([a-zA-Z0-9_$]{1,8})\(this\.menu,1400,this\.([a-zA-Z0-9_$]{1,8})\)/,
+        "(window.__slotShowEndMenu=$1,$1(this.menu,1400,this.$2))"
+      )
+    ) {
+      smReplace(
+        "slot capture end-menu helper loose",
+        /([a-zA-Z0-9_$]{1,8})\(this\.menu,\s*1400,\s*this\.([a-zA-Z0-9_$]{1,8})\)/,
+        "(window.__slotShowEndMenu=$1,$1(this.menu,1400,this.$2))",
+        true
+      );
+    }
+  }
   if (code.indexOf("slot_r7E_win_gate") < 0) {
     smReplace(
       "slot gate r7E empty win",
