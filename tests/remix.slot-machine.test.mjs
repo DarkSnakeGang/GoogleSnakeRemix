@@ -57,10 +57,14 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /slot P6E twin via pair id/);
     assert.match(init, /slot portal _ti via pair id/);
     assert.match(init, /slot_R3E_gate/);
+    assert.match(init, /__bowlIsMode/);
     assert.match(init, /slot_sync_portal_he_pairs/);
     assert.match(init, /slot_portal_no_wipe/);
     assert.match(init, /slot portal no wipe after twin_index/);
     assert.match(init, /slot_block_u7E_portal_pair_types/);
+    assert.match(init, /pudding_settings/);
+    assert.match(init, /timeKeeper/);
+    assert.match(init, /slot_r7E_win_gate/);
     assert.match(init, /slot_n7E_round_fruit/);
     assert.match(init, /slot_n7E_entity_guard/);
     assert.match(init, /slot_n7E_snake_mirror_guard/);
@@ -178,6 +182,9 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /__slotActivatedFruit/);
     assert.match(init, /__slotRespawnedThisEat/);
     assert.match(init, /slot_block_key_soko_bulk/);
+    assert.match(init, /void 0,\\s\*l/);
+    assert.match(init, /slot gate poison Oka pairing after burger/);
+    assert.match(init, /function smReplace\(label, re, replacement, optional\)/);
     assert.match(init, /slot_u7E_fruit_only/);
     assert.match(init, /slot_Y3E_gate/);
     assert.match(init, /slot_pre_layout_reset/);
@@ -224,8 +231,10 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /slot_pos_on_bridge/);
     assert.match(init, /slot_add_bridge_keys/);
     assert.match(init, /slot_relocate_fruit_off_bridges/);
+    assert.match(init, /fruit\/chess piece sitting on a bridge/);
     assert.match(init, /Magnet\/winged can round onto a bridge/);
     assert.match(init, /slot_pos_on_bridge\(game, p\.x, p\.y\)\) return false/);
+    assert.match(init, /Native freePos can land on leftover bridges/);
     assert.match(init, /slot_ensure_fruit_motion/);
     assert.match(init, /slot_ensure_board_motion/);
     assert.match(init, /prev === 6 \|\| prev === 18/);
@@ -1042,6 +1051,23 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           parked.pos.y
         );
 
+        // Chess pieces used to be skipped by relocate — must move off too.
+        const piece = g.wa.ka[1] || parked;
+        if (typeof window.chess_assign_piece === "function") {
+          window.chess_assign_piece(piece);
+        } else {
+          piece.isPiece = true;
+          piece.ChessPiece = "pawn";
+        }
+        piece.pos.x = 5;
+        piece.pos.y = 5;
+        window.slot_tick_logic(g);
+        const pieceOnBridge = !!window.slot_pos_on_bridge(
+          g,
+          piece.pos.x,
+          piece.pos.y
+        );
+
         // New free_pos samples must never land on a bridge.
         let freeOnBridge = 0;
         let freeOk = 0;
@@ -1055,6 +1081,9 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         return {
           parkedOnBridge,
           parkedPos: [parked.pos.x | 0, parked.pos.y | 0],
+          pieceOnBridge,
+          piecePos: [piece.pos.x | 0, piece.pos.y | 0],
+          pieceIsPiece: !!piece.isPiece,
           freeOk,
           freeOnBridge,
           hasBridges: window.slot_has_bridges(g),
@@ -1064,6 +1093,8 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(result.error, undefined, JSON.stringify(result));
       assert.equal(result.hasBridges, true, JSON.stringify(result));
       assert.equal(result.parkedOnBridge, false, JSON.stringify(result));
+      assert.equal(result.pieceIsPiece, true, JSON.stringify(result));
+      assert.equal(result.pieceOnBridge, false, JSON.stringify(result));
       assert.ok(result.freeOk >= 10, JSON.stringify(result));
       assert.equal(result.freeOnBridge, 0, JSON.stringify(result));
     } finally {
