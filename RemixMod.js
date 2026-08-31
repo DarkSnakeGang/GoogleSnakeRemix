@@ -18591,11 +18591,27 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         Q4E.rWd.play();
       else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
     } catch (_e) {}
+    const score = game.Sh != null ? game.Sh : game.Oh;
+    // Native r7E===0 win inserts timeKeeper.gotAll between WIN.play and ub/nj.
+    // Without it the snake stops (nj) but the speedrun timer keeps running.
+    try {
+      if (window.timeKeeper && typeof window.timeKeeper.gotAll === "function") {
+        let timeMs = 0;
+        if (typeof window.resetTime === "number" && window.resetTime > 0) {
+          timeMs = Date.now() - window.resetTime;
+        } else if (typeof game.ticks === "number") {
+          timeMs = game.ticks | 0;
+        }
+        window.timeKeeper.gotAll(Math.floor(timeMs), score);
+      }
+    } catch (_tk) {}
     // Match native / BombFruit Shield-style win: ub + nj (nj alone is death).
     game.ub = true;
     game.nj = true;
     try {
-      const score = game.Sh != null ? game.Sh : game.Oh;
+      if (game.ticks != null) game.Mb = game.ticks;
+    } catch (_mb) {}
+    try {
       if (typeof A7E === "function") A7E(game.menu, 1400, score);
       else if (typeof vdF === "function") vdF(game.menu, 1400, score);
     } catch (_e2) {}

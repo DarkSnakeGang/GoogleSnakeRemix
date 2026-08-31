@@ -67,6 +67,11 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /pudding_settings/);
     assert.match(init, /timeKeeper/);
     assert.match(init, /slot_r7E_win_gate/);
+    assert.match(init, /timeKeeper\.gotAll/);
+    assert.match(
+      init,
+      /snake stops \(nj\) but the speedrun timer keeps running/
+    );
     assert.match(init, /slot_n7E_round_fruit/);
     assert.match(init, /slot_n7E_entity_guard/);
     assert.match(init, /slot_n7E_snake_mirror_guard/);
@@ -6156,6 +6161,20 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.__slotEatenMode = 1;
         window.__slotEating = true;
         window.setSlotActive(1, g);
+        window.__slotGotAllCalls = 0;
+        window.timeKeeper = window.timeKeeper || {};
+        window.timeKeeper.playing = true;
+        window.timeKeeper.runStarted = true;
+        const origGotAll = window.timeKeeper.gotAll;
+        window.timeKeeper.gotAll = function (time, score) {
+          window.__slotGotAllCalls = (window.__slotGotAllCalls | 0) + 1;
+          window.timeKeeper.playing = false;
+          if (typeof origGotAll === "function") {
+            try {
+              return origGotAll.apply(this, arguments);
+            } catch (_e) {}
+          }
+        };
         window.slot_eat_respawn(g);
         const lastFruit = {
           nj: !!g.nj,
@@ -6163,7 +6182,14 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           lj: !!g.lj,
           // eaten still in ka until native splice
           lenIncludingEaten: g.wa.ka.length,
+          timerStopped: !!(
+            window.timeKeeper && window.timeKeeper.playing === false
+          ),
+          gotAllCalls: window.__slotGotAllCalls | 0,
         };
+        if (typeof origGotAll === "function") {
+          window.timeKeeper.gotAll = origGotAll;
+        }
 
         window.slot_free_pos = origFree;
         return { withSiblings, lastFruit };
@@ -6175,6 +6201,8 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(result.lastFruit.nj, true, JSON.stringify(result));
       assert.equal(result.lastFruit.ub, true, JSON.stringify(result));
       assert.equal(result.lastFruit.lj, false, JSON.stringify(result));
+      assert.equal(result.lastFruit.timerStopped, true, JSON.stringify(result));
+      assert.ok(result.lastFruit.gotAllCalls >= 1, JSON.stringify(result));
     } finally {
       await h.close();
     }
