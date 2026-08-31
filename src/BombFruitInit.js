@@ -339,7 +339,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       }
       if ((z.bombX1a | 0) >= 0) {
         orphans.push(z);
-      } else if (z.linger == null) {
+      } else if (z.linger == null && !z.__slotBombPlant) {
         z.linger = linger;
       }
     }
@@ -650,6 +650,15 @@ window.BombFruitMod.alterSnakeCode = function (code) {
    */
   window.bombFruit_mineStyleDeath = function bombFruit_mineStyleDeath(game) {
     if (!game || game.nj) return;
+    // Same gap as native A6E: this path never hits Oa(), so spend Cat life here.
+    if (
+      window.isCatActive &&
+      window.isCatActive() &&
+      typeof window.cat_try_spend_life === "function" &&
+      window.cat_try_spend_life(game)
+    ) {
+      return true;
+    }
     window.__bombFruitZones = [];
     window.__bombFruitOrphans = [];
     try {
@@ -686,6 +695,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     } catch (_d) {
       game.nj = true;
     }
+    return false;
   };
 
   /** Boom FX matching A6E: random t6E boom SFX + one Ga.particles puff only. */
@@ -753,7 +763,8 @@ window.BombFruitMod.alterSnakeCode = function (code) {
 
     if (inBlast && !game.nj && !game.lj) {
       window.bombFruit_mineStyleDeath(game);
-      return;
+      if (game.nj || game.lj) return;
+      // Cat life absorbed the blast — keep going and refill the detonated fruit.
     }
 
     const spawn = window.bombFruit_find_spawn(mgr, null);
@@ -834,11 +845,16 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       const k = window.bombFruit_zone_key(z);
       const hasFruit = fruitKeys.has(k);
       if (!hasFruit && (z.bombX1a | 0) < 0) {
-        if (z.linger == null) z.linger = window.BOMB_FRUIT_ZONE_LINGER | 8;
-        z.linger = (z.linger | 0) - 1;
-        if (z.linger <= 0) {
-          zones.splice(i, 1);
-          continue;
+        // Slot Machine bomb plants stay idle until the player arms/explodes them.
+        if (z.__slotBombPlant) {
+          z.linger = null;
+        } else {
+          if (z.linger == null) z.linger = window.BOMB_FRUIT_ZONE_LINGER | 8;
+          z.linger = (z.linger | 0) - 1;
+          if (z.linger <= 0) {
+            zones.splice(i, 1);
+            continue;
+          }
         }
       } else if (hasFruit) {
         z.linger = null;

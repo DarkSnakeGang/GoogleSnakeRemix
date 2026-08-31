@@ -524,6 +524,14 @@ window.CatMod.alterSnakeCode = function (code) {
     `Oa(){if(window.isCatActive&&window.isCatActive()&&window.cat_try_spend_life(this))return;if(!this.nj){`
   );
 
+  // Minesweeper A6E kills via Ub+Dc — never calls Oa(). Treat Cat life/grace
+  // like Peaceful so the mine arms instead of ending the run.
+  catReplace(
+    "A6E mine death respects cat life",
+    /g!==0&&\(c\|\|!f\|\|g!==1\|\|e7\(a\.settings,21\)\?b\.X1a===-1&&\(b\.X1a=3\):\(h=!0,s5E\.Ktc\.play\(\),d\(\),y6E\(a\.Ca\),a\.Ca\.Ka=0,e\(\)\)\)/,
+    "g!==0&&(c||!f||g!==1||e7(a.settings,21)||window.isCatActive&&window.isCatActive()&&window.cat_try_spend_life(window.__remixGame||a.wb)?b.X1a===-1&&(b.X1a=3):(h=!0,s5E.Ktc.play(),d(),y6E(a.Ca),a.Ca.Ka=0,e()))"
+  );
+
   // --- Tick: cat logic (always run so HUD hides when Cat is off) ---
   if (
     !catReplace(

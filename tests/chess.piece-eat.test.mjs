@@ -155,4 +155,153 @@ describe("chess piece eat (browser)", { skip: !runBrowser }, () => {
       await h.close();
     }
   });
+
+  it("peaceful blender: walking into a locked piece eats it (no ghost)", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 41, headless: true });
+    try {
+      await h.start({ mode: "chess", count: COUNT.THREE, size: SIZE.NORMAL });
+      const r = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        g.Sh = 0;
+        window.cat_check_score_win = () => false;
+        g.settings.ub = 22;
+        window.CurrentModeNum = 22;
+        const rSa = new Set([window.CHESS_MODE, 21]);
+        g.rSa = rSa;
+        g.settings.rSa = rSa;
+        window.chess_blending = true;
+
+        window.head_state = "OPEN";
+        window.shield_empty_all();
+        const head = g.oa.ka[0];
+        g.oa.direction = "RIGHT";
+        g.oa.Ca = "RIGHT";
+        const step = (h) => ({ x: h.x + 1, y: h.y });
+
+        const first = g.wa.ka[0];
+        first.pos.x = step(head).x;
+        first.pos.y = step(head).y;
+        first.isPiece = true;
+        first.ChessPiece = "pawn";
+        first.ChessColor = "w";
+        g.tick();
+
+        const target = g.wa.ka.find((a) => a && a.isPiece);
+        target.ChessColor = "w"; // same color — no unlock via pawn diagonals
+        target.ChessPiece = "rook";
+        target.isPiece = true;
+        // Force locks then let peaceful chess_tick clear them / eat.
+        target.nba = new Set(["UP", "DOWN", "LEFT", "RIGHT"]);
+        window.appleArray = g.wa.ka;
+        window.shield_all();
+        const lockedAfterShieldAll =
+          target.nba && typeof target.nba.size === "number"
+            ? target.nba.size
+            : 0;
+
+        const h2 = g.oa.ka[0];
+        const n2 = step(h2);
+        target.pos.x = n2.x;
+        target.pos.y = n2.y;
+        const before = g.wa.ka.length;
+        g.tick();
+        return {
+          peaceful: window.chess_peaceful_active(g),
+          lockedAfterShieldAll,
+          before,
+          after: g.wa.ka.length,
+          removed: before - g.wa.ka.length,
+          nj: !!g.nj,
+          just_ate: window.just_ate,
+          head_state: window.head_state,
+          targetStill: g.wa.ka.includes(target),
+          headOn: g.oa.ka[0].x === n2.x && g.oa.ka[0].y === n2.y,
+        };
+      });
+
+      assert.equal(r.peaceful, true, JSON.stringify(r));
+      assert.equal(r.lockedAfterShieldAll, 0, "shield_all clears under peaceful");
+      assert.equal(r.removed, 1, JSON.stringify(r));
+      assert.equal(r.targetStill, false, JSON.stringify(r));
+      assert.equal(r.nj, false, JSON.stringify(r));
+      assert.equal(r.just_ate, "piece", JSON.stringify(r));
+      assert.equal(r.headOn, true, JSON.stringify(r));
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("cat blender life: walking into a locked piece eats it", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 42, headless: true });
+    try {
+      await h.start({ mode: "chess", count: COUNT.THREE, size: SIZE.NORMAL });
+      const r = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        g.Sh = 0;
+        window.cat_check_score_win = () => false;
+        g.settings.ub = 22;
+        window.CurrentModeNum = 22;
+        const rSa = new Set([window.CHESS_MODE, window.CAT_MODE]);
+        g.rSa = rSa;
+        g.settings.rSa = rSa;
+        window.cat_lives = 3;
+        window.cat_peaceful_ticks = 0;
+        window.cat_blending = true;
+        window.chess_blending = true;
+
+        window.head_state = "OPEN";
+        window.shield_empty_all();
+        const head = g.oa.ka[0];
+        g.oa.direction = "RIGHT";
+        g.oa.Ca = "RIGHT";
+        const step = (h) => ({ x: h.x + 1, y: h.y });
+
+        const first = g.wa.ka[0];
+        first.pos.x = step(head).x;
+        first.pos.y = step(head).y;
+        first.isPiece = true;
+        first.ChessPiece = "pawn";
+        first.ChessColor = "w";
+        g.tick();
+
+        const target = g.wa.ka.find((a) => a && a.isPiece);
+        target.ChessColor = "w";
+        target.ChessPiece = "rook";
+        target.isPiece = true;
+        window.appleArray = g.wa.ka;
+        window.shield_all();
+        target.nba = new Set(["UP", "DOWN", "LEFT", "RIGHT"]);
+
+        const h2 = g.oa.ka[0];
+        const n2 = step(h2);
+        target.pos.x = n2.x;
+        target.pos.y = n2.y;
+        const before = g.wa.ka.length;
+        const lives0 = window.cat_lives | 0;
+        g.tick();
+        return {
+          before,
+          after: g.wa.ka.length,
+          removed: before - g.wa.ka.length,
+          nj: !!g.nj,
+          lives0,
+          lives1: window.cat_lives | 0,
+          just_ate: window.just_ate,
+          targetStill: g.wa.ka.includes(target),
+          headOn: g.oa.ka[0].x === n2.x && g.oa.ka[0].y === n2.y,
+        };
+      });
+
+      assert.equal(r.removed, 1, JSON.stringify(r));
+      assert.equal(r.targetStill, false, JSON.stringify(r));
+      assert.equal(r.nj, false, JSON.stringify(r));
+      assert.equal(r.just_ate, "piece", JSON.stringify(r));
+      assert.equal(r.headOn, true, JSON.stringify(r));
+      assert.ok(r.lives1 <= r.lives0, "life spent or already in grace");
+    } finally {
+      await h.close();
+    }
+  });
 });

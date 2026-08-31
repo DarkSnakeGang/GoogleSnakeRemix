@@ -37,6 +37,7 @@ describe("Cat Mode (offline)", () => {
     assert.match(cat, /cat_trigger_win/);
     assert.match(cat, /Math\.ceil\(\(sh\s*\+\s*\(window\.CAT_GRACE_EXTRA/);
     assert.match(cat, /cat_try_spend_life\(this\)/);
+    assert.match(cat, /cat_try_spend_life\(window\.__remixGame\|\|a\.wb\)/);
     assert.match(cat, /b===21&&window\.isCatActive/);
     assert.match(cat, /remix-cat-lives/);
     assert.match(cat, /slotIndex:\s*3/);

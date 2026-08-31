@@ -97,6 +97,9 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     if (window.BOMB_FRUIT_MODE != null) {
       window.modeToTxt[window.BOMB_FRUIT_MODE] = { name: "Bomb Fruit" };
     }
+    if (window.SLOT_MACHINE_MODE != null) {
+      window.modeToTxt[window.SLOT_MACHINE_MODE] = { name: "Slot Machine" };
+    }
   };
 
   // Teach ModeRegistry about trophies Remix appends after Blender.
@@ -110,6 +113,7 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     window.ModeRegistry.LABELS.cat = "Cat";
     window.ModeRegistry.LABELS.mexico = "Mexico";
     window.ModeRegistry.LABELS.bomb_fruit = "Bomb Fruit";
+    window.ModeRegistry.LABELS.slot_machine = "Slot Machine";
 
     if (window.ModeRegistry.listActiveModes.__remix) return;
 
@@ -153,6 +157,8 @@ window.RemixSpeedInfo.runCodeBefore = function () {
           id = "mexico";
         } else if (window.BOMB_FRUIT_MODE != null && i === window.BOMB_FRUIT_MODE) {
           id = "bomb_fruit";
+        } else if (window.SLOT_MACHINE_MODE != null && i === window.SLOT_MACHINE_MODE) {
+          id = "slot_machine";
         } else {
           id = window.ModeRegistry._matchMiddleId(src);
           if (!id) {
@@ -486,6 +492,11 @@ window.RemixSpeedInfo.runCodeBefore = function () {
         id: window.BOMB_FRUIT_MODE,
         icon: window.BOMB_FRUIT_ICON,
         name: "Bomb Fruit",
+      },
+      {
+        id: window.SLOT_MACHINE_MODE,
+        icon: window.SLOT_MACHINE_ICON,
+        name: "Slot Machine",
       },
     ].filter(function (m) {
       return typeof m.id === "number" && m.icon;

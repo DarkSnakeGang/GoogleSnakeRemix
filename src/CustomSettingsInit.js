@@ -47,6 +47,7 @@ window.REMIX_CUSTOM_SUBPAGES = [
   ["dice", "Dice"],
   ["fruit", "Fruit"],
   ["poison", "Poison"],
+  ["slot", "Slot"],
 ];
 
 window.remixEnsureCustomSettingsUi = function remixEnsureCustomSettingsUi() {
@@ -87,7 +88,8 @@ window.remixEnsureCustomSettingsUi = function remixEnsureCustomSettingsUi() {
       '<div id="remix-custom-panel-speeds" class="remix-custom-panel"></div>' +
       '<div id="remix-custom-panel-dice" class="remix-custom-panel"></div>' +
       '<div id="remix-custom-panel-fruit" class="remix-custom-panel"></div>' +
-      '<div id="remix-custom-panel-poison" class="remix-custom-panel"></div>';
+      '<div id="remix-custom-panel-poison" class="remix-custom-panel"></div>' +
+      '<div id="remix-custom-panel-slot" class="remix-custom-panel"></div>';
     page.appendChild(host);
 
     const sub = document.getElementById("remix-custom-subpager");
@@ -104,25 +106,30 @@ window.remixEnsureCustomSettingsUi = function remixEnsureCustomSettingsUi() {
     });
   } else {
     if (host.parentElement !== page) page.appendChild(host);
-    // Upgrade older hosts that lack the Poison panel/tab.
-    if (!document.getElementById("remix-custom-panel-poison")) {
-      const poisonPanel = document.createElement("div");
-      poisonPanel.id = "remix-custom-panel-poison";
-      poisonPanel.className = "remix-custom-panel";
-      host.appendChild(poisonPanel);
-    }
-    const sub = document.getElementById("remix-custom-subpager");
-    if (sub && !document.getElementById("remix-custom-subtab-poison")) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "remix-custom-subtab";
-      b.id = "remix-custom-subtab-poison";
-      b.textContent = "Poison";
-      b.addEventListener("click", function () {
-        window.remixShowCustomSubPage("poison");
-      });
-      sub.appendChild(b);
-    }
+    // Upgrade older hosts that lack Poison / Slot panels.
+    [
+      ["poison", "Poison"],
+      ["slot", "Slot"],
+    ].forEach(function (pair) {
+      if (!document.getElementById("remix-custom-panel-" + pair[0])) {
+        const p = document.createElement("div");
+        p.id = "remix-custom-panel-" + pair[0];
+        p.className = "remix-custom-panel";
+        host.appendChild(p);
+      }
+      const sub = document.getElementById("remix-custom-subpager");
+      if (sub && !document.getElementById("remix-custom-subtab-" + pair[0])) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "remix-custom-subtab";
+        b.id = "remix-custom-subtab-" + pair[0];
+        b.textContent = pair[1];
+        b.addEventListener("click", function () {
+          window.remixShowCustomSubPage(pair[0]);
+        });
+        sub.appendChild(b);
+      }
+    });
   }
 
   window.remixShowCustomSubPage(

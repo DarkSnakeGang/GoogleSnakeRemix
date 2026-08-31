@@ -36,6 +36,13 @@ describe("Chess + Portal combo (offline)", () => {
     assert.match(chess, /a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice/);
   });
 
+  it("ChessInit clears locks under Peaceful/Cat and absorbs shield hits", () => {
+    const chess = read("src/ChessInit.js");
+    assert.match(chess, /chess_peaceful_active/);
+    assert.match(chess, /chess_shield_hit_absorb/);
+    assert.match(chess, /chess_shield_hit_absorb&&window\.chess_shield_hit_absorb/);
+  });
+
   it("Mexico eat patch matches Chess portal-combo spawn string", () => {
     const mx = read("src/MexicoInit.js");
     assert.match(mx, /__chessMakeApple=g7/);

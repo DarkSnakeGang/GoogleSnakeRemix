@@ -332,8 +332,42 @@ window.ChessMod.alterSnakeCode = function (code) {
   // Shield field name on apple objects in v12
   window.chess_shield_field = "nba";
 
+  // Native Peaceful (e7 21) makes P3E return an empty shield set — fruit stay
+  // edible. Chess lock via shield_all must match that: while Peaceful / Cat
+  // grace / Slot Peaceful-roll is on, do not keep 4-way locks (otherwise the
+  // snake skips Sc death and walks through locked pieces without eating).
+  window.chess_peaceful_active = function chess_peaceful_active(game) {
+    if ((window.cat_peaceful_ticks | 0) > 0) {
+      if (!window.isCatActive || window.isCatActive()) return true;
+    }
+    if (
+      window.isSlotMachineActive &&
+      window.isSlotMachineActive() &&
+      (window.__slotActive | 0) === 21
+    ) {
+      return true;
+    }
+    const g = game || window.__remixGame;
+    if (!g || !g.settings) return false;
+    const s = g.settings;
+    if ((s.ub | 0) === 21) return true;
+    if ((s.ub | 0) === 22) {
+      if (s.rSa && typeof s.rSa.has === "function" && s.rSa.has(21)) return true;
+      if (g.rSa && typeof g.rSa.has === "function" && g.rSa.has(21)) return true;
+    }
+    if (s.Qa && s.Lc && typeof s.Lc.has === "function" && s.Lc.has(21)) {
+      return true;
+    }
+    return false;
+  };
+
   window.shield_all = function shield_all() {
     if (!window.appleArray) return;
+    // Peaceful / Cat grace: keep board unlocked so collision eats pieces.
+    if (window.chess_peaceful_active && window.chess_peaceful_active()) {
+      window.shield_empty_all();
+      return;
+    }
     // Original Chess: lock EVERY apple (fruit and pieces) while carrying a piece
     window.appleArray.forEach(function (apple) {
       apple[window.chess_shield_field] = new Set([
@@ -352,9 +386,46 @@ window.ChessMod.alterSnakeCode = function (code) {
     });
   };
 
+  // Sc shield hit: under Peaceful/Cat, drop the lock so the same-tick eat can
+  // land instead of ghosting through (Sc is skipped entirely when e7(21), but
+  // Cat life-spend still enters Sc before grace flips Peaceful on).
+  window.chess_shield_hit_absorb = function chess_shield_hit_absorb(
+    game,
+    fruit
+  ) {
+    if (!fruit) return false;
+    // Only chess piece locks — not Shield-badge fruit leftovers.
+    if (!fruit.isPiece) return false;
+    if (window.chess_peaceful_active && window.chess_peaceful_active(game)) {
+      fruit[window.chess_shield_field || "nba"] = undefined;
+      return true;
+    }
+    if (
+      window.isCatActive &&
+      window.isCatActive() &&
+      ((window.cat_peaceful_ticks | 0) > 0 || (window.cat_lives | 0) > 0)
+    ) {
+      fruit[window.chess_shield_field || "nba"] = undefined;
+      if (
+        (window.cat_peaceful_ticks | 0) <= 0 &&
+        typeof window.cat_try_spend_life === "function"
+      ) {
+        window.cat_try_spend_life(game || window.__remixGame);
+      }
+      return true;
+    }
+    return false;
+  };
+
   // Original order: shield_all first, then unlock attempts; OPEN empties shields
   window.chess_tick_logic = function chess_tick_logic() {
     if (!window.isChessActive()) return;
+
+    // Under Peaceful, skip the lock/unlock dance — pieces are normal pickups.
+    if (window.chess_peaceful_active && window.chess_peaceful_active()) {
+      window.shield_empty_all();
+      return;
+    }
 
     window.shield_all();
     switch (window.head_state) {
@@ -1227,6 +1298,31 @@ window.ChessMod.alterSnakeCode = function (code) {
     );
   } else {
     console.error("ChessMod: failed to patch e7");
+  }
+
+  // Shield bars on chess locks: under Peaceful/Cat absorb the hit (clear nba)
+  // instead of Oa, so the same-tick head move can eat the piece.
+  if (
+    code.match(
+      /\(\(g=f\.nba\)==null\?0:g\.has\(d\)\)&&this\.Oa\(\);/
+    )
+  ) {
+    code = code.assertReplace(
+      /\(\(g=f\.nba\)==null\?0:g\.has\(d\)\)&&this\.Oa\(\);/,
+      `((g=f.nba)==null?0:g.has(d))&&(window.chess_shield_hit_absorb&&window.chess_shield_hit_absorb(this,f)?0:this.Oa());`
+    );
+  } else {
+    console.error("ChessMod: failed to patch Sc shield hit absorb");
+  }
+  if (
+    code.match(
+      /\(\(h=f\.nba\)==null\?0:h\.has\(this\.oa\.direction\)\)&&this\.Oa\(\)/
+    )
+  ) {
+    code = code.assertReplace(
+      /\(\(h=f\.nba\)==null\?0:h\.has\(this\.oa\.direction\)\)&&this\.Oa\(\)/,
+      `((h=f.nba)==null?0:h.has(this.oa.direction))&&(window.chess_shield_hit_absorb&&window.chess_shield_hit_absorb(this,f)?0:this.Oa())`
+    );
   }
 
   // Inject into game tick: track head + run chess unlock logic BEFORE other updates.

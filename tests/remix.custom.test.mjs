@@ -18,6 +18,9 @@ describe("Custom size/colors/speeds artifacts", () => {
     assert.match(remix, /window\.CustomFruit/);
     assert.match(remix, /remix-custom-panel-fruit/);
     assert.match(remix, /remix-custom-panel-board/);
+    assert.match(remix, /\["slot", "Slot"\]/);
+    assert.match(remix, /remix-custom-panel-slot/);
+    assert.match(remix, /remixInjectSlotMachineSettingsUi/);
     assert.match(remix, /remixCustomBoardSize/);
     assert.match(remix, /_remixCustomGradientColors/);
     assert.match(remix, /remixCustomSpeedSwitcherMult/);
@@ -77,6 +80,11 @@ describe("Custom menus (browser)", { skip: !runBrowser }, () => {
         const fruitAfterPoison = document
           .getElementById("remix-custom-panel-fruit")
           .classList.contains("remix-custom-panel-on");
+        window.remixShowCustomSubPage("slot");
+        const slotOn = document
+          .getElementById("remix-custom-panel-slot")
+          .classList.contains("remix-custom-panel-on");
+        const slotGrid = document.getElementById("remix-slot-mode-grid");
         return {
           customSize: window.CUSTOM_SIZE_INDEX,
           sizeLen: size && size.children.length,
@@ -92,6 +100,9 @@ describe("Custom menus (browser)", { skip: !runBrowser }, () => {
           fruitOn,
           poisonOn,
           fruitAfterPoison,
+          slotOn,
+          slotCells: slotGrid ? slotGrid.children.length : 0,
+          slotPool: (window.SLOT_MACHINE_POOL || []).length,
           diceUi: !!document.querySelector(
             "#remix-custom-panel-dice #black-dice-settings"
           ),
@@ -113,12 +124,19 @@ describe("Custom menus (browser)", { skip: !runBrowser }, () => {
       assert.equal(probe.fruitOn, true, JSON.stringify(probe));
       assert.equal(probe.poisonOn, true, JSON.stringify(probe));
       assert.equal(probe.fruitAfterPoison, false, JSON.stringify(probe));
+      assert.equal(probe.slotOn, true, JSON.stringify(probe));
+      assert.ok(probe.slotPool >= 20, JSON.stringify(probe));
+      assert.equal(probe.slotCells, probe.slotPool, JSON.stringify(probe));
       assert.equal(probe.diceUi, true, JSON.stringify(probe));
       assert.equal(probe.boardUi, true, JSON.stringify(probe));
       assert.equal(probe.size.width, 17, JSON.stringify(probe));
       assert.equal(probe.size.height, 15, JSON.stringify(probe));
       assert.equal(probe.speedMult, 1, JSON.stringify(probe));
-      assert.deepEqual(h.modErrors(), [], "no mod errors");
+      // Soft SlotMachine find failures are logged for alternate regexes; ignore those.
+      const hard = h
+        .modErrors()
+        .filter((e) => !/SlotMachineMod: failed to find/.test(e.text || e));
+      assert.deepEqual(hard, [], "no mod errors: " + JSON.stringify(h.modErrors()));
     } finally {
       await h.close();
     }

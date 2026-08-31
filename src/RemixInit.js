@@ -197,7 +197,7 @@ label[for="RemoveScrollbar"] {
 }
 .remix-custom-subpager {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 4px;
   flex-shrink: 0;
   margin-bottom: 2px;
@@ -229,6 +229,31 @@ label[for="RemoveScrollbar"] {
 }
 .remix-custom-panel::-webkit-scrollbar {
   display: none;
+}
+.remix-slot-mode-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 6px;
+}
+.remix-slot-mode-cell {
+  width: 52px;
+  height: 52px;
+  padding: 0 !important;
+  flex: 0 0 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+}
+.remix-slot-mode-cell img {
+  width: 44px;
+  height: 44px;
+  max-width: 100%;
+  pointer-events: none;
 }
 .remix-custom-card {
   margin: 4px 0;
@@ -422,8 +447,14 @@ window.remixEnsureWallEveryAppleSetting = function remixEnsureWallEveryAppleSett
 };
 
 // Mexico enables e7(1) for mid-wall collision only — never native wall spawns.
+// Slot Machine uses the same pattern: leftover walls still collide via e7(1),
+// but new walls only spawn while the active roll is Wall (1).
 window.remixMexicoBlocksWallSpawn = function remixMexicoBlocksWallSpawn() {
-  return !!(window.isMexicoActive && window.isMexicoActive());
+  if (window.isMexicoActive && window.isMexicoActive()) return true;
+  if (window.isSlotMachineActive && window.isSlotMachineActive()) {
+    return (window.__slotActive | 0) !== 1;
+  }
+  return false;
 };
 
 window.remixShouldSpawnWallEveryApple = function remixShouldSpawnWallEveryApple() {
@@ -466,14 +497,24 @@ window.remixInstallWallEveryAppleToggle = function remixInstallWallEveryAppleTog
 };
 
 window.remixPatchWallEveryApple = function remixPatchWallEveryApple(code) {
-  const re =
+  // Slot Machine may have already extended the every-other `f` flag with
+  // slot_force_entity_spawn — keep that when patching wall spawn.
+  const reSlot =
+    /([a-zA-Z_$][\w$]*)=!([a-zA-Z_$][\w$]*)\.nj&&!([a-zA-Z_$][\w$]*)&&\(\2\.Sh%2===1\|\|e7\(\2\.settings,11\)\|\|window\.slot_force_entity_spawn&&window\.slot_force_entity_spawn\(\)\);e7\(\2\.settings,1\)&&\1&&/;
+  const rePlain =
     /([a-zA-Z_$][\w$]*)=!([a-zA-Z_$][\w$]*)\.nj&&!([a-zA-Z_$][\w$]*)&&\(\2\.Sh%2===1\|\|e7\(\2\.settings,11\)\);e7\(\2\.settings,1\)&&\1&&/;
-  if (!re.test(code)) {
+  if (reSlot.test(code)) {
+    return code.replace(
+      reSlot,
+      "$1=!$2.nj&&!$3&&($2.Sh%2===1||e7($2.settings,11)||window.slot_force_entity_spawn&&window.slot_force_entity_spawn());e7($2.settings,1)&&!window.remixMexicoBlocksWallSpawn()&&($1||window.remixShouldSpawnWallEveryApple()&&!$2.nj&&!$3)&&"
+    );
+  }
+  if (!rePlain.test(code)) {
     console.error("Remix: failed to find wall-mode every-other-apple spawn gate");
     return code;
   }
   return code.replace(
-    re,
+    rePlain,
     "$1=!$2.nj&&!$3&&($2.Sh%2===1||e7($2.settings,11));e7($2.settings,1)&&!window.remixMexicoBlocksWallSpawn()&&($1||window.remixShouldSpawnWallEveryApple()&&!$2.nj&&!$3)&&"
   );
 };
@@ -683,6 +724,9 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
   }
   if (typeof window.remixInjectCustomPoisonSettingsUi === "function") {
     window.remixInjectCustomPoisonSettingsUi();
+  }
+  if (typeof window.remixInjectSlotMachineSettingsUi === "function") {
+    window.remixInjectSlotMachineSettingsUi();
   }
 
   let bin = document.getElementById("ultra-settings-hidden");
@@ -992,6 +1036,7 @@ window.RemixMod.runCodeBefore = function () {
   window.CatMod.runCodeBefore();
   window.MexicoMod.runCodeBefore();
   window.BombFruitMod.runCodeBefore();
+  window.SlotMachineMod.runCodeBefore();
   window.DiceCounts.runCodeBefore();
   window.CustomSettings.runCodeBefore();
   window.CustomSize.runCodeBefore();
@@ -1028,6 +1073,11 @@ window.RemixMod.alterSnakeCode = function (code) {
   } catch (e) {
     console.error("RemixMod: BombFruitMod.alterSnakeCode failed", e);
   }
+  try {
+    code = window.SlotMachineMod.alterSnakeCode(code);
+  } catch (e) {
+    console.error("RemixMod: SlotMachineMod.alterSnakeCode failed", e);
+  }
   code = window.CatSpeed.alterSnakeCode(code);
   code = window.DiceCounts.alterSnakeCode(code);
   code = window.CustomSize.alterSnakeCode(code);
@@ -1054,6 +1104,7 @@ window.RemixMod.runCodeAfter = function () {
   window.CatMod.runCodeAfter && window.CatMod.runCodeAfter();
   window.MexicoMod.runCodeAfter && window.MexicoMod.runCodeAfter();
   window.BombFruitMod.runCodeAfter && window.BombFruitMod.runCodeAfter();
+  window.SlotMachineMod.runCodeAfter && window.SlotMachineMod.runCodeAfter();
   // Remove leftover empty placeholders so Cat/Mexico sit flush after Burger.
   // Also pack to 6 columns so the extra modes fit without a clipped 6th row.
   if (typeof window.remixCompactBlenderEmpties === "function") {
