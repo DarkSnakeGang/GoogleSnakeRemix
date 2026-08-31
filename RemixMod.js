@@ -18583,6 +18583,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
 
   window.slot_trigger_win = function slot_trigger_win(game) {
     if (!game || game.nj) return;
+    // All-apples win: restore Slot Machine topbar icon (not the last badge).
+    try {
+      window.__slotActive = null;
+      window.updateSlotMachineTrophySRC &&
+        window.updateSlotMachineTrophySRC();
+    } catch (_tr) {}
     try {
       const winBank =
         (typeof s5E !== "undefined" && s5E) || window.__bombFruitS5E;

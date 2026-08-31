@@ -74,6 +74,10 @@ describe("Slot Machine mode (offline)", () => {
     );
     assert.match(init, /__slotShowEndMenu/);
     assert.match(init, /win dialog never opens/);
+    assert.match(
+      init,
+      /All-apples win: restore Slot Machine topbar icon/
+    );
     assert.match(init, /slot_n7E_round_fruit/);
     assert.match(init, /slot_n7E_entity_guard/);
     assert.match(init, /slot_n7E_snake_mirror_guard/);
@@ -6183,6 +6187,11 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           window.__slotMenuCalls = (window.__slotMenuCalls | 0) + 1;
           window.__slotMenuArgs = [menu, delay, score];
         };
+        window.__slotTrophyRestored = false;
+        window.__slotActive = 26; // leftover cat badge icon
+        window.updateSlotMachineTrophySRC = function () {
+          window.__slotTrophyRestored = true;
+        };
         window.slot_eat_respawn(g);
         const lastFruit = {
           nj: !!g.nj,
@@ -6196,6 +6205,8 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           gotAllCalls: window.__slotGotAllCalls | 0,
           menuCalls: window.__slotMenuCalls | 0,
           menuDelay: window.__slotMenuArgs && window.__slotMenuArgs[1],
+          trophyRestored: !!window.__slotTrophyRestored,
+          activeCleared: window.__slotActive == null,
         };
         if (typeof origGotAll === "function") {
           window.timeKeeper.gotAll = origGotAll;
@@ -6215,6 +6226,8 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       assert.ok(result.lastFruit.gotAllCalls >= 1, JSON.stringify(result));
       assert.ok(result.lastFruit.menuCalls >= 1, JSON.stringify(result));
       assert.equal(result.lastFruit.menuDelay, 1400, JSON.stringify(result));
+      assert.equal(result.lastFruit.trophyRestored, true, JSON.stringify(result));
+      assert.equal(result.lastFruit.activeCleared, true, JSON.stringify(result));
     } finally {
       await h.close();
     }
