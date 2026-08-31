@@ -231,29 +231,51 @@ label[for="RemoveScrollbar"] {
   display: none;
 }
 .remix-slot-mode-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
   gap: 8px;
-  justify-content: center;
-  margin-top: 6px;
+  margin-top: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 .remix-slot-mode-cell {
-  width: 52px;
-  height: 52px;
-  padding: 0 !important;
-  flex: 0 0 52px;
-  display: flex;
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px;
+  min-height: 48px;
+  margin: 0 auto !important;
+  padding: 2px !important;
+  box-sizing: border-box !important;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border: none;
-  background: transparent;
+  border: 2px solid transparent !important;
+  border-radius: 8px !important;
+  background: rgba(0, 0, 0, 0.22) !important;
+  opacity: 0.42;
+  float: none !important;
+  transform: none !important;
 }
-.remix-slot-mode-cell img {
-  width: 44px;
-  height: 44px;
+.remix-slot-mode-cell.remix-slot-mode-on {
+  opacity: 1;
+  border-color: rgba(255, 255, 255, 0.85) !important;
+  background: rgba(17, 85, 204, 0.35) !important;
+}
+.remix-slot-mode-cell img,
+.remix-slot-mode-cell .remix-slot-mode-img {
+  position: static !important;
+  width: 40px !important;
+  height: 40px !important;
   max-width: 100%;
+  object-fit: contain;
   pointer-events: none;
+  display: block;
 }
 .remix-custom-card {
   margin: 4px 0;

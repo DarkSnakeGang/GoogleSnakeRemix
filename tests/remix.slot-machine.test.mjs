@@ -231,14 +231,22 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /prev === 6 \|\| prev === 18/);
     assert.match(init, /Poison badge: one random-badge fruit/);
     assert.doesNotMatch(init, /Always leave a safe fruit/);
-    // Settings UI reuses blender_icon_* classes for the badge grid (not a blender slot).
+    // Settings UI: dedicated badge grid (not native blender icon classes).
     assert.match(init, /remix-slot-mode-grid/);
+    assert.match(init, /Do not reuse native blender classes/);
+    assert.doesNotMatch(
+      init,
+      /vuOknd remix-slot-mode-cell/
+    );
     assert.match(init, /data:image\/png;base64,/);
-    // Excluded modes not in pool
+    // Excluded modes not in pool (Classic 0, Yin Yang 7, Dimension 11, Blender, Mexico)
     assert.match(
       init,
-      /SLOT_MACHINE_POOL\s*=\s*\[[^\]]*1,\s*2,\s*3,\s*5/
+      /SLOT_MACHINE_POOL\s*=\s*\[[^\]]*1,\s*2,\s*3,\s*4,\s*5/
     );
+    assert.match(init, /4:\s*"Borderless"/);
+    assert.match(init, /slot_borderless_wrap/);
+    assert.match(init, /b!==5&&b!==4/);
     assert.doesNotMatch(
       init,
       /SLOT_MACHINE_POOL\s*=\s*\[[^\]]*[^0-9]0\s*,/
@@ -306,6 +314,23 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(code, /slot_skip_b4E=1/);
     assert.match(code, /isSlotMachineActive\(\)\)&&\(d&&d\.pos\)/);
     assert.match(init, /slot_skip_b4E/);
+  });
+
+  it("alterSnakeCode Slot Borderless is wrap-only (no sticky e7(4))", () => {
+    const init = fs.readFileSync(
+      path.join(ROOT, "src", "SlotMachineInit.js"),
+      "utf8"
+    );
+    assert.match(init, /slot_borderless_wrap/);
+    assert.match(init, /n7 include slot borderless wrap/);
+    assert.match(init, /b!==5&&b!==4/);
+    assert.doesNotMatch(init, /slot_borderless_no_camera/);
+    let code = "n7=function(a){return e7(a,21)||e7(a,4)}";
+    code = code.replace(
+      /n7=function\(a\)\{return e7\(a,21\)\|\|e7\(a,4\)\}/,
+      "n7=function(a){return e7(a,21)||e7(a,4)||(window.slot_borderless_wrap&&window.slot_borderless_wrap())}"
+    );
+    assert.match(code, /slot_borderless_wrap\(\)/);
   });
 
   it("alterSnakeCode e7 / apple-helper regexes match BombFruit output", () => {
@@ -410,7 +435,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       });
       assert.equal(result.active, true);
       assert.equal(typeof result.modeId, "number");
-      assert.equal(result.poolLen, 23);
+      assert.equal(result.poolLen, 24);
       assert.ok(result.fruits.length >= 1);
       assert.ok(result.fruits.every((f) => f.slotMode != null || f.oka || f.piece));
       assert.equal(result.slotActive, result.eatenMode);
