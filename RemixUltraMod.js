@@ -13272,6 +13272,16 @@ window.CatMod.alterSnakeCode = function (code) {
   window.cat_trigger_win = function cat_trigger_win(game) {
     if (!game) return;
     if (game.nj || game.lj) return;
+    // Slot Machine: same board-fill win, but use Slot's native-style path
+    // (gotAll + ub/nj + end menu). Plain nj+lj never opens the win screen.
+    if (
+      window.isSlotMachineActive &&
+      window.isSlotMachineActive() &&
+      typeof window.slot_trigger_win === "function"
+    ) {
+      window.slot_trigger_win(game);
+      return;
+    }
     try {
       if (typeof Q4E !== "undefined" && Q4E.rWd && Q4E.rWd.play) Q4E.rWd.play();
       else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
@@ -13282,6 +13292,8 @@ window.CatMod.alterSnakeCode = function (code) {
       const score = game.Sh != null ? game.Sh : game.Oh;
       if (typeof A7E === "function") A7E(game.menu, 1400, score);
       else if (typeof vdF === "function") vdF(game.menu, 1400, score);
+      else if (typeof window.__slotShowEndMenu === "function")
+        window.__slotShowEndMenu(game.menu, 1400, score);
     } catch (_e2) {}
   };
 
@@ -16734,7 +16746,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     return !!(grid[yi] && grid[yi][xi]);
   };
 
-  // Move any fruit/chess piece sitting on a bridge tile to a free non-bridge cell.
+  // Move any fruit/chess piece sitting on a bridge tile to a free non-bridge
+  // cell. Never relocate onto another bridge. If no safe cell exists, remove
+  // the piece — that can empty the board and trigger a Slot win.
   window.slot_relocate_fruit_off_bridges = function slot_relocate_fruit_off_bridges(
     mgr,
     game
@@ -16743,20 +16757,24 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (!list || !list.length) return;
     const g = game || window.__remixGame || (mgr && mgr.wb);
     if (!window.slot_has_bridges || !window.slot_has_bridges(g)) return;
-    for (let i = 0; i < list.length; i++) {
+    let removed = false;
+    for (let i = list.length - 1; i >= 0; i--) {
       const f = list[i];
       if (!f || !f.pos) continue;
       if (!window.slot_pos_on_bridge(g, f.pos.x, f.pos.y)) continue;
+      let moved = false;
       try {
         const oldKey = (f.pos.x | 0) + "," + (f.pos.y | 0);
-        for (let attempt = 0; attempt < 24; attempt++) {
+        for (let attempt = 0; attempt < 48; attempt++) {
           const p =
             typeof window.slot_free_pos === "function"
               ? window.slot_free_pos(mgr)
               : null;
-          if (!p || p.x == null || p.y == null) break;
+          if (!p || p.x == null || p.y == null) continue;
           const key = (p.x | 0) + "," + (p.y | 0);
           if (key === oldKey) continue;
+          // slot_free_pos already rejects bridges; re-check so relocate never
+          // parks on a bridge even if free_pos is stubbed/overridden.
           if (window.slot_pos_on_bridge(g, p.x, p.y)) continue;
           if (typeof f.pos.clone === "function" && p.clone) {
             f.pos = p.clone();
@@ -16768,9 +16786,21 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
             window.slot_clear_arrow_at &&
               window.slot_clear_arrow_at(g, f.pos.x, f.pos.y);
           } catch (_ar) {}
+          moved = true;
           break;
         }
       } catch (_br) {}
+      if (!moved) {
+        try {
+          list.splice(i, 1);
+          removed = true;
+        } catch (_rm) {}
+      }
+    }
+    if (removed) {
+      try {
+        window.slot_win_if_empty && window.slot_win_if_empty(g);
+      } catch (_w) {}
     }
   };
 
@@ -18581,6 +18611,144 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     return false;
   };
 
+  /**
+   * Native r7E win (after Timer.alter) does:
+   *   _.hn(header.Aa, "ALL");
+   *   _run/_pb + SplitPanelOnSplit("ALL", ticks*Fb*1e-3, delta);
+   *   _.hn(header.Ba, S2E(ticks*Fb));
+   *   B7E(header, Sh, x7E(game, d6E(settings)));
+   *   Mb = ticks;
+   * Slot gates that whole block, so mirror it here. Split-panel alone is not
+   * enough — the visible score/time HUD is header.Aa / header.Ba.
+   */
+  window.slot_record_all_timer_split = function slot_record_all_timer_split(
+    game
+  ) {
+    if (!game) return;
+    const score = game.Sh != null ? game.Sh : game.Oh;
+    const ticks = game.ticks | 0;
+    const fb = typeof game.Fb === "number" ? game.Fb : 0;
+    const timeMs = Math.floor(ticks * fb);
+    const _time = timeMs * 1e-3;
+
+    // 1) Native header label → "ALL" + freeze time (S2E formats ms).
+    try {
+      const header = game.header;
+      const hn =
+        window.__slotHn ||
+        (typeof _ !== "undefined" && _ && typeof _.hn === "function"
+          ? _.hn
+          : null);
+      if (hn && header && header.Aa) {
+        hn(header.Aa, "ALL");
+      }
+      if (hn && header && header.Ba) {
+        if (typeof window.__slotS2E === "function") {
+          hn(header.Ba, window.__slotS2E(timeMs));
+        } else if (typeof Number.prototype.timeFormat === "function") {
+          hn(header.Ba, _time.timeFormat());
+        }
+      }
+      if (
+        header &&
+        typeof window.__slotB7E === "function" &&
+        typeof window.__slotX7E === "function" &&
+        typeof window.__slotD6E === "function"
+      ) {
+        const fd = String(
+          window.__slotX7E(game, window.__slotD6E(game.settings))
+        );
+        window.__slotB7E(header, score, fd);
+      }
+    } catch (_h) {}
+
+    // 2) Pudding split panel / _run / _pb (same as Timer.alter inject).
+    try {
+      if (typeof getSelected !== "function") return;
+      const _mode = getSelected("#trophy");
+      const _count = getSelected("#count");
+      const _speed = getSelected("#speed");
+      const _size = getSelected("#size");
+      const _cat = window._cat != null ? window._cat : 3;
+
+      if (!window._run) window._run = {};
+      if (!window._run[_mode]) window._run[_mode] = {};
+      if (!window._run[_mode][_count]) window._run[_mode][_count] = {};
+      if (!window._run[_mode][_count][_speed])
+        window._run[_mode][_count][_speed] = {};
+      if (!window._run[_mode][_count][_speed][_size])
+        window._run[_mode][_count][_speed][_size] = {};
+      if (!window._run[_mode][_count][_speed][_size][_cat])
+        window._run[_mode][_count][_speed][_size][_cat] = {};
+
+      if (!window._pb) window._pb = {};
+      if (!window._pb[_mode]) window._pb[_mode] = {};
+      if (!window._pb[_mode][_count]) window._pb[_mode][_count] = {};
+      if (!window._pb[_mode][_count][_speed])
+        window._pb[_mode][_count][_speed] = {};
+      if (!window._pb[_mode][_count][_speed][_size])
+        window._pb[_mode][_count][_speed][_size] = {};
+      if (!window._pb[_mode][_count][_speed][_size][_cat])
+        window._pb[_mode][_count][_speed][_size][_cat] = {};
+
+      const runBucket = window._run[_mode][_count][_speed][_size][_cat];
+      const pbBucket = window._pb[_mode][_count][_speed][_size][_cat];
+      runBucket.ALL = _time;
+
+      let _delta = NaN;
+      const deltaDiv = document.getElementById("timerDelta");
+      if (pbBucket.ALL != null) {
+        _delta = _time - pbBucket.ALL;
+        if (deltaDiv) {
+          if (_delta !== 0 && typeof _delta.timeFormat === "function") {
+            const abs = Math.abs(_delta).timeFormat();
+            const last = window._lastDelta | 0;
+            const key =
+              _delta > 0
+                ? _delta > last
+                  ? "_snake_behindl"
+                  : "_snake_behindg"
+                : _delta > last
+                  ? "_snake_aheadl"
+                  : "_snake_aheadg";
+            const colored =
+              typeof String.prototype.color === "function"
+                ? ((_delta < 0 ? "-" : "+") + abs).color(
+                    localStorage[key] || (_delta < 0 ? "#008010" : "#dd3333")
+                  )
+                : (_delta < 0 ? "-" : "+") + abs;
+            deltaDiv.innerHTML = colored;
+            window._lastDelta = _delta;
+          } else if (typeof "-".color === "function") {
+            deltaDiv.innerHTML = "-".color("white");
+          } else {
+            deltaDiv.textContent = "-";
+          }
+        }
+      } else if (deltaDiv) {
+        if (typeof "-".color === "function")
+          deltaDiv.innerHTML = "-".color("white");
+        else deltaDiv.textContent = "-";
+      }
+
+      if (_delta < 0 || isNaN(_delta)) {
+        window._pb[_mode][_count][_speed][_size][_cat] = runBucket;
+        if (typeof window.persistSnakePb === "function") window.persistSnakePb();
+        else if (typeof window.markSnakePbDirty === "function")
+          window.markSnakePbDirty();
+        else localStorage._snake_pb = JSON.stringify(window._pb);
+      }
+
+      if (typeof window.SplitPanelOnSplit === "function") {
+        window.SplitPanelOnSplit("ALL", _time, _delta);
+      }
+    } catch (_e) {}
+
+    try {
+      if (game.ticks != null) game.Mb = game.ticks;
+    } catch (_mb) {}
+  };
+
   window.slot_trigger_win = function slot_trigger_win(game) {
     if (!game || game.nj) return;
     // All-apples win: restore Slot Machine topbar icon (not the last badge).
@@ -18598,12 +18766,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
     } catch (_e) {}
     const score = game.Sh != null ? game.Sh : game.Oh;
-    // Native r7E===0 win inserts timeKeeper.gotAll between WIN.play and ub/nj.
-    // Without it the snake stops (nj) but the speedrun timer keeps running.
+    // Native order: WIN → gotAll → ub/nj → end menu → ALL header/split → Mb.
     try {
       if (window.timeKeeper && typeof window.timeKeeper.gotAll === "function") {
         let timeMs = 0;
-        if (typeof window.resetTime === "number" && window.resetTime > 0) {
+        if (typeof game.ticks === "number" && typeof game.Fb === "number") {
+          timeMs = Math.floor(game.ticks * game.Fb);
+        } else if (typeof window.resetTime === "number" && window.resetTime > 0) {
           timeMs = Date.now() - window.resetTime;
         } else if (typeof game.ticks === "number") {
           timeMs = game.ticks | 0;
@@ -18611,14 +18780,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         window.timeKeeper.gotAll(Math.floor(timeMs), score);
       }
     } catch (_tk) {}
-    // Match native / BombFruit Shield-style win: ub + nj (nj alone is death).
     game.ub = true;
     game.nj = true;
-    try {
-      if (game.ticks != null) game.Mb = game.ticks;
-    } catch (_mb) {}
-    // Native menu helper is closure-local (A7E/vdF) — captured as __slotShowEndMenu.
-    // Without it ub/nj + gotAll freeze the run but the win dialog never opens.
     try {
       const show =
         window.__slotShowEndMenu ||
@@ -18628,6 +18791,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         show(game.menu, 1400, score);
       }
     } catch (_e2) {}
+    try {
+      window.slot_record_all_timer_split(game);
+    } catch (_split) {}
   };
 
   window.slot_make_pos = function slot_make_pos(x, y) {
@@ -18965,11 +19131,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     }
 
     if (eatenMode != null) {
-      if ((eatenMode | 0) === 27) {
-        window.slot_mexico_on_eat(g);
-      } else {
-        window.slotRespawn(eatenMode, g);
-      }
+      // Mexico (27) goes through slotRespawn like Portal — tally/dice store it
+      // instead of planting a mid-board pair.
+      window.slotRespawn(eatenMode, g);
     } else if (eaten && !eaten.isPiece && !eaten.Oka) {
       // Unbadged unlock fruit (or missed stamp): still refill one badge fruit.
       const mode = window.slot_draw_mode() | 0;
@@ -19191,11 +19355,11 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     return n;
   };
 
-  // Portal / Key / Soko / Chess / Poison — FIFO-deferred under Dice, Tally,
-  // and Bomb first wave (pre-kc) instead of mid-wave refill.
+  // Portal / Mexico / Key / Soko / Chess / Poison — FIFO-deferred under Dice,
+  // Tally, and Bomb first wave (pre-kc) instead of mid-wave refill.
   window.slot_is_store_special = function slot_is_store_special(mode) {
     const m = mode | 0;
-    if (m === 2 || m === 8 || m === 9 || m === 10) return true;
+    if (m === 2 || m === 27 || m === 8 || m === 9 || m === 10) return true;
     return !!(window.slot_is_chess_mode && window.slot_is_chess_mode(m));
   };
 
@@ -19280,6 +19444,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       window.slot_ensure_unique_fruit_types(mgr);
       window.appleArray = mgr.ka;
       return true;
+    }
+
+    // Mexico badge unit: top+bottom portal pair (+ mid wall if not already up).
+    // Counts as one tally index (pair shares sequenceNumber via __slotPortal).
+    if (m === 27) {
+      return !!(window.slot_mexico_on_eat && window.slot_mexico_on_eat(g));
     }
 
     if (m === 8) {
@@ -20369,9 +20539,41 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   // after a poison-badge eat that left only Okas. Under Slot, skip this win;
   // slot_win_if_empty / tick handle true board-clear instead.
   // MorePudding timeKeeper inserts gotAll(...) between WIN.play() and this.ub.
-  // Capture the end-menu helper (A7E/vdF) — it is not a window global, and Slot
-  // skips the native win block that would otherwise call it.
-  if (code.indexOf("window.__slotShowEndMenu=") < 0) {
+  // End-menu helper (A7E/vdF) and ALL-split helpers (S2E/B7E/x7E/d6E) are
+  // closure-local inside the gated win block — eager-capture on tick.
+  if (code.indexOf("__slotEagerEndMenu") < 0) {
+    const menuFnMatch = code.match(
+      /([a-zA-Z0-9_$]{1,8})\(this\.menu,\s*1400,\s*this\.([a-zA-Z0-9_$]{1,8})\)/
+    );
+    const endMenuFn = menuFnMatch ? menuFnMatch[1] : "A7E";
+    // _.hn(sc.Ba,S2E(zc*Hd));let fd=String(x7E(this,d6E(this.settings)));B7E(...)
+    const allFmt = code.match(
+      /_\.([a-zA-Z0-9_$]{1,8})\([a-zA-Z0-9_$]{1,8}\.Ba,([a-zA-Z0-9_$]{1,8})\([a-zA-Z0-9_$]{1,8}\*[a-zA-Z0-9_$]{1,8}\)\);let [a-zA-Z0-9_$]{1,8}=String\(([a-zA-Z0-9_$]{1,8})\(this,([a-zA-Z0-9_$]{1,8})\(this\.settings\)\)\);([a-zA-Z0-9_$]{1,8})\(this\.header/
+    );
+    const hnName = allFmt ? allFmt[1] : "hn";
+    const s2eName = allFmt ? allFmt[2] : "S2E";
+    const x7eName = allFmt ? allFmt[3] : "x7E";
+    const d6eName = allFmt ? allFmt[4] : "d6E";
+    const b7eName = allFmt ? allFmt[5] : "B7E";
+    smReplace(
+      "slot eager-capture end-menu + ALL-split helpers on tick",
+      /\}tick\(\)\{window\.__remixGame=this;/,
+      "}tick(){try{window.__slotEagerEndMenu=1;window.__slotShowEndMenu=" +
+        endMenuFn +
+        ";window.__slotHn=_." +
+        hnName +
+        ";window.__slotS2E=" +
+        s2eName +
+        ";window.__slotX7E=" +
+        x7eName +
+        ";window.__slotD6E=" +
+        d6eName +
+        ";window.__slotB7E=" +
+        b7eName +
+        ";}catch(_smM){}window.__remixGame=this;"
+    );
+  }
+  if (code.indexOf("(window.__slotShowEndMenu=") < 0) {
     if (
       !smReplace(
         "slot capture end-menu helper",
@@ -21081,11 +21283,14 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         "!(window.slot_key_unlock_fruit||window.slot_soko_unlock_fruit)"
       ) < 0
     ) {
+      // Upgrade path: prior Slot chess-roll gate already present. Optional —
+      // fresh builds hit the base form below instead.
       if (
         !smReplace(
           "slot chess convert skip key/soko unlock (upgrade)",
           /if\(window\.isChessActive&&window\.isChessActive\(\)&&g>0&&\(\!\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)\)\|\|window\.slot_is_chess_mode&&window\.slot_is_chess_mode\(window\.__slotActive\)\)\)\{window\.chess_convert_new_apples\(a,g\);\}/,
-          "if(window.isChessActive&&window.isChessActive()&&g>0&&!(window.slot_key_unlock_fruit||window.slot_soko_unlock_fruit)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive))){window.chess_convert_new_apples(a,g);}"
+          "if(window.isChessActive&&window.isChessActive()&&g>0&&!(window.slot_key_unlock_fruit||window.slot_soko_unlock_fruit)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive))){window.chess_convert_new_apples(a,g);}",
+          true
         )
       ) {
         smReplace(

@@ -347,6 +347,16 @@ window.CatMod.alterSnakeCode = function (code) {
   window.cat_trigger_win = function cat_trigger_win(game) {
     if (!game) return;
     if (game.nj || game.lj) return;
+    // Slot Machine: same board-fill win, but use Slot's native-style path
+    // (gotAll + ub/nj + end menu). Plain nj+lj never opens the win screen.
+    if (
+      window.isSlotMachineActive &&
+      window.isSlotMachineActive() &&
+      typeof window.slot_trigger_win === "function"
+    ) {
+      window.slot_trigger_win(game);
+      return;
+    }
     try {
       if (typeof Q4E !== "undefined" && Q4E.rWd && Q4E.rWd.play) Q4E.rWd.play();
       else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
@@ -357,6 +367,8 @@ window.CatMod.alterSnakeCode = function (code) {
       const score = game.Sh != null ? game.Sh : game.Oh;
       if (typeof A7E === "function") A7E(game.menu, 1400, score);
       else if (typeof vdF === "function") vdF(game.menu, 1400, score);
+      else if (typeof window.__slotShowEndMenu === "function")
+        window.__slotShowEndMenu(game.menu, 1400, score);
     } catch (_e2) {}
   };
 

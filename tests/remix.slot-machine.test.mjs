@@ -28,6 +28,7 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /slot_tally_spawn_n/);
     assert.match(init, /slot_index_tally_fruits/);
     assert.match(init, /slot_is_store_special/);
+    assert.match(init, /m === 2 \|\| m === 27 \|\| m === 8/);
     assert.match(init, /slot_uses_special_store/);
     assert.match(init, /slot_store_push/);
     assert.match(init, /slot_store_shift/);
@@ -68,12 +69,13 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /timeKeeper/);
     assert.match(init, /slot_r7E_win_gate/);
     assert.match(init, /timeKeeper\.gotAll/);
-    assert.match(
-      init,
-      /snake stops \(nj\) but the speedrun timer keeps running/
-    );
+    assert.match(init, /ticks\s*\*\s*game\.Fb|game\.ticks\s*\*\s*game\.Fb/);
+    assert.match(init, /slot_record_all_timer_split/);
+    assert.match(init, /SplitPanelOnSplit/);
+    assert.match(init, /__slotS2E/);
+    assert.match(init, /header\.Aa,\s*"ALL"/);
+    assert.match(init, /__slotEagerEndMenu/);
     assert.match(init, /__slotShowEndMenu/);
-    assert.match(init, /win dialog never opens/);
     assert.match(
       init,
       /All-apples win: restore Slot Machine topbar icon/
@@ -265,6 +267,9 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /slot_add_bridge_keys/);
     assert.match(init, /slot_relocate_fruit_off_bridges/);
     assert.match(init, /fruit\/chess piece sitting on a bridge/);
+    assert.match(init, /Never relocate onto another bridge/);
+    assert.match(init, /If no safe cell exists, remove/);
+    assert.match(init, /slot_win_if_empty && window\.slot_win_if_empty\(g\)/);
     assert.match(init, /Magnet\/winged can round onto a bridge/);
     assert.match(init, /slot_pos_on_bridge\(game, p\.x, p\.y\)\) return false/);
     assert.match(init, /Native freePos can land on leftover bridges/);
@@ -1513,6 +1518,316 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(result.pieceOnBridge, false, JSON.stringify(result));
       assert.ok(result.freeOk >= 10, JSON.stringify(result));
       assert.equal(result.freeOnBridge, 0, JSON.stringify(result));
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("bridge relocate despawns when no free cell and can win", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 46, headless: true });
+    try {
+      await h.start({
+        mode: "slot_machine",
+        count: COUNT.ONE,
+        size: SIZE.SMALL,
+      });
+      const result = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        window.__remixGame = g;
+        window.CurrentModeNum = window.SLOT_MACHINE_MODE;
+        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.nj = false;
+        g.lj = false;
+        g.ub = false;
+        window.slot_reset_state();
+        window.setSlotActive(20, g);
+
+        if (!g.Ga) return { error: "no Ga" };
+        if (!g.Ga.oa) g.Ga.oa = [];
+        // Plant a bridge under the parked fruit so relocate runs.
+        const bx = 1;
+        const by = 1;
+        if (!g.Ga.oa[by]) g.Ga.oa[by] = [];
+        g.Ga.oa[by][bx] = { pos: { x: bx, y: by }, Lh: true };
+
+        const mgr = g.wa;
+        // Leave only one playable fruit so despawn can empty the board.
+        while (mgr.ka && mgr.ka.length > 1) mgr.ka.pop();
+        const before = (mgr.ka && mgr.ka.length) || 0;
+        if (!before) return { error: "no fruit" };
+        const f = mgr.ka[0];
+        f.pos.x = bx;
+        f.pos.y = by;
+        f.Oka = false;
+
+        // Stub free_pos: every candidate is still a bridge cell. Relocate must
+        // refuse those and despawn instead of parking on another bridge.
+        const prevFree = window.slot_free_pos;
+        window.slot_free_pos = function () {
+          return {
+            x: bx,
+            y: by,
+            clone() {
+              return { x: bx, y: by };
+            },
+          };
+        };
+
+        let winCalls = 0;
+        const prevWin = window.slot_trigger_win;
+        window.slot_trigger_win = function () {
+          winCalls++;
+          if (typeof prevWin === "function") {
+            return prevWin.apply(this, arguments);
+          }
+        };
+
+        // Clear leftover keys/soko so empty fruit → win.
+        try {
+          if (g.Ca && g.Ca.oa) g.Ca.oa.length = 0;
+        } catch (_k) {}
+        try {
+          if (g.Za && g.Za.oa) g.Za.oa.length = 0;
+        } catch (_s) {}
+
+        window.slot_relocate_fruit_off_bridges(mgr, g);
+
+        const after = (mgr.ka && mgr.ka.length) || 0;
+        const anyOnBridge = (mgr.ka || []).some(
+          (fruit) =>
+            fruit &&
+            fruit.pos &&
+            window.slot_pos_on_bridge(g, fruit.pos.x, fruit.pos.y)
+        );
+
+        window.slot_free_pos = prevFree;
+        window.slot_trigger_win = prevWin;
+        return {
+          before,
+          after,
+          anyOnBridge,
+          winCalls,
+          nj: !!g.nj,
+        };
+      });
+
+      assert.equal(result.error, undefined, JSON.stringify(result));
+      assert.ok(result.before >= 1, JSON.stringify(result));
+      assert.equal(result.after, 0, JSON.stringify(result));
+      assert.equal(result.anyOnBridge, false, JSON.stringify(result));
+      assert.ok(result.winCalls >= 1 || result.nj === true, JSON.stringify(result));
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("Cat board-fill max score wins via slot_trigger_win + end menu", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 13, headless: true });
+    try {
+      await h.start({
+        mode: "slot_machine",
+        count: COUNT.ONE,
+        size: SIZE.SMALL,
+      });
+      const result = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        // Let tick eager-capture A7E into __slotShowEndMenu.
+        g.tick();
+        window.CurrentModeNum = window.SLOT_MACHINE_MODE;
+        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.nj = false;
+        g.lj = false;
+        g.ub = false;
+        window.slot_reset_state();
+        window.__slotWrapActives && window.__slotWrapActives();
+        window.setSlotActive(21, g);
+        window.cat_lives = 3;
+
+        const cap = window.cat_max_score(g) | 0;
+        g.Sh = cap;
+        g.Oh = cap;
+        g.wa.ka.length = 0;
+        const fruit = window.slot_make_apple(g.wa, { x: 2, y: 2 });
+        fruit.slotMode = 3;
+        g.wa.ka.push(fruit);
+        window.appleArray = g.wa.ka;
+
+        window.__slotMenuCalls = 0;
+        window.__slotGotAllCalls = 0;
+        const origShow = window.__slotShowEndMenu;
+        const showType = typeof window.__slotShowEndMenu;
+        window.__slotShowEndMenu = function (menu, delay, score) {
+          window.__slotMenuCalls = (window.__slotMenuCalls | 0) + 1;
+          window.__slotMenuArgs = [!!menu, delay, score];
+          if (typeof origShow === "function") {
+            try {
+              return origShow.apply(this, arguments);
+            } catch (_e) {}
+          }
+        };
+        window.timeKeeper = window.timeKeeper || {};
+        const origGotAll = window.timeKeeper.gotAll;
+        window.timeKeeper.gotAll = function (time, score) {
+          window.__slotGotAllCalls = (window.__slotGotAllCalls | 0) + 1;
+          window.__slotGotAllArgs = [time, score];
+          window.timeKeeper.playing = false;
+          if (typeof origGotAll === "function") {
+            try {
+              return origGotAll.apply(this, arguments);
+            } catch (_e) {}
+          }
+        };
+
+        const scoreWin = window.cat_check_score_win(g);
+
+        if (typeof origGotAll === "function") {
+          window.timeKeeper.gotAll = origGotAll;
+        }
+        if (typeof origShow === "function") {
+          window.__slotShowEndMenu = origShow;
+        }
+
+        return {
+          cap,
+          showTypeBeforeWin: showType,
+          scoreWin,
+          nj: !!g.nj,
+          lj: !!g.lj,
+          ub: !!g.ub,
+          menuCalls: window.__slotMenuCalls | 0,
+          menuDelay: window.__slotMenuArgs && window.__slotMenuArgs[1],
+          gotAllCalls: window.__slotGotAllCalls | 0,
+          gotAllTime: window.__slotGotAllArgs && window.__slotGotAllArgs[0],
+          expectedTime: Math.floor((g.ticks | 0) * (g.Fb || 0)),
+          fruitCapped: (window.cat_score_room(g) | 0) === 0,
+        };
+      });
+
+      assert.ok(result.cap > 0, JSON.stringify(result));
+      assert.equal(result.showTypeBeforeWin, "function", JSON.stringify(result));
+      assert.equal(result.scoreWin, true, JSON.stringify(result));
+      assert.equal(result.ub, true, JSON.stringify(result));
+      assert.equal(result.nj, true, JSON.stringify(result));
+      assert.equal(result.lj, false, JSON.stringify(result));
+      assert.ok(result.menuCalls >= 1, JSON.stringify(result));
+      assert.equal(result.menuDelay, 1400, JSON.stringify(result));
+      assert.ok(result.gotAllCalls >= 1, JSON.stringify(result));
+      assert.equal(result.gotAllTime, result.expectedTime, JSON.stringify(result));
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("empty board win records ALL on the pudding split timer", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 15, headless: true });
+    try {
+      await h.start({
+        mode: "slot_machine",
+        count: COUNT.ONE,
+        size: SIZE.SMALL,
+      });
+      const result = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        window.CurrentModeNum = window.SLOT_MACHINE_MODE;
+        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.ob = window.SLOT_MACHINE_MODE;
+        g.tick();
+        g.nj = false;
+        g.ub = false;
+        g.lj = false;
+        g.ticks = 40;
+        g.Sh = 5;
+        window.slot_reset_state();
+        g.wa.ka.length = 0;
+        window.appleArray = g.wa.ka;
+
+        window.__slotSplitCalls = [];
+        const origSplit = window.SplitPanelOnSplit;
+        window.SplitPanelOnSplit = function (score, time, delta) {
+          window.__slotSplitCalls.push([score, time, delta]);
+          if (typeof origSplit === "function") {
+            return origSplit.apply(this, arguments);
+          }
+        };
+
+        const beforeLabel =
+          g.header && g.header.Aa
+            ? g.header.Aa.textContent || g.header.Aa.innerText
+            : null;
+        const beforeTime =
+          g.header && g.header.Ba
+            ? g.header.Ba.textContent || g.header.Ba.innerText
+            : null;
+
+        window.slot_trigger_win(g);
+
+        const expected = g.ticks * g.Fb * 1e-3;
+        const expectedMs = Math.floor(g.ticks * g.Fb);
+        const mode = typeof getSelected === "function" ? getSelected("#trophy") : 0;
+        const count = typeof getSelected === "function" ? getSelected("#count") : 0;
+        const speed = typeof getSelected === "function" ? getSelected("#speed") : 0;
+        const size = typeof getSelected === "function" ? getSelected("#size") : 0;
+        const cat = window._cat != null ? window._cat : 3;
+        const runAll =
+          window._run &&
+          window._run[mode] &&
+          window._run[mode][count] &&
+          window._run[mode][count][speed] &&
+          window._run[mode][count][speed][size] &&
+          window._run[mode][count][speed][size][cat] &&
+          window._run[mode][count][speed][size][cat].ALL;
+
+        const list = document.getElementById("split-panel-list");
+        const allRow = list && list.textContent;
+        const afterLabel =
+          g.header && g.header.Aa
+            ? g.header.Aa.textContent || g.header.Aa.innerText
+            : null;
+        const afterTime =
+          g.header && g.header.Ba
+            ? g.header.Ba.textContent || g.header.Ba.innerText
+            : null;
+        const hud = document.getElementsByClassName("Jc72He rc48Qb")[0];
+        const hudText = hud ? hud.innerText : null;
+
+        if (typeof origSplit === "function") {
+          window.SplitPanelOnSplit = origSplit;
+        }
+
+        return {
+          ub: !!g.ub,
+          nj: !!g.nj,
+          expected,
+          expectedMs,
+          runAll,
+          splitCalls: window.__slotSplitCalls,
+          allRowText: allRow,
+          beforeLabel,
+          afterLabel,
+          beforeTime,
+          afterTime,
+          hudText,
+          hasS2E: typeof window.__slotS2E,
+          hasHn: typeof window.__slotHn,
+        };
+      });
+
+      assert.equal(result.ub, true, JSON.stringify(result));
+      assert.equal(result.nj, true, JSON.stringify(result));
+      assert.equal(result.runAll, result.expected, JSON.stringify(result));
+      assert.ok(
+        result.splitCalls.some((c) => c[0] === "ALL" && c[1] === result.expected),
+        JSON.stringify(result)
+      );
+      assert.equal(result.afterLabel, "ALL", JSON.stringify(result));
+      assert.notEqual(result.afterTime, result.beforeTime, JSON.stringify(result));
+      assert.notEqual(result.afterTime, "--:--:---", JSON.stringify(result));
+      assert.match(String(result.hudText || ""), /ALL/, JSON.stringify(result));
+      assert.equal(result.hasS2E, "function", JSON.stringify(result));
+      assert.equal(result.hasHn, "function", JSON.stringify(result));
     } finally {
       await h.close();
     }
@@ -5172,6 +5487,114 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(result.samePortalIndex, true, JSON.stringify(result));
       assert.equal(result.distinctCount, 5, JSON.stringify(result));
       assert.equal(result.pairIdMatch, true, JSON.stringify(result));
+      assert.equal(result.tallyIndex, 1, JSON.stringify(result));
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("tally mexico pair shares sequenceNumber; mid-board defers like portal", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 46, headless: true });
+    try {
+      await h.start({
+        mode: "slot_machine",
+        count: COUNT.TALLY,
+        size: SIZE.NORMAL,
+      });
+      const result = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        window.__remixGame = g;
+        window.CurrentModeNum = window.SLOT_MACHINE_MODE;
+        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.ka = 6;
+        g.settings.Ca = 6;
+        window.slot_reset_state();
+        g.wa.reset();
+        window.slot_after_layout(g.wa);
+
+        function eatBadge(fruit, mode) {
+          fruit.slotMode = mode;
+          window.just_ate = "fruit";
+          window.__slotEatenFruit = fruit;
+          window.__slotEatenMode = mode;
+          window.__slotEating = true;
+          window.setSlotActive(mode, g);
+          window.slot_eat_respawn(g);
+          const ix = g.wa.ka.indexOf(fruit);
+          if (ix >= 0) g.wa.ka.splice(ix, 1);
+          window.appleArray = g.wa.ka;
+        }
+
+        // Mid-board Mexico: store only — no pair plant (like Portal).
+        g.wa.ka.length = 0;
+        window.__slotSpecialStore = [];
+        window.__slotMexicoMidUp = false;
+        const keep = window.slot_make_apple(g.wa, { x: 5, y: 5 });
+        const mexEat = window.slot_make_apple(g.wa, { x: 7, y: 5 });
+        window.assignSlotMode(keep);
+        mexEat.slotMode = 27;
+        g.wa.ka.push(keep, mexEat);
+        window.appleArray = g.wa.ka;
+        eatBadge(mexEat, 27);
+        const midFruit = g.wa.ka.filter((f) => f && !f.Oka && !f.isPiece).length;
+        const midMexicoPortals = g.wa.ka.filter(
+          (f) => f && f.__slotMexicoPortal
+        ).length;
+        const midStore = (window.__slotSpecialStore || []).slice();
+        const midWall = !!window.__slotMexicoMidUp;
+
+        // Empty board wave with stored Mexico: 1 Mexico unit + 4 badges.
+        window.__slotSpecialStore = [27];
+        window.__slotMexicoMidUp = false;
+        g.wa.ka.length = 0;
+        const units = window.slot_plant_wave_units(g, 5, 3, {
+          indexTally: true,
+        });
+        const list = g.wa.ka.filter((f) => f && !f.Oka);
+        const mexPortals = list.filter((f) => f.__slotMexicoPortal);
+        const mexSeqs = mexPortals.map((f) => f.sequenceNumber | 0);
+        const uniqueMexSeq = new Set(mexSeqs);
+        const distinctSeq = new Set(list.map((f) => f.sequenceNumber | 0));
+
+        return {
+          isStoreSpecial: !!window.slot_is_store_special(27),
+          midFruit,
+          midMexicoPortals,
+          midStore,
+          midWall,
+          units,
+          listLen: list.length,
+          mexPortalCount: mexPortals.length,
+          mexSeqs,
+          sameMexIndex: uniqueMexSeq.size === 1 && (mexSeqs[0] | 0) > 0,
+          distinctCount: distinctSeq.size,
+          mexPairIdMatch:
+            mexPortals.length === 2 &&
+            mexPortals[0].__slotMexicoPairId ===
+              mexPortals[1].__slotMexicoPairId,
+          portalPairIdMatch:
+            mexPortals.length === 2 &&
+            mexPortals[0].__slotPortalPairId ===
+              mexPortals[1].__slotPortalPairId,
+          midUpAfterWave: !!window.__slotMexicoMidUp,
+          tallyIndex: g.wa.wa | 0,
+        };
+      });
+
+      assert.equal(result.isStoreSpecial, true, JSON.stringify(result));
+      assert.equal(result.midFruit, 1, JSON.stringify(result));
+      assert.equal(result.midMexicoPortals, 0, JSON.stringify(result));
+      assert.deepEqual(result.midStore, [27], JSON.stringify(result));
+      assert.equal(result.midWall, false, JSON.stringify(result));
+      assert.equal(result.units, 5, JSON.stringify(result));
+      assert.equal(result.mexPortalCount, 2, JSON.stringify(result));
+      assert.equal(result.listLen, 6, JSON.stringify(result));
+      assert.equal(result.sameMexIndex, true, JSON.stringify(result));
+      assert.equal(result.distinctCount, 5, JSON.stringify(result));
+      assert.equal(result.mexPairIdMatch, true, JSON.stringify(result));
+      assert.equal(result.portalPairIdMatch, true, JSON.stringify(result));
+      assert.equal(result.midUpAfterWave, true, JSON.stringify(result));
       assert.equal(result.tallyIndex, 1, JSON.stringify(result));
     } finally {
       await h.close();

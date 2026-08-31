@@ -108,6 +108,8 @@ describe("Cat Mode (offline)", () => {
     const cat = read("src/CatInit.js");
     assert.match(cat, /w\s*\*\s*h\s*-\s*\(window\.CAT_SNAKE_START_LEN/);
     assert.match(cat, /cat_check_score_win\(g\)/);
+    // Under Slot, board-fill still wins — via slot_trigger_win (not nj+lj).
+    assert.match(cat, /slot_trigger_win\(game\)/);
     // Sanity: known stock sizes
     assert.equal(10 * 9 - 3, 87);
     assert.equal(17 * 15 - 3, 252);
