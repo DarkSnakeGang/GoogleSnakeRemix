@@ -16187,7 +16187,8 @@ window.TempWallsMod.alterSnakeCode = function (code) {
 
       const moves = wall.movesRemaining | 0;
       const urgency = (fadeAt - moves + 1) / fadeAt;
-      const alpha = 0.65 + 0.35 * blink * (0.35 + 0.65 * urgency);
+      const blinkMix = blink * (0.5 + 0.5 * urgency);
+      const alpha = 0.25 + 0.35 * blinkMix;
       const color = window.tempWalls_lerp_color(brick, orange, blink);
 
       const cx = (wall.pos.x | 0) * tile + tile / 2;
@@ -16209,22 +16210,6 @@ window.TempWallsMod.alterSnakeCode = function (code) {
       } else {
         // F5E.render classic path: axis-aligned full cell on ka.
         ctx.fillRect(cx - Se / 2, cy - Se / 2, Se, Se);
-      }
-
-      ctx.globalAlpha = Math.min(1, alpha + 0.15);
-      ctx.strokeStyle = orange;
-      ctx.lineWidth = Math.max(2, tile * 0.12);
-      if (useOa && !pixel) {
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(Math.PI / 4);
-        ctx.strokeRect(-Se, -Se, Se * 2, Se * 2);
-        ctx.restore();
-      } else if (useOa && pixel) {
-        const kd = (320 / 120) * Se * 1.4;
-        ctx.strokeRect(cx - kd, cy - kd, kd * 2, kd * 2);
-      } else {
-        ctx.strokeRect(cx - Se / 2, cy - Se / 2, Se, Se);
       }
     }
     ctx.restore();
