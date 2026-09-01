@@ -50,6 +50,13 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /slot_enabled_pool/);
     assert.match(init, /slot_get_enabled_modes/);
     assert.match(init, /slot_set_enabled_modes/);
+    assert.match(init, /slot_deselect_all_enabled_modes/);
+    assert.match(init, /slot_vanilla_only_enabled_modes/);
+    assert.match(init, /slot_is_remix_added_mode/);
+    assert.match(init, /remix-slot-modes-none/);
+    assert.match(init, /remix-slot-modes-vanilla/);
+    assert.match(init, /Deselect all/);
+    assert.match(init, /Vanilla only/);
     assert.match(init, /SlotMachineModes/);
     assert.match(init, /remixInjectSlotMachineSettingsUi/);
     assert.match(init, /remix-custom-panel-slot/);
@@ -92,7 +99,7 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /burger_spawn_fresh\.__slotWrap/);
     assert.match(init, /burger_timer_roll\.__slotWrap/);
     assert.match(init, /cat_try_spend_life\.__slotPeacefulWrap/);
-    assert.match(init, /\(__slotActive\|0\)===25\|\|window\.slot_has_oka/);
+    assert.match(init, /\(window\.__slotActive\|0\)===25\|\|window\.slot_has_oka/);
     assert.match(init, /burger_assign_timer\.__slotPieceGate/);
     assert.match(init, /burger_apple_timer_eligible\.__slotPieceGate/);
     assert.match(init, /burger_expire_apple\.__slotPieceGate/);
@@ -356,6 +363,8 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /__slotMexicoStartSide/);
     assert.match(init, /__slotMexicoMidUp/);
     assert.match(init, /Mexico is never assigned to mid-row/);
+    assert.match(init, /Mexico badge pairs never land on the snake/);
+    assert.match(init, /Never plant mid walls on the snake body/);
     assert.match(init, /slot_mexico_relocate_pair_halves/);
     assert.match(init, /neither twin may sit on the middle row/);
     assert.match(init, /slot_mexico_blocks_mid_fruit/);
@@ -3461,6 +3470,77 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
     }
   });
 
+  it("deselect-all and vanilla-only badge toolbar presets", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 4, headless: true });
+    try {
+      await h.start({
+        mode: "slot_machine",
+        count: COUNT.ONE,
+        size: SIZE.SMALL,
+      });
+      const result = await h.page.evaluate(() => {
+        window.pudding_settings = window.pudding_settings || {};
+        const pool = (window.SLOT_MACHINE_POOL || []).slice();
+        const earliest = pool[0] | 0;
+        window.slot_set_enabled_modes(pool);
+        const deselected = window.slot_deselect_all_enabled_modes();
+        window.slot_set_enabled_modes(pool);
+        const vanilla = window.slot_vanilla_only_enabled_modes();
+        const hasRemix = vanilla.some((m) => window.slot_is_remix_added_mode(m));
+        const expectedVanilla = pool.filter(
+          (m) => !window.slot_is_remix_added_mode(m)
+        );
+
+        // Rebuild settings card so the new buttons are present.
+        const old = document.getElementById("remix-slot-modes-card");
+        if (old) old.remove();
+        if (typeof window.remixShowSettingsPage === "function") {
+          window.remixShowSettingsPage("custom");
+        }
+        if (typeof window.remixShowCustomSubPage === "function") {
+          window.remixShowCustomSubPage("slot");
+        }
+        window.remixInjectSlotMachineSettingsUi();
+        const noneBtn = document.getElementById("remix-slot-modes-none");
+        const vanillaBtn = document.getElementById("remix-slot-modes-vanilla");
+        noneBtn && noneBtn.click();
+        const afterNone = window.slot_get_enabled_modes().slice();
+        vanillaBtn && vanillaBtn.click();
+        const afterVanilla = window.slot_get_enabled_modes().slice();
+        return {
+          earliest,
+          deselected,
+          vanilla,
+          hasRemix,
+          expectedVanilla,
+          afterNone,
+          afterVanilla,
+          noneLabel: noneBtn && noneBtn.textContent,
+          vanillaLabel: vanillaBtn && vanillaBtn.textContent,
+        };
+      });
+      assert.deepEqual(result.deselected, [result.earliest], JSON.stringify(result));
+      assert.equal(result.hasRemix, false, JSON.stringify(result));
+      assert.deepEqual(result.vanilla, result.expectedVanilla, JSON.stringify(result));
+      assert.ok(result.expectedVanilla.length >= 1, JSON.stringify(result));
+      assert.ok(
+        result.expectedVanilla.every((m) => (m | 0) < 23),
+        JSON.stringify(result)
+      );
+      assert.deepEqual(result.afterNone, [result.earliest], JSON.stringify(result));
+      assert.deepEqual(
+        result.afterVanilla,
+        result.expectedVanilla,
+        JSON.stringify(result)
+      );
+      assert.equal(result.noneLabel, "Deselect all");
+      assert.equal(result.vanillaLabel, "Vanilla only");
+    } finally {
+      await h.close();
+    }
+  });
+
   it("layout fruit types are unique across the board", async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 8, headless: true });
@@ -5676,6 +5756,125 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(result.portalPairIdMatch, true, JSON.stringify(result));
       assert.equal(result.midUpAfterWave, true, JSON.stringify(result));
       assert.equal(result.tallyIndex, 1, JSON.stringify(result));
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("Mexico portal pair refuses snake body cells (spawn fail)", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 47, headless: true });
+    try {
+      await h.start({
+        mode: "slot_machine",
+        count: COUNT.ONE,
+        size: SIZE.NORMAL,
+      });
+      const result = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        window.__remixGame = g;
+        window.CurrentModeNum = window.SLOT_MACHINE_MODE;
+        g.settings.ub = window.SLOT_MACHINE_MODE;
+        window.slot_reset_state();
+        g.wa.reset();
+        window.slot_after_layout(g.wa);
+        g.wa.ka.length = 0;
+        window.appleArray = g.wa.ka;
+        window.__slotMexicoMidUp = false;
+
+        // Force every candidate cell to look like snake body → half search fails.
+        const origOnSnake = window.slot_soko_pos_on_snake;
+        window.slot_soko_pos_on_snake = function () {
+          return true;
+        };
+        const blocked = window.slot_mexico_plant_portal_pair(g);
+        const midAfterBlock = !!window.__slotMexicoMidUp;
+        const portalsAfterBlock = g.wa.ka.filter(
+          (f) => f && f.__slotMexicoPortal
+        ).length;
+        window.slot_soko_pos_on_snake = origOnSnake;
+
+        // With normal snake occupancy, plant should succeed off the body.
+        const ok = window.slot_mexico_plant_portal_pair(g);
+        const portals = g.wa.ka.filter((f) => f && f.__slotMexicoPortal);
+        let onSnake = false;
+        for (let i = 0; i < portals.length; i++) {
+          if (window.slot_soko_pos_on_snake(g, portals[i].pos)) onSnake = true;
+        }
+
+        // Relocate also refuses snake-covered halves.
+        window.slot_soko_pos_on_snake = function () {
+          return true;
+        };
+        const relocateFail =
+          portals.length === 2
+            ? !window.slot_mexico_relocate_pair_halves(
+                portals[0],
+                portals[1],
+                g.wa
+              )
+            : false;
+        window.slot_soko_pos_on_snake = origOnSnake;
+
+        // Mid walls skip snake-occupied mid cells (leave gaps).
+        window.__slotMexicoMidUp = false;
+        window.slot_mexico_clear_mid(g);
+        const mid = window.slot_mexico_mid_y(g) | 0;
+        const body = g.oa && g.oa.ka;
+        const midSegXs = [];
+        if (body && body.length) {
+          for (let i = 0; i < body.length; i++) {
+            const seg = body[i];
+            if (!seg) continue;
+            const sx = seg.x != null ? seg.x | 0 : seg.pos ? seg.pos.x | 0 : NaN;
+            const sy = seg.y != null ? seg.y | 0 : seg.pos ? seg.pos.y | 0 : NaN;
+            if (sy === mid && sx === sx) midSegXs.push(sx);
+          }
+          // Park at least one segment on mid so we can assert a wall gap.
+          if (!midSegXs.length && body[0]) {
+            const head = body[0];
+            if (head.y != null) head.y = mid;
+            else if (head.pos) head.pos.y = mid;
+            midSegXs.push(head.x != null ? head.x | 0 : head.pos.x | 0);
+          }
+        }
+        window.__slotMexicoMidUp = false;
+        const midPlanted = window.slot_mexico_place_partial_mid(g);
+        const walls = g.Ca && g.Ca.wa && g.Ca.wa[mid];
+        let wallOnSnake = false;
+        for (let i = 0; i < midSegXs.length; i++) {
+          const wx = midSegXs[i] | 0;
+          if (walls && (walls[wx] | 0) > 0) wallOnSnake = true;
+        }
+        const blockedMid =
+          midSegXs.length > 0 &&
+          window.slot_mexico_cell_blocked_for_mid(g, midSegXs[0], mid);
+
+        return {
+          blocked,
+          midAfterBlock,
+          portalsAfterBlock,
+          ok,
+          portalCount: portals.length,
+          onSnake,
+          relocateFail,
+          midPlanted,
+          wallOnSnake,
+          blockedMid,
+          midSegCount: midSegXs.length,
+        };
+      });
+
+      assert.equal(result.blocked, false, JSON.stringify(result));
+      assert.equal(result.midAfterBlock, false, JSON.stringify(result));
+      assert.equal(result.portalsAfterBlock, 0, JSON.stringify(result));
+      assert.equal(result.ok, true, JSON.stringify(result));
+      assert.equal(result.portalCount, 2, JSON.stringify(result));
+      assert.equal(result.onSnake, false, JSON.stringify(result));
+      assert.equal(result.relocateFail, true, JSON.stringify(result));
+      assert.equal(result.blockedMid, true, JSON.stringify(result));
+      assert.equal(result.wallOnSnake, false, JSON.stringify(result));
+      assert.ok(result.midSegCount > 0, JSON.stringify(result));
     } finally {
       await h.close();
     }

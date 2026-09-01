@@ -369,6 +369,28 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     return window.slot_set_enabled_modes(cur);
   };
 
+  // Remix-added Slot badges: Candy (23) through Bomb Fruit (28).
+  window.slot_is_remix_added_mode = function slot_is_remix_added_mode(mode) {
+    const m = mode | 0;
+    return m >= 23 && m <= 28;
+  };
+
+  // "Deselect all" keeps the earliest pool badge only (cannot empty the set).
+  window.slot_deselect_all_enabled_modes = function slot_deselect_all_enabled_modes() {
+    const full = window.SLOT_MACHINE_POOL || [];
+    const first = full.length ? full[0] | 0 : 1;
+    return window.slot_set_enabled_modes([first]);
+  };
+
+  // Vanilla Google modes only — drop Candy…Bomb Remix additions.
+  window.slot_vanilla_only_enabled_modes = function slot_vanilla_only_enabled_modes() {
+    const full = window.SLOT_MACHINE_POOL || [];
+    const vanilla = full.filter(function (m) {
+      return !window.slot_is_remix_added_mode(m);
+    });
+    return window.slot_set_enabled_modes(vanilla);
+  };
+
   window.slot_draw_mode = function slot_draw_mode() {
     if (!window.__slotBag || !window.__slotBag.length) {
       window.slot_shuffle_bag();
@@ -571,6 +593,18 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       if (!f || !f.pos || f === a || f === b) continue;
       occ.add((f.pos.x | 0) + "," + (f.pos.y | 0));
     }
+    try {
+      const body = g && g.oa && g.oa.ka;
+      if (body && body.length) {
+        for (let i = 0; i < body.length; i++) {
+          const seg = body[i];
+          if (!seg) continue;
+          const sx = seg.x != null ? seg.x | 0 : seg.pos ? seg.pos.x | 0 : NaN;
+          const sy = seg.y != null ? seg.y | 0 : seg.pos ? seg.pos.y | 0 : NaN;
+          if (sx === sx && sy === sy) occ.add(sx + "," + sy);
+        }
+      }
+    } catch (_sb) {}
     const top = window.slot_mexico_find_half_pos(mgr, "top", occ);
     if (!top) return false;
     occ.add((top.x | 0) + "," + (top.y | 0));
@@ -1800,6 +1834,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       if (half === "bottom" && !((p.y | 0) > mid)) return false;
       const k = (p.x | 0) + "," + (p.y | 0);
       if (occ.has(k)) return false;
+      // Mexico badge pairs never land on the snake; no legal half = spawn fail.
+      if (
+        window.slot_soko_pos_on_snake &&
+        window.slot_soko_pos_on_snake(g, p)
+      ) {
+        return false;
+      }
       if (window.slot_pos_in_wall && window.slot_pos_in_wall(g, p.x, p.y))
         return false;
       if (window.slot_pos_on_bridge && window.slot_pos_on_bridge(g, p.x, p.y))
@@ -1851,6 +1892,19 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       if (!f || !f.pos) continue;
       occ.add((f.pos.x | 0) + "," + (f.pos.y | 0));
     }
+    // Seed snake body so half search treats those tiles as occupied.
+    try {
+      const body = g && g.oa && g.oa.ka;
+      if (body && body.length) {
+        for (let i = 0; i < body.length; i++) {
+          const seg = body[i];
+          if (!seg) continue;
+          const sx = seg.x != null ? seg.x | 0 : seg.pos ? seg.pos.x | 0 : NaN;
+          const sy = seg.y != null ? seg.y | 0 : seg.pos ? seg.pos.y | 0 : NaN;
+          if (sx === sx && sy === sy) occ.add(sx + "," + sy);
+        }
+      }
+    } catch (_sb) {}
     const top = window.slot_mexico_find_half_pos(mgr, "top", occ);
     if (!top) return false;
     occ.add((top.x | 0) + "," + (top.y | 0));
@@ -1898,6 +1952,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     const xi = x | 0;
     const yi = y | 0;
     const pos = window.slot_make_pos ? window.slot_make_pos(xi, yi) : { x: xi, y: yi };
+    // Never plant mid walls on the snake body (head or tail segments).
+    if (
+      window.slot_soko_pos_on_snake &&
+      window.slot_soko_pos_on_snake(g, pos)
+    ) {
+      return true;
+    }
     if (
       window.chess_outside_spawn_radius &&
       !window.chess_outside_spawn_radius(g, pos)
@@ -6200,6 +6261,8 @@ window.remixInjectSlotMachineSettingsUi = function remixInjectSlotMachineSetting
       '<div class="remix-custom-hint">Choose which mode badges can appear on fruit. At least one must stay on (default: all).</div>' +
       '<div class="remix-custom-toolbar">' +
       '<button type="button" id="remix-slot-modes-all" class="btn remix-custom-btn-inline">Select all</button>' +
+      '<button type="button" id="remix-slot-modes-none" class="btn remix-custom-btn-inline">Deselect all</button>' +
+      '<button type="button" id="remix-slot-modes-vanilla" class="btn remix-custom-btn-inline">Vanilla only</button>' +
       '<span id="remix-slot-modes-status" class="remix-custom-hint remix-custom-status"></span>' +
       "</div>" +
       '<div id="remix-slot-mode-grid" class="remix-slot-mode-grid"></div>';
@@ -6210,6 +6273,24 @@ window.remixInjectSlotMachineSettingsUi = function remixInjectSlotMachineSetting
       allBtn.addEventListener("click", function () {
         if (typeof window.slot_set_enabled_modes === "function") {
           window.slot_set_enabled_modes(window.slot_default_enabled_modes());
+        }
+        window.remixRenderSlotMachineModeGrid();
+      });
+    }
+    const noneBtn = document.getElementById("remix-slot-modes-none");
+    if (noneBtn) {
+      noneBtn.addEventListener("click", function () {
+        if (typeof window.slot_deselect_all_enabled_modes === "function") {
+          window.slot_deselect_all_enabled_modes();
+        }
+        window.remixRenderSlotMachineModeGrid();
+      });
+    }
+    const vanillaBtn = document.getElementById("remix-slot-modes-vanilla");
+    if (vanillaBtn) {
+      vanillaBtn.addEventListener("click", function () {
+        if (typeof window.slot_vanilla_only_enabled_modes === "function") {
+          window.slot_vanilla_only_enabled_modes();
         }
         window.remixRenderSlotMachineModeGrid();
       });
