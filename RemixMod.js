@@ -14307,7 +14307,7 @@ window.BombFruitMod.runCodeBefore = function () {
 
   window.BOMB_FRUIT_ICON =
     "https://www.google.com/logos/fnbx/snake_arcade/v18/count_05.png";
-  window.BOMB_FRUIT_ARM_TICKS = 4;
+  window.BOMB_FRUIT_ARM_TICKS = 3;
 
   window.uiImage =
     window.uiImage ||
@@ -15195,7 +15195,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
         }
       }
       if (dist <= 1 && z.bombX1a === -1) {
-        z.bombX1a = window.BOMB_FRUIT_ARM_TICKS | 4;
+        z.bombX1a = window.BOMB_FRUIT_ARM_TICKS;
         z.linger = null;
       }
       if ((z.bombX1a | 0) >= 0 && !fruitKeys.has(window.bombFruit_zone_key(z))) {
@@ -15253,7 +15253,8 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     board,
     pos,
     bombX1a,
-    game
+    game,
+    frac
   ) {
     if (!board || !board.ka || !pos) return;
     const tile = board.wb && board.wb.ka && board.wb.ka.ka;
@@ -15277,9 +15278,9 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       ctx.stroke();
     }
     if (bombX1a > 0 && !(game && game.nj)) {
-      const arm = window.BOMB_FRUIT_ARM_TICKS | 4;
-      const f = (arm - bombX1a) / arm;
-      let pulseSide = side * f;
+      const arm = window.BOMB_FRUIT_ARM_TICKS;
+      const f = (arm - (bombX1a - (frac || 0))) / arm;
+      const pulseSide = side * f;
       let alpha = 0.15;
       if (typeof U2E === "function") {
         try {
@@ -15325,7 +15326,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   };
 
   /** Draw Minesweeper-style dashed 3×3 rings; gated by Mine Radius checkbox. */
-  window.bombFruit_drawRadii = function bombFruit_drawRadii(board, _frac) {
+  window.bombFruit_drawRadii = function bombFruit_drawRadii(board, frac) {
     if (!window.isBombFruitActive || !window.isBombFruitActive()) return;
     const boxes = window.checkboxes && window.checkboxes.checkboxStatuses;
     if (boxes && boxes.mineRadius === false) return;
@@ -15353,7 +15354,8 @@ window.BombFruitMod.alterSnakeCode = function (code) {
         board,
         { x: z.x, y: z.y },
         z.bombX1a | 0,
-        game
+        game,
+        frac
       );
     }
     ctx.setLineDash([]);
@@ -16070,7 +16072,7 @@ window.TempWallsMod.alterSnakeCode = function (code) {
       // Slot Machine plants from slot_on_eating_fruit (no native f4E). Skip the
       // Sh-delta path so we don't plant a second batch after flags clear.
       if (!(window.isSlotMachineActive && window.isSlotMachineActive())) {
-      window.tempWalls_after_eat(g.wa, true);
+        window.tempWalls_after_eat(g.wa, true);
       }
     }
     window.__tempWallsLastSh = g.Sh;
@@ -19044,7 +19046,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     } catch (_e) {}
   };
 
-  window.slot_bomb_leftover_draw = function slot_bomb_leftover_draw(board) {
+  window.slot_bomb_leftover_draw = function slot_bomb_leftover_draw(board, frac) {
     if (window.isBombFruitActive && window.isBombFruitActive()) return;
     if (!window.slot_has_armed_bombs || !window.slot_has_armed_bombs()) return;
     const boxes = window.checkboxes && window.checkboxes.checkboxStatuses;
@@ -19063,7 +19065,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           board,
           { x: z.x, y: z.y },
           z.bombX1a | 0,
-          game
+          game,
+          frac
         );
       }
       ctx.setLineDash([]);
@@ -22708,14 +22711,14 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       !smReplace(
         "slot ensure badges after bomb radii",
         /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}for\(var c of a\.wb\.Ma\.Aa\)\{/,
-        'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a);}catch(_sm){}}for(var c of a.wb.Ma.Aa){',
+        'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a,b);}catch(_sm){}}for(var c of a.wb.Ma.Aa){',
         true
       )
     ) {
       smReplace(
         "slot ensure badges after temp walls pulse",
         /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}try\{window\.tempWalls_drawPulse\(a\);\}catch\(_tw\)\{\}for\(var c of a\.wb\.Ma\.Aa\)\{/,
-        'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}try{window.tempWalls_drawPulse(a);}catch(_tw){}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a);}catch(_sm){}}for(var c of a.wb.Ma.Aa){',
+        'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}try{window.tempWalls_drawPulse(a);}catch(_tw){}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a,b);}catch(_sm){}}for(var c of a.wb.Ma.Aa){',
         true
       );
     }

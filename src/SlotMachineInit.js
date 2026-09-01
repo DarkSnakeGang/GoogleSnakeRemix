@@ -2681,7 +2681,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     } catch (_e) {}
   };
 
-  window.slot_bomb_leftover_draw = function slot_bomb_leftover_draw(board) {
+  window.slot_bomb_leftover_draw = function slot_bomb_leftover_draw(board, frac) {
     if (window.isBombFruitActive && window.isBombFruitActive()) return;
     if (!window.slot_has_armed_bombs || !window.slot_has_armed_bombs()) return;
     const boxes = window.checkboxes && window.checkboxes.checkboxStatuses;
@@ -2700,7 +2700,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           board,
           { x: z.x, y: z.y },
           z.bombX1a | 0,
-          game
+          game,
+          frac
         );
       }
       ctx.setLineDash([]);
@@ -6345,14 +6346,14 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       !smReplace(
         "slot ensure badges after bomb radii",
         /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}for\(var c of a\.wb\.Ma\.Aa\)\{/,
-        'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a);}catch(_sm){}}for(var c of a.wb.Ma.Aa){',
+        'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a,b);}catch(_sm){}}for(var c of a.wb.Ma.Aa){',
         true
       )
     ) {
       smReplace(
         "slot ensure badges after temp walls pulse",
         /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}try\{window\.tempWalls_drawPulse\(a\);\}catch\(_tw\)\{\}for\(var c of a\.wb\.Ma\.Aa\)\{/,
-        'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}try{window.tempWalls_drawPulse(a);}catch(_tw){}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a);}catch(_sm){}}for(var c of a.wb.Ma.Aa){',
+        'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}try{window.tempWalls_drawPulse(a);}catch(_tw){}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a,b);}catch(_sm){}}for(var c of a.wb.Ma.Aa){',
         true
       );
     }

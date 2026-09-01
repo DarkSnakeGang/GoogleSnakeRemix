@@ -9,7 +9,7 @@ window.BombFruitMod.runCodeBefore = function () {
 
   window.BOMB_FRUIT_ICON =
     "https://www.google.com/logos/fnbx/snake_arcade/v18/count_05.png";
-  window.BOMB_FRUIT_ARM_TICKS = 4;
+  window.BOMB_FRUIT_ARM_TICKS = 3;
 
   window.uiImage =
     window.uiImage ||
@@ -897,7 +897,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
         }
       }
       if (dist <= 1 && z.bombX1a === -1) {
-        z.bombX1a = window.BOMB_FRUIT_ARM_TICKS | 4;
+        z.bombX1a = window.BOMB_FRUIT_ARM_TICKS;
         z.linger = null;
       }
       if ((z.bombX1a | 0) >= 0 && !fruitKeys.has(window.bombFruit_zone_key(z))) {
@@ -955,7 +955,8 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     board,
     pos,
     bombX1a,
-    game
+    game,
+    frac
   ) {
     if (!board || !board.ka || !pos) return;
     const tile = board.wb && board.wb.ka && board.wb.ka.ka;
@@ -979,9 +980,9 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       ctx.stroke();
     }
     if (bombX1a > 0 && !(game && game.nj)) {
-      const arm = window.BOMB_FRUIT_ARM_TICKS | 4;
-      const f = (arm - bombX1a) / arm;
-      let pulseSide = side * f;
+      const arm = window.BOMB_FRUIT_ARM_TICKS;
+      const f = (arm - (bombX1a - (frac || 0))) / arm;
+      const pulseSide = side * f;
       let alpha = 0.15;
       if (typeof U2E === "function") {
         try {
@@ -1027,7 +1028,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   };
 
   /** Draw Minesweeper-style dashed 3×3 rings; gated by Mine Radius checkbox. */
-  window.bombFruit_drawRadii = function bombFruit_drawRadii(board, _frac) {
+  window.bombFruit_drawRadii = function bombFruit_drawRadii(board, frac) {
     if (!window.isBombFruitActive || !window.isBombFruitActive()) return;
     const boxes = window.checkboxes && window.checkboxes.checkboxStatuses;
     if (boxes && boxes.mineRadius === false) return;
@@ -1055,7 +1056,8 @@ window.BombFruitMod.alterSnakeCode = function (code) {
         board,
         { x: z.x, y: z.y },
         z.bombX1a | 0,
-        game
+        game,
+        frac
       );
     }
     ctx.setLineDash([]);
