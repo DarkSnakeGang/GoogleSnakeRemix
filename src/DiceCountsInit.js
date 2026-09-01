@@ -218,6 +218,15 @@ window.DiceCounts.runCodeBefore = function () {
     );
   };
 
+  // Mirror reset's `a` flag: Key, Portal, Sokoban, Poison (Y3E), Chess, Mexico.
+  window.remixUsesPairAppleLayout = function remixUsesPairAppleLayout(settings) {
+    if (!settings) return false;
+    if (window.isChessActive && window.isChessActive()) return true;
+    if (window.isMexicoActive && window.isMexicoActive()) return true;
+    if (typeof Y3E === "function") return !!Y3E(settings);
+    return false;
+  };
+
   window.remixColoredDiceRoll = function remixColoredDiceRoll(ka) {
     if (ka === window.BLUE_DICE_COUNT) {
       return 1 + Math.floor(Math.random() * 12);
@@ -491,8 +500,8 @@ window.DiceCounts.alterSnakeCode = function (code) {
   }
 
   // Native reset: a = key/sokoban/portal/poison (or chess), b = one/dice/bomb.
-  // if(a) places -1,-2 and -1,+2, then extra apples when !b. Colored dice must
-  // count as b so Key/Sokoban start like Dice (two apples), not the !b extras.
+  // if(a) places -1,-2 and -1,+2, then extra apples when !b. Colored dice and
+  // cluster count must count as b so Key/Sokoban start like Dice (two apples).
   if (
     code.match(
       /b=this\.settings\.ka===0\|\|this\.settings\.ka===4\|\|this\.settings\.ka===5/
@@ -500,7 +509,7 @@ window.DiceCounts.alterSnakeCode = function (code) {
   ) {
     code = code.assertReplace(
       /b=this\.settings\.ka===0\|\|this\.settings\.ka===4\|\|this\.settings\.ka===5/,
-      "b=this.settings.ka===0||this.settings.ka===4||this.settings.ka===5||(window.remixIsColoredDice&&window.remixIsColoredDice(this.settings.ka))"
+      "b=this.settings.ka===0||this.settings.ka===4||this.settings.ka===5||(window.remixIsColoredDice&&window.remixIsColoredDice(this.settings.ka))||(window.remixIsClusterCount&&window.remixIsClusterCount(this.settings.ka))"
     );
   } else {
     console.error("DiceCounts: failed to extend reset b (one/dice/bomb) for colored dice");
@@ -521,10 +530,10 @@ window.DiceCounts.alterSnakeCode = function (code) {
     console.error("DiceCounts: failed to inject cluster-count reset on play start");
   }
 
-  // After MoreMenu's `} else if(a)` — cluster count always uses one apple at +0,+0,
-  // even when key/portal/sokoban/poison/chess set a (never the native !b extras).
-  // Colored dice: classic uses +0,+0; when a is set, fall through to the native
-  // two-apple body (b now includes colored dice).
+  // After MoreMenu's `} else if(a)` — classic cluster count uses +0,+0 (one apple).
+  // Key / Portal / Sokoban / Poison / Chess / Mexico use the native two-apple pair
+  // start (b includes cluster count, same as dice / colored dice).
+  // Colored dice: classic uses +0,+0; pair modes fall through to else if(a).
   const countGate = code.match(/if\(([a-zA-Z0-9_$.]+) > 6 && \1 <= 12\)/);
   const stemMatch = code.match(
     /(this\.[a-zA-Z0-9_$]{1,8}\.push\([a-zA-Z0-9_$]{1,8}\(this,)/
@@ -534,11 +543,12 @@ window.DiceCounts.alterSnakeCode = function (code) {
     const stem = stemMatch[1];
     const colored = `window.remixIsColoredDice&&window.remixIsColoredDice(${countExpr})`;
     const cluster = `window.remixIsClusterCount&&window.remixIsClusterCount(${countExpr})`;
+    const pairLayout = `(window.remixUsesPairAppleLayout&&window.remixUsesPairAppleLayout(this.settings))`;
     code = code.assertReplace(
       /\} else if\(a\)/,
-      `} else if(${cluster}) {
+      `} else if(${cluster}&&!${pairLayout}) {
           ${stem} +0, +0));
-        } else if(${colored}&&!a) {
+        } else if(${colored}&&!${pairLayout}) {
           ${stem} +0, +0));
         } else if(a)`
     );

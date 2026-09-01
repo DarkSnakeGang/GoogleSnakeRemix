@@ -112,11 +112,28 @@ describe("Cluster count (apple amount type)", () => {
       dice,
       /remixIsClusterCount\(this\.settings\.ka\)\)\{try\{window\.remixClusterCountReset/
     );
+    assert.match(dice, /remixUsesPairAppleLayout/);
     assert.match(dice, /remixIsClusterCount&&window\.remixIsClusterCount\(\$\{countExpr\}\)/);
-    assert.match(dice, /\} else if\(\$\{cluster\}\) \{/);
-    assert.doesNotMatch(dice, /\} else if\(\$\{cluster\}&&!a\)/);
+    assert.match(dice, /\} else if\(\$\{cluster\}&&!/);
+    assert.match(
+      dice,
+      /remixUsesPairAppleLayout&&window\.remixUsesPairAppleLayout\(this\.settings\)/
+    );
+    assert.match(
+      dice,
+      /remixIsClusterCount&&window\.remixIsClusterCount\(this\.settings\.ka\)\)/
+    );
     assert.match(dice, /remixIsDiceLike&&window\.remixIsDiceLike\(this\.settings\.ka\)/);
     assert.match(dice, /remixDiceSpawnCount\(this\.settings\.ka,1\)/);
+  });
+
+  it("Chess portal combo respawn treats cluster count like dice", () => {
+    const chess = fs.readFileSync(
+      path.join(ROOT, "src", "ChessInit.js"),
+      "utf8"
+    );
+    assert.match(chess, /remixIsDiceLike && window\.remixIsDiceLike\(ka\)/);
+    assert.match(chess, /remixDiceSpawnCount\(ka, Math\.ceil\(Math\.random\(\) \* 6\)\)/);
   });
 
   it("remixClusterCountRoll sequence: 2,4,8,16,24 then reset", () => {

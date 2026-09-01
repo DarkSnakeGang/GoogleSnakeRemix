@@ -1386,17 +1386,13 @@ window.ChessMod.alterSnakeCode = function (code) {
       return n;
     }
 
-    // Dice: last pair left (board empty after twin clear) → roll R, spawn 2R.
-    if (ka === 4) {
+    // Dice-like (incl. cluster / colored): board empty → roll R, spawn R pairs (2R pieces).
+    if (window.remixIsDiceLike && window.remixIsDiceLike(ka)) {
       if (!empty) return 0;
-      let R = Math.ceil(Math.random() * 6);
-      if (
-        window.remixIsColoredDice &&
-        window.remixIsColoredDice(ka) &&
-        typeof window.remixColoredDiceRoll === "function"
-      ) {
-        R = window.remixColoredDiceRoll(ka) || R;
-      }
+      const R =
+        typeof window.remixDiceSpawnCount === "function"
+          ? window.remixDiceSpawnCount(ka, Math.ceil(Math.random() * 6))
+          : Math.ceil(Math.random() * 6);
       return window.chess_spawn_n_pairs(
         mgr,
         makeApple,
