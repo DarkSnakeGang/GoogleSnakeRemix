@@ -2117,12 +2117,20 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       if (!window.__bombFruitOrphans) window.__bombFruitOrphans = [];
     }
 
-    // Burger roll: pieces must never inherit timers from leftover board state.
+    // Burger roll: strip piece timers, then arm every fresh fruit (same as
+    // Burger mode reset). Without this, null timers become (null|0)===0 and
+    // burger_tick expires the whole board into poison on the first tick.
     if (next === 25 && g && g.wa) {
       try {
         window.slot_strip_burger_from_pieces &&
           window.slot_strip_burger_from_pieces(g.wa);
       } catch (_bg) {}
+      try {
+        window.burger_fruits_eaten = 0;
+        if (typeof window.burger_assign_timers_all === "function") {
+          window.burger_assign_timers_all(g.wa.ka, g);
+        }
+      } catch (_ba) {}
     }
     // Leaving Burger: freeze fresh-fruit greying, keep poison countdowns.
     if (prev === 25 && g && g.wa) {
@@ -4285,6 +4293,21 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     // fruit at the keyblock/goal (not plant another key/box).
     const eatenMode = window.__slotEatenMode;
     const em = eatenMode | 0;
+    // Burger expire→spawn uses qaF while the Burger roll is live. Never treat
+    // that as a badge-eat refill (stale __slotEating would strip the replacement
+    // and can cascade into mass poison conversions).
+    if (window.__slotBurgerSpawning) {
+      if (mgr && mgr.ka) {
+        for (let i = 0; i < mgr.ka.length; i++) {
+          const f = mgr.ka[i];
+          if (f && !f.Oka && !f.isPiece && f.slotMode == null) {
+            window.assignSlotMode(f);
+          }
+        }
+        window.slot_ensure_unique_fruit_types(mgr);
+      }
+      return;
+    }
     if (
       eatenMode != null &&
       window.__slotEating &&
@@ -5316,10 +5339,34 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       );
     }
   }
+  // Cat Sc border wrap: also honor Slot Peaceful roll (lives may be 0).
+  if (
+    code.indexOf("(window.__slotActive|0)===21)){if((window.cat_peaceful_ticks|0)<=0)") < 0 &&
+    code.indexOf("Sc(a){if(window.isCatActive&&window.isCatActive()&&!m7(this.ka,a)&&((window.cat_peaceful_ticks|0)>0||(window.cat_lives|0)>0))") >= 0
+  ) {
+    smReplace(
+      "Sc slot peaceful border wrap",
+      /Sc\(a\)\{if\(window\.isCatActive&&window\.isCatActive\(\)&&!m7\(this\.ka,a\)&&\(\(window\.cat_peaceful_ticks\|0\)>0\|\|\(window\.cat_lives\|0\)>0\)\)\{if\(\(window\.cat_peaceful_ticks\|0\)<=0\)\{window\.cat_try_spend_life\(this\);\}i7\(this\.ka,a\);\}/,
+      "Sc(a){if(window.isCatActive&&window.isCatActive()&&!m7(this.ka,a)&&((window.cat_peaceful_ticks|0)>0||(window.cat_lives|0)>0||(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.__slotActive|0)===21))){if((window.cat_peaceful_ticks|0)<=0&&!((window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.__slotActive|0)===21))){window.cat_try_spend_life(this);}i7(this.ka,a);}"
+    );
+  }
+
+  // Burger roll under Slot must enable e7(10) like standalone Burger (poison-eat
+  // shrink), not only when Okas already exist. Pairing/top-up stay Slot-gated.
+  if (
+    code.indexOf("b===10&&((window.__slotActive|0)===25||window.slot_has_oka") < 0 &&
+    code.indexOf("b===10&&window.slot_has_oka&&window.slot_has_oka") >= 0
+  ) {
+    smReplace(
+      "e7 slot burger roll enables poison mode",
+      /if\(b===10&&window\.slot_has_oka&&window\.slot_has_oka\(window\.__remixGame&&window\.__remixGame\.wa\)\)return!0;/,
+      "if(b===10&&((window.__slotActive|0)===25||window.slot_has_oka&&window.slot_has_oka(window.__remixGame&&window.__remixGame.wa)))return!0;"
+    );
+  }
   if (code.indexOf("isSlotMachineActive()&&(b===window.__slotActive") < 0 &&
       code.indexOf("isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE") < 0) {
     const slotE7Tail =
-      "if(!r&&window.isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE){if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27)return!0;if(b===5&&window.__slotTwinLive)return!0;if(b===1&&window.slot_has_walls&&window.slot_has_walls())return!0;if(b===2&&window.slot_has_portal_pairs&&window.slot_has_portal_pairs(window.__remixGame&&window.__remixGame.wa))return!0;if(b===8&&window.slot_has_keys&&window.slot_has_keys())return!0;if(b===9&&window.slot_has_sokoboxes&&window.slot_has_sokoboxes())return!0;if(b===10&&window.slot_has_oka&&window.slot_has_oka(window.__remixGame&&window.__remixGame.wa))return!0;if(b===12&&window.slot_has_mines&&window.slot_has_mines())return!0;if(b===13&&window.slot_has_statues&&window.slot_has_statues())return!0;if(b===16&&window.slot_has_arrows&&window.slot_has_arrows())return!0;if(b===19&&window.slot_has_gates&&window.slot_has_gates())return!0;if(b===20&&window.slot_has_bridges&&window.slot_has_bridges())return!0;if(b===21&&window.__slotActive===21)return!0;if(b===15&&(window.__slotActive===15||window.slot_has_shields&&window.slot_has_shields(window.__remixGame&&window.__remixGame.wa)||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive)||window.__slotActive===28||window.slot_has_armed_bombs&&window.slot_has_armed_bombs()||window.head_state&&window.head_state!==\"OPEN\"))return!0;}return r}";
+      "if(!r&&window.isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE){if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27)return!0;if(b===5&&window.__slotTwinLive)return!0;if(b===1&&window.slot_has_walls&&window.slot_has_walls())return!0;if(b===2&&window.slot_has_portal_pairs&&window.slot_has_portal_pairs(window.__remixGame&&window.__remixGame.wa))return!0;if(b===8&&window.slot_has_keys&&window.slot_has_keys())return!0;if(b===9&&window.slot_has_sokoboxes&&window.slot_has_sokoboxes())return!0;if(b===10&&((window.__slotActive|0)===25||window.slot_has_oka&&window.slot_has_oka(window.__remixGame&&window.__remixGame.wa)))return!0;if(b===12&&window.slot_has_mines&&window.slot_has_mines())return!0;if(b===13&&window.slot_has_statues&&window.slot_has_statues())return!0;if(b===16&&window.slot_has_arrows&&window.slot_has_arrows())return!0;if(b===19&&window.slot_has_gates&&window.slot_has_gates())return!0;if(b===20&&window.slot_has_bridges&&window.slot_has_bridges())return!0;if(b===21&&window.__slotActive===21)return!0;if(b===15&&(window.__slotActive===15||window.slot_has_shields&&window.slot_has_shields(window.__remixGame&&window.__remixGame.wa)||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive)||window.__slotActive===28||window.slot_has_armed_bombs&&window.slot_has_armed_bombs()||window.head_state&&window.head_state!==\"OPEN\"))return!0;}return r}";
     const e7Bomb =
       /if\(!r&&b===15&&window\.BOMB_FRUIT_MODE!=null\)\{if\(a\.ub===window\.BOMB_FRUIT_MODE\)return!0;if\(a\.ub===22&&a\.rSa&&a\.rSa\.has\(window\.BOMB_FRUIT_MODE\)\)return!0;\}return r\}/;
     const e7Mexico =
@@ -6428,6 +6475,33 @@ window.SlotMachineMod.runCodeAfter = function () {
   ) {
     const origBurgerTick = window.burger_tick_logic;
     window.burger_tick_logic = function () {
+      // Under live Burger roll, never age with null/NaN timers (treat as
+      // unassigned and arm first). (null|0)===0 would otherwise poison the
+      // whole board in one tick.
+      if (
+        window.isSlotMachineActive &&
+        window.isSlotMachineActive() &&
+        (window.__slotActive | 0) === 25
+      ) {
+        try {
+          const g = window.__remixGame;
+          const list = g && g.wa && g.wa.ka;
+          if (list && typeof window.burger_assign_timer === "function") {
+            for (let i = 0; i < list.length; i++) {
+              const a = list[i];
+              if (!a || a.Oka || a.isPiece) continue;
+              if (
+                a.burgerTimer == null ||
+                !Number.isFinite(Number(a.burgerTimer)) ||
+                !Number.isFinite(Number(a.burgerTimerMax)) ||
+                (a.burgerTimerMax | 0) <= 0
+              ) {
+                window.burger_assign_timer(a, g);
+              }
+            }
+          }
+        } catch (_arm) {}
+      }
       const r = origBurgerTick.apply(this, arguments);
       if (
         window.isSlotMachineActive &&
@@ -6442,6 +6516,107 @@ window.SlotMachineMod.runCodeAfter = function () {
       return r;
     };
     window.burger_tick_logic.__slotLeftoverWrap = true;
+  }
+
+  // Burger expire spawn: avoid qaF eat-flag races under Slot; plant via Slot
+  // helpers and flag after_native so it only badges (never strip+respawn).
+  if (
+    typeof window.burger_spawn_fresh === "function" &&
+    !window.burger_spawn_fresh.__slotWrap
+  ) {
+    const origBurgerSpawn = window.burger_spawn_fresh;
+    window.burger_spawn_fresh = function (game, sequenceNumber) {
+      if (
+        window.isSlotMachineActive &&
+        window.isSlotMachineActive() &&
+        (window.__slotActive | 0) === 25
+      ) {
+        const g = game || window.__remixGame;
+        const mgr = g && g.wa;
+        if (!mgr) return false;
+        let pos = null;
+        try {
+          if (typeof window.burger_find_spawn_pos === "function") {
+            pos = window.burger_find_spawn_pos(g);
+          }
+        } catch (_p) {}
+        if (!pos && typeof window.slot_free_pos === "function") {
+          pos = window.slot_free_pos(mgr);
+        }
+        if (!pos) return false;
+        window.__slotBurgerSpawning = true;
+        try {
+          const apple =
+            typeof window.slot_make_apple === "function"
+              ? window.slot_make_apple(mgr, pos)
+              : null;
+          if (!apple) return false;
+          apple.Oka = false;
+          if (sequenceNumber !== undefined) {
+            apple.sequenceNumber = sequenceNumber;
+          }
+          if (typeof window.assignSlotMode === "function") {
+            window.assignSlotMode(apple);
+          }
+          if (typeof window.burger_assign_timer === "function") {
+            window.burger_assign_timer(apple, g);
+          }
+          mgr.ka.push(apple);
+          window.appleArray = mgr.ka;
+          return true;
+        } catch (_sp) {
+          return false;
+        } finally {
+          window.__slotBurgerSpawning = false;
+        }
+      }
+      window.__slotBurgerSpawning = true;
+      try {
+        return origBurgerSpawn.apply(this, arguments);
+      } finally {
+        window.__slotBurgerSpawning = false;
+      }
+    };
+    window.burger_spawn_fresh.__slotWrap = true;
+  }
+
+  // Never return NaN/0 from burger_timer_roll under Slot (instant board poison).
+  if (
+    typeof window.burger_timer_roll === "function" &&
+    !window.burger_timer_roll.__slotWrap
+  ) {
+    const origRoll = window.burger_timer_roll;
+    window.burger_timer_roll = function () {
+      const t = origRoll.apply(this, arguments);
+      if (!Number.isFinite(t) || (t | 0) < 1) return 25;
+      return t | 0;
+    };
+    window.burger_timer_roll.__slotWrap = true;
+  }
+
+  // Slot Peaceful roll: Cat is always "active" under Slot for HUD, so Oa/Sc
+  // life-spend gates never see native e7(21) alone. Treat __slotActive===21 as
+  // permanent grace (cancel death, wrap border) without spending lives.
+  if (
+    typeof window.cat_try_spend_life === "function" &&
+    !window.cat_try_spend_life.__slotPeacefulWrap
+  ) {
+    const origSpend = window.cat_try_spend_life;
+    window.cat_try_spend_life = function (game) {
+      if (
+        window.isSlotMachineActive &&
+        window.isSlotMachineActive() &&
+        (window.__slotActive | 0) === 21
+      ) {
+        try {
+          window.cat_wrap_head_if_needed &&
+            window.cat_wrap_head_if_needed(game || window.__remixGame);
+        } catch (_w) {}
+        return true;
+      }
+      return origSpend.apply(this, arguments);
+    };
+    window.cat_try_spend_life.__slotPeacefulWrap = true;
   }
 
   // Chess leftover pieces keep isChessActive true under Slot; never wipe real

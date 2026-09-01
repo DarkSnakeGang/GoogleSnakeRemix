@@ -87,6 +87,12 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /slot_freeze_burger_fresh_timers/);
     assert.match(init, /slot_burger_leftover_tick/);
     assert.match(init, /__slotBurgerPoison/);
+    assert.match(init, /burger_assign_timers_all\(g\.wa\.ka, g\)/);
+    assert.match(init, /__slotBurgerSpawning/);
+    assert.match(init, /burger_spawn_fresh\.__slotWrap/);
+    assert.match(init, /burger_timer_roll\.__slotWrap/);
+    assert.match(init, /cat_try_spend_life\.__slotPeacefulWrap/);
+    assert.match(init, /\(__slotActive\|0\)===25\|\|window\.slot_has_oka/);
     assert.match(init, /burger_assign_timer\.__slotPieceGate/);
     assert.match(init, /burger_apple_timer_eligible\.__slotPieceGate/);
     assert.match(init, /burger_expire_apple\.__slotPieceGate/);
@@ -4089,6 +4095,80 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(result.eligible, false, JSON.stringify(result));
       assert.equal(result.keepTimed, true, JSON.stringify(result));
       assert.equal(result.pieces, 2, JSON.stringify(result));
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("burger activation arms timers; null timers do not mass-poison", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 55, headless: true });
+    try {
+      await h.start({
+        mode: "slot_machine",
+        count: COUNT.THREE,
+        size: SIZE.NORMAL,
+      });
+      const result = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        window.__remixGame = g;
+        window.CurrentModeNum = window.SLOT_MACHINE_MODE;
+        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.nj = false;
+        window.slot_reset_state();
+        for (const f of g.wa.ka) {
+          f.Oka = false;
+          f.isPiece = false;
+          f.burgerTimer = null;
+          f.burgerTimerMax = null;
+          if (f.slotMode == null) window.assignSlotMode(f);
+        }
+        window.setSlotActive(25, g);
+        const afterArm = g.wa.ka.map((f) => ({
+          oka: !!f.Oka,
+          t: f.burgerTimer,
+          max: f.burgerTimerMax,
+        }));
+        // Contaminate with null again and tick — must re-arm, not poison.
+        for (const f of g.wa.ka) {
+          f.burgerTimer = null;
+          f.burgerTimerMax = null;
+        }
+        for (let i = 0; i < 3; i++) {
+          if (typeof window.burger_tick_logic === "function") {
+            window.burger_tick_logic();
+          }
+        }
+        return {
+          afterArm,
+          afterTick: g.wa.ka.map((f) => ({
+            oka: !!f.Oka,
+            t: f.burgerTimer,
+            max: f.burgerTimerMax,
+          })),
+          oka: g.wa.ka.filter((f) => f && f.Oka).length,
+          spendPeaceful: (() => {
+            window.setSlotActive(21, g);
+            window.cat_lives = 0;
+            window.cat_peaceful_ticks = 0;
+            return !!(
+              window.cat_try_spend_life && window.cat_try_spend_life(g)
+            );
+          })(),
+        };
+      });
+      assert.ok(result.afterArm.length >= 1, JSON.stringify(result));
+      for (const a of result.afterArm) {
+        assert.equal(a.oka, false, JSON.stringify(result));
+        assert.ok((a.t | 0) >= 1, JSON.stringify(result));
+        assert.ok((a.max | 0) >= 1, JSON.stringify(result));
+      }
+      assert.equal(result.oka, 0, JSON.stringify(result));
+      for (const a of result.afterTick) {
+        assert.equal(a.oka, false, JSON.stringify(result));
+        assert.ok((a.t | 0) >= 1, JSON.stringify(result));
+      }
+      assert.equal(result.spendPeaceful, true, JSON.stringify(result));
     } finally {
       await h.close();
     }
