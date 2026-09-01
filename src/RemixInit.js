@@ -1069,6 +1069,7 @@ window.RemixMod.runCodeBefore = function () {
   window.TempWallsMod.runCodeBefore();
   window.SlotMachineMod.runCodeBefore();
   window.DiceCounts.runCodeBefore();
+  window.ClusterCount.runCodeBefore();
   window.CustomSettings.runCodeBefore();
   window.CustomSize.runCodeBefore();
   window.CustomColors.runCodeBefore();

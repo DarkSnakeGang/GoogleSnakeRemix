@@ -22,6 +22,7 @@ REMIX_PARTS = [
     "src/SlotMachineInit.js",
     "src/CatSpeedInit.js",
     "src/DiceCountsInit.js",
+    "src/ClusterCountInit.js",
     "src/CustomSettingsInit.js",
     "src/CustomSizeInit.js",
     "src/CustomColorsInit.js",

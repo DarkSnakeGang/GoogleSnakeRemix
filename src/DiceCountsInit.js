@@ -211,7 +211,11 @@ window.DiceCounts.runCodeBefore = function () {
   };
 
   window.remixIsDiceLike = function remixIsDiceLike(ka) {
-    return ka === 4 || window.remixIsColoredDice(ka);
+    return (
+      ka === 4 ||
+      window.remixIsColoredDice(ka) ||
+      (window.remixIsClusterCount && window.remixIsClusterCount(ka))
+    );
   };
 
   window.remixColoredDiceRoll = function remixColoredDiceRoll(ka) {
@@ -228,6 +232,9 @@ window.DiceCounts.runCodeBefore = function () {
   };
 
   window.remixDiceSpawnCount = function remixDiceSpawnCount(ka, fallback) {
+    if (window.remixIsClusterCount && window.remixIsClusterCount(ka)) {
+      return window.remixClusterCountRoll();
+    }
     const rolled = window.remixColoredDiceRoll(ka);
     return rolled == null ? fallback : rolled;
   };
@@ -499,8 +506,25 @@ window.DiceCounts.alterSnakeCode = function (code) {
     console.error("DiceCounts: failed to extend reset b (one/dice/bomb) for colored dice");
   }
 
-  // After MoreMenu's `} else if(a)` — classic colored dice uses +0,+0 like Dice.
-  // When a is set, fall through to the native two-apple body (b now includes us).
+  // Cluster-count state reset on play start — must run after the full
+  // `var a,b,c` line; never splice into the b= declarator (semicolon breaks var).
+  if (
+    code.match(
+      /,c=this\.settings\.ka===2\|\|this\.settings\.ka===3\|\|this\.settings\.ka===6;if\(a\)/
+    )
+  ) {
+    code = code.assertReplace(
+      /,c=this\.settings\.ka===2\|\|this\.settings\.ka===3\|\|this\.settings\.ka===6;if\(a\)/,
+      ",c=this.settings.ka===2||this.settings.ka===3||this.settings.ka===6;window.remixIsClusterCount&&window.remixIsClusterCount(this.settings.ka)&&window.remixClusterCountReset&&window.remixClusterCountReset();if(a)"
+    );
+  } else {
+    console.error("DiceCounts: failed to inject cluster-count reset on play start");
+  }
+
+  // After MoreMenu's `} else if(a)` — cluster count always uses one apple at +0,+0,
+  // even when key/portal/sokoban/poison/chess set a (never the native !b extras).
+  // Colored dice: classic uses +0,+0; when a is set, fall through to the native
+  // two-apple body (b now includes colored dice).
   const countGate = code.match(/if\(([a-zA-Z0-9_$.]+) > 6 && \1 <= 12\)/);
   const stemMatch = code.match(
     /(this\.[a-zA-Z0-9_$]{1,8}\.push\([a-zA-Z0-9_$]{1,8}\(this,)/
@@ -509,9 +533,12 @@ window.DiceCounts.alterSnakeCode = function (code) {
     const countExpr = countGate[1];
     const stem = stemMatch[1];
     const colored = `window.remixIsColoredDice&&window.remixIsColoredDice(${countExpr})`;
+    const cluster = `window.remixIsClusterCount&&window.remixIsClusterCount(${countExpr})`;
     code = code.assertReplace(
       /\} else if\(a\)/,
-      `} else if(${colored}&&!a) {
+      `} else if(${cluster}) {
+          ${stem} +0, +0));
+        } else if(${colored}&&!a) {
           ${stem} +0, +0));
         } else if(a)`
     );
@@ -529,12 +556,12 @@ window.DiceCounts.alterSnakeCode = function (code) {
     const sound = diceRefill[1];
     code = code.assertReplace(
       diceRefill[0],
-      `(this.settings.ka===4||(window.remixIsColoredDice&&window.remixIsColoredDice(this.settings.ka)))?odF(this)!==0||ecF(this.settings) && rdF(this)<=0||(tdF(this,this.settings.ka===4?Math.ceil(Math.random()*6):(window.remixColoredDiceRoll(this.settings.ka)||1)),odF(this)>0 && ${sound}.play())`
+      `(window.remixIsDiceLike&&window.remixIsDiceLike(this.settings.ka))?odF(this)!==0||ecF(this.settings) && rdF(this)<=0||(tdF(this,this.settings.ka===4?Math.ceil(Math.random()*6):window.remixDiceSpawnCount(this.settings.ka,1)),odF(this)>0 && ${sound}.play())`
     );
   } else if (code.match(/a\.settings\.ka===4\?r7E\(a\)===0&&s7E\(a\)/)) {
     code = code.assertReplace(
       /a\.settings\.ka===4\?r7E\(a\)===0&&s7E\(a\)/,
-      `(a.settings.ka===4||(window.remixIsColoredDice&&window.remixIsColoredDice(a.settings.ka)))?r7E(a)===0&&(a.settings.ka===4?s7E(a):u7E(a,window.remixColoredDiceRoll(a.settings.ka)||1))`
+      `(window.remixIsDiceLike&&window.remixIsDiceLike(a.settings.ka))?r7E(a)===0&&(a.settings.ka===4?s7E(a):u7E(a,window.remixDiceSpawnCount(a.settings.ka,1)))`
     );
   } else {
     console.error("DiceCounts: failed to find native dice tdF/s7E refill path");
@@ -587,6 +614,49 @@ window.DiceCounts.alterSnakeCode = function (code) {
       topBarFruit[0],
       `if (window.pudding_settings.TopBar && !window.daily_challenge) {
     ${topBarFruit[1].trim()}=(document.querySelector("#count").children[${topBarFruit[2]}]&&document.querySelector("#count").children[${topBarFruit[2]}].src)||window.count_img_arr[${topBarFruit[2]}]`
+    );
+  }
+
+  // Main game reset() (death / play again) — fruit-layout reset alone is not enough.
+  const clusterRunReset =
+    "if(window.remixIsClusterCount&&window.remixIsClusterCount(this.settings.ka)){try{window.remixClusterCountReset();}catch(_cc){}}/*remixClusterCountRunReset*/";
+  if (code.indexOf("remixClusterCountRunReset") < 0) {
+    if (
+      code.match(
+        /if\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)\)\{try\{window\.slot_reset_state\(\);\}catch\(_sm\)\{\}\}/
+      )
+    ) {
+      code = code.assertReplace(
+        /if\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)\)\{try\{window\.slot_reset_state\(\);\}catch\(_sm\)\{\}\}/,
+        `if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_reset_state();}catch(_sm){}}${clusterRunReset}`
+      );
+    } else if (
+      code.match(
+        /if\(window\.isTempWallsActive&&window\.isTempWallsActive\(\)\|\|window\.TEMP_WALLS_MODE!=null\)\{try\{window\.tempWalls_reset_state\(this\);\}catch\(_tw\)\{\}\}/
+      )
+    ) {
+      code = code.assertReplace(
+        /if\(window\.isTempWallsActive&&window\.isTempWallsActive\(\)\|\|window\.TEMP_WALLS_MODE!=null\)\{try\{window\.tempWalls_reset_state\(this\);\}catch\(_tw\)\{\}\}/,
+        `if(window.isTempWallsActive&&window.isTempWallsActive()||window.TEMP_WALLS_MODE!=null){try{window.tempWalls_reset_state(this);}catch(_tw){}}${clusterRunReset}`
+      );
+    } else if (
+      code.match(
+        /if\(window\.isCatActive&&window\.isCatActive\(\)\)\{try\{window\.cat_reset_state\(\);\}catch\(_cat\)\{\}\}if\(window\.isMexicoActive&&window\.isMexicoActive\(\)\)\{try\{window\.mexico_reset_state\(\);\}catch\(_mx\)\{\}\}/
+      )
+    ) {
+      code = code.assertReplace(
+        /if\(window\.isCatActive&&window\.isCatActive\(\)\)\{try\{window\.cat_reset_state\(\);\}catch\(_cat\)\{\}\}if\(window\.isMexicoActive&&window\.isMexicoActive\(\)\)\{try\{window\.mexico_reset_state\(\);\}catch\(_mx\)\{\}\}/,
+        `if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}if(window.isMexicoActive&&window.isMexicoActive()){try{window.mexico_reset_state();}catch(_mx){}}${clusterRunReset}`
+      );
+    } else {
+      console.error("DiceCounts: failed to inject cluster-count reset on run reset");
+    }
+  }
+
+  if (code.indexOf("remixClusterCountPlayReset") < 0 && code.match(/a\.ub=a\.ob;a\.ka=a\.Ca;/)) {
+    code = code.assertReplace(
+      /a\.ub=a\.ob;a\.ka=a\.Ca;/,
+      "a.ub=a.ob;a.ka=a.Ca;if(window.remixIsClusterCount&&window.remixIsClusterCount(a.ka)){try{window.remixClusterCountReset();}catch(_cc){}}/*remixClusterCountPlayReset*/"
     );
   }
 
