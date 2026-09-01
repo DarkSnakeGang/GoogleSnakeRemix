@@ -13,6 +13,7 @@ const REMIX_PARTS = [
   "src/CatInit.js",
   "src/MexicoInit.js",
   "src/BombFruitInit.js",
+  "src/TempWallsInit.js",
   "src/SlotMachineInit.js",
   "src/CatSpeedInit.js",
   "src/DiceCountsInit.js",

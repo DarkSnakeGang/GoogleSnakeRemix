@@ -243,6 +243,7 @@ export async function launchHarness(opts = {}) {
           if (mode === "cat") modeId = window.CAT_MODE;
           if (mode === "mexico") modeId = window.MEXICO_MODE;
           if (mode === "bomb" || mode === "bomb_fruit") modeId = window.BOMB_FRUIT_MODE;
+          if (mode === "temp_walls" || mode === "temp-walls") modeId = window.TEMP_WALLS_MODE;
           if (mode === "slot" || mode === "slot_machine") modeId = window.SLOT_MACHINE_MODE;
           if (mode === "portal") modeId = 2;
           if (mode === "shield") modeId = 15;

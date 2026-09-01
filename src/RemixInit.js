@@ -479,6 +479,8 @@ window.remixEnsureWallEveryAppleSetting = function remixEnsureWallEveryAppleSett
 // but new walls only spawn while the active roll is Wall (1).
 window.remixMexicoBlocksWallSpawn = function remixMexicoBlocksWallSpawn() {
   if (window.isMexicoActive && window.isMexicoActive()) return true;
+  // Temp Walls uses e7(1) for collision only — never native Wall Mode spawns.
+  if (window.isTempWallsActive && window.isTempWallsActive()) return true;
   if (window.isSlotMachineActive && window.isSlotMachineActive()) {
     return (window.__slotActive | 0) !== 1;
   }
@@ -1064,6 +1066,7 @@ window.RemixMod.runCodeBefore = function () {
   window.CatMod.runCodeBefore();
   window.MexicoMod.runCodeBefore();
   window.BombFruitMod.runCodeBefore();
+  window.TempWallsMod.runCodeBefore();
   window.SlotMachineMod.runCodeBefore();
   window.DiceCounts.runCodeBefore();
   window.CustomSettings.runCodeBefore();
@@ -1102,6 +1105,11 @@ window.RemixMod.alterSnakeCode = function (code) {
     console.error("RemixMod: BombFruitMod.alterSnakeCode failed", e);
   }
   try {
+    code = window.TempWallsMod.alterSnakeCode(code);
+  } catch (e) {
+    console.error("RemixMod: TempWallsMod.alterSnakeCode failed", e);
+  }
+  try {
     code = window.SlotMachineMod.alterSnakeCode(code);
   } catch (e) {
     console.error("RemixMod: SlotMachineMod.alterSnakeCode failed", e);
@@ -1132,6 +1140,7 @@ window.RemixMod.runCodeAfter = function () {
   window.CatMod.runCodeAfter && window.CatMod.runCodeAfter();
   window.MexicoMod.runCodeAfter && window.MexicoMod.runCodeAfter();
   window.BombFruitMod.runCodeAfter && window.BombFruitMod.runCodeAfter();
+  window.TempWallsMod.runCodeAfter && window.TempWallsMod.runCodeAfter();
   window.SlotMachineMod.runCodeAfter && window.SlotMachineMod.runCodeAfter();
   // Remove leftover empty placeholders so Cat/Mexico sit flush after Burger.
   // Also pack to 6 columns so the extra modes fit without a clipped 6th row.

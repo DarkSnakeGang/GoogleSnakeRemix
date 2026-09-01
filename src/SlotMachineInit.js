@@ -14,7 +14,7 @@ window.SlotMachineMod.runCodeBefore = function () {
   // is wrap-only (no e7(4) visuals / camera); Peaceful off; count unchanged.
   window.SLOT_MACHINE_POOL = [
     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
-    23, 24, 25, 26, 27, 28,
+    23, 24, 25, 26, 27, 28, 29,
   ];
 
   window.SLOT_MACHINE_MODE_LABELS = {
@@ -45,6 +45,7 @@ window.SlotMachineMod.runCodeBefore = function () {
     26: "Cat",
     27: "Mexico",
     28: "Bomb Fruit",
+    29: "Temp Walls",
   };
 
   // Polarity for Yin Yang paired badge flip (7 is both — in good and bad pools).
@@ -76,6 +77,7 @@ window.SlotMachineMod.runCodeBefore = function () {
     26: "good",
     27: "bad",
     28: "bad",
+    29: "bad",
   };
 
   window.uiImage =
@@ -276,6 +278,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       window.updateSlotMachineTrophySRC &&
         window.updateSlotMachineTrophySRC();
     } catch (_t) {}
+    try {
+      window.tempWalls_clear_all &&
+        window.tempWalls_clear_all(window.__remixGame);
+    } catch (_tw) {}
   };
 
   window.slot_shuffle_bag = function slot_shuffle_bag() {
@@ -369,10 +375,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     return window.slot_set_enabled_modes(cur);
   };
 
-  // Remix-added Slot badges: Candy (23) through Bomb Fruit (28).
+  // Remix-added Slot badges: Candy (23) through Temp Walls (29).
   window.slot_is_remix_added_mode = function slot_is_remix_added_mode(mode) {
     const m = mode | 0;
-    return m >= 23 && m <= 28;
+    return m >= 23 && m <= 29;
   };
 
   // "Deselect all" keeps the earliest pool badge only (cannot empty the set).
@@ -500,6 +506,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (m === 26 && window.CAT_ICON) return window.CAT_ICON;
     if (m === 27 && window.MEXICO_ICON) return window.MEXICO_ICON;
     if (m === 28 && window.BOMB_FRUIT_ICON) return window.BOMB_FRUIT_ICON;
+    if (m === 29 && window.TEMP_WALLS_ICON) return window.TEMP_WALLS_ICON;
     // Prefer live #trophy src (index === mode id, including Dimension at 11).
     try {
       const root = document.querySelector("#trophy");
@@ -2803,6 +2810,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           window.catUpdateLivesHud && window.catUpdateLivesHud();
         } catch (_e) {}
       }
+      // Temp Walls (29): Slot skips native f4E — plant ≤2 walls on badge eat.
+      if (m === 29) {
+        try {
+          window.tempWalls_spawn_on_eat && window.tempWalls_spawn_on_eat(game);
+        } catch (_tw) {}
+      }
     }
     // Eating a Mexico-spawned portal twin clears mid border.
     if (fruit.__slotMexicoPortal && window.__slotMexicoMidUp) {
@@ -4811,6 +4824,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         window.slot_has_bomb_plants && window.slot_has_bomb_plants()
       );
     });
+    // Temp Walls: do NOT wrap isTempWallsActive with leftovers — spawning must
+    // stay gated on __slotActive===29 only; ageing uses tempWalls_has_any.
     // Cat: always active under Slot Machine so lives HUD + spend work;
     // gain stays gated in cat_on_apple_eaten / slot_on_eating_fruit.
     wrapActive("isCatActive", 26, function () {
@@ -5591,7 +5606,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("isSlotMachineActive()&&(b===window.__slotActive") < 0 &&
       code.indexOf("isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE") < 0) {
     const slotE7Tail =
-      "if(!r&&window.isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE){if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27)return!0;if(b===5&&window.__slotTwinLive)return!0;if(b===1&&window.slot_has_walls&&window.slot_has_walls())return!0;if(b===2&&window.slot_has_portal_pairs&&window.slot_has_portal_pairs(window.__remixGame&&window.__remixGame.wa))return!0;if(b===8&&window.slot_has_keys&&window.slot_has_keys())return!0;if(b===9&&window.slot_has_sokoboxes&&window.slot_has_sokoboxes())return!0;if(b===10&&((window.__slotActive|0)===25||window.slot_has_oka&&window.slot_has_oka(window.__remixGame&&window.__remixGame.wa)))return!0;if(b===12&&window.slot_has_mines&&window.slot_has_mines())return!0;if(b===13&&window.slot_has_statues&&window.slot_has_statues())return!0;if(b===16&&window.slot_has_arrows&&window.slot_has_arrows())return!0;if(b===19&&window.slot_has_gates&&window.slot_has_gates())return!0;if(b===20&&window.slot_has_bridges&&window.slot_has_bridges())return!0;if(b===21&&window.__slotActive===21)return!0;if(b===15&&(window.__slotActive===15||window.slot_has_shields&&window.slot_has_shields(window.__remixGame&&window.__remixGame.wa)||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive)||window.__slotActive===28||window.slot_has_armed_bombs&&window.slot_has_armed_bombs()||window.head_state&&window.head_state!==\"OPEN\"))return!0;}return r}";
+      "if(!r&&window.isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE){if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27&&b!==29)return!0;if(b===5&&window.__slotTwinLive)return!0;if(b===1&&window.slot_has_walls&&window.slot_has_walls())return!0;if(b===2&&window.slot_has_portal_pairs&&window.slot_has_portal_pairs(window.__remixGame&&window.__remixGame.wa))return!0;if(b===8&&window.slot_has_keys&&window.slot_has_keys())return!0;if(b===9&&window.slot_has_sokoboxes&&window.slot_has_sokoboxes())return!0;if(b===10&&((window.__slotActive|0)===25||window.slot_has_oka&&window.slot_has_oka(window.__remixGame&&window.__remixGame.wa)))return!0;if(b===12&&window.slot_has_mines&&window.slot_has_mines())return!0;if(b===13&&window.slot_has_statues&&window.slot_has_statues())return!0;if(b===16&&window.slot_has_arrows&&window.slot_has_arrows())return!0;if(b===19&&window.slot_has_gates&&window.slot_has_gates())return!0;if(b===20&&window.slot_has_bridges&&window.slot_has_bridges())return!0;if(b===21&&window.__slotActive===21)return!0;if(b===15&&(window.__slotActive===15||window.slot_has_shields&&window.slot_has_shields(window.__remixGame&&window.__remixGame.wa)||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive)||window.__slotActive===28||window.slot_has_armed_bombs&&window.slot_has_armed_bombs()||window.head_state&&window.head_state!==\"OPEN\"))return!0;}return r}";
+    const e7TempWalls =
+      /if\(!r&&b===1&&\(\(window\.isTempWallsActive&&window\.isTempWallsActive\(\)\)\|\|\(window\.tempWalls_has_any&&window\.tempWalls_has_any\(window\.__remixGame\)\)\)\)return!0;return r\}/;
     const e7Bomb =
       /if\(!r&&b===15&&window\.BOMB_FRUIT_MODE!=null\)\{if\(a\.ub===window\.BOMB_FRUIT_MODE\)return!0;if\(a\.ub===22&&a\.rSa&&a\.rSa\.has\(window\.BOMB_FRUIT_MODE\)\)return!0;\}return r\}/;
     const e7Mexico =
@@ -5600,29 +5617,38 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       /if\(!r&&b===21&&window\.isCatActive&&window\.isCatActive\(\)&&\(window\.cat_peaceful_ticks\|0\)>0\)return!0;return r\}/;
     if (
       !smReplace(
-        "e7 slot machine after bomb fruit",
-        e7Bomb,
-        "if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.ub===window.BOMB_FRUIT_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BOMB_FRUIT_MODE))return!0;}" +
+        "e7 slot machine after temp walls",
+        e7TempWalls,
+        "if(!r&&b===1&&((window.isTempWallsActive&&window.isTempWallsActive())||(window.tempWalls_has_any&&window.tempWalls_has_any(window.__remixGame))))return!0;" +
           slotE7Tail
       )
     ) {
       if (
         !smReplace(
-          "e7 slot machine after mexico",
-          e7Mexico,
-          "if(!r&&b===2&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===1&&window.isMexicoActive&&window.isMexicoActive())return!0;" +
+          "e7 slot machine after bomb fruit",
+          e7Bomb,
+          "if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.ub===window.BOMB_FRUIT_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BOMB_FRUIT_MODE))return!0;}" +
             slotE7Tail
         )
       ) {
         if (
           !smReplace(
-            "e7 slot machine after cat",
-            e7Cat,
-            "if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;" +
+            "e7 slot machine after mexico",
+            e7Mexico,
+            "if(!r&&b===2&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===1&&window.isMexicoActive&&window.isMexicoActive())return!0;" +
               slotE7Tail
           )
         ) {
-          console.error("SlotMachineMod: failed to find e7 chain for slot leftovers");
+          if (
+            !smReplace(
+              "e7 slot machine after cat",
+              e7Cat,
+              "if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;" +
+                slotE7Tail
+            )
+          ) {
+            console.error("SlotMachineMod: failed to find e7 chain for slot leftovers");
+          }
         }
       }
     }
@@ -6232,22 +6258,28 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     );
   }
 
-  // Tick hook after BombFruit.
+  // Tick hook after Temp Walls.
   if (code.indexOf("slot_tick_logic") < 0) {
-    const tickBf =
-      /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_tick_logic\(this\);\}catch\(_bf\)\{console\.error\("BombFruitMod: tick failed",_bf\);\}\}/;
-    if (code.match(tickBf)) {
+    const tickTw =
+      /if\(\(window\.isTempWallsActive&&window\.isTempWallsActive\(\)\)\|\|\(window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)\)\{try\{window\.tempWalls_tick_logic\(this\);\}catch\(_tw\)\{console\.error\("TempWallsMod: tick failed",_tw\);\}\}/;
+    if (code.match(tickTw)) {
       smReplace(
-        "slot tick after bomb",
-        tickBf,
-        'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_tick_logic(this);}catch(_bf){console.error("BombFruitMod: tick failed",_bf);}}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_tick_logic(this);}catch(_sm){console.error("SlotMachineMod: tick failed",_sm);}}'
+        "slot tick after temp walls",
+        tickTw,
+        'if((window.isTempWallsActive&&window.isTempWallsActive())||(window.tempWalls_has_any&&window.tempWalls_has_any(this))){try{window.tempWalls_tick_logic(this);}catch(_tw){console.error("TempWallsMod: tick failed",_tw);}}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_tick_logic(this);}catch(_sm){console.error("SlotMachineMod: tick failed",_sm);}}'
       );
     } else {
-      smReplace(
-        "slot tick fallback",
-        /\}tick\(\)\{window\.__remixGame=this;if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_tick_logic\(this\);\}catch\(_bf\)\{console\.error\("BombFruitMod: tick failed",_bf\);\}\}/,
-        '}tick(){window.__remixGame=this;if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_tick_logic(this);}catch(_bf){console.error("BombFruitMod: tick failed",_bf);}}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_tick_logic(this);}catch(_sm){console.error("SlotMachineMod: tick failed",_sm);}}'
-      );
+      const tickBf =
+        /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_tick_logic\(this\);\}catch\(_bf\)\{console\.error\("BombFruitMod: tick failed",_bf\);\}\}/;
+      if (code.match(tickBf)) {
+        smReplace(
+          "slot tick after bomb",
+          tickBf,
+          'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_tick_logic(this);}catch(_bf){console.error("BombFruitMod: tick failed",_bf);}}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_tick_logic(this);}catch(_sm){console.error("SlotMachineMod: tick failed",_sm);}}'
+        );
+      } else {
+        console.error("SlotMachineMod: failed to find tick hook");
+      }
     }
   }
 
@@ -6257,13 +6289,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       code.indexOf("isSlotMachineActive&&window.isSlotMachineActive())&&D5E") < 0) {
     smReplace(
       "D5E call gate classic for slot",
-      /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)&&D5E\(this\.Ja,a\)/,
-      "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.isSlotMachineActive&&window.isSlotMachineActive())&&D5E(this.Ja,a)"
+      /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,a\)/,
+      "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)||window.isSlotMachineActive&&window.isSlotMachineActive())&&D5E(this.Ja,a)"
     );
     smReplace(
       "D5E call gate pixel for slot",
-      /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)&&D5E\(this\.Ja,dd\)/,
-      "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.isSlotMachineActive&&window.isSlotMachineActive())&&D5E(this.Ja,dd)"
+      /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,dd\)/,
+      "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)||window.isSlotMachineActive&&window.isSlotMachineActive())&&D5E(this.Ja,dd)"
     );
   }
 
@@ -6272,8 +6304,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot ensure badges after bomb radii",
-      /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}/,
-      'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a);}catch(_sm){}}'
+      /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}try\{window\.tempWalls_drawPulse\(a\);\}catch\(_tw\)\{\}/,
+      'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}try{window.tempWalls_drawPulse(a);}catch(_tw){}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a);}catch(_sm){}}'
       )
     ) {
       smReplace(
@@ -6366,8 +6398,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("slot_reset_state") < 0) {
     smReplace(
       "slot reset",
-      /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_reset_state\(\);\}catch\(_bf\)\{\}\}/,
-      'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_reset_state();}catch(_bf){}}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_reset_state();}catch(_sm){}}'
+      /if\(window\.isTempWallsActive&&window\.isTempWallsActive\(\)\|\|window\.TEMP_WALLS_MODE!=null\)\{try\{window\.tempWalls_reset_state\(this\);\}catch\(_tw\)\{\}\}/,
+      'if(window.isTempWallsActive&&window.isTempWallsActive()||window.TEMP_WALLS_MODE!=null){try{window.tempWalls_reset_state(this);}catch(_tw){}}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_reset_state();}catch(_sm){}}'
     );
   }
 
@@ -6375,8 +6407,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("updateSlotMachineTrophySRC()") < 0) {
     smReplace(
       "play-start slot trophy",
-      /if\(window\.CurrentModeNum===window\.BOMB_FRUIT_MODE\)\{window\.updateBombFruitTrophySRC\(\);window\.bombFruit_reset_state\(\);\}/,
-      "if(window.CurrentModeNum===window.BOMB_FRUIT_MODE){window.updateBombFruitTrophySRC();window.bombFruit_reset_state();}if(window.CurrentModeNum===window.SLOT_MACHINE_MODE){window.updateSlotMachineTrophySRC();window.slot_reset_state();window.slot_update_cat_hud&&window.slot_update_cat_hud();}"
+      /if\(window\.CurrentModeNum===window\.TEMP_WALLS_MODE\)\{window\.updateTempWallsTrophySRC\(\);window\.tempWalls_reset_state\(\);\}/,
+      "if(window.CurrentModeNum===window.TEMP_WALLS_MODE){window.updateTempWallsTrophySRC();window.tempWalls_reset_state();}if(window.CurrentModeNum===window.SLOT_MACHINE_MODE){window.updateSlotMachineTrophySRC();window.slot_reset_state();window.slot_update_cat_hud&&window.slot_update_cat_hud();}"
     );
   }
 
@@ -6384,13 +6416,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON") < 0) {
     smReplace(
       "deathscreen Zb slot icon",
-      /\(a\.settings\.ob===window\.BOMB_FRUIT_MODE\)\?window\.BOMB_FRUIT_ICON:/,
-      "(a.settings.ob===window.BOMB_FRUIT_MODE)?window.BOMB_FRUIT_ICON:(a.settings.ob===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:"
+      /\(a\.settings\.ob===window\.TEMP_WALLS_MODE\)\?window\.TEMP_WALLS_ICON:/,
+      "(a.settings.ob===window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON:(a.settings.ob===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:"
     );
     smReplace(
       "blender b3E slot icon",
-      /\(c===window\.BOMB_FRUIT_MODE\)\?window\.BOMB_FRUIT_ICON:/,
-      "(c===window.BOMB_FRUIT_MODE)?window.BOMB_FRUIT_ICON:(c===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:"
+      /\(c===window\.TEMP_WALLS_MODE\)\?window\.TEMP_WALLS_ICON:/,
+      "(c===window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON:(c===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:"
     );
   }
 
