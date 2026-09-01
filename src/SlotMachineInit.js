@@ -2019,6 +2019,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         }
         if (walls.wa[mid]) walls.wa[mid][x]++;
         planted++;
+        try {
+          window.slot_clear_arrow_at && window.slot_clear_arrow_at(g, x, mid);
+        } catch (_ar) {}
       } catch (_e) {}
     }
     if (planted > 0) window.__slotMexicoMidUp = true;
@@ -2420,7 +2423,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     return true;
   };
 
-  // Fruit sitting on an arrow tile removes that arrow (spawn / relocate / drift).
+  // Anything sitting on an arrow tile removes that arrow (spawn / relocate / drift).
   window.slot_clear_arrow_at = function slot_clear_arrow_at(game, x, y) {
     const host = window.slot_arrow_host(game);
     if (!host || !host.ka) return false;
@@ -2434,21 +2437,143 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     return true;
   };
 
+  window.slot_clear_arrow_pos = function slot_clear_arrow_pos(game, pos) {
+    if (!pos || pos.x == null || pos.y == null) return false;
+    return window.slot_clear_arrow_at(game, pos.x, pos.y);
+  };
+
+  // Clear arrows under every Slot-placed occupant (fruit/pieces, keys, soko,
+  // walls, mines, statues, gates, bridges) — not fruit-only.
+  window.slot_clear_arrows_under_spawns = function slot_clear_arrows_under_spawns(
+    mgr,
+    game
+  ) {
+    const g = game || window.__remixGame || (mgr && mgr.wb);
+    if (!g) return;
+    if (!window.slot_has_arrows || !window.slot_has_arrows(g)) return;
+    const clearAt = function (x, y) {
+      try {
+        window.slot_clear_arrow_at(g, x, y);
+      } catch (_e) {}
+    };
+    const clearPos = function (pos) {
+      if (!pos || pos.x == null || pos.y == null) return;
+      clearAt(pos.x, pos.y);
+    };
+
+    const list = (mgr && mgr.ka) || (g.wa && g.wa.ka);
+    if (list) {
+      for (let i = 0; i < list.length; i++) {
+        const f = list[i];
+        if (f && f.pos) clearPos(f.pos);
+      }
+    }
+
+    try {
+      const keys = g.Ba && g.Ba.keys;
+      if (keys && keys.length) {
+        for (let i = 0; i < keys.length; i++) {
+          const k = keys[i];
+          if (!k) continue;
+          if (k.pos) clearPos(k.pos);
+          else if (k.r7a) clearPos(k.r7a);
+          else if (k.x != null && k.y != null) clearAt(k.x, k.y);
+        }
+      }
+    } catch (_k) {}
+
+    try {
+      const aa = g.Aa;
+      if (aa && aa.oa) {
+        for (const box of aa.oa) {
+          if (box && box.pos) clearPos(box.pos);
+        }
+      }
+      if (aa && aa.d_) {
+        for (const goal of aa.d_) {
+          if (goal && goal.pos) clearPos(goal.pos);
+        }
+      }
+    } catch (_s) {}
+
+    try {
+      const walls = g.Ca;
+      if (walls && walls.Aa && typeof walls.Aa.values === "function") {
+        for (const wall of walls.Aa.values()) {
+          if (wall && wall.pos) clearPos(wall.pos);
+        }
+      } else if (walls && Array.isArray(walls.wa)) {
+        for (let y = 0; y < walls.wa.length; y++) {
+          const row = walls.wa[y];
+          if (!row) continue;
+          for (let x = 0; x < row.length; x++) {
+            if ((row[x] | 0) > 0) clearAt(x, y);
+          }
+        }
+      }
+    } catch (_w) {}
+
+    try {
+      const mines = g.Ma && g.Ma.oa;
+      if (mines) {
+        for (const mine of mines) {
+          if (!mine) continue;
+          if (mine.pos) clearPos(mine.pos);
+          else if (mine.x != null && mine.y != null) clearAt(mine.x, mine.y);
+        }
+      }
+    } catch (_m) {}
+
+    try {
+      const statues = g.Ya && g.Ya.oa;
+      if (statues && typeof statues.values === "function") {
+        for (const st of statues.values()) {
+          if (st && st.pos) clearPos(st.pos);
+          else if (st && st.x != null) clearAt(st.x, st.y);
+        }
+      } else if (statues) {
+        for (const st of statues) {
+          if (st && st.pos) clearPos(st.pos);
+        }
+      }
+    } catch (_st) {}
+
+    try {
+      const qa = g.Qa;
+      const gateLists = [];
+      if (qa && qa.pfa) gateLists.push(qa.pfa);
+      if (qa && qa.Yfa) gateLists.push(qa.Yfa);
+      for (let gi = 0; gi < gateLists.length; gi++) {
+        const gl = gateLists[gi];
+        for (let i = 0; i < gl.length; i++) {
+          const gate = gl[i];
+          if (!gate) continue;
+          if (gate.pos) clearPos(gate.pos);
+          else if (gate.x != null) clearAt(gate.x, gate.y);
+        }
+      }
+    } catch (_g) {}
+
+    try {
+      const grid = g.Ga && g.Ga.oa;
+      if (grid && grid.length) {
+        for (let y = 0; y < grid.length; y++) {
+          const row = grid[y];
+          if (!row) continue;
+          for (let x = 0; x < row.length; x++) {
+            if (row[x]) clearAt(x, y);
+          }
+        }
+      }
+    } catch (_b) {}
+  };
+
+  // Back-compat name used by older call sites / tests.
   window.slot_clear_arrows_under_fruit = function slot_clear_arrows_under_fruit(
     mgr,
     game
   ) {
-    const list = mgr && mgr.ka;
-    if (!list || !list.length) return;
-    const g = game || window.__remixGame || (mgr && mgr.wb);
-    if (!window.slot_has_arrows || !window.slot_has_arrows(g)) return;
-    for (let i = 0; i < list.length; i++) {
-      const f = list[i];
-      if (!f || !f.pos) continue;
-      try {
-        window.slot_clear_arrow_at(g, f.pos.x, f.pos.y);
-      } catch (_e) {}
-    }
+    window.slot_clear_arrows_under_spawns(mgr, game);
   };
 
   // Hotdog (17) sidewalls live on the wall manager (Ca.Aa entries with .ty).
@@ -4174,6 +4299,18 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
 
     return false;
   };
+  (function () {
+    const impl = window.slot_plant_special_unit;
+    window.slot_plant_special_unit = function slot_plant_special_unit(mode, game) {
+      const ok = impl.apply(this, arguments);
+      try {
+        const g = game || window.__remixGame;
+        window.slot_clear_arrows_under_spawns &&
+          window.slot_clear_arrows_under_spawns(g && g.wa, g);
+      } catch (_ar) {}
+      return ok;
+    };
+  })();
 
   window.slot_plant_badge_unit = function slot_plant_badge_unit(game, eatenMode) {
     const g = game || window.__remixGame;
@@ -4226,6 +4363,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     }
     window.slot_ensure_unique_fruit_types(mgr);
     window.appleArray = mgr.ka;
+    try {
+      window.slot_clear_arrows_under_spawns &&
+        window.slot_clear_arrows_under_spawns(mgr, g);
+    } catch (_ar) {}
     return units;
   };
 
@@ -4577,10 +4718,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       window.slot_relocate_fruit_off_bridges(mgr, game);
     } catch (_br) {}
 
-    // Fruit on an arrow tile clears that arrow.
+    // Occupants on an arrow tile clear that arrow (fruit, keys, soko, walls…).
     try {
-      window.slot_clear_arrows_under_fruit &&
-        window.slot_clear_arrows_under_fruit(mgr, game);
+      window.slot_clear_arrows_under_spawns &&
+        window.slot_clear_arrows_under_spawns(mgr, game);
     } catch (_ar) {}
 
     // Armed Bomb zones left after leaving Bomb roll still countdown/boom.

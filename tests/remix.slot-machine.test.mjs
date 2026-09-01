@@ -263,6 +263,7 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /slot_board_has_playable_content/);
     assert.match(init, /slot_clear_arrow_at/);
     assert.match(init, /slot_clear_arrows_under_fruit/);
+    assert.match(init, /slot_clear_arrows_under_spawns/);
     assert.match(init, /slot_has_sokogoals/);
     assert.match(init, /bombFruit_win_if_empty\.__slotGate/);
     assert.match(init, /f\.Oka\) continue; \/\/ poison/);
@@ -625,6 +626,8 @@ describe("Slot Machine mode (offline)", () => {
     const sandbox = { window: {}, Math, Object, Set, console };
     const src = `
       ${extract("slot_clear_arrow_at")}
+      ${extract("slot_clear_arrow_pos")}
+      ${extract("slot_clear_arrows_under_spawns")}
       ${extract("slot_clear_arrows_under_fruit")}
       ${extract("slot_board_has_playable_content")}
       ${extract("slot_win_if_empty")}
@@ -646,16 +649,45 @@ describe("Slot Machine mode (offline)", () => {
       ka: [
         [{ direction: "NONE", wm: false }, { direction: "UP", wm: true }],
         [{ direction: "LEFT", wm: true }, { direction: "NONE", wm: false }],
+        [{ direction: "RIGHT", wm: true }, { direction: "DOWN", wm: true }],
       ],
     };
-    const game = { __arrowHost: host };
+    const game = {
+      __arrowHost: host,
+      Ba: { keys: [{ pos: { x: 0, y: 2 } }] },
+      Aa: {
+        oa: new Set([{ pos: { x: 1, y: 2 } }]),
+        d_: new Set(),
+      },
+      Ca: { Aa: new Map([["w", { pos: { x: 0, y: 1 } }]]) },
+      Ma: { oa: new Set() },
+      Ya: { oa: new Map() },
+      Qa: { pfa: [], Yfa: [] },
+      Ga: { oa: [] },
+      wa: { ka: [{ pos: { x: 1, y: 0 } }] },
+    };
     assert.equal(w.slot_clear_arrow_at(game, 1, 0), true);
     assert.equal(host.ka[0][1].direction, "NONE");
+    // Reset arrow under fruit cell for under_fruit helper.
+    host.ka[1][0].direction = "LEFT";
+    host.ka[1][0].wm = true;
     w.slot_clear_arrows_under_fruit(
       { ka: [{ pos: { x: 0, y: 1 } }] },
       game
     );
     assert.equal(host.ka[1][0].direction, "NONE");
+
+    // Keys / soko / walls also clear via under_spawns.
+    host.ka[2][0].direction = "RIGHT";
+    host.ka[2][0].wm = true;
+    host.ka[2][1].direction = "DOWN";
+    host.ka[2][1].wm = true;
+    host.ka[1][0].direction = "LEFT";
+    host.ka[1][0].wm = true;
+    w.slot_clear_arrows_under_spawns(game.wa, game);
+    assert.equal(host.ka[2][0].direction, "NONE", "key clears arrow");
+    assert.equal(host.ka[2][1].direction, "NONE", "sokobox clears arrow");
+    assert.equal(host.ka[1][0].direction, "NONE", "wall clears arrow");
 
     // Poison-only board → empty for win.
     const g = { nj: false, ub: false };
@@ -884,6 +916,72 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       assert.ok(result.fruits.length >= 1);
       assert.ok(result.fruits.every((f) => f.slotMode != null || f.oka || f.piece));
       assert.equal(result.slotActive, result.eatenMode);
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("spawns clear arrows under fruit, keys, and sokoboxes", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 8, headless: true });
+    try {
+      await h.start({
+        mode: "slot_machine",
+        count: COUNT.ONE,
+        size: SIZE.NORMAL,
+      });
+      const result = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        window.CurrentModeNum = window.SLOT_MACHINE_MODE;
+        g.settings.ub = window.SLOT_MACHINE_MODE;
+        window.slot_reset_state();
+        g.wa.reset();
+        window.slot_after_layout(g.wa);
+        window.setSlotActive(16, g);
+        const host = window.slot_arrow_host(g);
+
+        function setArrow(x, y, dir) {
+          host.ka[y][x].direction = dir;
+          host.ka[y][x].wm = true;
+        }
+        function arrowAt(x, y) {
+          const c = host.ka[y] && host.ka[y][x];
+          return c && c.direction && c.direction !== "NONE";
+        }
+
+        // Fruit on arrow.
+        setArrow(4, 4, "UP");
+        g.wa.ka.length = 0;
+        const fruit = window.slot_make_apple(g.wa, { x: 4, y: 4 });
+        window.assignSlotMode(fruit);
+        g.wa.ka.push(fruit);
+        window.slot_clear_arrows_under_spawns(g.wa, g);
+        const fruitCleared = !arrowAt(4, 4);
+
+        // Key on arrow.
+        setArrow(6, 6, "LEFT");
+        if (!g.Ba.keys) g.Ba.keys = [];
+        g.Ba.keys.length = 0;
+        g.Ba.keys.push({ pos: { x: 6, y: 6 } });
+        window.slot_clear_arrows_under_spawns(g.wa, g);
+        const keyCleared = !arrowAt(6, 6);
+
+        // Sokobox on arrow.
+        setArrow(8, 8, "DOWN");
+        try {
+          g.Aa.oa.clear();
+        } catch (_e) {
+          g.Aa.oa = new Set();
+        }
+        g.Aa.oa.add({ pos: { x: 8, y: 8 }, wm: true });
+        window.slot_clear_arrows_under_spawns(g.wa, g);
+        const sokoCleared = !arrowAt(8, 8);
+
+        return { fruitCleared, keyCleared, sokoCleared };
+      });
+      assert.equal(result.fruitCleared, true, JSON.stringify(result));
+      assert.equal(result.keyCleared, true, JSON.stringify(result));
+      assert.equal(result.sokoCleared, true, JSON.stringify(result));
     } finally {
       await h.close();
     }
