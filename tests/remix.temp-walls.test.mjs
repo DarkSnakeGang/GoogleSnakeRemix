@@ -27,9 +27,11 @@ describe("Temp Walls mode (offline)", () => {
     assert.match(init, /remix-temp-walls-blend/);
     assert.match(init, /tempWalls_spawn_on_eat/);
     assert.match(init, /tempWalls_age/);
-    assert.match(init, /TEMP_WALL_FADE_ORANGE\s*=\s*"#ff8c00"/);
+    assert.match(init, /TEMP_WALL_FADE_ORANGE\s*=\s*"#ff6600"/);
     assert.match(init, /tempWalls_drawPulse/);
-    assert.match(init, /orangeAlpha/);
+    assert.match(init, /tempWalls_lerp_color\(brick, orange/);
+    assert.match(init, /tempWalls_drawPulse\(this\.Ka,"ka"\)/);
+    assert.match(init, /tempWalls_drawPulse\(td,"oa"\)/);
     assert.match(init, /tempWalls_has_fading/);
     assert.match(init, /tempWalls_win_if_empty/);
     assert.match(init, /__tempWall/);
