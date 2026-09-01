@@ -112,6 +112,16 @@ window.TempWallsMod.alterSnakeCode("tick(){}");\n`,
     assert.equal(w.tempWalls_spawn_on_eat(game), 0, "dedupe same fruit");
   });
 
+  it("Ultra alter chain includes TempWalls before SlotMachine", () => {
+    const ultra = fs.readFileSync(path.join(ROOT, "src", "UltraInit.js"), "utf8");
+    assert.match(ultra, /TempWallsMod\.alterSnakeCode\(code\)/);
+    assert.match(ultra, /TempWallsMod\.runCodeAfter/);
+    const bombIdx = ultra.indexOf("BombFruitMod.alterSnakeCode");
+    const twIdx = ultra.indexOf("TempWallsMod.alterSnakeCode");
+    const slotIdx = ultra.indexOf("SlotMachineMod.alterSnakeCode");
+    assert.ok(bombIdx >= 0 && twIdx > bombIdx && slotIdx > twIdx);
+  });
+
   it("bundles include Temp Walls after splice", () => {
     assert.equal(fs.existsSync(REMIX), true);
     assert.equal(fs.existsSync(ULTRA), true);

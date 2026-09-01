@@ -16501,6 +16501,17 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     }
   }
 
+  function smTryReplace(label, attempts, silent) {
+    for (let i = 0; i < attempts.length; i++) {
+      const a = attempts[i];
+      if (smReplace(a.label || label, a.re, a.rep, true)) return true;
+    }
+    if (!silent) {
+      console.error("SlotMachineMod: failed to find " + label);
+    }
+    return false;
+  }
+
   // Capture native yin-yang color matchmaking + solid snake color table
   // (pudding may have already extended both).
   // Snake color index is settings.wa (synced Ja/Jb). settings.oa is BOARD THEME
@@ -21982,43 +21993,36 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       /if\(!r&&b===2&&window\.isMexicoActive&&window\.isMexicoActive\(\)\)return!0;if\(!r&&b===1&&window\.isMexicoActive&&window\.isMexicoActive\(\)\)return!0;return r\}/;
     const e7Cat =
       /if\(!r&&b===21&&window\.isCatActive&&window\.isCatActive\(\)&&\(window\.cat_peaceful_ticks\|0\)>0\)return!0;return r\}/;
-    if (
-      !smReplace(
-        "e7 slot machine after temp walls",
-        e7TempWalls,
-        "if(!r&&b===1&&((window.isTempWallsActive&&window.isTempWallsActive())||(window.tempWalls_has_any&&window.tempWalls_has_any(window.__remixGame))))return!0;" +
-          slotE7Tail
-      )
-    ) {
-      if (
-        !smReplace(
-          "e7 slot machine after bomb fruit",
-          e7Bomb,
+    smTryReplace("e7 chain for slot leftovers", [
+      {
+        label: "e7 slot machine after temp walls",
+        re: e7TempWalls,
+        rep:
+          "if(!r&&b===1&&((window.isTempWallsActive&&window.isTempWallsActive())||(window.tempWalls_has_any&&window.tempWalls_has_any(window.__remixGame))))return!0;" +
+          slotE7Tail,
+      },
+      {
+        label: "e7 slot machine after bomb fruit",
+        re: e7Bomb,
+        rep:
           "if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.ub===window.BOMB_FRUIT_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BOMB_FRUIT_MODE))return!0;}" +
-            slotE7Tail
-        )
-      ) {
-        if (
-          !smReplace(
-            "e7 slot machine after mexico",
-            e7Mexico,
-            "if(!r&&b===2&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===1&&window.isMexicoActive&&window.isMexicoActive())return!0;" +
-              slotE7Tail
-          )
-        ) {
-          if (
-            !smReplace(
-              "e7 slot machine after cat",
-              e7Cat,
-              "if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;" +
-                slotE7Tail
-            )
-          ) {
-            console.error("SlotMachineMod: failed to find e7 chain for slot leftovers");
-          }
-        }
-      }
-    }
+          slotE7Tail,
+      },
+      {
+        label: "e7 slot machine after mexico",
+        re: e7Mexico,
+        rep:
+          "if(!r&&b===2&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===1&&window.isMexicoActive&&window.isMexicoActive())return!0;" +
+          slotE7Tail,
+      },
+      {
+        label: "e7 slot machine after cat",
+        re: e7Cat,
+        rep:
+          "if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;" +
+          slotE7Tail,
+      },
+    ]);
   }
 
   // Borderless badge (4): wrap-only. Never sticky e7(4) (avoids camera /
@@ -22658,38 +22662,48 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       "||window.isSlotMachineActive&&window.isSlotMachineActive())&&D5E(this.Ja,a)";
     const slotD5EPixel =
       "||window.isSlotMachineActive&&window.isSlotMachineActive())&&D5E(this.Ja,dd)";
-    if (
-      !smReplace(
-        "D5E call gate classic for slot",
-        /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_fading&&window\.tempWalls_has_fading\(this\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,a\)/,
-        "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
+    smTryReplace("D5E call gate for slot", [
+      {
+        re: /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_fading&&window\.tempWalls_has_fading\(this\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,a\)/,
+        rep:
+          "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
           slotD5EClassic,
-        true
-      )
-    ) {
-      smReplace(
-        "D5E call gate classic for slot fallback",
-        /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,a\)/,
-        "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
-          slotD5EClassic
-      );
-    }
-    if (
-      !smReplace(
-        "D5E call gate pixel for slot",
-        /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_fading&&window\.tempWalls_has_fading\(this\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,dd\)/,
-        "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
+      },
+      {
+        re: /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,a\)/,
+        rep:
+          "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
+          slotD5EClassic,
+      },
+      {
+        re: /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)&&D5E\(this\.Ja,a\)/,
+        rep:
+          "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()" +
+          slotD5EClassic,
+      },
+    ], true);
+    smTryReplace(
+      "D5E call gate pixel for slot",
+      [
+      {
+        re: /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_fading&&window\.tempWalls_has_fading\(this\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,dd\)/,
+        rep:
+          "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
           slotD5EPixel,
-        true
-      )
-    ) {
-      smReplace(
-        "D5E call gate pixel for slot fallback",
-        /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,dd\)/,
-        "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
-          slotD5EPixel
-      );
-    }
+      },
+      {
+        re: /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,dd\)/,
+        rep:
+          "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
+          slotD5EPixel,
+      },
+      {
+        re: /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)&&D5E\(this\.Ja,dd\)/,
+        rep:
+          "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()" +
+          slotD5EPixel,
+      },
+    ], true);
   }
 
   // Stamp missing badges during D5E (before fruit) without drawing yet.
@@ -22807,25 +22821,66 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
 
   // Play-start trophy + reset.
   if (code.indexOf("updateSlotMachineTrophySRC()") < 0) {
-    smReplace(
-      "play-start slot trophy",
-      /if\(window\.CurrentModeNum===window\.TEMP_WALLS_MODE\)\{window\.updateTempWallsTrophySRC\(\);window\.tempWalls_reset_state\(\);\}/,
-      "if(window.CurrentModeNum===window.TEMP_WALLS_MODE){window.updateTempWallsTrophySRC();window.tempWalls_reset_state();}if(window.CurrentModeNum===window.SLOT_MACHINE_MODE){window.updateSlotMachineTrophySRC();window.slot_reset_state();window.slot_update_cat_hud&&window.slot_update_cat_hud();}"
-    );
+    const slotPlayStart =
+      "if(window.CurrentModeNum===window.SLOT_MACHINE_MODE){window.updateSlotMachineTrophySRC();window.slot_reset_state();window.slot_update_cat_hud&&window.slot_update_cat_hud();}";
+    smTryReplace("play-start slot trophy", [
+      {
+        re: /if\(window\.CurrentModeNum===window\.TEMP_WALLS_MODE\)\{window\.updateTempWallsTrophySRC\(\);window\.tempWalls_reset_state\(\);\}/,
+        rep:
+          "if(window.CurrentModeNum===window.TEMP_WALLS_MODE){window.updateTempWallsTrophySRC();window.tempWalls_reset_state();}" +
+          slotPlayStart,
+      },
+      {
+        re: /if\(window\.CurrentModeNum===window\.BOMB_FRUIT_MODE\)\{window\.updateBombFruitTrophySRC\(\);window\.bombFruit_reset_state\(\);\}/,
+        rep:
+          "if(window.CurrentModeNum===window.BOMB_FRUIT_MODE){window.updateBombFruitTrophySRC();window.bombFruit_reset_state();}" +
+          slotPlayStart,
+      },
+      {
+        re: /if\(window\.CurrentModeNum===window\.MEXICO_MODE\)\{window\.updateMexicoTrophySRC\(\);window\.mexico_reset_state\(\);\}/,
+        rep:
+          "if(window.CurrentModeNum===window.MEXICO_MODE){window.updateMexicoTrophySRC();window.mexico_reset_state();}" +
+          slotPlayStart,
+      },
+    ]);
   }
 
   // Deathscreen / blender icons (no blender toggle, but deathscreen needs icon).
   if (code.indexOf("window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON") < 0) {
-    smReplace(
-      "deathscreen Zb slot icon",
-      /\(a\.settings\.ob===window\.TEMP_WALLS_MODE\)\?window\.TEMP_WALLS_ICON:/,
-      "(a.settings.ob===window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON:(a.settings.ob===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:"
-    );
-    smReplace(
-      "blender b3E slot icon",
-      /\(c===window\.TEMP_WALLS_MODE\)\?window\.TEMP_WALLS_ICON:/,
-      "(c===window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON:(c===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:"
-    );
+    smTryReplace("deathscreen Zb slot icon", [
+      {
+        re: /\(a\.settings\.ob===window\.TEMP_WALLS_MODE\)\?window\.TEMP_WALLS_ICON:/,
+        rep:
+          "(a.settings.ob===window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON:(a.settings.ob===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:",
+      },
+      {
+        re: /\(a\.settings\.ob===window\.BOMB_FRUIT_MODE\)\?window\.BOMB_FRUIT_ICON:/,
+        rep:
+          "(a.settings.ob===window.BOMB_FRUIT_MODE)?window.BOMB_FRUIT_ICON:(a.settings.ob===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:",
+      },
+      {
+        re: /\(a\.settings\.ob===window\.MEXICO_MODE\)\?window\.MEXICO_ICON:/,
+        rep:
+          "(a.settings.ob===window.MEXICO_MODE)?window.MEXICO_ICON:(a.settings.ob===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:",
+      },
+    ]);
+    smTryReplace("blender b3E slot icon", [
+      {
+        re: /\(c===window\.TEMP_WALLS_MODE\)\?window\.TEMP_WALLS_ICON:/,
+        rep:
+          "(c===window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON:(c===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:",
+      },
+      {
+        re: /\(c===window\.BOMB_FRUIT_MODE\)\?window\.BOMB_FRUIT_ICON:/,
+        rep:
+          "(c===window.BOMB_FRUIT_MODE)?window.BOMB_FRUIT_ICON:(c===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:",
+      },
+      {
+        re: /\(c===window\.MEXICO_MODE\)\?window\.MEXICO_ICON:/,
+        rep:
+          "(c===window.MEXICO_MODE)?window.MEXICO_ICON:(c===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:",
+      },
+    ]);
   }
 
   // Cat life spend while Slot Machine even when Cat not the roll:
@@ -35595,17 +35650,15 @@ window.ultraPatchChallengeSpeedrunWin = function ultraPatchChallengeSpeedrunWin(
     return code;
   }
   const repl =
-    "if($1(this)===0){if(window.tryChallengeSpeedrunAdvance&&window.tryChallengeSpeedrunAdvance(this)){this.$4=this.$5=!0;}else{$2.WIN.play();$3this.$4=this.$5=!0;$6(this.menu,1400,this.$7);$8this.Mb=this.ticks}}else if";
+    "if($1(this)===0){if(window.tryChallengeSpeedrunAdvance&&window.tryChallengeSpeedrunAdvance(this)){this.$3=this.$4=!0;}else{$2.WIN.play();this.$3=this.$4=!0;$5(this.menu,1400,this.$6);$7this.Mb=this.ticks}}else if";
   const patterns = [
-    /if\(([$a-zA-Z0-9_]{0,8})\(this\)===0\)\{([$a-zA-Z0-9_]{0,8})\.WIN\.play\(\);(window\.timeKeeper\.gotAll\([^;]*?\),)?this\.([$a-zA-Z0-9_]{0,8})=this\.([$a-zA-Z0-9_]{0,8})=!0;([$a-zA-Z0-9_]{0,8})\(this\.menu,1400,this\.([$a-zA-Z0-9_]{0,8})\);([\s\S]*?)this\.Mb=this\.ticks\}else if/,
-    /if\(([$a-zA-Z0-9_]{0,8})\(this\)===0\)\{([$a-zA-Z0-9_]{0,8})\.WIN\.play\(\);([\s\S]{0,200}?)this\.([$a-zA-Z0-9_]{0,8})=this\.([$a-zA-Z0-9_]{0,8})=!0;([$a-zA-Z0-9_]{0,8})\(this\.menu,1400,this\.([$a-zA-Z0-9_]{0,8})\);([\s\S]*?)this\.Mb=this\.ticks\}else if/,
+    /if\((\w+)\(this\)===0\)\{(\w+)\.WIN\.play\(\);this\.(\w+)=this\.(\w+)=!0;(\w+)\(this\.menu,1400,this\.(\w+)\);([\s\S]*?)this\.Mb=this\.ticks\}else if/,
   ];
   for (let i = 0; i < patterns.length; i++) {
     if (code.match(patterns[i])) {
       return code.replace(patterns[i], repl);
     }
   }
-  console.error("RemixUltraMod: failed to patch challenge speedrun win path");
   return code;
 };
 
@@ -37249,6 +37302,11 @@ window.RemixUltraMod.alterSnakeCode = function (code) {
       console.error("RemixUltraMod: BombFruitMod.alterSnakeCode failed", e);
     }
     try {
+      code = window.TempWallsMod.alterSnakeCode(code);
+    } catch (e) {
+      console.error("RemixUltraMod: TempWallsMod.alterSnakeCode failed", e);
+    }
+    try {
       code = window.SlotMachineMod.alterSnakeCode(code);
     } catch (e) {
       console.error("RemixUltraMod: SlotMachineMod.alterSnakeCode failed", e);
@@ -37288,6 +37346,7 @@ window.RemixUltraMod.runCodeAfter = function () {
   window.CatMod.runCodeAfter && window.CatMod.runCodeAfter();
   window.MexicoMod.runCodeAfter && window.MexicoMod.runCodeAfter();
   window.BombFruitMod.runCodeAfter && window.BombFruitMod.runCodeAfter();
+  window.TempWallsMod.runCodeAfter && window.TempWallsMod.runCodeAfter();
   window.SlotMachineMod.runCodeAfter && window.SlotMachineMod.runCodeAfter();
   // Same as Remix: drop empty blender holes and pack to 6 columns so
   // Candy…Mexico aren’t clipped below the fold on the native Blender panel.

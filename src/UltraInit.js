@@ -835,17 +835,15 @@ window.ultraPatchChallengeSpeedrunWin = function ultraPatchChallengeSpeedrunWin(
     return code;
   }
   const repl =
-    "if($1(this)===0){if(window.tryChallengeSpeedrunAdvance&&window.tryChallengeSpeedrunAdvance(this)){this.$4=this.$5=!0;}else{$2.WIN.play();$3this.$4=this.$5=!0;$6(this.menu,1400,this.$7);$8this.Mb=this.ticks}}else if";
+    "if($1(this)===0){if(window.tryChallengeSpeedrunAdvance&&window.tryChallengeSpeedrunAdvance(this)){this.$3=this.$4=!0;}else{$2.WIN.play();this.$3=this.$4=!0;$5(this.menu,1400,this.$6);$7this.Mb=this.ticks}}else if";
   const patterns = [
-    /if\(([$a-zA-Z0-9_]{0,8})\(this\)===0\)\{([$a-zA-Z0-9_]{0,8})\.WIN\.play\(\);(window\.timeKeeper\.gotAll\([^;]*?\),)?this\.([$a-zA-Z0-9_]{0,8})=this\.([$a-zA-Z0-9_]{0,8})=!0;([$a-zA-Z0-9_]{0,8})\(this\.menu,1400,this\.([$a-zA-Z0-9_]{0,8})\);([\s\S]*?)this\.Mb=this\.ticks\}else if/,
-    /if\(([$a-zA-Z0-9_]{0,8})\(this\)===0\)\{([$a-zA-Z0-9_]{0,8})\.WIN\.play\(\);([\s\S]{0,200}?)this\.([$a-zA-Z0-9_]{0,8})=this\.([$a-zA-Z0-9_]{0,8})=!0;([$a-zA-Z0-9_]{0,8})\(this\.menu,1400,this\.([$a-zA-Z0-9_]{0,8})\);([\s\S]*?)this\.Mb=this\.ticks\}else if/,
+    /if\((\w+)\(this\)===0\)\{(\w+)\.WIN\.play\(\);this\.(\w+)=this\.(\w+)=!0;(\w+)\(this\.menu,1400,this\.(\w+)\);([\s\S]*?)this\.Mb=this\.ticks\}else if/,
   ];
   for (let i = 0; i < patterns.length; i++) {
     if (code.match(patterns[i])) {
       return code.replace(patterns[i], repl);
     }
   }
-  console.error("RemixUltraMod: failed to patch challenge speedrun win path");
   return code;
 };
 
@@ -2489,6 +2487,11 @@ window.RemixUltraMod.alterSnakeCode = function (code) {
       console.error("RemixUltraMod: BombFruitMod.alterSnakeCode failed", e);
     }
     try {
+      code = window.TempWallsMod.alterSnakeCode(code);
+    } catch (e) {
+      console.error("RemixUltraMod: TempWallsMod.alterSnakeCode failed", e);
+    }
+    try {
       code = window.SlotMachineMod.alterSnakeCode(code);
     } catch (e) {
       console.error("RemixUltraMod: SlotMachineMod.alterSnakeCode failed", e);
@@ -2528,6 +2531,7 @@ window.RemixUltraMod.runCodeAfter = function () {
   window.CatMod.runCodeAfter && window.CatMod.runCodeAfter();
   window.MexicoMod.runCodeAfter && window.MexicoMod.runCodeAfter();
   window.BombFruitMod.runCodeAfter && window.BombFruitMod.runCodeAfter();
+  window.TempWallsMod.runCodeAfter && window.TempWallsMod.runCodeAfter();
   window.SlotMachineMod.runCodeAfter && window.SlotMachineMod.runCodeAfter();
   // Same as Remix: drop empty blender holes and pack to 6 columns so
   // Candy…Mexico aren’t clipped below the fold on the native Blender panel.
