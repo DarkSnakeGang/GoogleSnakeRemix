@@ -19390,7 +19390,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     return max;
   };
 
-  // Key/soko unlock fruit under Slot tally: next index = board max + 1.
+  // Key/soko unlock fruit under Slot tally: next index is the higher of
+  // current edible tally (mgr.wa) and board max sequence + 1. Empty board
+  // after a mid-run unlock must not reset to 1 when the snake is already past it.
   window.slot_stamp_tally_unlock_index = function slot_stamp_tally_unlock_index(
     fruit,
     mgr
@@ -19400,8 +19402,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (!window.slot_is_tally_count || !window.slot_is_tally_count(g)) {
       return false;
     }
-    const next = (window.slot_tally_board_max_sequence(mgr, fruit) | 0) + 1;
-    fruit.sequenceNumber = next;
+    const boardNext =
+      (window.slot_tally_board_max_sequence(mgr, fruit) | 0) + 1;
+    const current = (mgr && mgr.wa) | 0;
+    fruit.sequenceNumber = Math.max(current, boardNext) || 1;
     return true;
   };
 
@@ -20033,7 +20037,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       }
       window.slot_ensure_unique_fruit_types(mgr);
 
-      // Key / soko unlock under tally: fruit gets max(board index) + 1.
+      // Key / soko unlock under tally: fruit gets max(current tally, board max + 1).
       window.slot_key_unlock_fruit = 0;
       window.slot_soko_unlock_fruit = 0;
       if (unlock && window.slot_is_tally_count && window.slot_is_tally_count(g)) {

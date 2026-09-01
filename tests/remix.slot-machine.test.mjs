@@ -5912,6 +5912,8 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.assignSlotMode(a);
         g.wa.ka.push(a, b, c);
         window.appleArray = g.wa.ka;
+        // Current edible below board max → unlock still takes board max + 1.
+        g.wa.wa = 2;
 
         // Key unlock: new fruit inherits junk seq, then after_native stamps max+1.
         const keyFruit = window.slot_make_apple(g.wa, { x: 8, y: 4 });
@@ -5935,11 +5937,42 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const sokoSeq = sokoFruit.sequenceNumber | 0;
         const sokoBadged = sokoFruit.slotMode != null;
 
+        // Empty board + advanced snake tally: unlock must follow current index,
+        // not reset to 1.
+        g.wa.ka.length = 0;
+        window.appleArray = g.wa.ka;
+        g.wa.wa = 4;
+        const emptyUnlock = window.slot_make_apple(g.wa, { x: 3, y: 3 });
+        delete emptyUnlock.slotMode;
+        emptyUnlock.sequenceNumber = 1;
+        g.wa.ka.push(emptyUnlock);
+        window.slot_soko_unlock_fruit = 1;
+        window.slot_after_native_respawn(g.wa, 1, g);
+        const emptySeq = emptyUnlock.sequenceNumber | 0;
+
+        // Empty board + current ahead of boardNext; also current > board fruits.
+        g.wa.ka.length = 0;
+        const leftover = window.slot_make_apple(g.wa, { x: 2, y: 2 });
+        leftover.sequenceNumber = 2;
+        window.assignSlotMode(leftover);
+        g.wa.ka.push(leftover);
+        window.appleArray = g.wa.ka;
+        g.wa.wa = 5;
+        const midUnlock = window.slot_make_apple(g.wa, { x: 1, y: 1 });
+        delete midUnlock.slotMode;
+        midUnlock.sequenceNumber = 1;
+        g.wa.ka.push(midUnlock);
+        window.slot_key_unlock_fruit = 1;
+        window.slot_after_native_respawn(g.wa, 1, g);
+        const midSeq = midUnlock.sequenceNumber | 0;
+
         return {
           keySeq,
           keyBadged,
           sokoSeq,
           sokoBadged,
+          emptySeq,
+          midSeq,
           maxBeforeKey: 5,
           helpers: {
             stamp: typeof window.slot_stamp_tally_unlock_index === "function",
@@ -5955,6 +5988,8 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(result.sokoBadged, true, JSON.stringify(result));
       // After key unlock max is 6, so soko unlock → 7.
       assert.equal(result.sokoSeq, 7, JSON.stringify(result));
+      assert.equal(result.emptySeq, 4, JSON.stringify(result));
+      assert.equal(result.midSeq, 5, JSON.stringify(result));
     } finally {
       await h.close();
     }
