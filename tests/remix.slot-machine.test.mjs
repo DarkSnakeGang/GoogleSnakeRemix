@@ -358,6 +358,8 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /f\.slotMode = pair/);
     assert.match(init, /burgerTimer = null/);
     assert.match(init, /slot_yy_flip_chess_piece/);
+    assert.match(init, /slot_yy_flip_head_piece/);
+    assert.match(init, /Carried chess head/);
     assert.match(init, /atMax/);
     assert.match(init, /At 9: free/);
     assert.match(init, /__slotMexicoPortal/);
@@ -401,6 +403,7 @@ describe("Slot Machine mode (offline)", () => {
       window.slot_roll_yy_pair = ${init.match(/window\.slot_roll_yy_pair = function slot_roll_yy_pair\(primary(?:, exclude)?\) \{[\s\S]*?\n  \};/)[0].replace(/^window\.slot_roll_yy_pair = /, "")};
       window.slot_yy_swap_board = ${init.match(/window\.slot_yy_swap_board = function slot_yy_swap_board\(mgr\) \{[\s\S]*?\n  \};/)[0].replace(/^window\.slot_yy_swap_board = /, "")};
       window.slot_yy_flip_chess_piece = ${init.match(/window\.slot_yy_flip_chess_piece = function slot_yy_flip_chess_piece\(f\) \{[\s\S]*?\n  \};/)[0].replace(/^window\.slot_yy_flip_chess_piece = /, "")};
+      window.slot_yy_flip_head_piece = ${init.match(/window\.slot_yy_flip_head_piece = function slot_yy_flip_head_piece\(\) \{[\s\S]*?\n  \};/)[0].replace(/^window\.slot_yy_flip_head_piece = /, "")};
       window.slot_draw_mode_excluding = function(ban){
         const pool = window.slot_enabled_pool().filter(function(m){
           return (ban||[]).indexOf(m|0) < 0;
@@ -452,6 +455,25 @@ describe("Slot Machine mode (offline)", () => {
     assert.equal(b.ChessColor, "b");
     assert.equal(b.type, 201);
     assert.equal(portalA.slotMode, portalB.slotMode);
+
+    // Carried head piece flips color + trophy type.
+    w.head_state = "pawn";
+    w.head_color = "w";
+    w.wpawn = 101;
+    w.bpawn = 201;
+    let trophyType = null;
+    w.updateTrophySRC = function (type) {
+      trophyType = type;
+    };
+    assert.equal(w.slot_yy_flip_head_piece(), true);
+    assert.equal(w.head_color, "b");
+    assert.equal(trophyType, 201);
+    assert.equal(w.slot_yy_flip_head_piece(), true);
+    assert.equal(w.head_color, "w");
+    assert.equal(trophyType, 101);
+    w.head_state = "OPEN";
+    w.head_color = "NONE";
+    assert.equal(w.slot_yy_flip_head_piece(), false);
 
     // Dimension below 9: net lives unchanged, grace set
     w.cat_lives = 3;

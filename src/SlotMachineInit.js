@@ -1658,6 +1658,22 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     }
   };
 
+  // Carried chess head (head_state / head_color) flips with Yin Yang too.
+  window.slot_yy_flip_head_piece = function slot_yy_flip_head_piece() {
+    if (!window.head_state || window.head_state === "OPEN") return false;
+    if (!window.head_color || window.head_color === "NONE") return false;
+    const col = window.head_color === "b" ? "w" : "b";
+    window.head_color = col;
+    const typeKey = col + window.head_state;
+    const type = window[typeKey];
+    if (type != null && typeof window.updateTrophySRC === "function") {
+      try {
+        window.updateTrophySRC(type);
+      } catch (_e) {}
+    }
+    return true;
+  };
+
   window.slot_yy_swap_board = function slot_yy_swap_board(mgr) {
     const list = mgr && mgr.ka;
     if (!list) return;
@@ -2762,6 +2778,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           window.slot_yy_swap_board &&
             window.slot_yy_swap_board(game && game.wa);
         } catch (_yy) {}
+        try {
+          window.slot_yy_flip_head_piece && window.slot_yy_flip_head_piece();
+        } catch (_yh) {}
         try {
           window.slot_flip_yy_snake_colors &&
             window.slot_flip_yy_snake_colors(game);
