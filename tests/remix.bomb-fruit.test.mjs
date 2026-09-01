@@ -22,7 +22,7 @@ describe("Bomb Fruit mode (offline)", () => {
 
     assert.match(init, /window\.BombFruitMod/);
     assert.match(init, /count_05\.png/);
-    assert.match(init, /BOMB_FRUIT_ARM_TICKS\s*=\s*3/);
+    assert.match(init, /BOMB_FRUIT_ARM_TICKS\s*=\s*4/);
     assert.match(init, /\(arm - \(bombX1a - \(frac \|\| 0\)\)\) \/ arm/);
     assert.match(init, /mineRadius/);
     assert.match(init, /bombFruit_detach_bomb/);
@@ -309,9 +309,9 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
       });
       assert.equal(r.hasTrophy, true, JSON.stringify(r));
       assert.equal(r.blend, true, JSON.stringify(r));
-      assert.equal(r.armTicks, 3);
+      assert.equal(r.armTicks, 4);
       assert.equal(r.cheb, 1);
-      assert.equal(r.armed, 3, "should arm to 3 on enter: " + JSON.stringify(r));
+      assert.equal(r.armed, 4, "should arm to 4 on enter: " + JSON.stringify(r));
       assert.equal(r.died, true, "in-radius boom should kill: " + JSON.stringify(r));
       assert.equal(
         r.deathKa,

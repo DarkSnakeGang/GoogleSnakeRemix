@@ -9,7 +9,7 @@ window.BombFruitMod.runCodeBefore = function () {
 
   window.BOMB_FRUIT_ICON =
     "https://www.google.com/logos/fnbx/snake_arcade/v18/count_05.png";
-  window.BOMB_FRUIT_ARM_TICKS = 3;
+  window.BOMB_FRUIT_ARM_TICKS = 4;
 
   window.uiImage =
     window.uiImage ||
