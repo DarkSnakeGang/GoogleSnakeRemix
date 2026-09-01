@@ -82,6 +82,48 @@ async function eatPoisonAhead(page) {
 }
 
 describe("burger mode (browser)", { skip: !runBrowser }, () => {
+  it("fresh eat re-rolls timer on Mn-reused fruit (freshness resets)", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 31, headless: true });
+    try {
+      await h.start({ mode: "burger", count: COUNT.ONE, size: SIZE.NORMAL });
+      const result = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        const a = g.wa.ka[0];
+        a.burgerTimer = 5;
+        a.burgerTimerMax = 30;
+        a.burgerGrey = 80;
+        const head = g.oa.ka[0];
+        const dir = g.oa.direction || "RIGHT";
+        const next = { x: head.x, y: head.y };
+        if (dir === "RIGHT") next.x += 1;
+        else if (dir === "LEFT") next.x -= 1;
+        else if (dir === "UP") next.y -= 1;
+        else next.y += 1;
+        a.pos.x = next.x;
+        a.pos.y = next.y;
+        g.tick();
+        const fresh = g.wa.ka.find((x) => x && !x.Oka);
+        const expected = 25 + g.oa.ka.length;
+        return {
+          sameRef: fresh === a,
+          timer: fresh ? fresh.burgerTimer : null,
+          max: fresh ? fresh.burgerTimerMax : null,
+          grey: fresh ? fresh.burgerGrey : null,
+          expected,
+          score: g.Sh | 0,
+        };
+      });
+      assert.equal(result.sameRef, true, JSON.stringify(result));
+      assert.equal(result.score, 1, JSON.stringify(result));
+      assert.equal(result.timer, result.expected, JSON.stringify(result));
+      assert.equal(result.max, result.expected, JSON.stringify(result));
+      assert.equal(result.grey, 0, JSON.stringify(result));
+    } finally {
+      await h.close();
+    }
+  });
+
   it("classic start: no poison pairs; length-based timers assigned", async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 11, headless: true });
@@ -119,14 +161,30 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
           count,
           size: SIZE.NORMAL,
         });
-        // Native play-start runs uaF after apple reset. Invoke the live
+        // Native play-start runs l4E/uaF after apple reset. Invoke the live
         // binding — Burger must no-op it so half the board is not poisoned.
         const after = await h.page.evaluate(() => {
           const g = window.__remixGame;
-          if (typeof window.__uaF === "function") window.__uaF(g.wa);
+          const pair =
+            typeof window.__uaF === "function"
+              ? window.__uaF
+              : window.__l4E;
+          if (typeof pair === "function") pair(g.wa);
+          // Race: settings already Burger, CurrentModeNum still classic.
+          const saved = window.CurrentModeNum;
+          window.CurrentModeNum = 0;
+          for (let i = 0; i < g.wa.ka.length; i++) g.wa.ka[i].Oka = false;
+          if (typeof pair === "function") pair(g.wa);
+          const racePoisons = g.wa.ka.filter((a) => a.Oka).length;
+          window.CurrentModeNum = saved;
+          for (let i = 0; i < g.wa.ka.length; i++) g.wa.ka[i].Oka = false;
           return {
             apples: g.wa.ka.length,
             poisons: g.wa.ka.filter((a) => a.Oka).length,
+            racePoisons,
+            activeViaSettings: !!(
+              window.isBurgerActive && window.isBurgerActive()
+            ),
           };
         });
         assert.equal(
@@ -134,6 +192,12 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
           0,
           `count=${count} must have 0 poisons after uaF: ` +
             JSON.stringify({ started, after })
+        );
+        assert.equal(
+          after.racePoisons,
+          0,
+          `count=${count} must stay poison-free when CurrentModeNum lags settings: ` +
+            JSON.stringify(after)
         );
         assert.ok(started.apples >= 3);
       }

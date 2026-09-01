@@ -260,15 +260,18 @@ export async function launchHarness(opts = {}) {
           g.settings.Aa = size;
 
           g.wa.reset();
-          // Native play-start also runs uaF when mode 10 is active. Burger
+          // Native play-start also runs l4E/uaF when mode 10 is active. Burger
           // gates it; calling the live binding here keeps Burger harness
           // starts honest to that path (and must not run for other modes).
           if (
             window.isBurgerActive &&
-            window.isBurgerActive() &&
-            typeof window.__uaF === "function"
+            window.isBurgerActive()
           ) {
-            window.__uaF(g.wa);
+            const pair =
+              typeof window.__uaF === "function"
+                ? window.__uaF
+                : window.__l4E;
+            if (typeof pair === "function") pair(g.wa);
           }
           window.appleArray = g.wa.ka;
 

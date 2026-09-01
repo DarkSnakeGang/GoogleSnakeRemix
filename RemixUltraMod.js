@@ -12194,10 +12194,25 @@ window.BurgerMod.alterSnakeCode = function (code) {
   console.log("Coding Burger Mode into the game (v13)");
 
   window.isBurgerActive = function isBurgerActive() {
-    return (
-      window.CurrentModeNum === window.BURGER_MODE ||
-      (window.CurrentModeNum === 22 && window.burger_blending)
-    );
+    if (window.BURGER_MODE == null) return false;
+    if (window.CurrentModeNum === window.BURGER_MODE) return true;
+    if (window.CurrentModeNum === 22 && window.burger_blending) return true;
+    // Match e7(...,10): layout may pair Okas (l4E) while settings.ub is already
+    // Burger but CurrentModeNum has not flipped yet — that half-poisoned the start.
+    const g = window.__remixGame;
+    const s = g && g.settings;
+    if (!s) return false;
+    if (s.ub === window.BURGER_MODE || s.ob === window.BURGER_MODE) return true;
+    if (
+      (s.ub === 22 || window.CurrentModeNum === 22) &&
+      s.rSa &&
+      typeof s.rSa.has === "function" &&
+      s.rSa.has(window.BURGER_MODE)
+    ) {
+      return true;
+    }
+    if (s.ub === 22 && window.burger_blending) return true;
+    return false;
   };
 
   window.updateBurgerTrophySRC = function updateBurgerTrophySRC() {
@@ -12575,23 +12590,39 @@ window.BurgerMod.alterSnakeCode = function (code) {
     if (!game || !game.wa) return eatenIndex;
     window.just_ate = "fruit";
     window.burger_fruits_eaten = (window.burger_fruits_eaten | 0) + 1;
-    const eaten = game.wa.ka[eatenIndex | 0];
+    let eaten =
+      eatenIndex != null && eatenIndex !== ""
+        ? game.wa.ka[eatenIndex | 0]
+        : null;
+    // Index can be stale after poison splices; fall back to the apple under head.
+    if (
+      (!eaten || eaten.Oka) &&
+      typeof window.findApple === "function" &&
+      window.head_pos &&
+      window.head_pos[0]
+    ) {
+      const under = window.findApple(window.head_pos[0], game.wa.ka);
+      if (under && !under.Oka && !under.isPiece) eaten = under;
+    }
     if (eaten && !eaten.Oka) {
       eaten.burgerTimer = null;
       eaten.burgerTimerMax = null;
       eaten.burgerGrey = 0;
+      eaten.__burgerNeedsRoll = true;
     }
     return eatenIndex | 0;
   };
 
   window.burger_after_respawn = function burger_after_respawn(game) {
     if (!game || !game.wa) return;
-    // Only apples that still lack a timer (the Mn-reused eaten slot, or a brand
-    // new spawn) get a roll. Existing countdowns are left alone.
+    // Mn reuses the eaten apple in place (moves pos). Re-roll any slot that
+    // was cleared on eat, or still lacks a timer (brand-new spawn).
     for (let i = 0; i < game.wa.ka.length; i++) {
       const a = game.wa.ka[i];
-      if (a && !a.Oka && a.burgerTimer == null) {
+      if (!a || a.Oka) continue;
+      if (a.__burgerNeedsRoll || a.burgerTimer == null) {
         window.burger_assign_timer(a, game);
+        delete a.__burgerNeedsRoll;
       }
     }
   };
@@ -12668,7 +12699,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   ) {
     code = code.assertReplace(
       /l4E=function\(a\)\{for\(let b=0;b\+1<a\.ka\.length;b\+=2\)\{let c=Math\.random\(\)<\.5;\s*a\.ka\[b\]\.Oka=c;a\.ka\[b\+1\]\.Oka=!c\}\}/,
-      `l4E=function(a){if(window.isBurgerActive&&window.isBurgerActive())return;for(let b=0;b+1<a.ka.length;b+=2){let c=Math.random()<.5;a.ka[b].Oka=c;a.ka[b+1].Oka=!c}};window.__l4E=l4E`
+      `l4E=function(a){if(window.isBurgerActive&&window.isBurgerActive())return;for(let b=0;b+1<a.ka.length;b+=2){let c=Math.random()<.5;a.ka[b].Oka=c;a.ka[b+1].Oka=!c}};window.__l4E=l4E;window.__uaF=l4E`
     );
   } else {
     console.error("BurgerMod: failed to patch l4E function");
@@ -12776,12 +12807,9 @@ window.BurgerMod.alterSnakeCode = function (code) {
     console.error("BurgerMod: failed to find qaF trailing hook");
   }
 
-  // Fresh eat: clear poisons + bump eat count BEFORE score side-effects finish / before Mn.
-  // Hook at a.Sh++ — Chess may have replaced it; handle both.
-
-  // Clearing poisons splices game.wa.ka, so the eat loop's index has to be
-  // corrected in place. Its name is minified, so read it off the i4E call that
-  // sits in the same statement (native Poison already decrements it there).
+  // Fresh eat: clear timer on the eaten apple BEFORE Mn reuses/moves it.
+  // Chess's Sh++ site has grown (second-piece eat); match current + fall back
+  // to every a.Sh++; that is not already Burger-hooked.
   const appleIndexMatch = code.match(
     /e7\(a\.settings,10\)\s*&&\s*i4E\(a\.wa,([a-zA-Z0-9_$]{1,6}),[a-zA-Z0-9_$]{1,6},a\.Lc\.bind\(a\)\)\s*&&\s*\1--/
   );
@@ -12793,20 +12821,28 @@ window.BurgerMod.alterSnakeCode = function (code) {
     ? `if(window.isBurgerActive&&window.isBurgerActive())${idx}=window.burger_on_fresh_eaten(a,${idx});`
     : `if(window.isBurgerActive&&window.isBurgerActive())window.burger_on_fresh_eaten(a);`;
 
-  if (
-    code.match(
-      /if\(window\.isChessActive&&window\.isChessActive\(\)\)\{let _ae=window\.findApple\(window\.head_pos\[0\],window\.appleArray\);if\(_ae&&!_ae\.isPiece\)\{window\.just_ate='fruit';a\.Sh\+\+;\}else if\(_ae&&_ae\.isPiece\)\{window\.just_ate='piece';window\.head_state=_ae\.ChessPiece;window\.updateTrophySRC\(_ae\.type\);window\.head_color=_ae\.ChessColor;window\.shield_all\(\);\}else\{window\.just_ate='fruit';a\.Sh\+\+;\}\}else\{a\.Sh\+\+;\}/
-    )
-  ) {
+  const chessScoreWithSecond =
+    /if\(window\.isChessActive&&window\.isChessActive\(\)\)\{let _ae=window\.findApple\(window\.head_pos\[0\],window\.appleArray\);if\(_ae&&!_ae\.isPiece\)\{window\.just_ate='fruit';a\.Sh\+\+;\}else if\(_ae&&_ae\.isPiece\)\{window\.just_ate='piece';if\(window\.head_state!=='OPEN'&&window\.chess_on_second_piece_eat\)\{window\.chess_on_second_piece_eat\(_ae\);\}else\{window\.head_state=_ae\.ChessPiece;window\.updateTrophySRC\(_ae\.type\);window\.head_color=_ae\.ChessColor;window\.shield_all\(\);\}\}else\{window\.just_ate='fruit';a\.Sh\+\+;\}\}else\{a\.Sh\+\+;\}/;
+  const chessScoreLegacy =
+    /if\(window\.isChessActive&&window\.isChessActive\(\)\)\{let _ae=window\.findApple\(window\.head_pos\[0\],window\.appleArray\);if\(_ae&&!_ae\.isPiece\)\{window\.just_ate='fruit';a\.Sh\+\+;\}else if\(_ae&&_ae\.isPiece\)\{window\.just_ate='piece';window\.head_state=_ae\.ChessPiece;window\.updateTrophySRC\(_ae\.type\);window\.head_color=_ae\.ChessColor;window\.shield_all\(\);\}else\{window\.just_ate='fruit';a\.Sh\+\+;\}\}else\{a\.Sh\+\+;\}/;
+
+  if (code.match(chessScoreWithSecond)) {
     code = code.assertReplace(
-      /if\(window\.isChessActive&&window\.isChessActive\(\)\)\{let _ae=window\.findApple\(window\.head_pos\[0\],window\.appleArray\);if\(_ae&&!_ae\.isPiece\)\{window\.just_ate='fruit';a\.Sh\+\+;\}else if\(_ae&&_ae\.isPiece\)\{window\.just_ate='piece';window\.head_state=_ae\.ChessPiece;window\.updateTrophySRC\(_ae\.type\);window\.head_color=_ae\.ChessColor;window\.shield_all\(\);\}else\{window\.just_ate='fruit';a\.Sh\+\+;\}\}else\{a\.Sh\+\+;\}/,
+      chessScoreWithSecond,
+      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';a.Sh++;${onFreshEaten}}else if(_ae&&_ae.isPiece){window.just_ate='piece';if(window.head_state!=='OPEN'&&window.chess_on_second_piece_eat){window.chess_on_second_piece_eat(_ae);}else{window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}}else{window.just_ate='fruit';a.Sh++;${onFreshEaten}}}else{a.Sh++;${onFreshEaten}}`
+    );
+  } else if (code.match(chessScoreLegacy)) {
+    code = code.assertReplace(
+      chessScoreLegacy,
       `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';a.Sh++;${onFreshEaten}}else if(_ae&&_ae.isPiece){window.just_ate='piece';window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}else{window.just_ate='fruit';a.Sh++;${onFreshEaten}}}else{a.Sh++;${onFreshEaten}}`
     );
   } else if (code.match(/a\.Sh\+\+;/)) {
-    code = code.assertReplace(
-      /a\.Sh\+\+;/,
-      `a.Sh++;${onFreshEaten}`
-    );
+    // Last resort: hook every score bump that is not already Burger-aware.
+    code = code.replace(/a\.Sh\+\+;/g, function (m, offset, full) {
+      const next = full.slice(offset, offset + 160);
+      if (next.indexOf("burger_on_fresh_eaten") >= 0) return m;
+      return `a.Sh++;${onFreshEaten}`;
+    });
   } else {
     console.error("BurgerMod: failed to find score hook");
   }
@@ -12824,17 +12860,16 @@ window.BurgerMod.alterSnakeCode = function (code) {
       `window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);${afterRespawn}`
     );
   }
-  // Burger-only eats go through native Vm, not chess_fruit_respawn.
-  // The call sits in a comma-group: `e=a.Vm(k,!e,null));` — the extra ) is
-  // required; matching through `null);` would miss and leave reused slots
-  // without a timer (snake-length roll happens in burger_after_respawn).
-  if (code.match(/e=a\.Vm\(k,\s*!e,null\)\);/)) {
-    code = code.assertReplace(
-      /e=a\.Vm\(k,\s*!e,null\)\);/,
-      `e=a.Vm(k,!e,null));${afterRespawn}`
-    );
-  } else {
-    console.error("BurgerMod: failed to find native Vm respawn for after_respawn");
+  // Burger-only eats go through native Vm (BombFruit may drop the `e=` assign).
+  if (!/a\.Vm\(k,\s*!e,null\)\);if\(window\.isBurgerActive&&window\.isBurgerActive\(\)&&window\.just_ate===/.test(code)) {
+    if (code.match(/(?:e=)?a\.Vm\(k,\s*!e,null\)\);/)) {
+      code = code.replace(
+        /((?:e=)?a\.Vm\(k,\s*!e,null\)\);)/,
+        `$1${afterRespawn}`
+      );
+    } else {
+      console.error("BurgerMod: failed to find native Vm respawn for after_respawn");
+    }
   }
 
   // Aging overlay on fruit drawImage.

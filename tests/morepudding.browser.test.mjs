@@ -307,11 +307,14 @@ describe("MorePudding base (browser)", { skip: !runBrowser }, () => {
           g.wa.reset();
           if (
             name === "burger" &&
-            typeof window.__uaF === "function" &&
             window.isBurgerActive &&
             window.isBurgerActive()
           ) {
-            window.__uaF(g.wa);
+            const pair =
+              typeof window.__uaF === "function"
+                ? window.__uaF
+                : window.__l4E;
+            if (typeof pair === "function") pair(g.wa);
           }
           modes[name] = {
             apples: g.wa.ka.length,
