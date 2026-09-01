@@ -112,13 +112,9 @@ describe("Cluster count (apple amount type)", () => {
       dice,
       /remixIsClusterCount\(this\.settings\.ka\)\)\{try\{window\.remixClusterCountReset/
     );
-    assert.match(dice, /remixUsesPairAppleLayout/);
     assert.match(dice, /remixIsClusterCount&&window\.remixIsClusterCount\(\$\{countExpr\}\)/);
-    assert.match(dice, /\} else if\(\$\{cluster\}&&!/);
-    assert.match(
-      dice,
-      /remixUsesPairAppleLayout&&window\.remixUsesPairAppleLayout\(this\.settings\)/
-    );
+    assert.match(dice, /\} else if\(\$\{cluster\}&&!a\)/);
+    assert.doesNotMatch(dice, /remixUsesPairAppleLayout/);
     assert.match(
       dice,
       /remixIsClusterCount&&window\.remixIsClusterCount\(this\.settings\.ka\)\)/
