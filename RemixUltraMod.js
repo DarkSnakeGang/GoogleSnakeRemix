@@ -21851,9 +21851,11 @@ window.remixInjectSlotMachineSettingsUi = function remixInjectSlotMachineSetting
       '<div class="remix-custom-title">Slot Machine badges</div>' +
       '<div class="remix-custom-hint">Choose which mode badges can appear on fruit. At least one must stay on (default: all).</div>' +
       '<div class="remix-custom-toolbar">' +
+      '<div class="remix-custom-toolbar-actions">' +
       '<button type="button" id="remix-slot-modes-all" class="btn remix-custom-btn-inline">Select all</button>' +
       '<button type="button" id="remix-slot-modes-none" class="btn remix-custom-btn-inline">Deselect all</button>' +
       '<button type="button" id="remix-slot-modes-vanilla" class="btn remix-custom-btn-inline">Vanilla only</button>' +
+      "</div>" +
       '<span id="remix-slot-modes-status" class="remix-custom-hint remix-custom-status"></span>' +
       "</div>" +
       '<div id="remix-slot-mode-grid" class="remix-slot-mode-grid"></div>';
@@ -27999,6 +28001,12 @@ label[for="RemoveScrollbar"] {
   color: #fff !important;
   border: none !important;
   font-size: 12px !important;
+}
+#settings-popup-pudding .remix-custom-toolbar-actions .btn,
+#settings-popup-pudding .remix-custom-btn-inline {
+  display: inline-block;
+  width: auto !important;
+  margin: 0 !important;
 }
 #stat-chooser {
   width: 100% !important;

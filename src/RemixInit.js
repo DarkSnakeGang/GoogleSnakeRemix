@@ -152,6 +152,12 @@ label[for="RemoveScrollbar"] {
   border: none !important;
   font-size: 12px !important;
 }
+#settings-popup-pudding .remix-custom-toolbar-actions .btn,
+#settings-popup-pudding .remix-custom-btn-inline {
+  display: inline-block;
+  width: auto !important;
+  margin: 0 !important;
+}
 #stat-chooser {
   width: 100% !important;
   box-sizing: border-box;

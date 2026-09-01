@@ -6260,9 +6260,11 @@ window.remixInjectSlotMachineSettingsUi = function remixInjectSlotMachineSetting
       '<div class="remix-custom-title">Slot Machine badges</div>' +
       '<div class="remix-custom-hint">Choose which mode badges can appear on fruit. At least one must stay on (default: all).</div>' +
       '<div class="remix-custom-toolbar">' +
+      '<div class="remix-custom-toolbar-actions">' +
       '<button type="button" id="remix-slot-modes-all" class="btn remix-custom-btn-inline">Select all</button>' +
       '<button type="button" id="remix-slot-modes-none" class="btn remix-custom-btn-inline">Deselect all</button>' +
       '<button type="button" id="remix-slot-modes-vanilla" class="btn remix-custom-btn-inline">Vanilla only</button>' +
+      "</div>" +
       '<span id="remix-slot-modes-status" class="remix-custom-hint remix-custom-status"></span>' +
       "</div>" +
       '<div id="remix-slot-mode-grid" class="remix-slot-mode-grid"></div>';
