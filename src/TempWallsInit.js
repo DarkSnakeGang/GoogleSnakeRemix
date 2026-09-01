@@ -488,24 +488,22 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   };
 
   // Theme wall color for fade pulse (orange alternates with this).
-  window.tempWalls_theme_brick = function tempWalls_theme_brick() {
-    let brick = "#5fa038";
-    let mortar = "#9ccc5a";
+  window.tempWalls_theme_brick = function tempWalls_theme_brick(settingsOrBoard) {
+    let settings = settingsOrBoard;
+    if (settingsOrBoard && settingsOrBoard.settings) {
+      settings = settingsOrBoard.settings;
+    }
+    if (!settings) {
+      const g = window.__remixGame;
+      settings = g && g.settings;
+    }
+    let brick = "#578a34";
     try {
-      const s =
-        (window.snake && window.snake.scheme && window.snake.scheme()) ||
-        window.__snakeScheme ||
-        null;
-      if (s && s.walls) {
-        brick = s.walls;
-        mortar = s.walls;
+      if (settings && typeof c7 === "function") {
+        brick = c7(settings, settings.oa, 3);
       }
     } catch (_e) {}
-    try {
-      const pud = window.pudding_settings;
-      if (pud && pud.walls) brick = pud.walls;
-    } catch (_e2) {}
-    return { brick: brick, mortar: mortar };
+    return { brick: brick, mortar: brick };
   };
 
   window.tempWalls_tile_size = function tempWalls_tile_size(board) {
@@ -540,7 +538,7 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     const list = window.tempWalls_list(game);
     const fadeAt = window.TEMP_WALL_FADE_MOVES | 5;
     const orange = window.TEMP_WALL_FADE_ORANGE || "#ff6600";
-    const theme = window.tempWalls_theme_brick();
+    const theme = window.tempWalls_theme_brick(board.settings || board);
     const brick = theme.brick || "#5fa038";
     const now = Date.now();
     const blink = 0.5 + 0.5 * Math.sin(now * 0.014);
@@ -602,28 +600,6 @@ window.TempWallsMod.alterSnakeCode = function (code) {
       /if\(!r&&b===2&&window\.isMexicoActive&&window\.isMexicoActive\(\)\)return!0;if\(!r&&b===1&&window\.isMexicoActive&&window\.isMexicoActive\(\)\)return!0;return r\}/,
       "if(!r&&b===2&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===1&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===1&&((window.isTempWallsActive&&window.isTempWallsActive())||(window.tempWalls_has_any&&window.tempWalls_has_any(window.__remixGame))))return!0;return r}"
     );
-  }
-
-  if (
-    !twReplace(
-      "D5E temp walls pulse tail",
-      /if\(e7\(d\.settings,4\)\)for\(let k of d\.wb\.yb\)C5E\(d,c,k\.x,k\.y,g\);d\.ka\.globalAlpha=1\}\}\}/,
-      "if(e7(d.settings,4))for(let k of d.wb.yb)C5E(d,c,k.x,k.y,g);d.ka.globalAlpha=1}}try{window.tempWalls_drawPulse(a);}catch(_tw){}}"
-    )
-  ) {
-    if (
-      !twReplace(
-        "D5E temp walls pulse after bomb",
-        /D5E=function\(a,b\)\{if\(!window\.__bombFruitS5E\)\{try\{window\.__bombFruitS5E=s5E;window\.__bombFruitT6E=t6E;window\.__bombFruitX3E=x3E;\}catch\(_bfAud\)\{\}\}if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}for\(var c of a\.wb\.Ma\.Aa\)\{/,
-        "D5E=function(a,b){if(!window.__bombFruitS5E){try{window.__bombFruitS5E=s5E;window.__bombFruitT6E=t6E;window.__bombFruitX3E=x3E;}catch(_bfAud){}}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}try{window.tempWalls_drawPulse(a);}catch(_tw){}for(var c of a.wb.Ma.Aa){"
-      )
-    ) {
-      twReplace(
-        "D5E temp walls pulse native",
-        /D5E=function\(a,b\)\{for\(var c of a\.wb\.Ma\.Aa\)\{/,
-        "D5E=function(a,b){try{window.tempWalls_drawPulse(a);}catch(_tw){}for(var c of a.wb.Ma.Aa){"
-      );
-    }
   }
 
   // Classic / trophy path: walls paint on Ka.ka via F5E.render — pulse there.

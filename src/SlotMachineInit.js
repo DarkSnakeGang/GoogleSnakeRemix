@@ -6287,16 +6287,42 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   // fruit sprites (drawImage hook) so they sit on top, not under the apple.
   if (code.indexOf("isSlotMachineActive()&&window.isSlotMachineActive())&&D5E") < 0 &&
       code.indexOf("isSlotMachineActive&&window.isSlotMachineActive())&&D5E") < 0) {
-    smReplace(
-      "D5E call gate classic for slot",
-      /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,a\)/,
-      "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)||window.isSlotMachineActive&&window.isSlotMachineActive())&&D5E(this.Ja,a)"
-    );
-    smReplace(
-      "D5E call gate pixel for slot",
-      /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,dd\)/,
-      "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)||window.isSlotMachineActive&&window.isSlotMachineActive())&&D5E(this.Ja,dd)"
-    );
+    const slotD5EClassic =
+      "||window.isSlotMachineActive&&window.isSlotMachineActive())&&D5E(this.Ja,a)";
+    const slotD5EPixel =
+      "||window.isSlotMachineActive&&window.isSlotMachineActive())&&D5E(this.Ja,dd)";
+    if (
+      !smReplace(
+        "D5E call gate classic for slot",
+        /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_fading&&window\.tempWalls_has_fading\(this\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,a\)/,
+        "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
+          slotD5EClassic,
+        true
+      )
+    ) {
+      smReplace(
+        "D5E call gate classic for slot fallback",
+        /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,a\)/,
+        "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
+          slotD5EClassic
+      );
+    }
+    if (
+      !smReplace(
+        "D5E call gate pixel for slot",
+        /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_fading&&window\.tempWalls_has_fading\(this\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,dd\)/,
+        "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
+          slotD5EPixel,
+        true
+      )
+    ) {
+      smReplace(
+        "D5E call gate pixel for slot fallback",
+        /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,dd\)/,
+        "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
+          slotD5EPixel
+      );
+    }
   }
 
   // Stamp missing badges during D5E (before fruit) without drawing yet.
@@ -6304,10 +6330,19 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot ensure badges after bomb radii",
-      /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}try\{window\.tempWalls_drawPulse\(a\);\}catch\(_tw\)\{\}/,
-      'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}try{window.tempWalls_drawPulse(a);}catch(_tw){}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a);}catch(_sm){}}'
+        /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}for\(var c of a\.wb\.Ma\.Aa\)\{/,
+        'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a);}catch(_sm){}}for(var c of a.wb.Ma.Aa){',
+        true
       )
     ) {
+      smReplace(
+        "slot ensure badges after temp walls pulse",
+        /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}try\{window\.tempWalls_drawPulse\(a\);\}catch\(_tw\)\{\}for\(var c of a\.wb\.Ma\.Aa\)\{/,
+        'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}try{window.tempWalls_drawPulse(a);}catch(_tw){}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a);}catch(_sm){}}for(var c of a.wb.Ma.Aa){',
+        true
+      );
+    }
+    if (code.indexOf("slot_ensure_badges") < 0) {
       smReplace(
         "slot ensure badges at D5E start",
         /D5E=function\(a,b\)\{/,

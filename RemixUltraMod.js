@@ -16114,24 +16114,22 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   };
 
   // Theme wall color for fade pulse (orange alternates with this).
-  window.tempWalls_theme_brick = function tempWalls_theme_brick() {
-    let brick = "#5fa038";
-    let mortar = "#9ccc5a";
+  window.tempWalls_theme_brick = function tempWalls_theme_brick(settingsOrBoard) {
+    let settings = settingsOrBoard;
+    if (settingsOrBoard && settingsOrBoard.settings) {
+      settings = settingsOrBoard.settings;
+    }
+    if (!settings) {
+      const g = window.__remixGame;
+      settings = g && g.settings;
+    }
+    let brick = "#578a34";
     try {
-      const s =
-        (window.snake && window.snake.scheme && window.snake.scheme()) ||
-        window.__snakeScheme ||
-        null;
-      if (s && s.walls) {
-        brick = s.walls;
-        mortar = s.walls;
+      if (settings && typeof c7 === "function") {
+        brick = c7(settings, settings.oa, 3);
       }
     } catch (_e) {}
-    try {
-      const pud = window.pudding_settings;
-      if (pud && pud.walls) brick = pud.walls;
-    } catch (_e2) {}
-    return { brick: brick, mortar: mortar };
+    return { brick: brick, mortar: brick };
   };
 
   window.tempWalls_tile_size = function tempWalls_tile_size(board) {
@@ -16166,7 +16164,7 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     const list = window.tempWalls_list(game);
     const fadeAt = window.TEMP_WALL_FADE_MOVES | 5;
     const orange = window.TEMP_WALL_FADE_ORANGE || "#ff6600";
-    const theme = window.tempWalls_theme_brick();
+    const theme = window.tempWalls_theme_brick(board.settings || board);
     const brick = theme.brick || "#5fa038";
     const now = Date.now();
     const blink = 0.5 + 0.5 * Math.sin(now * 0.014);
@@ -16228,28 +16226,6 @@ window.TempWallsMod.alterSnakeCode = function (code) {
       /if\(!r&&b===2&&window\.isMexicoActive&&window\.isMexicoActive\(\)\)return!0;if\(!r&&b===1&&window\.isMexicoActive&&window\.isMexicoActive\(\)\)return!0;return r\}/,
       "if(!r&&b===2&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===1&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===1&&((window.isTempWallsActive&&window.isTempWallsActive())||(window.tempWalls_has_any&&window.tempWalls_has_any(window.__remixGame))))return!0;return r}"
     );
-  }
-
-  if (
-    !twReplace(
-      "D5E temp walls pulse tail",
-      /if\(e7\(d\.settings,4\)\)for\(let k of d\.wb\.yb\)C5E\(d,c,k\.x,k\.y,g\);d\.ka\.globalAlpha=1\}\}\}/,
-      "if(e7(d.settings,4))for(let k of d.wb.yb)C5E(d,c,k.x,k.y,g);d.ka.globalAlpha=1}}try{window.tempWalls_drawPulse(a);}catch(_tw){}}"
-    )
-  ) {
-    if (
-      !twReplace(
-        "D5E temp walls pulse after bomb",
-        /D5E=function\(a,b\)\{if\(!window\.__bombFruitS5E\)\{try\{window\.__bombFruitS5E=s5E;window\.__bombFruitT6E=t6E;window\.__bombFruitX3E=x3E;\}catch\(_bfAud\)\{\}\}if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}for\(var c of a\.wb\.Ma\.Aa\)\{/,
-        "D5E=function(a,b){if(!window.__bombFruitS5E){try{window.__bombFruitS5E=s5E;window.__bombFruitT6E=t6E;window.__bombFruitX3E=x3E;}catch(_bfAud){}}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}try{window.tempWalls_drawPulse(a);}catch(_tw){}for(var c of a.wb.Ma.Aa){"
-      )
-    ) {
-      twReplace(
-        "D5E temp walls pulse native",
-        /D5E=function\(a,b\)\{for\(var c of a\.wb\.Ma\.Aa\)\{/,
-        "D5E=function(a,b){try{window.tempWalls_drawPulse(a);}catch(_tw){}for(var c of a.wb.Ma.Aa){"
-      );
-    }
   }
 
   // Classic / trophy path: walls paint on Ka.ka via F5E.render — pulse there.
@@ -22678,16 +22654,42 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   // fruit sprites (drawImage hook) so they sit on top, not under the apple.
   if (code.indexOf("isSlotMachineActive()&&window.isSlotMachineActive())&&D5E") < 0 &&
       code.indexOf("isSlotMachineActive&&window.isSlotMachineActive())&&D5E") < 0) {
-    smReplace(
-      "D5E call gate classic for slot",
-      /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,a\)/,
-      "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)||window.isSlotMachineActive&&window.isSlotMachineActive())&&D5E(this.Ja,a)"
-    );
-    smReplace(
-      "D5E call gate pixel for slot",
-      /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,dd\)/,
-      "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)||window.isSlotMachineActive&&window.isSlotMachineActive())&&D5E(this.Ja,dd)"
-    );
+    const slotD5EClassic =
+      "||window.isSlotMachineActive&&window.isSlotMachineActive())&&D5E(this.Ja,a)";
+    const slotD5EPixel =
+      "||window.isSlotMachineActive&&window.isSlotMachineActive())&&D5E(this.Ja,dd)";
+    if (
+      !smReplace(
+        "D5E call gate classic for slot",
+        /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_fading&&window\.tempWalls_has_fading\(this\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,a\)/,
+        "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
+          slotD5EClassic,
+        true
+      )
+    ) {
+      smReplace(
+        "D5E call gate classic for slot fallback",
+        /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,a\)/,
+        "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
+          slotD5EClassic
+      );
+    }
+    if (
+      !smReplace(
+        "D5E call gate pixel for slot",
+        /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_fading&&window\.tempWalls_has_fading\(this\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,dd\)/,
+        "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
+          slotD5EPixel,
+        true
+      )
+    ) {
+      smReplace(
+        "D5E call gate pixel for slot fallback",
+        /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,dd\)/,
+        "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
+          slotD5EPixel
+      );
+    }
   }
 
   // Stamp missing badges during D5E (before fruit) without drawing yet.
@@ -22695,10 +22697,19 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot ensure badges after bomb radii",
-      /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}try\{window\.tempWalls_drawPulse\(a\);\}catch\(_tw\)\{\}/,
-      'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}try{window.tempWalls_drawPulse(a);}catch(_tw){}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a);}catch(_sm){}}'
+        /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}for\(var c of a\.wb\.Ma\.Aa\)\{/,
+        'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a);}catch(_sm){}}for(var c of a.wb.Ma.Aa){',
+        true
       )
     ) {
+      smReplace(
+        "slot ensure badges after temp walls pulse",
+        /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}try\{window\.tempWalls_drawPulse\(a\);\}catch\(_tw\)\{\}for\(var c of a\.wb\.Ma\.Aa\)\{/,
+        'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}try{window.tempWalls_drawPulse(a);}catch(_tw){}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a);}catch(_sm){}}for(var c of a.wb.Ma.Aa){',
+        true
+      );
+    }
+    if (code.indexOf("slot_ensure_badges") < 0) {
       smReplace(
         "slot ensure badges at D5E start",
         /D5E=function\(a,b\)\{/,

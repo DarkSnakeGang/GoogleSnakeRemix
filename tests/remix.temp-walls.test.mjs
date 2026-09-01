@@ -29,7 +29,8 @@ describe("Temp Walls mode (offline)", () => {
     assert.match(init, /tempWalls_age/);
     assert.match(init, /TEMP_WALL_FADE_ORANGE\s*=\s*"#ff6600"/);
     assert.match(init, /tempWalls_drawPulse/);
-    assert.match(init, /tempWalls_lerp_color\(brick, orange/);
+    assert.match(init, /tempWalls_theme_brick/);
+    assert.match(init, /c7\(settings, settings\.oa, 3\)/);
     assert.match(init, /tempWalls_drawPulse\(this\.Ka,"ka"\)/);
     assert.match(init, /tempWalls_drawPulse\(td,"oa"\)/);
     assert.match(init, /tempWalls_has_fading/);
