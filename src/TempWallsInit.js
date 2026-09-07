@@ -448,7 +448,7 @@ window.TempWallsMod.alterSnakeCode = function (code) {
       // Slot Machine plants from slot_on_eating_fruit (no native f4E). Skip the
       // Sh-delta path so we don't plant a second batch after flags clear.
       if (!(window.isSlotMachineActive && window.isSlotMachineActive())) {
-        window.tempWalls_after_eat(g.wa, true);
+      window.tempWalls_after_eat(g.wa, true);
       }
     }
     window.__tempWallsLastSh = g.Sh;

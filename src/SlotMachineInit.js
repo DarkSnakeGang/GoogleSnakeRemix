@@ -121,7 +121,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   function smReplace(label, re, replacement, optional) {
     if (!code.match(re)) {
       if (!optional) {
-        console.error("SlotMachineMod: failed to find " + label);
+      console.error("SlotMachineMod: failed to find " + label);
       }
       return false;
     }
@@ -528,9 +528,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     // Native modes 0–21: v22 trophy_XX matches mode id (Dimension = 11).
     if (m >= 0 && m <= 21) {
       const id = m < 10 ? "0" + m : String(m);
-      return (
-        "https://www.google.com/logos/fnbx/snake_arcade/v22/trophy_" + id + ".png"
-      );
+    return (
+      "https://www.google.com/logos/fnbx/snake_arcade/v22/trophy_" + id + ".png"
+    );
     }
     return window.SLOT_MACHINE_ICON;
   };
@@ -2742,7 +2742,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       const origEnsure = window.ultraEnsureGameplayToggles;
       window.ultraEnsureGameplayToggles = function () {
         origEnsure.apply(this, arguments);
-        if (window.isSlotMachineActive && window.isSlotMachineActive()) {
+    if (window.isSlotMachineActive && window.isSlotMachineActive()) {
           window.slot_sync_ultra_disables && window.slot_sync_ultra_disables();
         }
       };
@@ -3112,7 +3112,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     try {
       if (qa && qa.pfa && qa.pfa.length > 0) return true;
       if (qa && qa.Yfa && qa.Yfa.length > 0) return true;
-    } catch (_e) {}
+          } catch (_e) {}
     return false;
   };
 
@@ -3412,7 +3412,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         Q4E.rWd.play();
       else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
     } catch (_e) {}
-    const score = game.Sh != null ? game.Sh : game.Oh;
+      const score = game.Sh != null ? game.Sh : game.Oh;
     // Native order: WIN → gotAll → ub/nj → end menu → ALL header/split → Mb.
     try {
       if (window.timeKeeper && typeof window.timeKeeper.gotAll === "function") {
@@ -4143,8 +4143,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           }
         }
       }
-      return false;
-    }
+        return false;
+      }
 
     if (m === 9) {
       const aa = g.Aa;
@@ -4193,7 +4193,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         const hold = window.slot_make_apple(mgr, bp);
         mgr.ka.push(hold);
         const gp = window.slot_free_pos(mgr, 0);
-        mgr.ka.pop();
+      mgr.ka.pop();
         if (gp) {
           window.__slotAllowSokoPlant = true;
           try {
@@ -4245,8 +4245,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           }
         }
       }
-      return false;
-    }
+        return false;
+      }
 
     if (chessMode) {
       const makeFn =
@@ -4286,14 +4286,14 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         const p2 = window.slot_free_pos(mgr, 0);
         mgr.ka.pop();
         if (!p2) return false;
-        const a = window.slot_make_apple(mgr, p1);
-        const b = window.slot_make_apple(mgr, p2);
+      const a = window.slot_make_apple(mgr, p1);
+      const b = window.slot_make_apple(mgr, p2);
         if (typeof window.chess_assign_piece === "function") {
           window.chess_assign_piece(a);
           window.chess_assign_piece(b);
-        } else {
-          a.isPiece = true;
-          b.isPiece = true;
+      } else {
+        a.isPiece = true;
+        b.isPiece = true;
           a.ChessPiece = a.ChessPiece || "pawn";
           b.ChessPiece = b.ChessPiece || "pawn";
         }
@@ -4301,7 +4301,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         delete b.slotMode;
         a.__slotShield = false;
         b.__slotShield = false;
-        mgr.ka.push(a, b);
+          mgr.ka.push(a, b);
         added = 2;
       }
 
@@ -4330,10 +4330,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       const poisonPos = window.slot_free_pos(mgr);
       if (poisonPos) {
         const poison = window.slot_make_apple(mgr, poisonPos);
-        poison.Oka = true;
-        poison.__slotPoison = true;
-        delete poison.slotMode;
-        mgr.ka.push(poison);
+      poison.Oka = true;
+      poison.__slotPoison = true;
+      delete poison.slotMode;
+      mgr.ka.push(poison);
         planted++;
       }
       window.slot_ensure_unique_fruit_types(mgr);
@@ -4371,7 +4371,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         window.burger_assign_timers_all([fruit]);
       } catch (_e) {}
     }
-    return true;
+      return true;
   };
 
   // Plant N spawn units: FIFO specials first, then random badge fruits.
@@ -5664,7 +5664,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   const slotWrap =
     "(window.slot_borderless_wrap&&window.slot_borderless_wrap())";
   if (code.indexOf("slot_borderless_wrap()") < 0) {
-    smReplace(
+      smReplace(
       "n7 include slot borderless wrap",
       /n7=function\(a\)\{return e7\(a,21\)\|\|e7\(a,4\)\}/,
       "n7=function(a){return e7(a,21)||e7(a,4)||" + slotWrap + "}"
@@ -6187,26 +6187,26 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     ) {
       /* upgraded prior slot splice hook */
     } else if (code.indexOf("slot_on_eating_fruit") < 0) {
-      const spliceRe2 =
-        /(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\),window\.isBombFruitActive&&window\.isBombFruitActive\(\)&&\(window\.bombFruit_after_respawn\(a\.wa,0,!1\),0\))/;
-      if (code.match(spliceRe2)) {
-        smReplace(
-          "slot eat before splice",
-          spliceRe2,
+    const spliceRe2 =
+      /(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\),window\.isBombFruitActive&&window\.isBombFruitActive\(\)&&\(window\.bombFruit_after_respawn\(a\.wa,0,!1\),0\))/;
+    if (code.match(spliceRe2)) {
+      smReplace(
+        "slot eat before splice",
+        spliceRe2,
           "(window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.wa.ka[k]),a.wa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.wa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
+      );
+    } else {
+      const simple =
+        /(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\))/;
+      if (code.match(simple)) {
+        smReplace(
+          "slot eat before splice simple",
+          simple,
+            "(window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.wa.ka[k]),a.wa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.wa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a))"
         );
       } else {
-        const simple =
-          /(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\))/;
-        if (code.match(simple)) {
-          smReplace(
-            "slot eat before splice simple",
-            simple,
-            "(window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.wa.ka[k]),a.wa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.wa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a))"
-          );
-        } else {
-          console.error("SlotMachineMod: failed to find fruit splice eat hook");
-        }
+        console.error("SlotMachineMod: failed to find fruit splice eat hook");
+      }
       }
     } else {
       console.error("SlotMachineMod: failed to add portal twin flush on eat splice");
@@ -6234,7 +6234,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         "if(e7(this.settings,2))(R3E(this),window.enforceUniquePortalFruitTypes&&window.enforceUniquePortalFruitTypes(this));else{for(var n of this.ka)n.type=-1;window.ensureCustomBowlDimensionOka&&window.ensureCustomBowlDimensionOka(this);for(n of this.ka)n.type=Q3E(this)};window.isSlotMachineActive&&window.isSlotMachineActive()&&window.slot_after_layout&&window.slot_after_layout(this);"
       )
     ) {
-      smReplace(
+    smReplace(
         "slot after layout on apple reset",
         /if\(e7\(this\.settings,2\)\)R3E\(this\);else\{for\(var n of this\.ka\)n\.type=-1;window\.ensureCustomBowlDimensionOka&&window\.ensureCustomBowlDimensionOka\(this\);for\(n of this\.ka\)n\.type=Q3E\(this\)\};/,
         "if(e7(this.settings,2))R3E(this);else{for(var n of this.ka)n.type=-1;window.ensureCustomBowlDimensionOka&&window.ensureCustomBowlDimensionOka(this);for(n of this.ka)n.type=Q3E(this)};window.isSlotMachineActive&&window.isSlotMachineActive()&&window.slot_after_layout&&window.slot_after_layout(this);"
@@ -6274,15 +6274,15 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         'if((window.isTempWallsActive&&window.isTempWallsActive())||(window.tempWalls_has_any&&window.tempWalls_has_any(this))){try{window.tempWalls_tick_logic(this);}catch(_tw){console.error("TempWallsMod: tick failed",_tw);}}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_tick_logic(this);}catch(_sm){console.error("SlotMachineMod: tick failed",_sm);}}'
       );
     } else {
-      const tickBf =
+    const tickBf =
         /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_tick_logic\(this\);\}catch\(_bf\)\{console\.error\("BombFruitMod: tick failed",_bf\);\}\}/;
-      if (code.match(tickBf)) {
-        smReplace(
-          "slot tick after bomb",
-          tickBf,
+    if (code.match(tickBf)) {
+      smReplace(
+        "slot tick after bomb",
+        tickBf,
           'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_tick_logic(this);}catch(_bf){console.error("BombFruitMod: tick failed",_bf);}}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_tick_logic(this);}catch(_sm){console.error("SlotMachineMod: tick failed",_sm);}}'
-        );
-      } else {
+      );
+    } else {
         console.error("SlotMachineMod: failed to find tick hook");
       }
     }
@@ -6375,7 +6375,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         '(this.ka.drawImage(f,0,0,g,g,-d/2,-d/2,d,d),b&&!b.Oka&&b.burgerGrey>0&&(this.ka.globalAlpha=Math.min(.85,b.burgerGrey/110),this.ka.fillStyle="#1a1a1a",this.ka.beginPath(),this.ka.arc(0,0,d*.32,0,6.283185307179586),this.ka.fill(),this.ka.globalAlpha=1),window.slot_draw_badge_at_fruit&&window.slot_draw_badge_at_fruit(this,b,d));'
       )
     ) {
-      smReplace(
+    smReplace(
         "slot badge after fruit drawImage",
         /this\.ka\.drawImage\(f,0,0,g,g,-d\/2,-d\/2,d,d\);/,
         "this.ka.drawImage(f,0,0,g,g,-d/2,-d/2,d,d);window.slot_draw_badge_at_fruit&&window.slot_draw_badge_at_fruit(this,b,d);"
@@ -6410,12 +6410,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (!url) return;
     if (!window.__slotBadgeCache) window.__slotBadgeCache = Object.create(null);
     let img = window.__slotBadgeCache[url];
-    if (!img) {
-      img = new Image();
+      if (!img) {
+        img = new Image();
       img.decoding = "async";
-      img.src = url;
-      window.__slotBadgeCache[url] = img;
-    }
+        img.src = url;
+        window.__slotBadgeCache[url] = img;
+      }
     if (!img.complete || !img.naturalWidth) return;
     const d = fruitSize > 0 ? fruitSize : 16;
     const size = Math.max(6, (d * 0.45) | 0);
