@@ -851,3 +851,61 @@ test(
     }
   }
 );
+
+test(
+  "non-last Dice fruit removes one pair without spawning a ghost",
+  { skip: !runBrowser },
+  async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 333, headless: true });
+    try {
+      await h.start({
+        mode: "fear",
+        count: COUNT.DICE,
+        size: SIZE.NORMAL,
+      });
+      const result = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        window.fear_rebuild_grid(g);
+        const baseFresh = g.wa.ka.find((f) => !window.fear_is_ghost(f));
+        const baseGhost = g.wa.ka.find((f) => window.fear_is_ghost(f));
+        const copy = (source, x, y, ghost) => {
+          const fruit = Object.assign(
+            Object.create(Object.getPrototypeOf(source)),
+            source
+          );
+          fruit.pos = source.pos.clone();
+          fruit.pos.x = x;
+          fruit.pos.y = y;
+          delete fruit.__fearOwnerId;
+          delete fruit.__fearPairId;
+          fruit.__fearGhost = ghost;
+          fruit.Oka = false;
+          return fruit;
+        };
+        g.wa.ka.push(
+          copy(baseFresh, 3, 3, false),
+          copy(baseGhost, 4, 3, true),
+          copy(baseFresh, 5, 3, false),
+          copy(baseGhost, 6, 3, true)
+        );
+        window.fear_reconcile_pairs(g, true);
+        const target = g.wa.ka.find((f) => !window.fear_is_ghost(f));
+        const next = window.fear_step(g.oa.ka[0], g.oa.direction, g);
+        target.pos.x = next.x;
+        target.pos.y = next.y;
+        window.fear_rebuild_grid(g);
+        g.tick();
+        return {
+          total: g.wa.ka.length,
+          ghosts: g.wa.ka.filter((f) => window.fear_is_ghost(f)).length,
+          fresh: g.wa.ka.filter((f) => !window.fear_is_ghost(f)).length,
+        };
+      });
+      assert.deepEqual(result, { total: 4, ghosts: 2, fresh: 2 });
+      assert.deepEqual(h.modErrors(), []);
+    } finally {
+      await h.close();
+    }
+  }
+);

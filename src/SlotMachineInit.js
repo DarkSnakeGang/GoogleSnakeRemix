@@ -6024,6 +6024,11 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("slot_block_e4E") < 0) {
     if (
       !smReplace(
+        "slot block e4E after Fear gate",
+        /e7\(a\.settings,10\)&&!f&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&\(\(window\.fear_uses_ghost_pairs&&window\.fear_uses_ghost_pairs\(window\.__remixGame\)\)\?window\.fear_native_ghost_top_up\(a,e4E\):e4E\(a\)\)/,
+        "e7(a.settings,10)&&!f&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+      ) &&
+      !smReplace(
         "slot block e4E after burger gate",
         /e7\(a\.settings,10\)&&!f&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&e4E\(a\)/,
         "e7(a.settings,10)&&!f&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&e4E(a)"
@@ -6066,6 +6071,11 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   }
   if (code.indexOf("slot_block_g4E") < 0) {
     if (
+      !smReplace(
+        "slot block g4E top-up after Fear",
+        /b<a\.ka\.length\/2&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&\(\(window\.fear_uses_ghost_pairs&&window\.fear_uses_ghost_pairs\(window\.__remixGame\)\)\?window\.fear_native_ghost_top_up\(a,e4E\):e4E\(a\)\)/,
+        "b<a.ka.length/2&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_g4E=1))&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+      ) &&
       !smReplace(
         "slot block g4E top-up after burger",
         /b<a\.ka\.length\/2&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&e4E\(a\)/,

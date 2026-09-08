@@ -17409,6 +17409,24 @@ window.fear_before_native_fruit_eat =
     return updated >= 0 ? updated : nativeIndex;
   };
 
+window.fear_native_ghost_top_up =
+  function fear_native_ghost_top_up(mgr, nativeTopUp) {
+    const g = window.__remixGame;
+    const list = mgr && mgr.ka;
+    if (!g || !list || typeof nativeTopUp !== "function") return false;
+    window.fear_sync_fruit_types(g);
+    const ghosts = list.filter(function (fruit) {
+      return window.fear_is_ghost(fruit);
+    }).length;
+    const fresh = list.length - ghosts;
+    if (ghosts >= fresh) return false;
+    nativeTopUp(mgr);
+    window.fear_pair_new_fruits(g);
+    window.fear_sync_fruit_types(g);
+    window.fear_reconcile_pairs(g, true);
+    return true;
+  };
+
 window.fear_direct_contact = function fear_direct_contact(game, fruit) {
   if (!fruit) return false;
   const head = window.fear_head(game);
@@ -17665,6 +17683,18 @@ window.FearMod.alterSnakeCode = function (code) {
     "skip native poison pair removal for Fear",
     /e7\(a\.settings,10\)&&i4E\(a\.wa,([a-zA-Z0-9_$]{1,6}),([a-zA-Z0-9_$]{1,6}),a\.Lc\.bind\(a\)\)&&\1--/,
     "e7(a.settings,10)&&!(window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(a))&&i4E(a.wa,$1,$2,a.Lc.bind(a))&&$1--"
+  );
+
+  fearReplace(
+    "conditional Fear poison twin spawn",
+    /e7\(a\.settings,10\)&&!f&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&e4E\(a\)/,
+    "e7(a.settings,10)&&!f&&!(window.isBurgerActive&&window.isBurgerActive())&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+  );
+
+  fearReplace(
+    "conditional Fear poison top-up",
+    /b<a\.ka\.length\/2&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&e4E\(a\)/,
+    "b<a.ka.length/2&&!(window.isBurgerActive&&window.isBurgerActive())&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
   );
 
   fearReplace(
@@ -23748,6 +23778,11 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("slot_block_e4E") < 0) {
     if (
       !smReplace(
+        "slot block e4E after Fear gate",
+        /e7\(a\.settings,10\)&&!f&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&\(\(window\.fear_uses_ghost_pairs&&window\.fear_uses_ghost_pairs\(window\.__remixGame\)\)\?window\.fear_native_ghost_top_up\(a,e4E\):e4E\(a\)\)/,
+        "e7(a.settings,10)&&!f&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+      ) &&
+      !smReplace(
         "slot block e4E after burger gate",
         /e7\(a\.settings,10\)&&!f&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&e4E\(a\)/,
         "e7(a.settings,10)&&!f&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&e4E(a)"
@@ -23790,6 +23825,11 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   }
   if (code.indexOf("slot_block_g4E") < 0) {
     if (
+      !smReplace(
+        "slot block g4E top-up after Fear",
+        /b<a\.ka\.length\/2&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&\(\(window\.fear_uses_ghost_pairs&&window\.fear_uses_ghost_pairs\(window\.__remixGame\)\)\?window\.fear_native_ghost_top_up\(a,e4E\):e4E\(a\)\)/,
+        "b<a.ka.length/2&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_g4E=1))&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+      ) &&
       !smReplace(
         "slot block g4E top-up after burger",
         /b<a\.ka\.length\/2&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&e4E\(a\)/,
