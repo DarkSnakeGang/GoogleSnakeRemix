@@ -11987,6 +11987,20 @@ window.ChessMod.alterSnakeCode = function (code) {
     console.error("ChessMod: failed to find score increment");
   }
 
+  // The native 25/50/100 split helper runs after every non-poison collision,
+  // even when Chess deliberately leaves the score unchanged. Do not repeat a
+  // milestone split when the collided object was a scoreless chess piece.
+  const nativeMilestoneSplit =
+    /q7E\(a\.header,a\.Sh,a\.ticks,a\.Fb\)/;
+  if (code.match(nativeMilestoneSplit)) {
+    code = code.assertReplace(
+      nativeMilestoneSplit,
+      "window.just_ate!=='piece'&&q7E(a.header,a.Sh,a.ticks,a.Fb)"
+    );
+  } else {
+    console.error("ChessMod: failed to gate native 25/50/100 split");
+  }
+
   // Don't grow when eating a chess piece. This runs before the score hook, so the
   // piece is still in appleArray and can be detected live.
   let snakeLength = new RegExp(

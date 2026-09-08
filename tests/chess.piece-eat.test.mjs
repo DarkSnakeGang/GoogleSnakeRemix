@@ -22,6 +22,10 @@ describe("chess double-eat law (offline)", () => {
       /head_state!=='OPEN'&&window\.chess_on_second_piece_eat/
     );
     assert.match(chess, /chess_on_second_piece_eat\(_ae\)/);
+    assert.match(
+      chess,
+      /window\.just_ate!=='piece'&&q7E\(a\.header,a\.Sh,a\.ticks,a\.Fb\)/
+    );
     assert.match(chess, /While carrying a piece, keep full Chess locks/);
     assert.match(chess, /Piece mode always runs the lock\/unlock dance/);
     assert.match(chess, /prefer slot_free_pos/);
