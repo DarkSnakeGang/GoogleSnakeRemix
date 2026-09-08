@@ -80,6 +80,17 @@ window.SlotMachineMod.runCodeBefore = function () {
     29: "bad",
   };
 
+  // Fear is appended immediately before Slot Machine, so use its runtime id
+  // instead of freezing the badge to a numeric slot.
+  if (
+    window.FEAR_MODE != null &&
+    window.SLOT_MACHINE_POOL.indexOf(window.FEAR_MODE | 0) < 0
+  ) {
+    window.SLOT_MACHINE_POOL.push(window.FEAR_MODE | 0);
+    window.SLOT_MACHINE_MODE_LABELS[window.FEAR_MODE | 0] = "Fear";
+    window.SLOT_BADGE_POLARITY[window.FEAR_MODE | 0] = "bad";
+  }
+
   window.uiImage =
     window.uiImage ||
     function (src) {
@@ -293,6 +304,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       window.tempWalls_clear_all &&
         window.tempWalls_clear_all(window.__remixGame);
     } catch (_tw) {}
+    try {
+      window.fear_reset_state && window.fear_reset_state();
+    } catch (_fr) {}
   };
 
   window.slot_shuffle_bag = function slot_shuffle_bag() {
@@ -386,10 +400,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     return window.slot_set_enabled_modes(cur);
   };
 
-  // Remix-added Slot badges: Candy (23) through Temp Walls (29).
+  // Remix-added Slot badges: Candy (23) through Fear (runtime id).
   window.slot_is_remix_added_mode = function slot_is_remix_added_mode(mode) {
     const m = mode | 0;
-    return m >= 23 && m <= 29;
+    const last =
+      window.FEAR_MODE != null ? window.FEAR_MODE | 0 : 29;
+    return m >= 23 && m <= last;
   };
 
   // "Deselect all" keeps the earliest pool badge only (cannot empty the set).
@@ -518,6 +534,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (m === 27 && window.MEXICO_ICON) return window.MEXICO_ICON;
     if (m === 28 && window.BOMB_FRUIT_ICON) return window.BOMB_FRUIT_ICON;
     if (m === 29 && window.TEMP_WALLS_ICON) return window.TEMP_WALLS_ICON;
+    if (
+      window.FEAR_MODE != null &&
+      m === (window.FEAR_MODE | 0) &&
+      window.FEAR_ICON
+    ) {
+      return window.FEAR_ICON;
+    }
     // Prefer live #trophy src (index === mode id, including Dimension at 11).
     try {
       const root = document.querySelector("#trophy");
@@ -1157,6 +1180,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         delete f.__slotPortalTwin;
         delete f.__slotBombPlant;
         delete f.__slotPoison;
+        delete f.__slotFearGhost;
+        delete f.__fearGhost;
+        delete f.__fearOwnerId;
         delete f.__slotFromChessUnlock;
         delete f.__slotNbaPrior;
         delete f.__slotNbaPriorSaved;
@@ -2203,6 +2229,16 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
 
     window.__slotPrevActive = prev;
     window.__slotActive = next;
+    if (
+      window.FEAR_MODE != null &&
+      (prev === (window.FEAR_MODE | 0) ||
+        next === (window.FEAR_MODE | 0) ||
+        (window.fear_has_slot_ghost && window.fear_has_slot_ghost(g)))
+    ) {
+      try {
+        window.fear_rebuild_grid && window.fear_rebuild_grid(g);
+      } catch (_fr) {}
+    }
 
     // Borderless (4): wrap-only via slot_borderless_wrap / n7 — never sticky
     // e7(4). Do not mutate settings.ka.
@@ -3228,6 +3264,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (window.slot_board_has_playable_content(game, mgr)) return false;
     // Poison badge eat intentionally leaves no refill — empty is not a win.
     if ((window.__slotActive | 0) === 10) return false;
+    // Fear badge has the same transient empty phase before its special unit.
+    if (
+      window.FEAR_MODE != null &&
+      (window.__slotActive | 0) === (window.FEAR_MODE | 0)
+    ) {
+      return false;
+    }
     const g = game || window.__remixGame;
     window.slot_trigger_win(g);
     return true;
@@ -3247,6 +3290,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         const f = list[i];
         if (!f) continue;
         if (eaten && f === eaten) continue;
+        if (f.__slotFearGhost) return true;
         if (f.Oka) continue; // poison hazard — not playable fruit
         return true; // regular / portal / chess piece / badged fruit
       }
@@ -3609,6 +3653,14 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     const sokoOcc = window.slot_add_soko_keys(game, new Set(), null);
     const ok = function (p) {
       if (!p || p.x == null || p.y == null) return false;
+      if (
+        window.isFearActive &&
+        window.isFearActive() &&
+        window.fear_spawn_candidate_allowed &&
+        !window.fear_spawn_candidate_allowed(p, game)
+      ) {
+        return false;
+      }
       if (window.slot_pos_in_wall(game, p.x, p.y)) return false;
       if (window.slot_pos_on_bridge(game, p.x, p.y)) return false;
       // While Slot Mexico mid border is up, never spawn fruit on mid-y
@@ -3722,6 +3774,14 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         if (
           window.chess_outside_spawn_radius &&
           !window.chess_outside_spawn_radius(g, pos)
+        ) {
+          continue;
+        }
+        if (
+          window.isFearActive &&
+          window.isFearActive() &&
+          window.fear_spawn_candidate_allowed &&
+          !window.fear_spawn_candidate_allowed(pos, g)
         ) {
           continue;
         }
@@ -4011,6 +4071,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.slot_is_store_special = function slot_is_store_special(mode) {
     const m = mode | 0;
     if (m === 2 || m === 27 || m === 8 || m === 9 || m === 10) return true;
+    if (window.FEAR_MODE != null && m === (window.FEAR_MODE | 0)) return true;
     return !!(window.slot_is_chess_mode && window.slot_is_chess_mode(m));
   };
 
@@ -4315,6 +4376,35 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       return added > 0;
     }
 
+    if (window.FEAR_MODE != null && m === (window.FEAR_MODE | 0)) {
+      // Fear badge mirrors Poison's special unit, but the hazard owns a
+      // persistent cloned Fear-arrow cross and triggers timed Fear.
+      let planted = 0;
+      const safePos = window.slot_free_pos(mgr);
+      if (safePos) {
+        const fruit = window.slot_make_apple(mgr, safePos);
+        fruit.Oka = false;
+        window.assignSlotMode(fruit);
+        mgr.ka.push(fruit);
+        planted++;
+      }
+      const ghostPos = window.slot_free_pos(mgr);
+      if (ghostPos) {
+        const ghost = window.slot_make_apple(mgr, ghostPos);
+        ghost.Oka = true;
+        ghost.__slotFearGhost = true;
+        delete ghost.slotMode;
+        mgr.ka.push(ghost);
+        planted++;
+      }
+      try {
+        window.fear_after_respawn && window.fear_after_respawn(mgr);
+      } catch (_fr) {}
+      window.slot_ensure_unique_fruit_types(mgr);
+      window.appleArray = mgr.ka;
+      return planted > 0;
+    }
+
     if (m === 10) {
       // Poison badge: one random-badge fruit + one badge-less poison hazard.
       // Native g4E/e4E/l4E top-up stays gated under Slot (no half-board Okas).
@@ -4564,7 +4654,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       !window.__slotRespawnedThisEat &&
       em !== 8 &&
       em !== 9 &&
-      em !== 10
+      em !== 10 &&
+      (window.FEAR_MODE == null || em !== (window.FEAR_MODE | 0))
     ) {
       if (mgr && mgr.ka && (addedHint | 0) > 0) {
         const n = Math.min(addedHint | 0, mgr.ka.length);
@@ -5618,7 +5709,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("isSlotMachineActive()&&(b===window.__slotActive") < 0 &&
       code.indexOf("isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE") < 0) {
     const slotE7Tail =
-      "if(!r&&window.isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE){if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27&&b!==29)return!0;if(b===5&&window.__slotTwinLive)return!0;if(b===1&&window.slot_has_walls&&window.slot_has_walls())return!0;if(b===2&&window.slot_has_portal_pairs&&window.slot_has_portal_pairs(window.__remixGame&&window.__remixGame.wa))return!0;if(b===8&&window.slot_has_keys&&window.slot_has_keys())return!0;if(b===9&&window.slot_has_sokoboxes&&window.slot_has_sokoboxes())return!0;if(b===10&&((window.__slotActive|0)===25||window.slot_has_oka&&window.slot_has_oka(window.__remixGame&&window.__remixGame.wa)))return!0;if(b===12&&window.slot_has_mines&&window.slot_has_mines())return!0;if(b===13&&window.slot_has_statues&&window.slot_has_statues())return!0;if(b===16&&window.slot_has_arrows&&window.slot_has_arrows())return!0;if(b===19&&window.slot_has_gates&&window.slot_has_gates())return!0;if(b===20&&window.slot_has_bridges&&window.slot_has_bridges())return!0;if(b===21&&window.__slotActive===21)return!0;if(b===15&&(window.__slotActive===15||window.slot_has_shields&&window.slot_has_shields(window.__remixGame&&window.__remixGame.wa)||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive)||window.__slotActive===28||window.slot_has_armed_bombs&&window.slot_has_armed_bombs()||window.head_state&&window.head_state!==\"OPEN\"))return!0;}return r}";
+      "if(!r&&window.isSlotMachineActive&&window.isSlotMachineActive()&&(a.ub===window.SLOT_MACHINE_MODE||a.ub==='slot_machine'||a.ob==='slot_machine')){if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27&&b!==29)return!0;if(b===5&&window.__slotTwinLive)return!0;if(b===1&&window.slot_has_walls&&window.slot_has_walls())return!0;if(b===2&&window.slot_has_portal_pairs&&window.slot_has_portal_pairs(window.__remixGame&&window.__remixGame.wa))return!0;if(b===8&&window.slot_has_keys&&window.slot_has_keys())return!0;if(b===9&&window.slot_has_sokoboxes&&window.slot_has_sokoboxes())return!0;if(b===10&&((window.__slotActive|0)===25||window.slot_has_oka&&window.slot_has_oka(window.__remixGame&&window.__remixGame.wa)))return!0;if(b===12&&window.slot_has_mines&&window.slot_has_mines())return!0;if(b===13&&window.slot_has_statues&&window.slot_has_statues())return!0;if(b===16&&window.slot_has_arrows&&window.slot_has_arrows())return!0;if(b===19&&window.slot_has_gates&&window.slot_has_gates())return!0;if(b===20&&window.slot_has_bridges&&window.slot_has_bridges())return!0;if(b===21&&window.__slotActive===21)return!0;if(b===15&&(window.__slotActive===15||window.slot_has_shields&&window.slot_has_shields(window.__remixGame&&window.__remixGame.wa)||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive)||window.__slotActive===28||window.slot_has_armed_bombs&&window.slot_has_armed_bombs()||window.head_state&&window.head_state!==\"OPEN\"))return!0;}return r}";
+    const e7Fear =
+      /if\(!r&&b===10&&window\.FEAR_MODE!=null\)\{if\(a\.ub===window\.FEAR_MODE\|\|a\.ub==='fear'\|\|a\.ob==='fear'\)return!0;if\(\(a\.ub===22\|\|a\.ub==='blender'\)&&a\.rSa&&a\.rSa\.has\(window\.FEAR_MODE\)\)return!0;if\(a\.Qa&&a\.Lc&&\(a\.Lc\.has\(window\.FEAR_MODE\)\|\|a\.Lc\.has\('fear'\)\)\)return!0;\}return r\}/;
     const e7TempWalls =
       /if\(!r&&b===1&&\(\(window\.isTempWallsActive&&window\.isTempWallsActive\(\)\)\|\|\(window\.tempWalls_has_any&&window\.tempWalls_has_any\(window\.__remixGame\)\)\)\)return!0;return r\}/;
     const e7Bomb =
@@ -5628,6 +5721,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     const e7Cat =
       /if\(!r&&b===21&&window\.isCatActive&&window\.isCatActive\(\)&&\(window\.cat_peaceful_ticks\|0\)>0\)return!0;return r\}/;
     smTryReplace("e7 chain for slot leftovers", [
+      {
+        label: "e7 slot machine after Fear",
+        re: e7Fear,
+        rep:
+          "if(!r&&b===10&&window.FEAR_MODE!=null){if(a.ub===window.FEAR_MODE||a.ub==='fear'||a.ob==='fear')return!0;if((a.ub===22||a.ub==='blender')&&a.rSa&&a.rSa.has(window.FEAR_MODE))return!0;if(a.Qa&&a.Lc&&(a.Lc.has(window.FEAR_MODE)||a.Lc.has('fear')))return!0;}" +
+          slotE7Tail,
+      },
       {
         label: "e7 slot machine after temp walls",
         re: e7TempWalls,
@@ -6520,6 +6620,17 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   // Cat life spend while Slot Machine even when Cat not the roll:
   // Oa already checks isCatActive — our wrap keeps it true when lives>0.
 
+  // Run after every Slot regex that still names d4E. The native picker remains
+  // authoritative; Fear only filters its result before fruit construction.
+  if (code.indexOf("window.fear_spawn_pick(d4E,") < 0) {
+    const nativeSpawnCalls = code.match(/\bd4E\(/g);
+    if (nativeSpawnCalls && nativeSpawnCalls.length) {
+      code = code.replace(/\bd4E\(/g, "window.fear_spawn_pick(d4E,");
+    } else {
+      console.error("SlotMachineMod: failed to find d4E calls for Fear");
+    }
+  }
+
   return code;
 };
 
@@ -7147,6 +7258,9 @@ window.SlotMachineMod.runCodeAfter = function () {
         delete el.__slotPortalTwin;
         delete el.__slotBombPlant;
         delete el.__slotPoison;
+        delete el.__slotFearGhost;
+        delete el.__fearGhost;
+        delete el.__fearOwnerId;
         delete el.__slotNbaPrior;
         delete el.__slotNbaPriorSaved;
         el.__slotShield = false;

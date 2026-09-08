@@ -1067,6 +1067,7 @@ window.RemixMod.runCodeBefore = function () {
   window.MexicoMod.runCodeBefore();
   window.BombFruitMod.runCodeBefore();
   window.TempWallsMod.runCodeBefore();
+  window.FearMod.runCodeBefore();
   window.SlotMachineMod.runCodeBefore();
   window.DiceCounts.runCodeBefore();
   window.ClusterCount.runCodeBefore();
@@ -1111,6 +1112,11 @@ window.RemixMod.alterSnakeCode = function (code) {
     console.error("RemixMod: TempWallsMod.alterSnakeCode failed", e);
   }
   try {
+    code = window.FearMod.alterSnakeCode(code);
+  } catch (e) {
+    console.error("RemixMod: FearMod.alterSnakeCode failed", e);
+  }
+  try {
     code = window.SlotMachineMod.alterSnakeCode(code);
   } catch (e) {
     console.error("RemixMod: SlotMachineMod.alterSnakeCode failed", e);
@@ -1142,6 +1148,7 @@ window.RemixMod.runCodeAfter = function () {
   window.MexicoMod.runCodeAfter && window.MexicoMod.runCodeAfter();
   window.BombFruitMod.runCodeAfter && window.BombFruitMod.runCodeAfter();
   window.TempWallsMod.runCodeAfter && window.TempWallsMod.runCodeAfter();
+  window.FearMod.runCodeAfter && window.FearMod.runCodeAfter();
   window.SlotMachineMod.runCodeAfter && window.SlotMachineMod.runCodeAfter();
   // Remove leftover empty placeholders so Cat/Mexico sit flush after Burger.
   // Also pack to 6 columns so the extra modes fit without a clipped 6th row.

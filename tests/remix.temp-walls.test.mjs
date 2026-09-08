@@ -60,7 +60,7 @@ describe("Temp Walls mode (offline)", () => {
     const slot = fs.readFileSync(SLOT, "utf8");
     assert.match(slot, /29:\s*"Temp Walls"/);
     assert.match(slot, /29:\s*"bad"/);
-    assert.match(slot, /m\s*>=\s*23\s*&&\s*m\s*<=\s*29/);
+    assert.match(slot, /m\s*>=\s*23\s*&&\s*m\s*<=\s*last/);
     assert.match(slot, /m === 29 && window\.TEMP_WALLS_ICON/);
     assert.match(slot, /b!==27&&b!==29/);
     assert.match(slot, /m === 29[\s\S]*?tempWalls_spawn_on_eat/);

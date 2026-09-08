@@ -181,7 +181,7 @@ export async function launchHarness(opts = {}) {
         (e) =>
           e.type === "pageerror" ||
           (e.type === "error" &&
-            (/^(CandyMod|ChessMod|BurgerMod|CatMod|MexicoMod|RemixMod|RemixUltraMod):/.test(
+            (/^(CandyMod|ChessMod|BurgerMod|CatMod|MexicoMod|BombFruitMod|TempWallsMod|FearMod|SlotMachineMod|RemixMod|RemixUltraMod):/.test(
               e.text
             ) ||
               /failed to (find|patch|expose)/i.test(e.text) ||

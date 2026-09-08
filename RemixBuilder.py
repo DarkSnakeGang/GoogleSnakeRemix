@@ -1,6 +1,7 @@
 import urllib.request
 import os
 import subprocess
+import base64
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
@@ -19,6 +20,7 @@ REMIX_PARTS = [
     "src/MexicoInit.js",
     "src/BombFruitInit.js",
     "src/TempWallsInit.js",
+    "src/FearInit.js",
     "src/SlotMachineInit.js",
     "src/CatSpeedInit.js",
     "src/DiceCountsInit.js",
@@ -55,13 +57,32 @@ def download(url, dest):
     urllib.request.urlretrieve(url, dest)
 
 
+FEAR_ASSET_TOKENS = {
+    "__FEAR_MODE_ICON__": "assets/fear-mode-icon.png",
+    "__FEAR_GHOST_NORMAL__": "assets/fear-ghost-normal.png",
+    "__FEAR_GHOST_PIXEL__": "assets/fear-ghost-pixel.png",
+    "__FEAR_GHOST_REAL__": "assets/fear-ghost-real.png",
+}
+
+
+def inline_asset_tokens(text):
+    for token, relative_path in FEAR_ASSET_TOKENS.items():
+        if token not in text:
+            continue
+        path = os.path.join(BASE, relative_path)
+        with open(path, "rb") as image:
+            encoded = base64.b64encode(image.read()).decode("ascii")
+        text = text.replace(token, "data:image/png;base64," + encoded)
+    return text
+
+
 def concat(out_path, parts):
     with open(out_path, "w", encoding="utf-8") as out:
         for name in parts:
             path = os.path.join(BASE, name)
             print(f"Appending {name}")
             with open(path, "r", encoding="utf-8") as f:
-                out.write(f.read())
+                out.write(inline_asset_tokens(f.read()))
                 out.write("\n")
     print(f"Wrote {out_path}")
 

@@ -97,6 +97,12 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     if (window.BOMB_FRUIT_MODE != null) {
       window.modeToTxt[window.BOMB_FRUIT_MODE] = { name: "Bomb Fruit" };
     }
+    if (window.TEMP_WALLS_MODE != null) {
+      window.modeToTxt[window.TEMP_WALLS_MODE] = { name: "Temp Walls" };
+    }
+    if (window.FEAR_MODE != null) {
+      window.modeToTxt[window.FEAR_MODE] = { name: "Fear" };
+    }
     if (window.SLOT_MACHINE_MODE != null) {
       window.modeToTxt[window.SLOT_MACHINE_MODE] = { name: "Slot Machine" };
     }
@@ -113,6 +119,8 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     window.ModeRegistry.LABELS.cat = "Cat";
     window.ModeRegistry.LABELS.mexico = "Mexico";
     window.ModeRegistry.LABELS.bomb_fruit = "Bomb Fruit";
+    window.ModeRegistry.LABELS.temp_walls = "Temp Walls";
+    window.ModeRegistry.LABELS.fear = "Fear";
     window.ModeRegistry.LABELS.slot_machine = "Slot Machine";
 
     if (window.ModeRegistry.listActiveModes.__remix) return;
@@ -157,6 +165,10 @@ window.RemixSpeedInfo.runCodeBefore = function () {
           id = "mexico";
         } else if (window.BOMB_FRUIT_MODE != null && i === window.BOMB_FRUIT_MODE) {
           id = "bomb_fruit";
+        } else if (window.TEMP_WALLS_MODE != null && i === window.TEMP_WALLS_MODE) {
+          id = "temp_walls";
+        } else if (window.FEAR_MODE != null && i === window.FEAR_MODE) {
+          id = "fear";
         } else if (window.SLOT_MACHINE_MODE != null && i === window.SLOT_MACHINE_MODE) {
           id = "slot_machine";
         } else {
@@ -492,6 +504,16 @@ window.RemixSpeedInfo.runCodeBefore = function () {
         id: window.BOMB_FRUIT_MODE,
         icon: window.BOMB_FRUIT_ICON,
         name: "Bomb Fruit",
+      },
+      {
+        id: window.TEMP_WALLS_MODE,
+        icon: window.TEMP_WALLS_ICON,
+        name: "Temp Walls",
+      },
+      {
+        id: window.FEAR_MODE,
+        icon: window.FEAR_ICON,
+        name: "Fear",
       },
       {
         id: window.SLOT_MACHINE_MODE,

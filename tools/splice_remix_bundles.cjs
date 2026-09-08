@@ -14,6 +14,7 @@ const REMIX_PARTS = [
   "src/MexicoInit.js",
   "src/BombFruitInit.js",
   "src/TempWallsInit.js",
+  "src/FearInit.js",
   "src/SlotMachineInit.js",
   "src/CatSpeedInit.js",
   "src/DiceCountsInit.js",
@@ -44,6 +45,22 @@ const ULTRA_PARTS = [
   "src/UltraInit.js",
 ];
 
+const FEAR_ASSET_TOKENS = {
+  __FEAR_MODE_ICON__: "assets/fear-mode-icon.png",
+  __FEAR_GHOST_NORMAL__: "assets/fear-ghost-normal.png",
+  __FEAR_GHOST_PIXEL__: "assets/fear-ghost-pixel.png",
+  __FEAR_GHOST_REAL__: "assets/fear-ghost-real.png",
+};
+
+function inlineAssetTokens(text) {
+  for (const [token, relative] of Object.entries(FEAR_ASSET_TOKENS)) {
+    if (!text.includes(token)) continue;
+    const encoded = fs.readFileSync(path.join(base, relative)).toString("base64");
+    text = text.split(token).join("data:image/png;base64," + encoded);
+  }
+  return text;
+}
+
 function concat(outName, parts) {
   const out = path.join(base, outName);
   let body = "";
@@ -51,7 +68,7 @@ function concat(outName, parts) {
     const p = path.join(base, name);
     if (!fs.existsSync(p)) throw new Error("missing " + name);
     console.log("append", name);
-    body += fs.readFileSync(p, "utf8") + "\n";
+    body += inlineAssetTokens(fs.readFileSync(p, "utf8")) + "\n";
   }
   fs.writeFileSync(out, body);
   console.log("wrote", outName, body.length);
