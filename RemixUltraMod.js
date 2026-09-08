@@ -25777,14 +25777,12 @@ window.DiceCounts.alterSnakeCode = function (code) {
 
   // Cluster-count state reset on play start — must run after the full
   // `var a,b,c` line; never splice into the b= declarator (semicolon breaks var).
-  if (
-    code.match(
-      /,c=this\.settings\.ka===2\|\|this\.settings\.ka===3\|\|this\.settings\.ka===6;if\(a\)/
-    )
-  ) {
+  const clusterResetDeclarator =
+    /,c=this\.settings\.ka===2\|\|this\.settings\.ka===3\|\|this\.settings\.ka===6;/;
+  if (code.match(clusterResetDeclarator)) {
     code = code.assertReplace(
-      /,c=this\.settings\.ka===2\|\|this\.settings\.ka===3\|\|this\.settings\.ka===6;if\(a\)/,
-      ",c=this.settings.ka===2||this.settings.ka===3||this.settings.ka===6;window.remixIsClusterCount&&window.remixIsClusterCount(this.settings.ka)&&window.remixClusterCountReset&&window.remixClusterCountReset();if(a)"
+      clusterResetDeclarator,
+      ",c=this.settings.ka===2||this.settings.ka===3||this.settings.ka===6;window.remixIsClusterCount&&window.remixIsClusterCount(this.settings.ka)&&window.remixClusterCountReset&&window.remixClusterCountReset();"
     );
   } else {
     console.error("DiceCounts: failed to inject cluster-count reset on play start");
