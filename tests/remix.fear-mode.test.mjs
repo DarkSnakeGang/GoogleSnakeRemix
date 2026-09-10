@@ -401,7 +401,7 @@ test("directly eating a ghost doubles that Fear instance's duration", () => {
   assert.equal(g.wa.ka.includes(ghost), false);
 });
 
-test("ghost top-up adds one companion ghost so an eat refills as a pair", () => {
+test("ghost top-up fully refills until ghosts match fruit", () => {
   const w = loadFear();
   const fruits = [
     { Oka: false, pos: { x: 1, y: 1 } },
@@ -426,12 +426,58 @@ test("ghost top-up adds one companion ghost so an eat refills as a pair", () => 
   };
   assert.equal(w.fear_native_ghost_top_up(g.wa, spawn), true);
   assert.equal(w.fear_native_ghost_top_up(g.wa, spawn), false);
-  assert.equal(spawned, 1);
+  assert.equal(spawned, 2);
   const ghosts = g.wa.ka.filter((f) => w.fear_is_ghost(f)).length;
   const fresh = g.wa.ka.filter((f) => !w.fear_is_ghost(f)).length;
   assert.equal(fresh, 3);
-  assert.equal(ghosts, 2);
-  assert.ok(ghosts <= fresh);
+  assert.equal(ghosts, 3);
+});
+
+test("ghost refill gives up when native spawn finds no valid space", () => {
+  const w = loadFear();
+  const fruits = [
+    { Oka: false, pos: { x: 1, y: 1 } },
+    { Oka: false, pos: { x: 2, y: 1 } },
+    { Oka: false, pos: { x: 3, y: 1 } },
+  ];
+  const g = game(fruits);
+  w.__remixGame = g;
+  w.fear_sync_fruit_types(g);
+  for (const fruit of fruits) w.__fearSeenFruits.add(fruit);
+  w.__fearGhostTopUpThisEat = false;
+  let attempts = 0;
+  const added = w.fear_fill_ghosts_to_match_fruit(g.wa, () => {
+    attempts++;
+    return false;
+  });
+  assert.equal(added, 0);
+  assert.equal(attempts, 1);
+  assert.equal(g.wa.ka.filter((f) => w.fear_is_ghost(f)).length, 0);
+  assert.equal(g.wa.ka.filter((f) => !w.fear_is_ghost(f)).length, 3);
+});
+
+test("ghost refill stops mid-way when spawn seats run out", () => {
+  const w = loadFear();
+  const fruits = [
+    { Oka: false, pos: { x: 1, y: 1 } },
+    { Oka: false, pos: { x: 2, y: 1 } },
+    { Oka: false, pos: { x: 3, y: 1 } },
+  ];
+  const g = game(fruits);
+  w.__remixGame = g;
+  w.fear_sync_fruit_types(g);
+  for (const fruit of fruits) w.__fearSeenFruits.add(fruit);
+  let spawned = 0;
+  const added = w.fear_fill_ghosts_to_match_fruit(g.wa, (mgr) => {
+    spawned++;
+    if (spawned > 1) return false;
+    mgr.ka.push({ Oka: true, pos: { x: 8, y: 1 } });
+    return true;
+  });
+  assert.equal(added, 1);
+  assert.equal(spawned, 2);
+  assert.equal(g.wa.ka.filter((f) => w.fear_is_ghost(f)).length, 1);
+  assert.equal(g.wa.ka.filter((f) => !w.fear_is_ghost(f)).length, 3);
 });
 
 test("when ghosts already cover fruit, top-up relocates a ghost instead of spawning", () => {

@@ -1058,6 +1058,61 @@ window.fear_board_counts = function fear_board_counts(game) {
   return { ghosts: ghosts, fresh: list.length - ghosts, list: list };
 };
 
+window.fear_mark_new_as_ghosts = function fear_mark_new_as_ghosts(
+  list,
+  before
+) {
+  if (!list) return 0;
+  let marked = 0;
+  for (let i = before; i < list.length; i++) {
+    const fruit = list[i];
+    if (!fruit) continue;
+    fruit.__fearGhost = true;
+    fruit.Oka = false;
+    window.__fearSeenFruits.add(fruit);
+    window.fear_sync_fruit_type(fruit);
+    marked++;
+  }
+  return marked;
+};
+
+window.fear_fill_ghosts_to_match_fruit =
+  function fear_fill_ghosts_to_match_fruit(mgr, nativeTopUp) {
+    const g = window.__remixGame;
+    const list = mgr && mgr.ka;
+    const spawn =
+      typeof nativeTopUp === "function"
+        ? nativeTopUp
+        : typeof window.__fearE4E === "function"
+          ? window.__fearE4E
+          : null;
+    if (!g || !list || typeof spawn !== "function") return 0;
+    window.__fearE4E = spawn;
+    let added = 0;
+    for (let guard = 0; guard < 64; guard++) {
+      const counts = window.fear_board_counts(g);
+      // No apples on the board → never invent ghosts.
+      if (counts.fresh <= 0) break;
+      if (counts.ghosts >= counts.fresh) break;
+      const before = list.length;
+      let ok = false;
+      try {
+        ok = spawn(mgr);
+      } catch (_e) {
+        // Native picker / radius failure — stop rather than retry forever.
+        break;
+      }
+      // e4E returns false when d4E finds no valid seat (radius, full board, etc).
+      if (ok === false || list.length <= before) break;
+      window.fear_mark_new_as_ghosts(list, before);
+      window.fear_pair_new_fruits(g);
+      added++;
+    }
+    window.fear_sync_fruit_types(g);
+    window.fear_reconcile_pairs(g, true);
+    return added;
+  };
+
 window.fear_find_free_pos = function fear_find_free_pos(mgr, except) {
   const g = window.__remixGame;
   const free =
@@ -1154,7 +1209,7 @@ window.fear_native_ghost_top_up =
           : null;
     if (!g || !list) return false;
     if (typeof spawn === "function") window.__fearE4E = spawn;
-    // One companion action per apple eat: spawn OR relocate, never a fill loop.
+    // One full refill attempt per apple eat (e4E / g4E / after_respawn).
     if (window.__fearGhostTopUpThisEat) return false;
     const counts = window.fear_board_counts(g);
     // Hard cap: never keep more ghosts than edible fruit.
@@ -1164,32 +1219,10 @@ window.fear_native_ghost_top_up =
       return false;
     }
     window.__fearGhostTopUpThisEat = true;
+    if (counts.fresh <= 0) return false;
     if (counts.ghosts < counts.fresh) {
-      // Fruit refill already placed one apple; add one ghost so the eat
-      // refills as a pair (2) instead of a lone fruit (1).
-      if (typeof spawn !== "function") {
-        window.fear_reconcile_pairs(g, true);
-        return false;
-      }
-      const before = list.length;
-      const ok = spawn(mgr);
-      if (ok === false || list.length <= before) {
-        window.fear_sync_fruit_types(g);
-        window.fear_reconcile_pairs(g, true);
-        return false;
-      }
-      for (let i = before; i < list.length; i++) {
-        const fruit = list[i];
-        if (!fruit) continue;
-        fruit.__fearGhost = true;
-        fruit.Oka = false;
-        window.__fearSeenFruits.add(fruit);
-        window.fear_sync_fruit_type(fruit);
-      }
-      window.fear_pair_new_fruits(g);
-      window.fear_sync_fruit_types(g);
-      window.fear_reconcile_pairs(g, true);
-      return true;
+      // Full refill to match fruit; stops if native spawn finds no valid seat.
+      return window.fear_fill_ghosts_to_match_fruit(mgr, spawn) > 0;
     }
     // Already covered by ghosts — move one ghost instead of adding another.
     const moved = window.fear_relocate_one_ghost(g, mgr);
@@ -1376,7 +1409,15 @@ window.fear_after_respawn = function fear_after_respawn(mgr) {
   if (!g || !mgr || !window.isFearActive()) return;
   window.fear_pair_new_fruits(g);
   if (window.fear_uses_ghost_pairs && window.fear_uses_ghost_pairs(g)) {
-    window.fear_native_ghost_top_up(mgr);
+    const counts = window.fear_board_counts(g);
+    // Dice/cluster multi-f4E can leave a larger gap after the first latch —
+    // always catch up here, and stop if the board has no valid spawn seats.
+    if (counts.fresh > 0 && counts.ghosts < counts.fresh) {
+      window.fear_fill_ghosts_to_match_fruit(mgr);
+      window.__fearGhostTopUpThisEat = true;
+    } else {
+      window.fear_native_ghost_top_up(mgr);
+    }
   } else {
     window.fear_sync_fruit_types(g);
     window.fear_reconcile_pairs(g, true);
