@@ -72,9 +72,25 @@ window.Theme = {};
 
 window.Theme.make = function () {
 
-  // style for all pudding sidebar overlays
-  window.puddingSidebarStyle = 'position:absolute;left:100%;z-index:10000;background-color:#4a752c;padding:8px;display:block;border-radius:3px;width:220px;height:584px;top:0px;overflow:hidden;';
-  window.puddingSidebarStyleLeft = 'position:absolute;right:100%;left:auto;z-index:10000;background-color:#4a752c;padding:8px;display:block;border-radius:3px;width:220px;height:584px;top:0px;overflow:hidden;';
+  // Compact matches the board; large-text mode uses a taller fixed panel (no resize sync).
+  window.PUDDING_SIDEBAR_HEIGHT_COMPACT = 584;
+  window.PUDDING_SIDEBAR_HEIGHT_BIG = 740;
+  window.puddingSidebarStyle = 'position:absolute;left:100%;z-index:10000;background-color:#4a752c;padding:10px 8px;display:block;border-radius:3px;width:248px;height:740px;top:0px;overflow-x:hidden;overflow-y:auto;box-sizing:border-box;';
+  window.puddingSidebarStyleLeft = 'position:absolute;right:100%;left:auto;z-index:10000;background-color:#4a752c;padding:10px 8px;display:block;border-radius:3px;width:248px;height:584px;top:0px;overflow-x:hidden;overflow-y:auto;box-sizing:border-box;';
+
+  // Big (default) vs compact redesign text + matching fixed height for settings / Speed Info
+  window.applyPuddingPanelTextSize = function () {
+    const big = !(window.pudding_settings && window.pudding_settings.BigPanelText === false);
+    const height = (big ? window.PUDDING_SIDEBAR_HEIGHT_BIG : window.PUDDING_SIDEBAR_HEIGHT_COMPACT) + "px";
+    const ids = ["settings-popup-pudding", "speedinfo-popup-pudding"];
+    for (let i = 0; i < ids.length; i++) {
+      const el = document.getElementById(ids[i]);
+      if (!el) continue;
+      el.classList.toggle("pudding-text-big", big);
+      el.classList.toggle("pudding-text-compact", !big);
+      el.style.height = height;
+    }
+  };
 
   let advancedSettings = JSON.parse(localStorage.getItem('snakeAdvancedSettings')) ?? {};
 
@@ -619,6 +635,27 @@ window.DistinctVisual.alterCode = function (code) {
 window.Counter = {};
 
 window.Counter.make = function () {
+    window.defaultGoldenFruitStats = function () {
+        return {
+            apple: 0,
+            cherry: 0,
+            strawberry: 0,
+            carrot: 0,
+            watermelon: 0,
+        };
+    };
+
+    window.ensureGoldenFruitStats = function (s) {
+        if (!s.goldenFruit || typeof s.goldenFruit !== "object") {
+            s.goldenFruit = window.defaultGoldenFruitStats();
+        }
+        const keys = ["apple", "cherry", "strawberry", "carrot", "watermelon"];
+        for (let i = 0; i < keys.length; i++) {
+            if (typeof s.goldenFruit[keys[i]] !== "number") s.goldenFruit[keys[i]] = 0;
+        }
+        return s;
+    };
+
     window.loadStatistics = function () {
         let stats = localStorage.getItem('inputCounterMod');
         if (stats === null) {
@@ -638,7 +675,8 @@ window.Counter.make = function () {
                 apples: {
                     session: 0,
                     lifetime: 0
-                }
+                },
+                goldenFruit: window.defaultGoldenFruitStats(),
             };
         } else {
             stats = JSON.parse(stats);
@@ -650,6 +688,8 @@ window.Counter.make = function () {
                 lifetime: 0
             }
         }
+
+        window.ensureGoldenFruitStats(stats);
 
         //Make sure these get reset
         stats.inputs.game = 0;
@@ -684,12 +724,70 @@ window.Counter.make = function () {
             typeof stats.apples.lifetime !== 'undefined' &&
             typeof stats.visible !== 'undefined'
         ) {
+            window.ensureGoldenFruitStats(stats);
             localStorage.setItem('inputCounterMod', JSON.stringify(stats));
         }
     }
+
+    window.renderGoldenFruitCounter = function () {
+        if (typeof divList === "undefined" || !divList) return;
+        window.ensureGoldenFruitStats(stats);
+        const meta = window.GOLDEN_FRUIT_META || [];
+        let html = '<span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">';
+        for (let i = 0; i < meta.length; i++) {
+            const key = meta[i].key;
+            const icon = meta[i].icon;
+            const n = stats.goldenFruit[key] || 0;
+            // Always show golden apple; hide other golds at 0
+            if (n === 0 && key !== "apple") continue;
+            html +=
+                '<span style="display:inline-flex;align-items:center;gap:2px;">' +
+                '<img src="' + icon + '" width="18" height="18" style="image-rendering:auto;vertical-align:middle;" alt="">' +
+                '<span>' + n + "</span></span>";
+        }
+        html += "</span>";
+        return html;
+    };
+
+    window.renderPlainCounter = function () {
+        const iconSrc = typeof getStatIconImageSrc === "function"
+            ? getStatIconImageSrc()
+            : "";
+        const next = String(stats[stats.statShown][stats.statDurationShown]);
+        return (
+            '<span style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;">' +
+            '<img src="' + iconSrc + '" width="18" height="18" style="image-rendering:auto;vertical-align:middle;" alt="">' +
+            "<span>" + next + "</span></span>"
+        );
+    };
+
     window.updateCounterDisplay = function () {
-        divList.innerHTML = stats[stats.statShown][stats.statDurationShown];
-    }
+        if (typeof divList === "undefined" || !divList) return;
+        const html =
+            stats.statShown === "goldenFruit"
+                ? window.renderGoldenFruitCounter()
+                : window.renderPlainCounter();
+        if (divList.dataset.counterHtml === html) return;
+        divList.dataset.counterHtml = html;
+        divList.innerHTML = html;
+        // Same layout for every counter mode (matches golden-fruit placement)
+        divList.style.width = "auto";
+        divList.style.minWidth = "25px";
+        const icon = document.getElementById("stat-icon");
+        if (icon) icon.style.display = "none";
+    };
+
+    window.recordGoldenFruit = function (offset) {
+        if (typeof stats === "undefined") return;
+        window.ensureGoldenFruitStats(stats);
+        const meta = window.GOLDEN_FRUIT_META || [];
+        const entry = meta[offset];
+        if (!entry) return;
+        stats.goldenFruit[entry.key] = (stats.goldenFruit[entry.key] || 0) + 1;
+        saveStatistics();
+        if (stats.statShown === "goldenFruit") updateCounterDisplay();
+    };
+
     window.promptToResetStats = function () {
         let userResponse = prompt('Type DELETE to reset all stats. Cannot be undone');
         if (userResponse === 'DELETE') {
@@ -710,8 +808,11 @@ window.Counter.make = function () {
                 apples: {
                     session: 0,
                     lifetime: 0
-                }
+                },
+                goldenFruit: window.defaultGoldenFruitStats(),
             };
+            stats.walls = { game: 0 };
+            stats.hide = { count: "" };
             saveStatistics();
             updateCounterDisplay();
             alert('All stats have been reset');
@@ -721,8 +822,8 @@ window.Counter.make = function () {
     }
 
     window.promptToEditStatCount = function () {
-        if (stats.statShown === 'hide' || stats.statShown === 'walls') {
-            alert(`Not changing stat for "hide" or "walls"`)
+        if (stats.statShown === 'hide' || stats.statShown === 'walls' || stats.statShown === 'goldenFruit') {
+            alert(`Not changing stat for "hide", "walls", or "golden fruit"`)
             return;
         }
         let userResponse = prompt(`Change the stat count for "${stats.statShown} - ${stats.statDurationShown}"? This won't change any of the other stats. Current value: ${stats[stats.statShown][stats.statDurationShown]}`, stats[stats.statShown][stats.statDurationShown]);
@@ -747,6 +848,8 @@ window.Counter.make = function () {
                 return "https://www.google.com/logos/fnbx/snake_arcade/v3/apple_00.png"
             case 'plays':
                 return "https://fonts.gstatic.com/s/i/googlematerialicons/play_arrow/v6/white-24dp/2x/gm_play_arrow_white_24dp.png"
+            case 'goldenFruit':
+                return "https://i.postimg.cc/tJqR4tT6/gold-apple.png"
             default:
                 return "https://www.google.com/logos/fnbx/snake_arcade/keys.svg"
         }
@@ -754,15 +857,15 @@ window.Counter.make = function () {
 
     window.setCounter = function () {
         //stats.visible = !stats.visible;
+        const icon = document.getElementById('stat-icon');
+        const num = document.getElementById('counter-num');
+        // Icon lives inside #counter-num for consistent placement across all modes
+        if (icon) icon.style.display = 'none';
         if (stats.visible) {
-            document.getElementById('stat-icon').style.display = 'inline';
-            document.getElementById('counter-num').style.display = 'inherit';
-            //document.getElementById('toggle-counter').innerHTML = 'Hide counter';
+            if (num) num.style.display = 'inherit';
         }
         else {
-            document.getElementById('stat-icon').style.display = 'none';
-            document.getElementById('counter-num').style.display = 'none';
-            //document.getElementById('toggle-counter').innerHTML = 'Show counter';
+            if (num) num.style.display = 'none';
         }
         saveStatistics();
     }
@@ -1049,6 +1152,39 @@ window.ModeRegistry.bitstringV3ToModeKey = function (bits) {
     return ids.slice().sort().join("+");
 };
 
+// Reverse of bitstringV3ToModeKey — 21-char string for v11 / Bridge-era scrapers
+window.ModeRegistry.modeKeyToBitstringV3 = function (modeKey) {
+    const bits = new Array(21).fill("0");
+    if (!modeKey || modeKey === "classic") return bits.join("");
+    const ids = String(modeKey).split("+");
+    const idToBit = Object.create(null);
+    for (const bit of Object.keys(window.ModeRegistry._byBitV3)) {
+        idToBit[window.ModeRegistry._byBitV3[bit]] = Number(bit);
+    }
+    for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        if (id === "classic" || id === "blender") continue;
+        const bit = idToBit[id];
+        if (typeof bit === "number" && bit >= 0 && bit < 21) bits[bit] = "1";
+    }
+    return bits.join("");
+};
+
+// Drop Bridge bit (index 19) so Peaceful stays last — 20-char string for v10
+window.ModeRegistry.bitstringV3ToV2 = function (bits21) {
+    if (!bits21 || typeof bits21 !== "string") return "00000000000000000000";
+    if (bits21.length < 21) {
+        // Already short / v2-shaped: pad or trim to 20
+        const s = (bits21 + "00000000000000000000").slice(0, 20);
+        return s;
+    }
+    return bits21.slice(0, 19) + bits21.slice(20);
+};
+
+window.ModeRegistry.isBitstringModePart = function (modePart) {
+    return typeof modePart === "string" && /^[01]{20,21}$/.test(modePart);
+};
+
 window.ModeRegistry._blenderSelectedIds = function (modes) {
     // Blender UI: find random.png row and read which mode toggles are selected
     let element = null;
@@ -1159,6 +1295,15 @@ window.TimeKeeper.make = function () {
         }
     };
 
+    // Mid-run: paint one personal row (or mark dirty if Speed Info is hidden)
+    window.timeKeeper.paintSpeedInfoRow = function (score) {
+        if (typeof window.SpeedInfoPaintPersonalRow === "function") {
+            window.SpeedInfoPaintPersonalRow(score);
+            return;
+        }
+        window.timeKeeper.refreshSpeedInfo();
+    };
+
     // Prefer frozen run settings (no #trophy walk) once a run has started.
     window.timeKeeper.shouldTrack = function (ctx) {
         if (window.daily_challenge) return false;
@@ -1261,6 +1406,9 @@ window.TimeKeeper.make = function () {
 
     // Persist immediately (settings edits, attempt count, end-of-run flush helpers)
     window.timeKeeper.setStorage = function (storage) {
+        if (typeof window.timeKeeper.syncLegacyTimeKeeperMirrors === "function") {
+            window.timeKeeper.syncLegacyTimeKeeperMirrors(storage);
+        }
         window.timeKeeper._storageCache = storage;
         localStorage.setItem("snake_timeKeeper_remix_ultra", JSON.stringify(storage));
         window.timeKeeper._storageDirty = false;
@@ -1273,11 +1421,83 @@ window.TimeKeeper.make = function () {
 
     window.timeKeeper.flushStorage = function () {
         if (!window.timeKeeper._storageDirty || !window.timeKeeper._storageCache) return;
+        if (typeof window.timeKeeper.syncLegacyTimeKeeperMirrors === "function") {
+            window.timeKeeper.syncLegacyTimeKeeperMirrors(window.timeKeeper._storageCache);
+        }
         localStorage.setItem(
             "snake_timeKeeper_remix_ultra",
             JSON.stringify(window.timeKeeper._storageCache)
         );
         window.timeKeeper._storageDirty = false;
+    };
+
+    window.timeKeeper._isBitstringStorageKey = function (key) {
+        if (!key || key === "version") return false;
+        const parts = key.split("-");
+        return (
+            parts.length >= 5 &&
+            window.ModeRegistry &&
+            typeof window.ModeRegistry.isBitstringModePart === "function" &&
+            window.ModeRegistry.isBitstringModePart(parts[1])
+        );
+    };
+
+    window.timeKeeper._cloneStorageValue = function (value) {
+        if (value == null || typeof value !== "object") return value;
+        try {
+            return JSON.parse(JSON.stringify(value));
+        } catch (e) {
+            return value;
+        }
+    };
+
+    // Keep v10 (20-bit) / v11 (21-bit) keys in sync with modeKey rows for downgrade
+    window.timeKeeper.syncLegacyTimeKeeperMirrors = function (storage) {
+        if (!storage || typeof storage !== "object") return storage;
+        if (
+            !window.ModeRegistry ||
+            typeof window.ModeRegistry.modeKeyToBitstringV3 !== "function" ||
+            typeof window.ModeRegistry.bitstringV3ToV2 !== "function"
+        ) {
+            return storage;
+        }
+        const keys = Object.keys(storage);
+        for (let i = 0; i < keys.length; i++) {
+            const key = keys[i];
+            if (key === "version") continue;
+            if (window.timeKeeper._isBitstringStorageKey(key)) continue;
+            const parts = key.split("-");
+            if (parts.length < 5) continue;
+            const prefix = parts[0];
+            if (
+                prefix !== "25" &&
+                prefix !== "50" &&
+                prefix !== "100" &&
+                prefix !== "ALL" &&
+                prefix !== "H" &&
+                prefix !== "att"
+            ) {
+                continue;
+            }
+            const modeKey = parts[1];
+            if (!modeKey || /^[01]+$/.test(modeKey)) continue;
+            const suffix = parts.slice(2).join("-");
+            const bits21 = window.ModeRegistry.modeKeyToBitstringV3(modeKey);
+            const bits20 = window.ModeRegistry.bitstringV3ToV2(bits21);
+            const key21 = prefix + "-" + bits21 + "-" + suffix;
+            const key20 = prefix + "-" + bits20 + "-" + suffix;
+            const raw = storage[key];
+            if (prefix === "att") {
+                const total = window.timeKeeper.getAttemptTotal(raw);
+                storage[key21] = total;
+                storage[key20] = total;
+            } else {
+                const cloned = window.timeKeeper._cloneStorageValue(raw);
+                storage[key21] = cloned;
+                storage[key20] = window.timeKeeper._cloneStorageValue(raw);
+            }
+        }
+        return storage;
     };
 
     // Compat: callers expecting mode "string" now get stable modeKey
@@ -1343,6 +1563,9 @@ window.TimeKeeper.make = function () {
         window.timeKeeper.count = ctx.count;
         window.timeKeeper.speed = ctx.speed;
         window.timeKeeper.size = ctx.size;
+        if (typeof window.freezeRunSelectors === "function") {
+            window.freezeRunSelectors();
+        }
     };
 
     // get the current setting, name = 'count', 'speed', 'size' or 'trophy'
@@ -1381,7 +1604,7 @@ window.TimeKeeper.make = function () {
         window.timeKeeper._liveRefreshQueued = true;
         queueMicrotask(function () {
             window.timeKeeper._liveRefreshQueued = false;
-            window.timeKeeper.refreshSpeedInfo();
+            window.timeKeeper.paintSpeedInfoRow("H");
         });
     };
 
@@ -1489,9 +1712,9 @@ window.TimeKeeper.make = function () {
                 };
             }
         }
-        // Mid-run (25/50/100) or pre-flush ALL: keep in memory only
+        // Mid-run (25/50/100) or pre-flush ALL: keep in memory only; paint one row
         window.timeKeeper.markStorageDirty();
-        window.timeKeeper.refreshSpeedInfo();
+        window.timeKeeper.paintSpeedInfoRow(score);
     };
 
     // Only count if a run had actually started (not play→esc→play)
@@ -1695,8 +1918,21 @@ window.TimeKeeper.make = function () {
                 const parts = key.split("-");
                 if (parts.length >= 5 && /^[01]{21}$/.test(parts[1])) {
                     const modeKey = window.ModeRegistry.bitstringV3ToModeKey(parts[1]);
-                    migrated[parts[0] + "-" + modeKey + "-" + parts.slice(2).join("-")] =
-                        storage[key];
+                    const modeKeyName =
+                        parts[0] + "-" + modeKey + "-" + parts.slice(2).join("-");
+                    // Prefer existing modeKey row if both present; always keep bitstring
+                    if (typeof migrated[modeKeyName] === "undefined") {
+                        migrated[modeKeyName] = storage[key];
+                    }
+                    migrated[key] = storage[key];
+                    if (typeof window.ModeRegistry.bitstringV3ToV2 === "function") {
+                        const bits20 = window.ModeRegistry.bitstringV3ToV2(parts[1]);
+                        const key20 =
+                            parts[0] + "-" + bits20 + "-" + parts.slice(2).join("-");
+                        if (typeof migrated[key20] === "undefined") {
+                            migrated[key20] = storage[key];
+                        }
+                    }
                 } else {
                     migrated[key] = storage[key];
                 }
@@ -1709,19 +1945,31 @@ window.TimeKeeper.make = function () {
             storage.version = 4;
         }
 
-        // Strip unused highscore average fields (sum/att) from H-* rows
+        // Strip unused highscore average fields (sum/att) from modeKey H-* rows only
         for (const key of Object.keys(storage)) {
             if (key === "version" || key.slice(0, 2) !== "H-") continue;
+            if (window.timeKeeper._isBitstringStorageKey(key)) continue;
             const rec = storage[key];
             if (!rec || typeof rec !== "object") continue;
             delete rec.sum;
             delete rec.att;
         }
 
-        // Migrate att-* numbers → objects; roll previous page session into last/best
+        // Migrate modeKey att-* numbers → objects; leave bitstring att-* as numbers for v11
         for (const key of Object.keys(storage)) {
             if (key === "version" || key.slice(0, 4) !== "att-") continue;
+            if (window.timeKeeper._isBitstringStorageKey(key)) {
+                // Coerce accidental objects back to a plain total for old mods
+                if (typeof storage[key] === "object") {
+                    storage[key] = window.timeKeeper.getAttemptTotal(storage[key]);
+                }
+                continue;
+            }
             storage[key] = window.timeKeeper.rollAttemptSession(storage[key]);
+        }
+
+        if (typeof window.timeKeeper.syncLegacyTimeKeeperMirrors === "function") {
+            window.timeKeeper.syncLegacyTimeKeeperMirrors(storage);
         }
 
         localStorage.setItem("snake_timeKeeper_remix_ultra", JSON.stringify(storage));
@@ -2217,6 +2465,15 @@ window.Fruit.make = function () {
         "Poison_values": 'b,\'#93ef13\',\'#909090\',20',
     });
 
+    // Icons + keys for Counter "Count golden fruit" (order matches goldenIndex offsets)
+    window.GOLDEN_FRUIT_META = [
+        { key: "apple", icon: "https://i.postimg.cc/tJqR4tT6/gold-apple.png" },
+        { key: "cherry", icon: "https://i.postimg.cc/sXDXkRP7/gold-cherry.png" },
+        { key: "strawberry", icon: "https://i.postimg.cc/CxLDtZkB/golden-strawberry.png" },
+        { key: "carrot", icon: "https://i.postimg.cc/g0Kjt0hv/gold-carrot.png" },
+        { key: "watermelon", icon: "https://i.postimg.cc/0NCjXNSc/gold-watermelon-1.png" },
+    ];
+
     // Only used for Distinct Poison Skulls
 
     new_fruit.push({ // Skull
@@ -2349,12 +2606,14 @@ window.Fruit.alterCode = function (code) {
     apple_info_regex = new RegExp(`a\.${get_ka}\\\[b\\\]\.${get_pos}`)
 
     // goldenIndex = Apple; +1 Cherry; +2 Strawberry; +3 Carrot; +4 Watermelon
+    // Rolls run later→rarer so rarer overwrites; count only the final golden type
     set_gold = `if(a.${get_ka}[b].type >= ${golden_index} && a.${get_ka}[b].type <= ${golden_index} + 4){a.${get_ka}[b].type = a.${get_ka}[b].old_type;}
     if(Math.floor((Math.random() ${gold_chance}{a.${get_ka}[b].old_type = a.${get_ka}[b].type; a.${get_ka}[b].type = ${golden_index};}
     if(Math.floor((Math.random() ${cherry_chance}{a.${get_ka}[b].old_type = a.${get_ka}[b].type; a.${get_ka}[b].type = ${golden_index} + 1;}
     if(Math.floor((Math.random() ${super_chance}{a.${get_ka}[b].old_type = a.${get_ka}[b].type; a.${get_ka}[b].type = ${golden_index} + 2;}
     if(Math.floor((Math.random() ${carrot_chance}{a.${get_ka}[b].old_type = a.${get_ka}[b].type; a.${get_ka}[b].type = ${golden_index} + 3;}
     if(Math.floor((Math.random() ${melon_chance}{a.${get_ka}[b].old_type = a.${get_ka}[b].type; a.${get_ka}[b].type = ${golden_index} + 4;}
+    if(a.${get_ka}[b].type >= ${golden_index} && a.${get_ka}[b].type <= ${golden_index} + 4 && typeof window.recordGoldenFruit==="function"){window.recordGoldenFruit(a.${get_ka}[b].type - ${golden_index});}
     $&`
     code = code.assertReplace(apple_info_regex, set_gold)
 
@@ -3133,6 +3392,7 @@ window.SettingsSaver.make = function () {
                 SaveGameSettings: true,
                 SavedGameSettings: null,
                 SplitPanel: false,
+                BigPanelText: true,
             };
             for (const key of COUNT_KEYS) {
                 pudding_settings.SelectedPairsByCount[key] = defaultPoolForCount(Number(key));
@@ -3161,6 +3421,9 @@ window.SettingsSaver.make = function () {
             }
             if (typeof pudding_settings.SplitPanel !== 'boolean') {
                 pudding_settings.SplitPanel = false;
+            }
+            if (typeof pudding_settings.BigPanelText !== 'boolean') {
+                pudding_settings.BigPanelText = true;
             }
             if (
                 pudding_settings.SavedGameSettings !== null &&
@@ -3667,6 +3930,13 @@ window.SpeedInfo.make = function () {
         return false;
     }
 
+    // Personal HS may gold only when SRC/CE has an HS category for this combo
+    function canGoldHighscore(mode, count, speed, size) {
+        if (!canSubmitHighscore(mode, count)) return false;
+        if (size > 2 || count > 6 || speed > 2) return false;
+        return true;
+    }
+
     function srcVarPair(varId, valueId) {
         return varId + "." + valueId;
     }
@@ -3773,9 +4043,12 @@ window.SpeedInfo.make = function () {
         return window.modeToTxt[mode] && window.modeToTxt[mode].name;
     }
 
-    // Timed: lower ms wins. Highscore: higher apples wins (only when HS board applies). Unheld → gold.
+    // Timed: lower ms wins. Highscore: higher apples wins (only when SRC has an HS board). Unheld → gold.
     async function shouldGoldPb(score, mode, count, speed, size, pb, modeKey) {
-        if (score === "H" && !canShowSrcHighscore(mode, count)) return false;
+        if (score === "H") {
+            // Must match a real SRC/CE HS category (not merely FSS display rules)
+            if (!canGoldHighscore(mode, count, speed, size)) return false;
+        }
 
         const modeName = fssModeName(mode, modeKey);
         const countName = window.countToTxt[count] && window.countToTxt[count].name;
@@ -4009,7 +4282,8 @@ window.SpeedInfo.make = function () {
         return runsBoardPromises[cacheKey];
     }
 
-    function findBestTrackedRun(boardData, playerName, categoryKey) {
+    // Timed: lower timeT wins. High Score encodes apples as duration (0.072 → 72), so higher wins.
+    function findBestTrackedRun(boardData, playerName, categoryKey, preferHigher) {
         if (!boardData || !boardData.runs) return null;
         const target = playerName.toLowerCase();
         let best = null;
@@ -4018,7 +4292,11 @@ window.SpeedInfo.make = function () {
             if (String(run.playerName).toLowerCase() !== target) continue;
             if (run.category !== categoryKey) continue;
             if (typeof run.timeT !== "number") continue;
-            if (!best || run.timeT < best.timeT) best = run;
+            if (!best) {
+                best = run;
+                continue;
+            }
+            if (preferHigher ? run.timeT > best.timeT : run.timeT < best.timeT) best = run;
         }
         return best;
     }
@@ -4560,15 +4838,14 @@ window.SpeedInfo.make = function () {
         try {
             const board = await loadRunsBoard(modeName, level);
             if (queryId !== srcQueryId) return;
-            const best = findBestTrackedRun(board, playerName, categoryKey);
+            const best = findBestTrackedRun(board, playerName, categoryKey, level === "H");
             if (!best) {
                 el.innerHTML = `${labels[level]}: None`;
                 return;
             }
             if (level === "H") {
-                const primary = best.time || ("PT" + best.timeT + "S");
-                const highscore = parseInt(String(primary).split(".")[1]).toString();
-                const text = (isNaN(parseInt(highscore, 10)) ? String(Math.round(best.timeT * 1000)) : highscore) + " Apples";
+                const highscore = Math.round(best.timeT * 1000 + 1e-6);
+                const text = highscore + " Apples";
                 el.innerHTML = formatTrackRow(labels[level], text, best.weblink);
             } else {
                 const text = best.time ? convertTime(best.time) : formatTimeTSeconds(best.timeT);
@@ -4804,6 +5081,7 @@ window.SpeedInfo.make = function () {
         if (speedInfoToggle) speedInfoToggle.checked = true;
         if (typeof window.saveSettings === "function") window.saveSettings();
 
+        window._speedInfoNeedsRefresh = false;
         window.SpeedInfoUpdate().catch(e=>console.error('SpeedInfoUpdate error:',e));
     }
 
@@ -4818,6 +5096,11 @@ window.SpeedInfo.make = function () {
         if (speedInfoToggle) speedInfoToggle.checked = false;
         if (typeof window.saveSettings === "function") window.saveSettings();
     }
+
+    window.SpeedInfoIsVisible = function () {
+        const box = document.getElementById("speedinfo-popup-pudding");
+        return !!(box && box.style.visibility !== "hidden");
+    };
 
     window.SpeedInfoSetup = function () {
 
@@ -4836,73 +5119,174 @@ window.SpeedInfo.make = function () {
         speedinfoBox.style.flexDirection = 'column';
         speedinfoBox.style.boxSizing = 'border-box';
         window.speedinfoInput = speedinfoBox;
-        const siSection =
-            "margin:0 0 6px;padding:0 0 6px;border-bottom:1px solid rgba(255,255,255,0.22);";
-        const siLabel =
-            "margin:3px;color:white;font-family:Roboto,Arial,sans-serif;";
-        const siTitle =
-            "font-weight:bold;color:white;font-family:Roboto,Arial,sans-serif;";
         speedinfoBox.innerHTML = `
+<style>
+#speedinfo-popup-pudding .si-header {
+  display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 8px;
+}
+#speedinfo-popup-pudding .si-header-title {
+  color:white;font-family:Roboto,Arial,sans-serif;font-weight:600;letter-spacing:0.04em;font-size:13px;
+}
+#speedinfo-popup-pudding .si-section {
+  margin:0 0 8px;padding:0 0 8px;border-bottom:1px solid rgba(255,255,255,0.18);
+}
+#speedinfo-popup-pudding .si-section:last-child { border-bottom:none;margin-bottom:0;padding-bottom:0; }
+#speedinfo-popup-pudding .si-section-title {
+  display:block;color:rgba(255,255,255,0.75);font-family:Roboto,Arial,sans-serif;font-size:11px;
+  font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;
+}
+#speedinfo-popup-pudding .si-stack {
+  display:flex;flex-direction:column;gap:2px;
+}
+#speedinfo-popup-pudding .si-stack .form-check-label {
+  margin:0;color:white;font-family:Roboto,Arial,sans-serif;font-size:16px;line-height:1.3;
+}
+#speedinfo-popup-pudding.pudding-text-compact .si-stack .form-check-label {
+  font-size:12px;
+}
+#speedinfo-popup-pudding .form-check.form-switch .form-check-label {
+  margin:0;color:white;font-family:Roboto,Arial,sans-serif;font-size:16px;line-height:1.25;
+}
+#speedinfo-popup-pudding.pudding-text-compact .form-check.form-switch .form-check-label {
+  font-size:12px;
+}
+#speedinfo-popup-pudding .si-btn {
+  box-sizing:border-box;margin:0;padding:4px 8px;color:white;background-color:#1155CC;border:none;
+  border-radius:4px;font-family:Roboto,Arial,sans-serif;font-size:12px;line-height:1.3;cursor:pointer;
+}
+#speedinfo-popup-pudding .si-btn-block {
+  display:block;width:100%;margin:0 0 4px;padding:5px 8px;
+}
+#speedinfo-popup-pudding .si-btn-row { display:flex;gap:4px;margin:0 0 2px; }
+#speedinfo-popup-pudding .si-btn-row .si-btn { flex:1;margin:0;padding:5px 6px;font-size:11px; }
+#speedinfo-popup-pudding .form-check.form-switch {
+  display:flex;align-items:center;gap:6px;margin:0 0 4px;min-height:0;padding-left:0;
+}
+#speedinfo-popup-pudding .form-check.form-switch .form-check-input { margin:0;float:none;flex-shrink:0; }
+#speedinfo-popup-pudding #si-main { flex:1;min-height:0;overflow-x:hidden;overflow-y:auto; }
+#speedinfo-popup-pudding #speedrun-controls-section {
+  flex-shrink:0;margin-top:auto;padding:8px 0 0;border-top:1px solid rgba(255,255,255,0.18);
+}
+#speedinfo-popup-pudding #input-display-section {
+  flex-shrink:0;margin-top:auto;margin-bottom:0;width:100%;min-height:104px;box-sizing:border-box;
+  padding:6px 0 0;border-top:1px solid rgba(255,255,255,0.18);justify-content:center;align-items:flex-end;
+}
+</style>
 
-        <div id="si-main" style="flex:1;min-height:0;overflow:hidden;">
-        <div id="si-personal" style="${siSection}">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 3px;">
-        <span style="${siTitle}">Speed Info</span>
-        <button class="btn" style="margin:0;padding:2px 8px;font-size:12px;line-height:1.2;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="time-keeper" jsname="time-keeper">Details</button>
-        </div>
-        <label id="mode-selected" class="form-check-label" style="${siLabel}"></label><br>
-        <label id="mode-selected2" class="form-check-label" style="${siLabel}"></label><br>
-        <label id="25" class="form-check-label" style="${siLabel}"></label><br>
-        <label id="50" class="form-check-label" style="${siLabel}"></label><br>
-        <label id="100" class="form-check-label" style="${siLabel}"></label><br>
-        <label id="ALL" class="form-check-label" style="${siLabel}"></label><br>
-        <label id="H" class="form-check-label" style="${siLabel}"></label><br>
-        <label id="att" class="form-check-label" style="${siLabel}"></label><br>
-        </div>
+<div id="si-main">
+  <div class="si-header">
+    <span class="si-header-title">Speed Info</span>
+    <button type="button" class="btn si-btn" id="time-keeper" jsname="time-keeper">Details</button>
+  </div>
 
-        <div id="src-section" style="${siSection}">
-        <span style="${siTitle}display:flex;justify-content:center;align-items:center;text-align:center;">SRC World Records</span>
-        <label id="25src" class="form-check-label" style="${siLabel}"></label><br>
-        <label id="50src" class="form-check-label" style="${siLabel}"></label><br>
-        <label id="100src" class="form-check-label" style="${siLabel}"></label><br>
-        <label id="Allsrc" class="form-check-label" style="${siLabel}"></label><br>
-        <label id="Hsrc" class="form-check-label" style="${siLabel}"></label><br>
-        </div>
+  <div id="si-personal" class="si-section">
+    <span class="si-section-title">Personal</span>
+    <div class="si-stack">
+      <label id="mode-selected" class="form-check-label"></label>
+      <label id="mode-selected2" class="form-check-label"></label>
+      <label id="25" class="form-check-label"></label>
+      <label id="50" class="form-check-label"></label>
+      <label id="100" class="form-check-label"></label>
+      <label id="ALL" class="form-check-label"></label>
+      <label id="H" class="form-check-label"></label>
+      <label id="att" class="form-check-label"></label>
+    </div>
+  </div>
 
-        <div id="tracking-section" style="display:none;${siSection}">
-        <span id="tracking-label" style="${siTitle}display:flex;justify-content:center;align-items:center;text-align:center;">Tracking</span>
-        <label id="25track" class="form-check-label" style="${siLabel}"></label><br>
-        <label id="50track" class="form-check-label" style="${siLabel}"></label><br>
-        <label id="100track" class="form-check-label" style="${siLabel}"></label><br>
-        <label id="Alltrack" class="form-check-label" style="${siLabel}"></label><br>
-        <label id="Htrack" class="form-check-label" style="${siLabel}"></label><br>
-        </div>
-        </div>
+  <div id="src-section" class="si-section">
+    <span class="si-section-title">SRC World Records</span>
+    <div class="si-stack">
+      <label id="25src" class="form-check-label"></label>
+      <label id="50src" class="form-check-label"></label>
+      <label id="100src" class="form-check-label"></label>
+      <label id="Allsrc" class="form-check-label"></label>
+      <label id="Hsrc" class="form-check-label"></label>
+    </div>
+  </div>
 
-        <div id="speedrun-controls-section" style="display:none;flex-shrink:0;margin-top:auto;padding:6px 3px 0;border-top:1px solid rgba(255,255,255,0.22);">
-        <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" role="switch" id="SpeedrunSpeedInfo">
-        <label class="form-check-label" for="SpeedrunSpeedInfo" style="${siLabel}">Show Speed Info</label>
-        </div>
-        <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" role="switch" data-speedrun-topbar>
-        <label class="form-check-label" data-speedrun-topbar-label style="${siLabel}">Top Bar Icons</label>
-        </div>
-        <button class="btn" style="margin:3px;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="ResetKeybind">Reset Key: Shift</button>
-        </div>
+  <div id="tracking-section" class="si-section" style="display:none;">
+    <span id="tracking-label" class="si-section-title">Tracking</span>
+    <div class="si-stack">
+      <label id="25track" class="form-check-label"></label>
+      <label id="50track" class="form-check-label"></label>
+      <label id="100track" class="form-check-label"></label>
+      <label id="Alltrack" class="form-check-label"></label>
+      <label id="Htrack" class="form-check-label"></label>
+    </div>
+  </div>
+</div>
 
-        <div id="input-display-section" style="display:none;flex-shrink:0;margin-top:auto;margin-bottom:0;width:100%;min-height:104px;box-sizing:border-box;padding:6px 0 0;border-top:1px solid rgba(255,255,255,0.22);justify-content:center;align-items:flex-end;"></div>
+<div id="speedrun-controls-section" style="display:none;"></div>
 
-  <button class="btn" style="display:none;margin:3px;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="speedinfo-close" jsname="speedinfo-close">Close</button>
+<div id="input-display-section" style="display:none;"></div>
 
-  `;
+<button type="button" class="btn si-btn" style="display:none;" id="speedinfo-close" jsname="speedinfo-close">Close</button>
+`;
 
-  document.getElementsByClassName('sEOCsb')[0].appendChild(speedinfoBox);
+        document.getElementsByClassName('sEOCsb')[0].appendChild(speedinfoBox);
+        if (typeof window.applyPuddingPanelTextSize === "function") {
+            window.applyPuddingPanelTextSize();
+        }
+        window.cacheSpeedInfoElements = function () {
+            const ids = [
+                "mode-selected",
+                "mode-selected2",
+                "att",
+                "25",
+                "50",
+                "100",
+                "ALL",
+                "H",
+                "25src",
+                "50src",
+                "100src",
+                "Allsrc",
+                "Hsrc",
+                "25track",
+                "50track",
+                "100track",
+                "Alltrack",
+                "Htrack",
+            ];
+            window._speedInfoEls = window._speedInfoEls || {};
+            for (let i = 0; i < ids.length; i++) {
+                window._speedInfoEls[ids[i]] = document.getElementById(ids[i]);
+            }
+        };
+        window.siEl = function (id) {
+            if (!window._speedInfoEls) window.cacheSpeedInfoElements();
+            const cached = window._speedInfoEls && window._speedInfoEls[id];
+            if (cached && cached.isConnected) return cached;
+            const el = document.getElementById(id);
+            if (window._speedInfoEls) window._speedInfoEls[id] = el;
+            return el;
+        };
+        window.cacheSpeedInfoElements();
         updateTrackingSectionVisibility();
 
         if (window.SpeedrunMod) {
             const speedrunControls = document.getElementById("speedrun-controls-section");
-            if (speedrunControls) speedrunControls.style.display = "block";
+            if (speedrunControls) {
+                speedrunControls.innerHTML = `
+        <span class="si-section-title">Controls</span>
+        <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="SpeedrunSpeedInfo">
+        <label class="form-check-label" for="SpeedrunSpeedInfo">Show Speed Info</label>
+        </div>
+        <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" data-speedrun-topbar>
+        <label class="form-check-label" data-speedrun-topbar-label>Top Bar Icons</label>
+        </div>
+        <button type="button" class="btn si-btn si-btn-block" id="ResetKeybind">Reset Key: Shift</button>
+        <button type="button" class="btn si-btn si-btn-block" id="ExportBackup">Export backup</button>
+        <div class="si-btn-row">
+        <button type="button" class="btn si-btn" id="ImportMergeBackup">Import merge</button>
+        <button type="button" class="btn si-btn" id="ImportReplaceBackup">Import replace</button>
+        </div>
+        <input type="file" id="PuddingBackupFile" accept="application/json,.json" style="display:none;">
+                `;
+                speedrunControls.style.display = "block";
+            }
             const speedrunTopbar = speedinfoBox.querySelector("[data-speedrun-topbar]");
             if (speedrunTopbar) speedrunTopbar.id = "TopBarIcons";
             const speedrunTopbarLabel = speedinfoBox.querySelector("[data-speedrun-topbar-label]");
@@ -4914,6 +5298,14 @@ window.SpeedInfo.make = function () {
             if (speedInfoCb) {
                 speedInfoCb.checked = !!window.pudding_settings.SpeedInfo;
                 speedInfoCb.addEventListener("change", window.ToggleSpeedInfo);
+            }
+            if (typeof window.wirePuddingBackupButtons === "function") {
+                window.wirePuddingBackupButtons({
+                    exportBtn: document.getElementById("ExportBackup"),
+                    mergeBtn: document.getElementById("ImportMergeBackup"),
+                    replaceBtn: document.getElementById("ImportReplaceBackup"),
+                    fileInput: document.getElementById("PuddingBackupFile"),
+                });
             }
         }
 
@@ -4963,6 +5355,10 @@ window.SpeedInfo.make = function () {
     });
 
     window.SpeedInfoUpdate = function () {
+        if (typeof window.SpeedInfoIsVisible === "function" && !window.SpeedInfoIsVisible()) {
+            window._speedInfoNeedsRefresh = true;
+            return Promise.resolve();
+        }
         // Coalesce death/reset/addAttempt bursts into one paint
         if (window._speedInfoUpdateTimer) {
             return window._speedInfoUpdatePromise || Promise.resolve();
@@ -4978,6 +5374,129 @@ window.SpeedInfo.make = function () {
             }, 0);
         });
         return window._speedInfoUpdatePromise;
+    };
+
+    // Mid-run: update one personal PB/HS row without rebuilding SRC / mode labels
+    window.SpeedInfoPaintPersonalRow = function (score) {
+        if (typeof window.SpeedInfoIsVisible === "function" && !window.SpeedInfoIsVisible()) {
+            window._speedInfoNeedsRefresh = true;
+            return;
+        }
+        if (!window.timeKeeper || window.daily_challenge) return;
+        if (!window._speedInfoGoldCache) window._speedInfoGoldCache = {};
+
+        const midRun =
+            (window.timeKeeper.runStarted || window.timeKeeper.playing) &&
+            typeof window.timeKeeper.mode === "string" &&
+            typeof window.timeKeeper.count === "number";
+
+        let modeKey;
+        let count;
+        let speed;
+        let size;
+        let mode = window.CurrentModeNum;
+        if (midRun) {
+            modeKey = window.timeKeeper.mode;
+            count = window.timeKeeper.count;
+            speed = window.timeKeeper.speed;
+            size = window.timeKeeper.size;
+        } else {
+            count = window.timeKeeper.getCurrentSetting("count");
+            speed = window.timeKeeper.getCurrentSetting("speed");
+            size = window.timeKeeper.getCurrentSetting("size");
+            modeKey = window.timeKeeper.getCurrentMode();
+        }
+
+        let storage = {};
+        try {
+            storage =
+                typeof window.timeKeeper.getStorage === "function"
+                    ? window.timeKeeper.getStorage()
+                    : JSON.parse(localStorage["snake_timeKeeper_remix_ultra"] || "{}");
+        } catch (e) {
+            storage = {};
+        }
+
+        const scoreKey = String(score);
+        const bold = typeof window.siEl === "function"
+            ? window.siEl(scoreKey === "ALL" ? "ALL" : scoreKey)
+            : document.getElementById(scoreKey === "ALL" ? "ALL" : scoreKey);
+        if (!bold) return;
+
+        const name = scoreKey + "-" + modeKey + "-" + count + "-" + speed + "-" + size;
+        const fmt = window.timeKeeper.formatTimeSrcStyle
+            ? window.timeKeeper.formatTimeSrcStyle.bind(window.timeKeeper)
+            : function (ms) {
+                  return String(ms);
+              };
+
+        if (scoreKey === "att") {
+            const totalAttempts =
+                typeof window.timeKeeper.getAttemptTotal === "function"
+                    ? window.timeKeeper.getAttemptTotal(storage[name])
+                    : typeof storage[name] === "number"
+                      ? storage[name]
+                      : 0;
+            const next = "Total Attempts: " + totalAttempts;
+            if (bold.textContent !== next) bold.textContent = next;
+            return;
+        }
+
+        if (scoreKey !== "H" && !shouldShowCategory(scoreKey === "ALL" ? "All" : scoreKey, size, mode)) {
+            if (bold.innerHTML !== "") bold.innerHTML = "";
+            return;
+        }
+
+        const gen = (window._speedInfoUpdateGen = (window._speedInfoUpdateGen || 0) + 1);
+
+        function queueGoldJob(scoreId, labelPrefix, displayText, pb, gKey) {
+            if (typeof window._speedInfoGoldCache[gKey] === "boolean") return;
+            setTimeout(function () {
+                if (gen !== window._speedInfoUpdateGen) return;
+                shouldGoldPb(scoreId, mode, count, speed, size, pb, modeKey).then(function (gold) {
+                    if (gen !== window._speedInfoUpdateGen) return;
+                    window._speedInfoGoldCache[gKey] = !!gold;
+                    const el = siEl(scoreId);
+                    if (!el) return;
+                    el.innerHTML =
+                        labelPrefix +
+                        pbValueHtml(displayText, scoreId, mode, count, speed, size, !!gold);
+                });
+            }, 0);
+        }
+
+        if (scoreKey === "H") {
+            if (typeof storage[name] != "undefined" && storage[name].high != null) {
+                const highText = String(storage[name].high) + " Apples";
+                const gKey = goldCacheKey(modeKey, count, speed, size, "H", highText);
+                const allowGold = canGoldHighscore(mode, count, speed, size);
+                const knownGold = allowGold && window._speedInfoGoldCache[gKey];
+                bold.innerHTML =
+                    "Highscore: " +
+                    pbValueHtml(highText, "H", mode, count, speed, size, !!knownGold);
+                if (allowGold) {
+                    queueGoldJob("H", "Highscore: ", highText, storage[name], gKey);
+                }
+            } else if (bold.textContent !== "Highscore: None") {
+                bold.textContent = "Highscore: None";
+            }
+            return;
+        }
+
+        const label = scoreKey === "ALL" ? "All Apples" : scoreKey + " Apples";
+        if (typeof storage[name] != "undefined" && storage[name].time != null) {
+            const displayText = fmt(storage[name].time);
+            const gKey = goldCacheKey(modeKey, count, speed, size, scoreKey, displayText);
+            const knownGold = window._speedInfoGoldCache[gKey];
+            bold.innerHTML =
+                label +
+                ": " +
+                pbValueHtml(displayText, scoreKey, mode, count, speed, size, !!knownGold);
+            queueGoldJob(scoreKey, label + ": ", displayText, storage[name], gKey);
+        } else {
+            const noneText = label + ": None";
+            if (bold.textContent !== noneText) bold.textContent = noneText;
+        }
     };
 
     async function runSpeedInfoUpdate() {
@@ -5026,15 +5545,21 @@ window.SpeedInfo.make = function () {
             ? window.ModeRegistry.labelModeKey(modeKey)
             : modeKey;
 
-        mode_label = document.getElementById("mode-selected");
-        mode_label2 = document.getElementById("mode-selected2");
+        mode_label = typeof window.siEl === "function"
+            ? window.siEl("mode-selected")
+            : document.getElementById("mode-selected");
+        mode_label2 = typeof window.siEl === "function"
+            ? window.siEl("mode-selected2")
+            : document.getElementById("mode-selected2");
 
         if (window.daily_challenge) {
-            mode_label.innerHTML = "Daily Challenge";
-            mode_label2.innerHTML = "(TimeKeeper disabled)";
+            if (mode_label) mode_label.textContent = "Daily Challenge";
+            if (mode_label2) mode_label2.textContent = "(TimeKeeper disabled)";
             for (const score of ["att", "25", "50", "100", "ALL", "H"]) {
-                const el = document.getElementById(score);
-                if (el) el.innerHTML = "";
+                const el = typeof window.siEl === "function"
+                    ? window.siEl(score)
+                    : document.getElementById(score);
+                if (el) el.textContent = "";
             }
             updateSrcAndTrackingVisibility();
             return;
@@ -5042,11 +5567,15 @@ window.SpeedInfo.make = function () {
 
         updateSrcAndTrackingVisibility();
 
-        mode_label.innerHTML =
-            gamemode +
-            ", " +
-            window.HandleCount(count).substring(0, window.HandleCount(count).lastIndexOf(","));
-        mode_label2.innerHTML = window.HandleSpeed(speed) + window.HandleSize(size);
+        if (mode_label) {
+            mode_label.textContent =
+                gamemode +
+                ", " +
+                window.HandleCount(count).substring(0, window.HandleCount(count).lastIndexOf(","));
+        }
+        if (mode_label2) {
+            mode_label2.textContent = window.HandleSpeed(speed) + window.HandleSize(size);
+        }
 
         const fmt = window.timeKeeper.formatTimeSrcStyle
             ? window.timeKeeper.formatTimeSrcStyle.bind(window.timeKeeper)
@@ -5058,7 +5587,9 @@ window.SpeedInfo.make = function () {
 
         for (const score of ["att", "25", "50", "100", "ALL", "H"]) {
             const name = score + "-" + modeKey + "-" + count + "-" + speed + "-" + size;
-            const bold = document.getElementById(score);
+            const bold = typeof window.siEl === "function"
+                ? window.siEl(score)
+                : document.getElementById(score);
             if (!bold) continue;
 
             if (score == "att") {
@@ -5068,13 +5599,14 @@ window.SpeedInfo.make = function () {
                         : typeof storage[name] === "number"
                           ? storage[name]
                           : 0;
-                bold.innerHTML = "Total Attempts: " + totalAttempts;
+                const next = "Total Attempts: " + totalAttempts;
+                if (bold.textContent !== next) bold.textContent = next;
                 continue;
             }
 
             // Match SRC visibility (100/YY50); Highscore always shown locally
             if (!shouldShowCategory(score === "ALL" ? "All" : score, size, mode)) {
-                bold.innerHTML = "";
+                if (bold.textContent !== "") bold.textContent = "";
                 continue;
             }
 
@@ -5082,11 +5614,12 @@ window.SpeedInfo.make = function () {
                 if (typeof storage[name] != "undefined" && storage[name].high != null) {
                     const highText = String(storage[name].high) + " Apples";
                     const gKey = goldCacheKey(modeKey, count, speed, size, "H", highText);
-                    const knownGold = window._speedInfoGoldCache[gKey];
+                    const allowGold = canGoldHighscore(mode, count, speed, size);
+                    const knownGold = allowGold && window._speedInfoGoldCache[gKey];
                     bold.innerHTML =
                         "Highscore: " +
                         pbValueHtml(highText, "H", mode, count, speed, size, !!knownGold);
-                    if (canShowSrcHighscore(mode, count)) {
+                    if (allowGold && typeof window._speedInfoGoldCache[gKey] !== "boolean") {
                         goldJobs.push({
                             score: "H",
                             elId: "H",
@@ -5096,8 +5629,8 @@ window.SpeedInfo.make = function () {
                             gKey: gKey,
                         });
                     }
-                } else {
-                    bold.innerHTML = "Highscore: None";
+                } else if (bold.textContent !== "Highscore: None") {
+                    bold.textContent = "Highscore: None";
                 }
                 continue;
             }
@@ -5111,16 +5644,19 @@ window.SpeedInfo.make = function () {
                     label +
                     ": " +
                     pbValueHtml(displayText, score, mode, count, speed, size, !!knownGold);
-                goldJobs.push({
-                    score: score,
-                    elId: score,
-                    labelPrefix: label + ": ",
-                    displayText: displayText,
-                    pb: storage[name],
-                    gKey: gKey,
-                });
+                if (typeof knownGold !== "boolean") {
+                    goldJobs.push({
+                        score: score,
+                        elId: score,
+                        labelPrefix: label + ": ",
+                        displayText: displayText,
+                        pb: storage[name],
+                        gKey: gKey,
+                    });
+                }
             } else {
-                bold.innerHTML = label + ": None";
+                const noneText = label + ": None";
+                if (bold.textContent !== noneText) bold.textContent = noneText;
             }
         }
 
@@ -5153,7 +5689,9 @@ window.SpeedInfo.make = function () {
                     for (let i = 0; i < results.length; i++) {
                         const r = results[i];
                         window._speedInfoGoldCache[r.job.gKey] = !!r.gold;
-                        const el = document.getElementById(r.job.elId);
+                        const el = typeof window.siEl === "function"
+                            ? window.siEl(r.job.elId)
+                            : document.getElementById(r.job.elId);
                         if (!el) continue;
                         el.innerHTML =
                             r.job.labelPrefix +
@@ -5417,6 +5955,51 @@ window.Timer = {
       )[1]
     }
 
+    // Freeze menu indices once per run; split/win paths read these instead of scraping DOM
+    window.freezeRunSelectors = function () {
+      if (typeof getSelected !== "function") return;
+      try {
+        window._runTrophy = getSelected("#trophy");
+        window._runCount = getSelected("#count");
+        window._runSpeed = getSelected("#speed");
+        window._runSize = getSelected("#size");
+      } catch (e) { /* menu may be missing early */ }
+    };
+
+    window.getRunSelectors = function () {
+      const midRun =
+        window.timeKeeper &&
+        (window.timeKeeper.runStarted || window.timeKeeper.playing) &&
+        typeof window._runTrophy === "number" &&
+        typeof window._runCount === "number" &&
+        typeof window._runSpeed === "number" &&
+        typeof window._runSize === "number";
+      if (midRun) {
+        return {
+          mode: window._runTrophy,
+          count: window._runCount,
+          speed: window._runSpeed,
+          size: window._runSize,
+        };
+      }
+      if (typeof getSelected === "function") {
+        try {
+          return {
+            mode: getSelected("#trophy"),
+            count: getSelected("#count"),
+            speed: getSelected("#speed"),
+            size: getSelected("#size"),
+          };
+        } catch (e) { /* fall through */ }
+      }
+      return {
+        mode: window._runTrophy || 0,
+        count: window._runCount || 0,
+        speed: window._runSpeed || 0,
+        size: window._runSize || 0,
+      };
+    };
+
     String.prototype.color = function(c) { return `<span style="color:${c}">${this.toString()}</span>` }
 
     Number.prototype.timeFormat = function() {
@@ -5503,7 +6086,17 @@ window.Timer = {
     const timerSplitDiv = document.getElementsByClassName('Jc72He rc48Qb')[0]
     const deltaDiv = document.createElement('div')
     deltaDiv.id = 'timerDelta'
-    deltaDiv.innerHTML = '-'.color('white')
+    window._timerDeltaEl = deltaDiv
+    window.setTimerDeltaDisplay = function (el, text, color) {
+      const node = el || window._timerDeltaEl || document.getElementById('timerDelta')
+      if (!node) return
+      window._timerDeltaEl = node
+      const next = text == null ? '-' : String(text)
+      const nextColor = color || 'white'
+      if (node.textContent !== next) node.textContent = next
+      if (node.style.color !== nextColor) node.style.color = nextColor
+    }
+    window.setTimerDeltaDisplay(deltaDiv, '-', 'white')
     timerSplitDiv.appendChild(deltaDiv)
     if(!_showDelta) deltaDiv.style.display = 'none'
 
@@ -5545,7 +6138,7 @@ window.Timer = {
           left: 50%;
           backdrop-filter: blur(5px);
           text-align: center;
-          padding: 6px 14px 10px;
+          padding: 10px 14px 12px;
           transform: translate(-50%, 0);
           box-shadow: 0px 0px 8px rgba(0,0,0,0.4);
           border: 1px solid ${theme.topbar_color ?? '#4444dd'};
@@ -5554,36 +6147,79 @@ window.Timer = {
           width: 58vw;
           max-width: 640px;
           font-family: Roboto,Arial,sans-serif;
-          overflow: hidden;
+          overflow-x: hidden;
+          overflow-y: auto;
           box-sizing: border-box;
         `
-        const sectionTitle = 'margin:4px 0 2px;font-size:2.1vh;font-weight:600;letter-spacing:0.02em;opacity:0.95;'
-        const iconRow = 'display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0.3vh;margin:0 auto 1px;'
+        const iconRow = 'display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0.3vh;margin:0 auto;'
         const iconStyle = 'cursor: pointer; border: 0.45vh ridge #00000000; border-radius: 1vh; width: 3.2vh; height: 3.2vh;'
         const iconSel = 'cursor: pointer; border: 0.45vh ridge #af4490ff; border-radius: 1vh; width: 3.2vh; height: 3.2vh;'
-        const halfCol = 'flex:1;min-width:0;'
         editBox.innerHTML = `
-<label class="form-check-label" style="font-size: 2.8vh; display:block; margin-top:2px; margin-bottom:2px;">
-        Custom Timer/Splits Settings
-      </label>
+<style>
+#edit-box .timer-settings-header {
+  color:white;font-family:Roboto,Arial,sans-serif;font-weight:600;letter-spacing:0.04em;
+  font-size:2.4vh;margin:0 0 10px;display:block;
+}
+#edit-box .timer-settings-section {
+  margin:0 0 10px;padding:0 0 10px;border-bottom:1px solid rgba(255,255,255,0.18);text-align:center;
+}
+#edit-box .timer-settings-section:last-of-type { border-bottom:none;margin-bottom:4px;padding-bottom:0; }
+#edit-box .timer-settings-section-title {
+  display:block;color:rgba(255,255,255,0.75);font-family:Roboto,Arial,sans-serif;font-size:1.5vh;
+  font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;
+}
+#edit-box .timer-settings-btn {
+  box-sizing:border-box;margin:0;padding:5px 12px;color:white;background-color:${btnColor};border:none;
+  border-radius:4px;font-family:Roboto,Arial,sans-serif;font-size:1.7vh;line-height:1.3;cursor:pointer;
+}
+#edit-box .timer-settings-btn-block {
+  display:block;width:100%;max-width:220px;margin:10px auto 2px;
+}
+#edit-box .timer-settings-btn-row { display:flex;gap:6px;align-items:center;flex-wrap:wrap; }
+#edit-box .form-check.form-switch {
+  display:inline-flex;align-items:center;gap:6px;margin:0;min-height:0;padding-left:0;
+}
+#edit-box .form-check.form-switch .form-check-input { margin:0;float:none;flex-shrink:0;width:1.3em;height:1.3em; }
+#edit-box .form-check-label { margin:0;color:white;font-family:Roboto,Arial,sans-serif; }
+#edit-box .timer-settings-input {
+  background-color:${btnColor};color:white;font-family:Roboto,Arial,sans-serif;
+  border:1px solid rgba(255,255,255,0.25);border-radius:4px;outline:none;caret-color:white;padding:3px 8px;
+}
+#edit-box .timer-settings-pb-input {
+  font-family:Consolas,monospace;background-color:rgba(0,0,0,0.2);color:white;
+  border:1px solid rgba(255,255,255,0.25);border-radius:4px;padding:2px 6px;outline:none;
+}
+#edit-box .timer-settings-cols {
+  display:flex;gap:12px;justify-content:center;align-items:flex-start;flex-wrap:wrap;
+}
+#edit-box .timer-settings-col { flex:1;min-width:0; }
+#edit-box .timer-settings-track-row {
+  display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;text-align:left;
+}
+</style>
 
-<div style="${sectionTitle}">SpeedInfo</div>
-<div style="display:flex;gap:10px;align-items:flex-start;justify-content:center;flex-wrap:wrap;text-align:left;">
-  <div style="display:flex;align-items:center;gap:6px;padding-top:4px;">
-    <input class="form-check-input" type="checkbox" role="switch" id="ShowWrHolders" style="width:1.3em;height:1.3em;margin:0;">
-    <label class="form-check-label" for="ShowWrHolders" style="margin:0;white-space:nowrap;">Show WR holders</label>
-  </div>
-  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-    <label for="TrackedPlayerInput" class="form-check-label" style="margin:0;white-space:nowrap;">Track player</label>
-    <input type="text" class="form-control" id="TrackedPlayerInput" list="tracked-player-suggestions" placeholder="SRC username" autocomplete="off" style="width:140px;display:inline-block;background-color:${btnColor};color:white;font-family:Roboto,Arial,sans-serif;border:1px solid rgba(255,255,255,0.25);border-radius:4px;outline:none;text-align:center;caret-color:white;padding:2px 6px;">
-    <datalist id="tracked-player-suggestions"></datalist>
-    <button class="btn" type="button" style="margin:0;color:white;background-color:${btnColor};font-family:Roboto,Arial,sans-serif;padding:2px 10px;" id="TrackedPlayerSet">Set</button>
-    <button class="btn" type="button" style="margin:0;color:white;background-color:${btnColor};font-family:Roboto,Arial,sans-serif;padding:2px 10px;" id="TrackedPlayerClear">Clear</button>
+<span class="timer-settings-header">Timer settings</span>
+
+<div class="timer-settings-section">
+  <span class="timer-settings-section-title">Speed Info</span>
+  <div class="timer-settings-track-row">
+    <div class="form-check form-switch">
+      <input class="form-check-input" type="checkbox" role="switch" id="ShowWrHolders">
+      <label class="form-check-label" for="ShowWrHolders">Show WR holders</label>
+    </div>
+    <div class="timer-settings-btn-row">
+      <label for="TrackedPlayerInput" class="form-check-label">Track player</label>
+      <input type="text" class="form-control timer-settings-input" id="TrackedPlayerInput" list="tracked-player-suggestions" placeholder="SRC username" autocomplete="off" style="width:140px;text-align:center;">
+      <datalist id="tracked-player-suggestions"></datalist>
+      <button class="btn timer-settings-btn" type="button" id="TrackedPlayerSet">Set</button>
+      <button class="btn timer-settings-btn" type="button" id="TrackedPlayerClear">Clear</button>
+    </div>
   </div>
 </div>
 
-<div style="${sectionTitle}">Mode</div>
-<div id="edit-mode" style="${iconRow}">
+<div class="timer-settings-section">
+  <span class="timer-settings-section-title">Mode</span>
+  <div id="edit-mode" style="${iconRow}">
   <img class="sel" style="${iconSel}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_00.png" />
   <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_01.png" />
   <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_02.png" />
@@ -5606,10 +6242,12 @@ window.Timer = {
   <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v21/trophy_19.png" />
   <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v22/trophy_20.png" />
   <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v16/trophy_15.png" />
+  </div>
 </div>
 
-<div style="${sectionTitle}">Count</div>
-<div id="edit-count" style="${iconRow}">
+<div class="timer-settings-section">
+  <span class="timer-settings-section-title">Count</span>
+  <div id="edit-count" style="${iconRow}">
   <img class="sel" style="${iconSel}" src="https://www.google.com/logos/fnbx/snake_arcade/v17/count_00.png" />
   <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v17/count_01.png" />
   <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v17/count_02.png" />
@@ -5617,108 +6255,112 @@ window.Timer = {
   <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v18/count_04.png" />
   <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v18/count_05.png" />
   <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v19/count_06.png" />
-</div>
-
-<div style="display:flex;gap:12px;justify-content:center;align-items:flex-start;">
-  <div style="${halfCol}">
-    <div style="${sectionTitle}">Speed</div>
-    <div id="edit-speed" style="${iconRow}">
-      <img class="sel" style="${iconSel}" src="https://www.google.com/logos/fnbx/snake_arcade/v3/speed_00.png" />
-      <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v3/speed_01.png" />
-      <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v3/speed_02.png" />
-    </div>
-  </div>
-  <div style="${halfCol}">
-    <div style="${sectionTitle}">Size</div>
-    <div id="edit-size" style="${iconRow}">
-      <img class="sel" style="${iconSel}" src="https://www.google.com/logos/fnbx/snake_arcade/v4/size_00.png" />
-      <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v4/size_01.png" />
-      <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v4/size_02.png" />
-    </div>
   </div>
 </div>
 
-<div style="display:flex;gap:12px;justify-content:center;align-items:flex-start;flex-wrap:wrap;">
-  <div style="${halfCol}">
-    <div style="${sectionTitle}">Category</div>
-    <div id="edit-cat" style="${iconRow}">
-      <img class="uns" style="background-color: #ffffff55; ${iconStyle}" src="https://i.postimg.cc/d1R1Y648/25.png" />
-      <img class="uns" style="background-color: #ffffff55; ${iconStyle}" src="https://i.postimg.cc/7hmZC6vh/50.png" />
-      <img class="uns" style="background-color: #ffffff55; ${iconStyle}" src="https://i.postimg.cc/qqk7MK5W/100.png" />
-      <img class="sel" style="background-color: #ffffff55; ${iconSel}" src="https://i.postimg.cc/52j6Cw2V/all.png" />
+<div class="timer-settings-section">
+  <div class="timer-settings-cols">
+    <div class="timer-settings-col">
+      <span class="timer-settings-section-title">Speed</span>
+      <div id="edit-speed" style="${iconRow}">
+        <img class="sel" style="${iconSel}" src="https://www.google.com/logos/fnbx/snake_arcade/v3/speed_00.png" />
+        <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v3/speed_01.png" />
+        <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v3/speed_02.png" />
+      </div>
+    </div>
+    <div class="timer-settings-col">
+      <span class="timer-settings-section-title">Size</span>
+      <div id="edit-size" style="${iconRow}">
+        <img class="sel" style="${iconSel}" src="https://www.google.com/logos/fnbx/snake_arcade/v4/size_00.png" />
+        <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v4/size_01.png" />
+        <img class="uns" style="${iconStyle}" src="https://www.google.com/logos/fnbx/snake_arcade/v4/size_02.png" />
+      </div>
     </div>
   </div>
-  <div style="${halfCol}">
-    <div style="${sectionTitle}">Personal bests</div>
-    <div id="edit-times" style="left:0px;display:inline-grid;grid-template-columns:auto auto;gap:3px 8px;justify-content:center;text-align:left;">
-      <div>
-          <label class="form-check-label" for="edit-25"> 25</label>
-          <input class="text-input" size="9" name="edit-25" id="edit-25" type="text" style="font-family:Consolas;" />
+</div>
+
+<div class="timer-settings-section">
+  <div class="timer-settings-cols">
+    <div class="timer-settings-col">
+      <span class="timer-settings-section-title">Category</span>
+      <div id="edit-cat" style="${iconRow}">
+        <img class="uns" style="background-color: #ffffff55; ${iconStyle}" src="https://i.postimg.cc/d1R1Y648/25.png" />
+        <img class="uns" style="background-color: #ffffff55; ${iconStyle}" src="https://i.postimg.cc/7hmZC6vh/50.png" />
+        <img class="uns" style="background-color: #ffffff55; ${iconStyle}" src="https://i.postimg.cc/qqk7MK5W/100.png" />
+        <img class="sel" style="background-color: #ffffff55; ${iconSel}" src="https://i.postimg.cc/52j6Cw2V/all.png" />
       </div>
-      <div>
-          <label class="form-check-label" for="edit-50"> 50</label>
-          <input class="text-input" size="9" name="edit-50" id="edit-50" type="text" style="font-family:Consolas;" />
-      </div>
-      <div>
+    </div>
+    <div class="timer-settings-col">
+      <span class="timer-settings-section-title">Personal bests</span>
+      <div id="edit-times" style="display:inline-grid;grid-template-columns:auto auto;gap:4px 10px;justify-content:center;text-align:left;">
+        <div>
+          <label class="form-check-label" for="edit-25">25</label>
+          <input class="text-input timer-settings-pb-input" size="9" name="edit-25" id="edit-25" type="text" />
+        </div>
+        <div>
+          <label class="form-check-label" for="edit-50">50</label>
+          <input class="text-input timer-settings-pb-input" size="9" name="edit-50" id="edit-50" type="text" />
+        </div>
+        <div>
           <label class="form-check-label" for="edit-100">100</label>
-          <input class="text-input" size="9" name="edit-100" id="edit-100" type="text" style="font-family:Consolas;" />
-      </div>
-      <div>
+          <input class="text-input timer-settings-pb-input" size="9" name="edit-100" id="edit-100" type="text" />
+        </div>
+        <div>
           <label class="form-check-label" for="edit-ALL">ALL</label>
-          <input class="text-input" size="9" name="edit-ALL" id="edit-ALL" type="text" style="font-family:Consolas;" />
+          <input class="text-input timer-settings-pb-input" size="9" name="edit-ALL" id="edit-ALL" type="text" />
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<div style="${sectionTitle}">Custom splits</div>
-<div id="edit-customsplit" style="border-top:0px solid black">
-
-</div>
-
-<div id="edit-split" style="margin-top:2px;">
-  <label class="form-check-label" for="edit-splitscore">New Split</label>
-  <input class="text-input" size="6" name="edit-splitscore" id="edit-splitscore" type="number" placeholder="Score" />
-  <button class="btn" style="margin:3px;color:white;background-color:${btnColor};font-family:Roboto,Arial,sans-serif;" id="edit-addsplit">Add</button>
-</div>
-
-<div id="edit-display" style="margin-top:2px;">
-<div style="${sectionTitle}">Display</div>
-<div style="display:flex;gap:24px;justify-content:center;align-items:center;flex-wrap:wrap;">
-  <div style="display:flex;align-items:center;gap:8px;">
-    <label class="form-check-label" for="edit-format" style="margin:0;">Timer Format</label>
-    <select class="form-control" id="edit-format" style="display:inline-block;width:auto;margin:0;background-color:${btnColor};color:white;border:1px solid rgba(255,255,255,0.25);">
-      <option value="0">0:00:00:000</option>
-      <option value="1">  00:00:000</option>
-      <option value="2">   0:00:000</option>
-      <option value="3">     00:000</option>
-      <option value="4">      0:000</option>
-      <option value="5">0:00:00.000</option>
-      <option value="6">  00:00.000</option>
-      <option value="7">   0:00.000</option>
-      <option value="8">     00.000</option>
-      <option value="9">      0.000</option>
-    </select>
-  </div>
-  <div style="display:flex;align-items:center;gap:8px;">
-    <input class="form-check-input" style="width: 1.5em; height: 1.5em; margin:0;" type="checkbox" checked="true" name="edit-delta" id="edit-delta" />
-    <label class="form-check-label" for="edit-delta" style="margin:0;">Show Delta</label>
+<div class="timer-settings-section">
+  <span class="timer-settings-section-title">Custom splits</span>
+  <div id="edit-customsplit"></div>
+  <div id="edit-split" style="margin-top:6px;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;">
+    <label class="form-check-label" for="edit-splitscore">New Split</label>
+    <input class="text-input timer-settings-pb-input" size="6" name="edit-splitscore" id="edit-splitscore" type="number" placeholder="Score" />
+    <button class="btn timer-settings-btn" type="button" id="edit-addsplit">Add</button>
   </div>
 </div>
-<div style="${sectionTitle}">Delta colors</div>
-<div style="display:inline-grid;grid-template-columns:auto auto;gap:4px 18px;justify-content:center;text-align:left;align-items:center;">
-  <div><label class="form-check-label" for="edit-aheadg">Ahead (gaining)</label>
-  <input class="text-input" style="margin: 0 0 0 6px; padding: 0; border: 0; width: 5vh; height: 2.6vh; vertical-align:middle;" name="edit-aheadg" id="edit-aheadg" type="color" /></div>
-  <div><label class="form-check-label" for="edit-aheadl">Ahead (losing)</label>
-  <input class="text-input" style="margin: 0 0 0 6px; padding: 0; border: 0; width: 5vh; height: 2.6vh; vertical-align:middle;" name="edit-aheadl" id="edit-aheadl" type="color" /></div>
-  <div><label class="form-check-label" for="edit-behindg">Behind (gaining)</label>
-  <input class="text-input" style="margin: 0 0 0 6px; padding: 0; border: 0; width: 5vh; height: 2.6vh; vertical-align:middle;" name="edit-behindg" id="edit-behindg" type="color" /></div>
-  <div><label class="form-check-label" for="edit-behindl">Behind (losing)</label>
-  <input class="text-input" style="margin: 0 0 0 6px; padding: 0; border: 0; width: 5vh; height: 2.6vh; vertical-align:middle;" name="edit-behindl" id="edit-behindl" type="color" /></div>
+
+<div class="timer-settings-section" id="edit-display">
+  <span class="timer-settings-section-title">Display</span>
+  <div style="display:flex;gap:20px;justify-content:center;align-items:center;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label class="form-check-label" for="edit-format">Timer Format</label>
+      <select class="form-control timer-settings-input" id="edit-format" style="width:auto;display:inline-block;">
+        <option value="0">0:00:00:000</option>
+        <option value="1">  00:00:000</option>
+        <option value="2">   0:00:000</option>
+        <option value="3">     00:000</option>
+        <option value="4">      0:000</option>
+        <option value="5">0:00:00.000</option>
+        <option value="6">  00:00.000</option>
+        <option value="7">   0:00.000</option>
+        <option value="8">     00.000</option>
+        <option value="9">      0.000</option>
+      </select>
+    </div>
+    <div class="form-check form-switch">
+      <input class="form-check-input" type="checkbox" checked="true" name="edit-delta" id="edit-delta" />
+      <label class="form-check-label" for="edit-delta">Show Delta</label>
+    </div>
+  </div>
+  <span class="timer-settings-section-title" style="margin-top:10px;">Delta colors</span>
+  <div style="display:inline-grid;grid-template-columns:auto auto;gap:6px 18px;justify-content:center;text-align:left;align-items:center;">
+    <div><label class="form-check-label" for="edit-aheadg">Ahead (gaining)</label>
+    <input class="text-input" style="margin:0 0 0 6px;padding:0;border:0;width:5vh;height:2.6vh;vertical-align:middle;" name="edit-aheadg" id="edit-aheadg" type="color" /></div>
+    <div><label class="form-check-label" for="edit-aheadl">Ahead (losing)</label>
+    <input class="text-input" style="margin:0 0 0 6px;padding:0;border:0;width:5vh;height:2.6vh;vertical-align:middle;" name="edit-aheadl" id="edit-aheadl" type="color" /></div>
+    <div><label class="form-check-label" for="edit-behindg">Behind (gaining)</label>
+    <input class="text-input" style="margin:0 0 0 6px;padding:0;border:0;width:5vh;height:2.6vh;vertical-align:middle;" name="edit-behindg" id="edit-behindg" type="color" /></div>
+    <div><label class="form-check-label" for="edit-behindl">Behind (losing)</label>
+    <input class="text-input" style="margin:0 0 0 6px;padding:0;border:0;width:5vh;height:2.6vh;vertical-align:middle;" name="edit-behindl" id="edit-behindl" type="color" /></div>
+  </div>
 </div>
 
-</div>
-<button type="button" class="btn" id="close-box" style="margin:10px auto 2px;display:block;color:white;background-color:${btnColor};font-family:Roboto,Arial,sans-serif;">Close</button>
+<button type="button" class="btn timer-settings-btn timer-settings-btn-block" id="close-box">Close</button>
         `
         const backdrop = document.createElement('div')
         backdrop.id = 'edit-box-backdrop'
@@ -6058,6 +6700,9 @@ window.Timer = {
           el.value = localStorage[`_snake_${subid}`]
           el.addEventListener('change', function() {
             localStorage[`_snake_${subid}`] = el.value
+            if (typeof window.refreshSplitDeltaColors === "function") {
+              window.refreshSplitDeltaColors()
+            }
           })
         }
 
@@ -6102,11 +6747,12 @@ window.Timer = {
         'reset(){',
         `reset(){this.xdddd=[];
           if (typeof window.flushSnakePb === "function") window.flushSnakePb();
+          if (typeof window.freezeRunSelectors === "function") window.freezeRunSelectors();
 
-          const _mode  = getSelected('#trophy')
-          const _count = getSelected('#count')
-          const _speed = getSelected('#speed')
-          const _size  = getSelected('#size')
+          const _mode  = window._runTrophy
+          const _count = window._runCount
+          const _speed = window._runSpeed
+          const _size  = window._runSize
 
           window._run = {}
           window._run[_mode] = {}
@@ -6136,8 +6782,9 @@ window.Timer = {
           }
 
 
-          const deltaDiv = document.getElementById('timerDelta')
-          deltaDiv.innerHTML = '-'.color('white')
+          const deltaDiv = window._timerDeltaEl || document.getElementById('timerDelta')
+          if (typeof window.setTimerDeltaDisplay === "function") window.setTimerDeltaDisplay(deltaDiv, '-', 'white')
+          else if (deltaDiv) deltaDiv.textContent = '-'
 
           window._lastDelta = 0
           if (typeof window.SplitPanelOnReset === "function") window.SplitPanelOnReset()
@@ -6233,11 +6880,15 @@ window.Timer = {
       splitStuff,
       `
       if([25, 50, 100].includes(${score}) || window._splits.includes(${score})) {
-        const deltaDiv = document.getElementById('timerDelta')
-        const _mode  = getSelected('#trophy')
-        const _count = getSelected('#count')
-        const _speed = getSelected('#speed')
-        const _size  = getSelected('#size')
+        const deltaDiv = window._timerDeltaEl || document.getElementById('timerDelta')
+        window._timerDeltaEl = deltaDiv
+        const _sel = typeof window.getRunSelectors === "function"
+          ? window.getRunSelectors()
+          : { mode: getSelected('#trophy'), count: getSelected('#count'), speed: getSelected('#speed'), size: getSelected('#size') }
+        const _mode  = _sel.mode
+        const _count = _sel.count
+        const _speed = _sel.speed
+        const _size  = _sel.size
 
         const _split = ${ticks} * ${dt} * 1e-3
 
@@ -6247,21 +6898,28 @@ window.Timer = {
         if(window._pb[_mode][_count][_speed][_size][_cat][${score}]) {
           _delta = _split - window._pb[_mode][_count][_speed][_size][_cat][${score}]
           const _absDeltaString = Math.abs(_delta).timeFormat()
-          if(_delta !== 0)
-            deltaDiv.innerHTML = ((_delta < 0 ? '-' : '+') + _absDeltaString).color(
-              localStorage[
-                _delta > 0 ?
-                  _delta > _lastDelta ? '_snake_behindl' : '_snake_behindg'
-                :
-                  _delta > _lastDelta ? '_snake_aheadl'  : '_snake_aheadg'
-              ]
-            )
-          else
+          if(_delta !== 0) {
+            const _dColor = localStorage[
+              _delta > 0 ?
+                _delta > _lastDelta ? '_snake_behindl' : '_snake_behindg'
+              :
+                _delta > _lastDelta ? '_snake_aheadl'  : '_snake_aheadg'
+            ]
+            if (typeof window.setTimerDeltaDisplay === "function")
+              window.setTimerDeltaDisplay(deltaDiv, (_delta < 0 ? '-' : '+') + _absDeltaString, _dColor)
+            else
+              deltaDiv.innerHTML = ((_delta < 0 ? '-' : '+') + _absDeltaString).color(_dColor)
+          } else if (typeof window.setTimerDeltaDisplay === "function") {
+            window.setTimerDeltaDisplay(deltaDiv, '-', 'white')
+          } else {
             deltaDiv.innerHTML = '-'.color('white')
+          }
 
 
 
           window._lastDelta = _delta
+        } else if (typeof window.setTimerDeltaDisplay === "function") {
+          window.setTimerDeltaDisplay(deltaDiv, '-', 'white')
         } else {
           deltaDiv.innerHTML = '-'.color('white')
         }
@@ -6302,11 +6960,15 @@ window.Timer = {
       winStuff,
       `
       ${winStuff}
-      const deltaDiv = document.getElementById('timerDelta')
-      const _mode  = getSelected('#trophy')
-      const _count = getSelected('#count')
-      const _speed = getSelected('#speed')
-      const _size  = getSelected('#size')
+      const deltaDiv = window._timerDeltaEl || document.getElementById('timerDelta')
+      window._timerDeltaEl = deltaDiv
+      const _sel = typeof window.getRunSelectors === "function"
+        ? window.getRunSelectors()
+        : { mode: getSelected('#trophy'), count: getSelected('#count'), speed: getSelected('#speed'), size: getSelected('#size') }
+      const _mode  = _sel.mode
+      const _count = _sel.count
+      const _speed = _sel.speed
+      const _size  = _sel.size
 
       const _time = ${winTicks} * ${winDt} * 1e-3
 
@@ -6316,17 +6978,24 @@ window.Timer = {
       if(window._pb[_mode][_count][_speed][_size][_cat]['ALL']) {
         _delta = _time - window._pb[_mode][_count][_speed][_size][_cat]['ALL']
         const _absDeltaString = Math.abs(_delta).timeFormat()
-        if(_delta !== 0)
-          deltaDiv.innerHTML = ((_delta < 0 ? '-' : '+') + _absDeltaString).color(
-            localStorage[
-              _delta > 0 ?
-                _delta > _lastDelta ? '_snake_behindl' : '_snake_behindg'
-              :
-                _delta > _lastDelta ? '_snake_aheadl'  : '_snake_aheadg'
-            ]
-          )
-        else
+        if(_delta !== 0) {
+          const _dColor = localStorage[
+            _delta > 0 ?
+              _delta > _lastDelta ? '_snake_behindl' : '_snake_behindg'
+            :
+              _delta > _lastDelta ? '_snake_aheadl'  : '_snake_aheadg'
+          ]
+          if (typeof window.setTimerDeltaDisplay === "function")
+            window.setTimerDeltaDisplay(deltaDiv, (_delta < 0 ? '-' : '+') + _absDeltaString, _dColor)
+          else
+            deltaDiv.innerHTML = ((_delta < 0 ? '-' : '+') + _absDeltaString).color(_dColor)
+        } else if (typeof window.setTimerDeltaDisplay === "function") {
+          window.setTimerDeltaDisplay(deltaDiv, '-', 'white')
+        } else {
           deltaDiv.innerHTML = '-'.color('white')
+        }
+      } else if (typeof window.setTimerDeltaDisplay === "function") {
+        window.setTimerDeltaDisplay(deltaDiv, '-', 'white')
       } else {
         deltaDiv.innerHTML = '-'.color('white')
       }
@@ -6389,10 +7058,26 @@ window.SplitPanel.make = function () {
     }
 
     function currentBucket() {
-        const _mode = selectedIndex("#trophy");
-        const _count = selectedIndex("#count");
-        const _speed = selectedIndex("#speed");
-        const _size = selectedIndex("#size");
+        let _mode;
+        let _count;
+        let _speed;
+        let _size;
+        if (
+            typeof window.getRunSelectors === "function" &&
+            window.timeKeeper &&
+            (window.timeKeeper.runStarted || window.timeKeeper.playing)
+        ) {
+            const sel = window.getRunSelectors();
+            _mode = sel.mode;
+            _count = sel.count;
+            _speed = sel.speed;
+            _size = sel.size;
+        } else {
+            _mode = selectedIndex("#trophy");
+            _count = selectedIndex("#count");
+            _speed = selectedIndex("#speed");
+            _size = selectedIndex("#size");
+        }
         const _cat = window._cat != null ? window._cat : 3;
         const path = [_mode, _count, _speed, _size, _cat];
         return {
@@ -6452,16 +7137,34 @@ window.SplitPanel.make = function () {
         if (delta == null || !isFinite(delta) || delta === 0) {
             return { text: "—", color: "white" };
         }
+        if (!window._splitDeltaColors) {
+            window._splitDeltaColors = {
+                aheadg: localStorage._snake_aheadg || "#008010",
+                aheadl: localStorage._snake_aheadl || "#53dd87",
+                behindg: localStorage._snake_behindg || "#dd3333",
+                behindl: localStorage._snake_behindl || "#a00000",
+            };
+        }
+        const colors = window._splitDeltaColors;
         const abs = typeof Math.abs(delta).timeFormat === "function"
             ? Math.abs(delta).timeFormat()
             : String(Math.abs(delta));
         const last = window._lastDelta || 0;
-        const storageKey = delta > 0
-            ? (delta > last ? "_snake_behindl" : "_snake_behindg")
-            : (delta > last ? "_snake_aheadl" : "_snake_aheadg");
-        const color = localStorage[storageKey] || (delta < 0 ? "#008010" : "#dd3333");
+        const color = delta > 0
+            ? (delta > last ? colors.behindl : colors.behindg)
+            : (delta > last ? colors.aheadl : colors.aheadg);
         return { text: (delta < 0 ? "-" : "+") + abs, color: color };
     }
+
+    // Refresh cached colors when Timer settings change them
+    window.refreshSplitDeltaColors = function () {
+        window._splitDeltaColors = {
+            aheadg: localStorage._snake_aheadg || "#008010",
+            aheadl: localStorage._snake_aheadl || "#53dd87",
+            behindg: localStorage._snake_behindg || "#dd3333",
+            behindl: localStorage._snake_behindl || "#a00000",
+        };
+    };
 
     function rowStyle(active) {
         return "display:flex;align-items:center;justify-content:space-between;gap:4px;padding:3px 4px;margin:0;border-radius:3px;font-family:Roboto,Arial,sans-serif;font-size:12px;line-height:1.25;color:white;"
@@ -6566,6 +7269,9 @@ window.SplitPanel.make = function () {
     };
 
     window.SplitPanelOnSplit = function (score, splitTime, delta) {
+        const box = document.getElementById("split-panel-pudding");
+        if (!box || box.style.visibility === "hidden" || !window.splitPanelVisible) return;
+
         const key = score === "ALL" || score === "all" ? "ALL" : score;
         const rec = window._splitPanelRows && window._splitPanelRows[String(key)];
         if (!rec) {
@@ -6659,6 +7365,429 @@ window.SplitPanel.make = function () {
 
 window.SplitPanel.alterCode = function (code) {
     return code;
+};
+window.Backup = {};
+
+window.Backup.make = function () {
+  const BACKUP_FORMAT = "puddingmod-backup";
+  const BACKUP_VERSION = 1;
+
+  const WHITELIST = [
+    "snake_timeKeeper_remix_ultra",
+    "inputCounterMod",
+    "RemixUltraSettings",
+    "keybinds",
+    "_snake_pb",
+    "_snake_timer_format",
+    "_snake_show_delta",
+    "_snake_null_split",
+    "_snake_aheadg",
+    "_snake_aheadl",
+    "_snake_behindg",
+    "_snake_behindl",
+    "_snake_pb_bridge_migrated",
+    "snakeAdvancedSettings",
+  ];
+
+  const SETTINGS_KEYS = new Set([
+    "RemixUltraSettings",
+    "keybinds",
+    "_snake_timer_format",
+    "_snake_show_delta",
+    "_snake_null_split",
+    "_snake_aheadg",
+    "_snake_aheadl",
+    "_snake_behindg",
+    "_snake_behindl",
+    "_snake_pb_bridge_migrated",
+    "snakeAdvancedSettings",
+  ]);
+
+  function parseMaybeJson(raw) {
+    if (raw == null) return undefined;
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      return raw;
+    }
+  }
+
+  function readLocalJson(key) {
+    const raw = localStorage.getItem(key);
+    if (raw == null) return undefined;
+    return parseMaybeJson(raw);
+  }
+
+  function writeValue(key, value) {
+    if (value === undefined) return;
+    if (value === null) {
+      localStorage.removeItem(key);
+      return;
+    }
+    if (typeof value === "object") {
+      localStorage.setItem(key, JSON.stringify(value));
+    } else {
+      localStorage.setItem(key, String(value));
+    }
+  }
+
+  function isPbRow(key) {
+    return /^(25|50|100|ALL)-/.test(key);
+  }
+
+  function isHighscoreKey(key) {
+    return key.slice(0, 2) === "H-";
+  }
+
+  function isAttemptKey(key) {
+    return key.slice(0, 4) === "att-";
+  }
+
+  function num(v, fallback) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function mergePbEntry(local, imported) {
+    if (!local) return imported;
+    if (!imported) return local;
+    const localTime = num(local.time, Infinity);
+    const importedTime = num(imported.time, Infinity);
+    const better = importedTime < localTime ? imported : local;
+    return {
+      time: better.time,
+      date: better.date,
+      att: Math.max(num(local.att, 0), num(imported.att, 0)),
+      sum: Math.max(num(local.sum, 0), num(imported.sum, 0)),
+    };
+  }
+
+  function mergeHighscoreEntry(local, imported) {
+    if (!local) return imported;
+    if (!imported) return local;
+    const lHigh = num(local.high, -Infinity);
+    const iHigh = num(imported.high, -Infinity);
+    if (iHigh > lHigh) return imported;
+    if (iHigh < lHigh) return local;
+    const lTime = num(local.time, Infinity);
+    const iTime = num(imported.time, Infinity);
+    return iTime < lTime ? imported : local;
+  }
+
+  function attemptTotal(raw) {
+    if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+    if (raw && typeof raw === "object" && typeof raw.total === "number") {
+      return raw.total;
+    }
+    return 0;
+  }
+
+  function mergeAttemptEntry(local, imported) {
+    if (!local && imported == null) return imported;
+    // Legacy att-* values are plain numbers (v10/v11); current are objects
+    if (typeof local === "number" || typeof imported === "number") {
+      return Math.max(attemptTotal(local), attemptTotal(imported));
+    }
+    if (!local) {
+      const rec = Object.assign({}, imported);
+      if (typeof rec.session !== "number") rec.session = 0;
+      if (typeof rec.total !== "number") rec.total = attemptTotal(imported);
+      return rec;
+    }
+    if (!imported) return local;
+    return {
+      total: Math.max(attemptTotal(local), attemptTotal(imported)),
+      session: typeof local.session === "number" ? local.session : 0,
+      lastAttempt:
+        local.lastAttempt != null ? local.lastAttempt : imported.lastAttempt,
+      lastSession: Math.max(
+        num(local.lastSession, 0),
+        num(imported.lastSession, 0)
+      ),
+    };
+  }
+
+  function mergeTimeKeeper(local, imported) {
+    const out =
+      local && typeof local === "object" ? Object.assign({}, local) : {};
+    const src =
+      imported && typeof imported === "object" ? imported : {};
+    for (const key of Object.keys(src)) {
+      if (key === "version") continue;
+      const a = out[key];
+      const b = src[key];
+      if (isPbKey(key)) {
+        out[key] = mergePbEntry(a, b);
+      } else if (isHighscoreKey(key)) {
+        out[key] = mergeHighscoreEntry(a, b);
+      } else if (isAttemptKey(key)) {
+        out[key] = mergeAttemptEntry(a, b);
+      } else if (a === undefined) {
+        out[key] = b;
+      }
+    }
+    out.version = 4;
+    return out;
+  }
+
+  function mergeCounter(local, imported) {
+    const base =
+      local && typeof local === "object"
+        ? JSON.parse(JSON.stringify(local))
+        : {
+            visible: true,
+            statShown: "inputs",
+            statDurationShown: "game",
+            inputs: { game: 0, session: 0, lifetime: 0 },
+            plays: { session: 0, lifetime: 0 },
+            apples: { session: 0, lifetime: 0 },
+          };
+    const src = imported && typeof imported === "object" ? imported : {};
+
+    function ensureBucket(obj, name, fields) {
+      if (!obj[name] || typeof obj[name] !== "object") obj[name] = {};
+      for (const f of fields) {
+        if (typeof obj[name][f] !== "number") obj[name][f] = 0;
+      }
+    }
+
+    ensureBucket(base, "inputs", ["game", "session", "lifetime"]);
+    ensureBucket(base, "plays", ["session", "lifetime"]);
+    ensureBucket(base, "apples", ["session", "lifetime"]);
+    ensureBucket(base, "goldenFruit", [
+      "apple",
+      "cherry",
+      "strawberry",
+      "carrot",
+      "watermelon",
+    ]);
+
+    if (src.inputs && typeof src.inputs === "object") {
+      base.inputs.lifetime = Math.max(
+        num(base.inputs.lifetime, 0),
+        num(src.inputs.lifetime, 0)
+      );
+    }
+    if (src.plays && typeof src.plays === "object") {
+      base.plays.lifetime = Math.max(
+        num(base.plays.lifetime, 0),
+        num(src.plays.lifetime, 0)
+      );
+    }
+    if (src.apples && typeof src.apples === "object") {
+      base.apples.lifetime = Math.max(
+        num(base.apples.lifetime, 0),
+        num(src.apples.lifetime, 0)
+      );
+    }
+    if (src.goldenFruit && typeof src.goldenFruit === "object") {
+      for (const k of [
+        "apple",
+        "cherry",
+        "strawberry",
+        "carrot",
+        "watermelon",
+      ]) {
+        base.goldenFruit[k] = Math.max(
+          num(base.goldenFruit[k], 0),
+          num(src.goldenFruit[k], 0)
+        );
+      }
+    }
+
+    if (typeof src.statShown === "string") base.statShown = src.statShown;
+    if (typeof src.statDurationShown === "string") {
+      base.statDurationShown = src.statDurationShown;
+    }
+    if (typeof src.visible === "boolean") base.visible = src.visible;
+
+    return base;
+  }
+
+  function mergeSnakePb(local, imported) {
+    if (imported == null) return local;
+    if (local == null) return imported;
+    if (typeof imported === "number" && typeof local === "number") {
+      return imported < local ? imported : local;
+    }
+    if (typeof imported !== "object" || typeof local !== "object") {
+      return imported;
+    }
+    const out = Array.isArray(local) ? local.slice() : Object.assign({}, local);
+    for (const key of Object.keys(imported)) {
+      out[key] = mergeSnakePb(out[key], imported[key]);
+    }
+    return out;
+  }
+
+  function collectExportData() {
+    if (typeof window.flushSnakePb === "function") {
+      window.flushSnakePb();
+    }
+    if (typeof window.timeKeeper !== "undefined" &&
+        typeof window.timeKeeper.flushStorage === "function") {
+      window.timeKeeper.flushStorage();
+    }
+    if (typeof window.saveSettings === "function") {
+      window.saveSettings();
+    }
+    if (typeof window.saveStatistics === "function") {
+      window.saveStatistics();
+    }
+
+    const data = {};
+    for (const key of WHITELIST) {
+      const value = readLocalJson(key);
+      if (value !== undefined) data[key] = value;
+    }
+    return data;
+  }
+
+  function applyReplace(data) {
+    for (const key of WHITELIST) {
+      if (!Object.prototype.hasOwnProperty.call(data, key)) continue;
+      writeValue(key, data[key]);
+    }
+  }
+
+  function applyMerge(data) {
+    for (const key of WHITELIST) {
+      if (!Object.prototype.hasOwnProperty.call(data, key)) continue;
+      const imported = data[key];
+
+      if (key === "snake_timeKeeper_remix_ultra") {
+        writeValue(key, mergeTimeKeeper(readLocalJson(key), imported));
+        continue;
+      }
+      if (key === "inputCounterMod") {
+        writeValue(key, mergeCounter(readLocalJson(key), imported));
+        continue;
+      }
+      if (key === "_snake_pb") {
+        writeValue(key, mergeSnakePb(readLocalJson(key), imported));
+        continue;
+      }
+      if (SETTINGS_KEYS.has(key)) {
+        writeValue(key, imported);
+      }
+    }
+  }
+
+  window.exportPuddingBackup = function () {
+    const payload = {
+      format: BACKUP_FORMAT,
+      version: BACKUP_VERSION,
+      exportedAt: new Date().toISOString(),
+      data: collectExportData(),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const day = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = "puddingmod-backup-" + day + ".json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () {
+      URL.revokeObjectURL(url);
+    }, 1000);
+  };
+
+  window.importPuddingBackup = function (file, mode) {
+    if (!file) return;
+    if (mode !== "merge" && mode !== "replace") {
+      alert("Invalid import mode");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function () {
+      let parsed;
+      try {
+        parsed = JSON.parse(reader.result);
+      } catch (e) {
+        alert("Invalid backup file (not JSON)");
+        return;
+      }
+      if (
+        !parsed ||
+        parsed.format !== BACKUP_FORMAT ||
+        !parsed.data ||
+        typeof parsed.data !== "object"
+      ) {
+        alert("Invalid backup file (wrong format)");
+        return;
+      }
+
+      const confirmMsg =
+        mode === "merge"
+          ? "Merge this backup into your Pudding Mod data? Better PBs and higher lifetime counts are kept; settings from the file are applied. The page will reload."
+          : "Replace Pudding Mod data with this backup for all keys in the file? Existing values for those keys will be overwritten. The page will reload.";
+
+      if (!confirm(confirmMsg)) return;
+
+      try {
+        if (mode === "merge") applyMerge(parsed.data);
+        else applyReplace(parsed.data);
+      } catch (e) {
+        console.error(e);
+        alert("Import failed");
+        return;
+      }
+      location.reload();
+    };
+    reader.onerror = function () {
+      alert("Could not read backup file");
+    };
+    reader.readAsText(file);
+  };
+
+  window.wirePuddingBackupButtons = function (opts) {
+    if (!opts) return;
+    const exportBtn = opts.exportBtn;
+    const mergeBtn = opts.mergeBtn;
+    const replaceBtn = opts.replaceBtn;
+    const fileInput = opts.fileInput;
+    if (!fileInput) return;
+
+    let pendingMode = "merge";
+
+    if (exportBtn) {
+      exportBtn.addEventListener("click", function () {
+        window.exportPuddingBackup();
+      });
+    }
+
+    function openPicker(mode) {
+      pendingMode = mode;
+      fileInput.value = "";
+      fileInput.click();
+    }
+
+    if (mergeBtn) {
+      mergeBtn.addEventListener("click", function () {
+        openPicker("merge");
+      });
+    }
+    if (replaceBtn) {
+      replaceBtn.addEventListener("click", function () {
+        openPicker("replace");
+      });
+    }
+
+    fileInput.addEventListener("change", function () {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      window.importPuddingBackup(file, pendingMode);
+    });
+  };
+};
+
+window.Backup.alterCode = function (code) {
+  return code;
 };
 window.BootstrapMenu = {};
 
@@ -6785,80 +7914,203 @@ window.BootstrapMenu.make = function () {
         settingsBox.style.display = 'none';
         settingsBox.id = 'settings-popup-pudding';
         settingsBox.innerHTML = `
+<style>
+#settings-popup-pudding .pudding-settings-header {
+  color: white;
+  font-family: Roboto, Arial, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+#settings-popup-pudding .pudding-settings-section {
+  margin: 0 0 8px;
+  padding: 0 0 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.18);
+}
+#settings-popup-pudding .pudding-settings-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+#settings-popup-pudding .pudding-settings-section-title {
+  display: block;
+  color: rgba(255,255,255,0.75);
+  font-family: Roboto, Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 6px;
+}
+#settings-popup-pudding .pudding-settings-btn {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 4px;
+  padding: 5px 8px;
+  color: white;
+  background-color: #1155CC;
+  border: none;
+  border-radius: 4px;
+  font-family: Roboto, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.3;
+  text-align: center;
+  cursor: pointer;
+}
+#settings-popup-pudding .pudding-settings-btn-row {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 4px;
+}
+#settings-popup-pudding .pudding-settings-btn-row .pudding-settings-btn {
+  flex: 1;
+  margin: 0;
+}
+#settings-popup-pudding #stat-chooser {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 4px;
+  padding: 4px 6px;
+  background-color: #1155CC;
+  color: white;
+  font-family: Roboto, Arial, sans-serif;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  text-align: center;
+}
+#settings-popup-pudding .form-check.form-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 4px;
+  min-height: 0;
+  padding-left: 0;
+}
+#settings-popup-pudding .form-check.form-switch .form-check-input {
+  margin: 0;
+  float: none;
+  flex-shrink: 0;
+}
+#settings-popup-pudding .form-check-label {
+  margin: 0;
+  color: white;
+  font-family: Roboto, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.25;
+}
+#settings-popup-pudding.pudding-text-compact .form-check-label,
+#settings-popup-pudding.pudding-text-compact .pudding-settings-btn,
+#settings-popup-pudding.pudding-text-compact #stat-chooser {
+  font-size: 12px;
+}
+</style>
 
-        <script src="https://code.jquery.com/jquery-3.7.0.slim.js" integrity="sha256-7GO+jepT9gJe9LB4XFf8snVOjX3iYNb0FHYr5LI1N5c=" crossorigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+<span class="pudding-settings-header">Pudding Mod Settings</span>
 
-        <span style="color:white;font-family:Roboto,Arial,sans-serif;display:flex; justify-content: center; align-items: center; text-align: center;">Pudding Mod Settings</span>
+<div class="pudding-settings-section">
+  <span class="pudding-settings-section-title">Counter</span>
+  <select id="stat-chooser" class="form-control">
+    <option value="inputGame">Count game inputs</option>
+    <option value="inputSession">Count session inputs</option>
+    <option value="inputLifetime">Count lifetime inputs</option>
+    <option value="playsSession">Count session resets</option>
+    <option value="playsLifetime">Count lifetime resets</option>
+    <option value="applesSession">Count fruit session</option>
+    <option value="applesLifetime">Count fruit lifetime</option>
+    <option value="goldenFruitCount">Count golden fruit</option>
+    <option value="wallsGame">Count walls</option>
+    <option value="hideCount">Hide counter</option>
+  </select>
+  <div class="pudding-settings-btn-row">
+    <button type="button" class="btn pudding-settings-btn" id="edit-stat">Edit stat</button>
+    <button type="button" class="btn pudding-settings-btn" id="reset-stats">Reset stats</button>
+  </div>
+</div>
 
-    <select style="margin-top:3px;margin-bottom:3px;margin-left: auto; margin-right: auto;background-color:#1155CC;color:white;font-family:Roboto,Arial,sans-serif;display:flex; justify-content: center; align-items: center; text-align: center; align:center;" id="stat-chooser" class="form-control">
-        <option value="inputGame">Count game inputs</option>
-        <option value="inputSession">Count session inputs</option>
-        <option value="inputLifetime">Count lifetime inputs</option>
-        <option value="playsSession">Count session resets</option>
-        <option value="playsLifetime">Count lifetime resets</option>
-        <option value="applesSession">Count fruit session</option>
-        <option value="applesLifetime">Count fruit lifetime</option>
-        <option value="wallsGame">Count walls</option>
-        <option value="hideCount">Hide counter</option>
-    </select>
-
-  <button class="btn" style="margin:3px;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="edit-stat">Edit stat</button>
-  <button class="btn" style="margin:3px;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="reset-stats">Reset stats</button><br>
-  <div class="form-check form-check-inline">
-    <input class="form-check-input" type="checkbox" role="switch" id="SkullPoisonFruit">
-    <label class="form-check-label" for="SkullPoisonFruit" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Skull Poison Fruit</label>
-    </div>
-    <div class="form-check form-check-inline">
-    <input class="form-check-input" type="checkbox" role="switch" id="DistinctSokoGoals">
-    <label class="form-check-label" for="DistinctSokoGoals" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Distinct Soko Goals</label>
-    </div>
-    <div class="form-check form-check-inline">
+<div class="pudding-settings-section">
+  <span class="pudding-settings-section-title">Display</span>
+  <div class="form-check form-switch">
     <input class="form-check-input" type="checkbox" role="switch" id="InputDisplay">
-    <label class="form-check-label" for="InputDisplay" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Input Display</label>
-    </div>
-    <div class="form-check form-check-inline">
+    <label class="form-check-label" for="InputDisplay">Input Display</label>
+  </div>
+  <div class="form-check form-switch">
     <input class="form-check-input" type="checkbox" role="switch" id="TopBarIcons">
-    <label class="form-check-label" for="TopBarIcons" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Top Bar Icons</label>
-    </div>
-    <div class="form-check form-check-inline">
+    <label class="form-check-label" for="TopBarIcons">Top Bar Icons</label>
+  </div>
+  <div class="form-check form-switch">
     <input class="form-check-input" type="checkbox" role="switch" id="AlwaysOnTimeKeeper">
-    <label class="form-check-label" for="AlwaysOnTimeKeeper" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Show Speed Info</label>
-    </div>
-    <div class="form-check form-check-inline">
+    <label class="form-check-label" for="AlwaysOnTimeKeeper">Show Speed Info</label>
+  </div>
+  <div class="form-check form-switch">
     <input class="form-check-input" type="checkbox" role="switch" id="ShowSplitPanel">
-    <label class="form-check-label" for="ShowSplitPanel" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Show Split Panel</label>
-    </div>
-    <div class="form-check form-check-inline">
-    <input class="form-check-input" type="checkbox" role="switch" id="DisableRandom">
-    <label class="form-check-label" for="DisableRandom" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Disable Randomizer</label>
-    </div>
-    <div class="form-check form-check-inline">
-    <input class="form-check-input" type="checkbox" role="switch" id="SaveGameSettings">
-    <label class="form-check-label" for="SaveGameSettings" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;">Save Game Settings</label>
-    </div>
-    <button class="btn" style="margin:3px;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="TimerSettings">Timer settings</button><br>
-    <div class="form-check form-check-inline">
+    <label class="form-check-label" for="ShowSplitPanel">Show Split Panel</label>
+  </div>
+  <div class="form-check form-switch">
+    <input class="form-check-input" type="checkbox" role="switch" id="BigPanelText">
+    <label class="form-check-label" for="BigPanelText">Large panel text</label>
+  </div>
+  <div class="form-check form-switch">
     <input class="form-check-input" type="checkbox" role="switch" id="EatThemeRandomizer">
-    <label class="form-check-label" for="EatThemeRandomizer" style="margin:3px;color:white;font-family:Roboto,Arial,sans-serif;" id="EatThemeRandomizer2">"Dragon Fruit"</label>
-    </div>
-  <button class="btn" style="margin:3px;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="ResetKeybind">Reset Key: Shift</button><br>
-  <button type="button" class="btn" style="margin:3px;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="CustomBowlFruits" onclick="window.TogglePortalPairsPanel&&window.TogglePortalPairsPanel()">Custom Bowl Fruits</button><br>
-    </div>
+    <label class="form-check-label" for="EatThemeRandomizer" id="EatThemeRandomizer2">"Dragon Fruit"</label>
+  </div>
+</div>
 
-<select style="display:none;margin:3px;background-color:#1155CC;color:white;font-family:Roboto,Arial,sans-serif; align-items: center; text-align: center;" id="snakePride" class="form-control flex-row">
+<div class="pudding-settings-section">
+  <span class="pudding-settings-section-title">Gameplay</span>
+  <div class="form-check form-switch">
+    <input class="form-check-input" type="checkbox" role="switch" id="SkullPoisonFruit">
+    <label class="form-check-label" for="SkullPoisonFruit">Skull Poison Fruit</label>
+  </div>
+  <div class="form-check form-switch">
+    <input class="form-check-input" type="checkbox" role="switch" id="DistinctSokoGoals">
+    <label class="form-check-label" for="DistinctSokoGoals">Distinct Soko Goals</label>
+  </div>
+  <div class="form-check form-switch">
+    <input class="form-check-input" type="checkbox" role="switch" id="DisableRandom">
+    <label class="form-check-label" for="DisableRandom">Disable Randomizer</label>
+  </div>
+  <div class="form-check form-switch">
+    <input class="form-check-input" type="checkbox" role="switch" id="SaveGameSettings">
+    <label class="form-check-label" for="SaveGameSettings">Save Game Settings</label>
+  </div>
+</div>
+
+<div class="pudding-settings-section">
+  <span class="pudding-settings-section-title">Tools</span>
+  <button type="button" class="btn pudding-settings-btn" id="TimerSettings">Timer settings</button>
+  <button type="button" class="btn pudding-settings-btn" id="ResetKeybind">Reset Key: Shift</button>
+  <button type="button" class="btn pudding-settings-btn" id="CustomBowlFruits" onclick="window.TogglePortalPairsPanel&&window.TogglePortalPairsPanel()">Custom Bowl Fruits</button>
+</div>
+
+<div class="pudding-settings-section">
+  <span class="pudding-settings-section-title">Backup</span>
+  <button type="button" class="btn pudding-settings-btn" id="ExportBackup">Export backup</button>
+  <div class="pudding-settings-btn-row">
+    <button type="button" class="btn pudding-settings-btn" id="ImportMergeBackup">Import merge</button>
+    <button type="button" class="btn pudding-settings-btn" id="ImportReplaceBackup">Import replace</button>
+  </div>
+  <input type="file" id="PuddingBackupFile" accept="application/json,.json" style="display:none;">
+</div>
+
+<select style="display:none;margin:3px;background-color:#1155CC;color:white;font-family:Roboto,Arial,sans-serif;align-items:center;text-align:center;" id="snakePride" class="form-control flex-row">
   <option value="0">Default Rainbow</option>
 </select>
 
-  <button class="btn" style="display:none;margin:3px;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="settings-close" jsname="settings-close">Close</button>
+<button class="btn pudding-settings-btn" style="display:none;" id="settings-close" jsname="settings-close">Close</button>
+<button class="btn pudding-settings-btn" style="display:none;" id="ScrollLeftBtn">Scroll Left</button>
+`;
 
-  <br>
-  <button class="btn" style="margin:3px;color:white;background-color:#1155CC;font-family:Roboto,Arial,sans-serif;" id="ScrollLeftBtn">Scroll Left</button><br>
-
-  `;
-
-  document.getElementsByClassName('sEOCsb')[0].appendChild(settingsBox);
+        document.getElementsByClassName('sEOCsb')[0].appendChild(settingsBox);
+        if (typeof window.applyPuddingPanelTextSize === "function") {
+          window.applyPuddingPanelTextSize();
+        }
 
         timer_settings = document.getElementById("TimerSettings");
         timer_settings.addEventListener("click", window.editTimer);
@@ -6873,6 +8125,17 @@ window.BootstrapMenu.make = function () {
             window.pudding_settings.randomizeThemeApple = !window.pudding_settings.randomizeThemeApple;
         });
 
+        const bigPanelTextCheckbox = document.getElementById("BigPanelText");
+        if (bigPanelTextCheckbox) {
+            bigPanelTextCheckbox.checked = window.pudding_settings.BigPanelText !== false;
+            bigPanelTextCheckbox.addEventListener("change", function () {
+                window.pudding_settings.BigPanelText = !!bigPanelTextCheckbox.checked;
+                if (typeof window.applyPuddingPanelTextSize === "function") {
+                    window.applyPuddingPanelTextSize();
+                }
+                if (typeof window.saveSettings === "function") window.saveSettings();
+            });
+        }
 
         skull_checkbox = document.getElementById("SkullPoisonFruit");
         skull_checkbox.checked = window.pudding_settings.Skull;
@@ -6968,6 +8231,9 @@ window.BootstrapMenu.make = function () {
                 session: 'applesSession',
                 lifetime: 'applesLifetime'
             },
+            goldenFruit: {
+                lifetime: 'goldenFruitCount'
+            },
             walls: {
                 game: 'wallsGame'
             },
@@ -6984,11 +8250,18 @@ window.BootstrapMenu.make = function () {
             playsLifetime: { stat: 'plays', duration: 'lifetime' },
             applesSession: { stat: 'apples', duration: 'session' },
             applesLifetime: { stat: 'apples', duration: 'lifetime' },
+            goldenFruitCount: { stat: 'goldenFruit', duration: 'lifetime' },
             wallsGame: { stat: 'walls', duration: 'game' },
             hideCount: { stat: 'hide', duration: 'count' },
         }
 
-        document.querySelector(`#stat-chooser option[value=${settingsToValues[stats.statShown][stats.statDurationShown]}]`).selected = true;
+        const chosenValue =
+            settingsToValues[stats.statShown] &&
+            settingsToValues[stats.statShown][stats.statDurationShown];
+        const chosenOpt = chosenValue
+            ? document.querySelector(`#stat-chooser option[value=${chosenValue}]`)
+            : null;
+        if (chosenOpt) chosenOpt.selected = true;
 
         const settingsCloseElements = document.getElementById('settings-close');
         settingsCloseElements.addEventListener('click', window.BootstrapHide);
@@ -6996,12 +8269,21 @@ window.BootstrapMenu.make = function () {
         document.getElementById('stat-chooser').onchange = function () {
             stats.statShown = valuesToSettings[this.value].stat;
             stats.statDurationShown = valuesToSettings[this.value].duration;
-            document.getElementById('stat-icon').src = getStatIconImageSrc();
+            if (typeof window.setCounter === "function") window.setCounter();
             updateCounterDisplay();
         }
 
         document.getElementById('edit-stat').addEventListener('click', promptToEditStatCount);
         document.getElementById('reset-stats').addEventListener('click', promptToResetStats);
+
+        if (typeof window.wirePuddingBackupButtons === "function") {
+            window.wirePuddingBackupButtons({
+                exportBtn: document.getElementById("ExportBackup"),
+                mergeBtn: document.getElementById("ImportMergeBackup"),
+                replaceBtn: document.getElementById("ImportReplaceBackup"),
+                fileInput: document.getElementById("PuddingBackupFile"),
+            });
+        }
     }
 
     window.BootstrapSetup();
@@ -7092,21 +8374,28 @@ window.ResetKey.make = function (){
   }
 
   function setupKeybindPicker(buttonId, keybindType) {
-      const button = document.getElementById(buttonId);
-      if (!button) return;
-      if(!keybinds[keybindType]){
+      const buttons = document.querySelectorAll("#" + buttonId);
+      if (!buttons.length) return;
+      if (!keybinds[keybindType]) {
           keybinds[keybindType] = "Shift";
           localStorage.setItem("keybinds", JSON.stringify(keybinds));
       }
-      button.textContent = `Reset Key: ${keybinds[keybindType]}`;
-
-      button.addEventListener("click", () => {
-          button.textContent = "Press any key...";
-          document.addEventListener("keydown", function handler(e) {
-          keybinds[keybindType] = e.key;
-          button.textContent = `Reset Key: ${e.key}`;
-          localStorage.setItem("keybinds", JSON.stringify(keybinds));
-          document.removeEventListener("keydown", handler);
+      const label = `Reset Key: ${keybinds[keybindType]}`;
+      buttons.forEach(function (button) {
+          button.textContent = label;
+          button.addEventListener("click", function () {
+              buttons.forEach(function (b) {
+                  b.textContent = "Press any key...";
+              });
+              document.addEventListener("keydown", function handler(e) {
+                  keybinds[keybindType] = e.key;
+                  const next = `Reset Key: ${e.key}`;
+                  buttons.forEach(function (b) {
+                      b.textContent = next;
+                  });
+                  localStorage.setItem("keybinds", JSON.stringify(keybinds));
+                  document.removeEventListener("keydown", handler);
+              });
           });
       });
   }
@@ -7144,8 +8433,11 @@ window.ResetKey.alterCode = function(code){
       keybinds = {};
     }
     const resetKey = keybinds.resetKey || "Shift";
-    let resetButton = document.getElementById('ResetKeybind');
-    let isSettingKeybind = resetButton && resetButton.textContent === "Press any key...";
+    const resetButtons = document.querySelectorAll("#ResetKeybind");
+    let isSettingKeybind = false;
+    resetButtons.forEach(function (btn) {
+      if (btn.textContent === "Press any key...") isSettingKeybind = true;
+    });
     const dialogActive = window.timeKeeper && window.timeKeeper.dialogActive;
     if(!(isSettingKeybind || isTypingInField() || dialogActive || document.getElementById('edit-box'))){
         if(e.key === resetKey){
@@ -8137,6 +9429,7 @@ window.PuddingMod.runCodeBefore = function () {
     "InputDisplay",
     "Timer",
     "SplitPanel",
+    "Backup",
     "BootstrapMenu",
     "ResetKey",
     "RenderDelayFix",
@@ -8427,7 +9720,7 @@ window.moreMenu = {
       /this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?=\n?\(\n?d\n?\.\n?isMobile\n?\?\n?175\n?:\n?135\n?\)\n?\*\n?a\n?;/
     )[0]
     const selectedSpeed = code.match(
-      /switch\n?\(\n?d\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\)\n?{\n?case(\n? \n?|\n)?1\n?:\n?a\n?=\n?\.66/
+      /switch\n?\(\n?d\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\)\n?{\n?case(\n? \n?|\n)1\n?:\n?a\n?=\n?\.66/
     )[0].match(
       /d\n?\.\n?[a-zA-Z0-9_$]{1,8}/
     )[0].replace('d', 'this.settings')
@@ -8437,12 +9730,18 @@ window.moreMenu = {
     )[0]
     const replacePoint = tickFunction.match(
       /\.5\n?:\n?1\.25\n?\);\n?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\+\+;/
-    )
+    )[0]
   
     window.bunnyTurtleSpeed = 1.33
     window.lightningSnailSpeed = 1.85
-
-    const speedMultiplierBlock = `
+  
+    code = code.assertReplace(tickFunction,
+      tickFunction.replaceAll(
+        '&&', ' && '
+      ).replace(
+        replacePoint,
+        replacePoint
+         + `
           window.bunnyTurtleSpeed = Math.random() < .5 ? .66 : 1.33
           window.lightningSnailSpeed = Math.random() < .5 ? .45 : 1.85
           let speedMultiplier
@@ -8490,47 +9789,19 @@ window.moreMenu = {
               speedMultiplier = 1
               break
           }
-          ${tileLengthSetLine.replace(/\*\n?a/, '* speedMultiplier').replace(/d\.isMobile/g, 'this.settings.isMobile')}
+          ${tileLengthSetLine.replace(/\*\n?a/, '* speedMultiplier').replace('d.isMobile', 'this.settings.isMobile')}
         `
-  
-    if (replacePoint) {
-      code = code.assertReplace(tickFunction,
-        tickFunction.replaceAll(
-          '&&', ' && '
-        ).replace(
-          replacePoint[0],
-          replacePoint[0] + speedMultiplierBlock
-        )
       )
-    } else {
-      const tickAnchor = tickFunction.match(
-        /\}else if\(!window\.timeKeeper\.runStarted\)\{window\.timeKeeper\.start\(\);\}/
-      )
-      if (!tickAnchor) {
-        throw new Error('More Menu: could not find tick speed injection point')
-      }
-      code = code.assertReplace(
-        tickFunction,
-        tickFunction.assertReplace(tickAnchor[0], tickAnchor[0] + speedMultiplierBlock)
-      )
-    }
+    )
   
     const resetFunction1 = code.match(
       /reset\n?\(\n?\)\n?{\n?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?=\n?null[^]*?\.66[^]*?!0\n?\)\n?\)\n?}/
     )[0]
-
-    const speedSwitchRegex =
-      /a:switch\(d\.[a-zA-Z0-9_$]{1,8}\)\{case 1:a=\.66;break a;case 2:a=1\.33;break a;default:a=1\}/
-    const speedSwitchLegacyRegex =
-      /\{case 1:a=\.66[^}]*?1\}/
-    const resetSpeedField = resetFunction1.match(
-      /switch\(d\.([a-zA-Z0-9_$]{1,8})\)\{case 1:a=\.66/
-    )[1]
   
     code = code.assertReplace(resetFunction1,
       resetFunction1.assertReplace(
-        speedSwitchRegex.test(resetFunction1) ? speedSwitchRegex : speedSwitchLegacyRegex,
-        `a:switch(d.${resetSpeedField}){
+        /{case 1:a=\.66[^}]*?1}/,
+        `{
           case 1:
             a = .66
             break a
@@ -8719,18 +9990,18 @@ window.moreMenu = {
         '}}',
         `}
           const appleCountDisplay = document.body.getElementsByClassName('UJhXPd wSwbef EWyEF')[0]
-          if (appleCountDisplay) {
-            while (appleCountDisplay.children.length > 2) {
-              appleCountDisplay.removeChild(appleCountDisplay.children[2])
-            }
+  
+          // [...appleCountDisplay.children].forEach((e, i) => i > 1 && (appleCountDisplay.removeChild(appleCountDisplay.children[i])))
+          for(let i = 2; i < appleCountDisplay.children.length; i++) {
+            appleCountDisplay.removeChild(appleCountDisplay.children[i])
+          }
 
-            if(${selectedAppleCount1} > 3) {
-              const __src = document.querySelector('#count').children[${selectedAppleCount1}].src
-              const __img = window.uiImage(__src)
-              __img.style.position = 'relative'
-              __img.style.left = '50px'
-              appleCountDisplay.appendChild(__img)
-            }
+          if(${selectedAppleCount1} > 3) {
+            const __src = document.querySelector('#count').children[${selectedAppleCount1}].src
+            const __img = window.uiImage(__src)
+            __img.style.position = 'relative'
+            __img.style.left = '50px'
+            appleCountDisplay.appendChild(__img)
           }
         } 
         `
@@ -27221,7 +28492,7 @@ window.remixPacmanGhostUri = function remixPacmanGhostUri(key) {
   return map[key] || "";
 };
 
-/** Poison presets: Blinky (Distinct Visual poison-ghost) + Pinky/Inky/Clyde + Skull. */
+/** Poison presets: Blinky + Pinky/Inky/Clyde + Skull + Jack-o-lantern. */
 window.REMIX_CUSTOM_POISON_PRESETS = [
   {
     id: "blinky-poison",
@@ -27259,6 +28530,13 @@ window.REMIX_CUSTOM_POISON_PRESETS = [
     poisonPixel:
       "https://www.google.com/logos/fnbx/snake_arcade/pixel/px_trophy_10.png",
     poisonReal: "https://i.postimg.cc/prstgqbL/poison-skull.png",
+  },
+  {
+    id: "jack-o-lantern-poison",
+    label: "Jack-o-lantern",
+    poisonNormal: "https://i.postimg.cc/rwMX5hbg/true-jacko.png",
+    poisonPixel: "https://i.postimg.cc/Pfy42QXc/jacko-px.png",
+    poisonReal: "https://i.postimg.cc/6qMfqtbw/jacko-real.png",
   },
 ];
 
@@ -30130,7 +31408,10 @@ window.RemixSpeedInfo.runCodeBefore = function () {
       cb.checked = true;
       const box = document.getElementById("speedinfo-popup-pudding");
       if (box) {
-        box.style.display = "block";
+        // Match Pudding SpeedInfoShow: flex column (sticky Controls / input footer).
+        box.style.display = "flex";
+        box.style.flexDirection = "column";
+        box.style.boxSizing = "border-box";
         box.style.visibility = "visible";
       }
     }
@@ -30244,10 +31525,11 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     const editMode = document.getElementById("edit-mode");
     if (!editMode) return;
 
-    const unsBorder = "0.5vh ridge #00000000";
-    const selBorder = "0.5vh ridge #af4490ff";
+    // Match Pudding Timer settings trophy chip size (Libraries/TimeKeeper edit UI).
+    const unsBorder = "0.45vh ridge #00000000";
+    const selBorder = "0.45vh ridge #af4490ff";
     const baseStyle =
-      "cursor: pointer; border-radius: 1vh; width: 3.5vh; height: 3.5vh;";
+      "cursor: pointer; border-radius: 1vh; width: 3.2vh; height: 3.2vh;";
 
     const remixModes = [
       {
@@ -30744,41 +32026,97 @@ label[for="RemoveScrollbar"] {
   cursor: not-allowed;
 }
 #settings-popup-pudding .form-check-label {
-  margin: 3px !important;
+  margin: 0 !important;
   color: #fff !important;
   font-family: Roboto, Arial, sans-serif !important;
+  font-size: 16px;
+  line-height: 1.3;
 }
-#settings-popup-pudding .btn {
+#settings-popup-pudding.pudding-text-compact .form-check-label {
+  font-size: 12px;
+}
+/* Match Pudding .pudding-settings-btn (4px / 16px); keep 8px only on Remix chrome. */
+#settings-popup-pudding .btn,
+#settings-popup-pudding .pudding-settings-btn {
   display: block;
   width: 100%;
   box-sizing: border-box;
-  margin: 5px 0 !important;
-  border-radius: 8px !important;
+  margin: 0 0 4px !important;
+  padding: 5px 8px !important;
+  border-radius: 4px !important;
   background: var(--ultra-btn, #1155CC) !important;
   color: #fff !important;
   border: none !important;
+  font-family: Roboto, Arial, sans-serif !important;
+  font-size: 16px !important;
+  line-height: 1.3;
+  text-align: center;
+}
+#settings-popup-pudding.pudding-text-compact .btn,
+#settings-popup-pudding.pudding-text-compact .pudding-settings-btn {
   font-size: 12px !important;
+}
+#settings-popup-pudding .pudding-settings-btn-row {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 4px;
+}
+#settings-popup-pudding .pudding-settings-btn-row .btn,
+#settings-popup-pudding .pudding-settings-btn-row .pudding-settings-btn {
+  flex: 1;
+  margin: 0 !important;
 }
 #settings-popup-pudding .remix-custom-toolbar-actions .btn,
 #settings-popup-pudding .remix-custom-btn-inline {
   display: inline-block;
   width: auto !important;
   margin: 0 !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
 }
 #stat-chooser {
   width: 100% !important;
   box-sizing: border-box;
   display: block !important;
-  min-height: 36px !important;
-  height: 36px !important;
-  line-height: 20px !important;
-  padding: 8px 10px !important;
-  margin: 4px 0 8px !important;
-  border-radius: 8px !important;
+  margin: 0 0 4px !important;
+  padding: 4px 6px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  line-height: 1.3 !important;
+  border-radius: 4px !important;
   border: none !important;
-  font-size: 13px !important;
+  font-family: Roboto, Arial, sans-serif !important;
+  font-size: 16px !important;
   color: #fff !important;
   background-color: var(--ultra-btn, #1155CC) !important;
+  text-align: center;
+}
+#settings-popup-pudding.pudding-text-compact #stat-chooser {
+  font-size: 12px !important;
+}
+/* Empty shells left after Play/Setup reorg — drop orphan Pudding section titles. */
+#settings-popup-pudding .pudding-settings-section:not(:has(.form-check, .btn, select, input, .pudding-settings-btn-row, .remix-custom-card, #stat-chooser, #black-dice-settings, #remix-custom-settings)) {
+  display: none !important;
+}
+#settings-popup-pudding .pudding-settings-section-title {
+  display: block;
+  color: rgba(255,255,255,0.75);
+  font-family: Roboto, Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 6px;
+}
+#settings-popup-pudding .pudding-settings-header {
+  display: block;
+  color: #fff;
+  font-family: Roboto, Arial, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: center;
+  margin: 0 0 8px;
+  font-size: 13px;
 }
 #black-dice-settings {
   margin: 8px 0 0 !important;
@@ -31440,6 +32778,8 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     "DistinctSokoGoals",
     "InputDisplay",
     "TopBarIcons",
+    "AlwaysOnTimeKeeper",
+    "BigPanelText",
     "EatThemeRandomizer",
     "DisableRandom",
   ].forEach(function (id) {
@@ -31455,6 +32795,28 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     const el = window.remixSettingsEl(id, root);
     if (el && el.parentElement !== setup) setup.appendChild(el);
   });
+  // Keep Counter edit/reset buttons in a Pudding-style row when possible.
+  const editStat = window.remixSettingsEl("edit-stat", root);
+  const resetStats = window.remixSettingsEl("reset-stats", root);
+  if (editStat && resetStats && setup) {
+    let row = setup.querySelector(".pudding-settings-btn-row");
+    if (!row) {
+      row = document.createElement("div");
+      row.className = "pudding-settings-btn-row";
+    }
+    if (editStat.parentElement !== row) row.appendChild(editStat);
+    if (resetStats.parentElement !== row) row.appendChild(resetStats);
+    const chooser = window.remixSettingsEl("stat-chooser", root);
+    if (chooser && chooser.nextSibling !== row) {
+      if (chooser.parentElement === setup) {
+        setup.insertBefore(row, chooser.nextSibling);
+      } else {
+        setup.appendChild(row);
+      }
+    } else if (row.parentElement !== setup) {
+      setup.appendChild(row);
+    }
+  }
   [
     "SaveGameSettings",
     "TimerSettings",
@@ -31464,6 +32826,16 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     const el = window.remixSettingsWrap(id, root) || window.remixSettingsEl(id, root);
     if (el && el.parentElement !== setup) setup.appendChild(el);
   });
+
+  // Drop empty Pudding section shells (titles with no controls left).
+  Array.from(root.querySelectorAll(".pudding-settings-section")).forEach(
+    function (section) {
+      const useful = section.querySelector(
+        ".form-check, .btn, select, input, .pudding-settings-btn-row, .remix-custom-card, #stat-chooser, #black-dice-settings, #remix-custom-settings"
+      );
+      if (!useful) window.remixHideSettingsNode(section, bin);
+    }
+  );
 
   const dicePanel = document.getElementById("remix-custom-panel-dice");
   const blackDice = document.getElementById("black-dice-settings");
@@ -36614,6 +37986,8 @@ window.ultraDefaultRightTab = function ultraDefaultRightTab() {
 };
 
 window.ultraDockTabH = 28;
+// Match Pudding sidebar width; height follows BigPanelText (740 / 584).
+window.ultraSidebarW = 248;
 window.ultraDockH = 700;
 window.ultraInputH = 110;
 
@@ -36622,13 +37996,16 @@ window.ultraInputOn = function ultraInputOn() {
 };
 
 window.ultraPanelH = function ultraPanelH() {
+  const big = !(
+    window.pudding_settings && window.pudding_settings.BigPanelText === false
+  );
+  const base =
+    (big
+      ? window.PUDDING_SIDEBAR_HEIGHT_BIG
+      : window.PUDDING_SIDEBAR_HEIGHT_COMPACT) || (big ? 740 : 584);
   const reserveInput =
     window.ultraInputOn() && window.ultraDock && window.ultraDock.right !== "more";
-  return (
-    window.ultraDockH -
-    window.ultraDockTabH -
-    (reserveInput ? window.ultraInputH : 0)
-  );
+  return base - (reserveInput ? window.ultraInputH : 0);
 };
 
 window.ultraApplyTheme = function ultraApplyTheme() {
@@ -36693,9 +38070,9 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   height: 0 !important;
 }
 #place-panel, #preset-panel {
-  width: 220px !important;
+  width: 248px !important;
   overflow: hidden !important;
-  padding: 10px 10px 12px !important;
+  padding: 10px 8px 12px !important;
   align-content: start !important;
   justify-content: space-evenly !important;
   gap: 8px 8px !important;
@@ -36850,7 +38227,7 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   overflow: hidden;
 }
 #custom-panel, #challenge-panel {
-  width: 220px !important;
+  width: 248px !important;
   overflow: hidden !important;
   padding: 8px !important;
   color: #fff !important;
@@ -36919,7 +38296,7 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   color: #fff !important;
 }
 #custom-preset-canvas {
-  width: 196px !important;
+  width: 224px !important;
   max-width: 100% !important;
   height: auto !important;
   display: block;
@@ -37017,7 +38394,7 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   position: absolute;
   left: 100%;
   z-index: 10003;
-  width: 220px;
+  width: 248px;
   padding: 6px 8px 8px;
   display: none;
   justify-content: center;
@@ -37057,7 +38434,7 @@ window.ultraFitRightPanel = function ultraFitRightPanel(el) {
     el.id === "split-panel-pudding";
   if (abs) el.style.top = window.ultraDockTabH + "px";
   el.style.height = window.ultraPanelH() + "px";
-  el.style.width = "220px";
+  el.style.width = (window.ultraSidebarW || 248) + "px";
 };
 
 window.ultraLayoutMenus = function ultraLayoutMenus() {
@@ -37152,7 +38529,7 @@ window.ultraLayoutMenus = function ultraLayoutMenus() {
     }
 
     const left = window.ultraDock.left;
-    const leftH = window.ultraDockH - window.ultraDockTabH + "px";
+    const leftH = window.ultraPanelH() + "px";
     window.ultraSetPanelDisplay(custom, left === "custom", "flex");
     window.ultraSetPanelDisplay(challenge, left === "challenge", "block");
     if (custom) custom.style.height = leftH;
@@ -37160,7 +38537,7 @@ window.ultraLayoutMenus = function ultraLayoutMenus() {
     if (splits) {
       splits.style.top = window.ultraDockTabH + "px";
       splits.style.height = leftH;
-      splits.style.width = "220px";
+      splits.style.width = (window.ultraSidebarW || 248) + "px";
       if (left === "splits") {
         splits.style.display = "flex";
         splits.style.visibility = "visible";
@@ -38702,6 +40079,17 @@ window.ultraSetupLayout = function ultraSetupLayout() {
   }
   window.__ultraLayoutReady = true;
   window.ultraLayoutMenus();
+  if (
+    typeof window.applyPuddingPanelTextSize === "function" &&
+    !window.applyPuddingPanelTextSize.__ultra
+  ) {
+    const origSize = window.applyPuddingPanelTextSize;
+    window.applyPuddingPanelTextSize = function () {
+      origSize.apply(this, arguments);
+      if (!window.__ultraApplying) window.ultraLayoutMenus();
+    };
+    window.applyPuddingPanelTextSize.__ultra = true;
+  }
 };
 
 ////////////////////////////////////////////////////////////////////

@@ -90,7 +90,7 @@ window.remixPacmanGhostUri = function remixPacmanGhostUri(key) {
   return map[key] || "";
 };
 
-/** Poison presets: Blinky (Distinct Visual poison-ghost) + Pinky/Inky/Clyde + Skull. */
+/** Poison presets: Blinky + Pinky/Inky/Clyde + Skull + Jack-o-lantern. */
 window.REMIX_CUSTOM_POISON_PRESETS = [
   {
     id: "blinky-poison",
@@ -128,5 +128,12 @@ window.REMIX_CUSTOM_POISON_PRESETS = [
     poisonPixel:
       "https://www.google.com/logos/fnbx/snake_arcade/pixel/px_trophy_10.png",
     poisonReal: "https://i.postimg.cc/prstgqbL/poison-skull.png",
+  },
+  {
+    id: "jack-o-lantern-poison",
+    label: "Jack-o-lantern",
+    poisonNormal: "https://i.postimg.cc/rwMX5hbg/true-jacko.png",
+    poisonPixel: "https://i.postimg.cc/Pfy42QXc/jacko-px.png",
+    poisonReal: "https://i.postimg.cc/6qMfqtbw/jacko-real.png",
   },
 ];

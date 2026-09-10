@@ -137,41 +137,97 @@ label[for="RemoveScrollbar"] {
   cursor: not-allowed;
 }
 #settings-popup-pudding .form-check-label {
-  margin: 3px !important;
+  margin: 0 !important;
   color: #fff !important;
   font-family: Roboto, Arial, sans-serif !important;
+  font-size: 16px;
+  line-height: 1.3;
 }
-#settings-popup-pudding .btn {
+#settings-popup-pudding.pudding-text-compact .form-check-label {
+  font-size: 12px;
+}
+/* Match Pudding .pudding-settings-btn (4px / 16px); keep 8px only on Remix chrome. */
+#settings-popup-pudding .btn,
+#settings-popup-pudding .pudding-settings-btn {
   display: block;
   width: 100%;
   box-sizing: border-box;
-  margin: 5px 0 !important;
-  border-radius: 8px !important;
+  margin: 0 0 4px !important;
+  padding: 5px 8px !important;
+  border-radius: 4px !important;
   background: var(--ultra-btn, #1155CC) !important;
   color: #fff !important;
   border: none !important;
+  font-family: Roboto, Arial, sans-serif !important;
+  font-size: 16px !important;
+  line-height: 1.3;
+  text-align: center;
+}
+#settings-popup-pudding.pudding-text-compact .btn,
+#settings-popup-pudding.pudding-text-compact .pudding-settings-btn {
   font-size: 12px !important;
+}
+#settings-popup-pudding .pudding-settings-btn-row {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 4px;
+}
+#settings-popup-pudding .pudding-settings-btn-row .btn,
+#settings-popup-pudding .pudding-settings-btn-row .pudding-settings-btn {
+  flex: 1;
+  margin: 0 !important;
 }
 #settings-popup-pudding .remix-custom-toolbar-actions .btn,
 #settings-popup-pudding .remix-custom-btn-inline {
   display: inline-block;
   width: auto !important;
   margin: 0 !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
 }
 #stat-chooser {
   width: 100% !important;
   box-sizing: border-box;
   display: block !important;
-  min-height: 36px !important;
-  height: 36px !important;
-  line-height: 20px !important;
-  padding: 8px 10px !important;
-  margin: 4px 0 8px !important;
-  border-radius: 8px !important;
+  margin: 0 0 4px !important;
+  padding: 4px 6px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  line-height: 1.3 !important;
+  border-radius: 4px !important;
   border: none !important;
-  font-size: 13px !important;
+  font-family: Roboto, Arial, sans-serif !important;
+  font-size: 16px !important;
   color: #fff !important;
   background-color: var(--ultra-btn, #1155CC) !important;
+  text-align: center;
+}
+#settings-popup-pudding.pudding-text-compact #stat-chooser {
+  font-size: 12px !important;
+}
+/* Empty shells left after Play/Setup reorg — drop orphan Pudding section titles. */
+#settings-popup-pudding .pudding-settings-section:not(:has(.form-check, .btn, select, input, .pudding-settings-btn-row, .remix-custom-card, #stat-chooser, #black-dice-settings, #remix-custom-settings)) {
+  display: none !important;
+}
+#settings-popup-pudding .pudding-settings-section-title {
+  display: block;
+  color: rgba(255,255,255,0.75);
+  font-family: Roboto, Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 6px;
+}
+#settings-popup-pudding .pudding-settings-header {
+  display: block;
+  color: #fff;
+  font-family: Roboto, Arial, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: center;
+  margin: 0 0 8px;
+  font-size: 13px;
 }
 #black-dice-settings {
   margin: 8px 0 0 !important;
@@ -833,6 +889,8 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     "DistinctSokoGoals",
     "InputDisplay",
     "TopBarIcons",
+    "AlwaysOnTimeKeeper",
+    "BigPanelText",
     "EatThemeRandomizer",
     "DisableRandom",
   ].forEach(function (id) {
@@ -848,6 +906,28 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     const el = window.remixSettingsEl(id, root);
     if (el && el.parentElement !== setup) setup.appendChild(el);
   });
+  // Keep Counter edit/reset buttons in a Pudding-style row when possible.
+  const editStat = window.remixSettingsEl("edit-stat", root);
+  const resetStats = window.remixSettingsEl("reset-stats", root);
+  if (editStat && resetStats && setup) {
+    let row = setup.querySelector(".pudding-settings-btn-row");
+    if (!row) {
+      row = document.createElement("div");
+      row.className = "pudding-settings-btn-row";
+    }
+    if (editStat.parentElement !== row) row.appendChild(editStat);
+    if (resetStats.parentElement !== row) row.appendChild(resetStats);
+    const chooser = window.remixSettingsEl("stat-chooser", root);
+    if (chooser && chooser.nextSibling !== row) {
+      if (chooser.parentElement === setup) {
+        setup.insertBefore(row, chooser.nextSibling);
+      } else {
+        setup.appendChild(row);
+      }
+    } else if (row.parentElement !== setup) {
+      setup.appendChild(row);
+    }
+  }
   [
     "SaveGameSettings",
     "TimerSettings",
@@ -857,6 +937,16 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     const el = window.remixSettingsWrap(id, root) || window.remixSettingsEl(id, root);
     if (el && el.parentElement !== setup) setup.appendChild(el);
   });
+
+  // Drop empty Pudding section shells (titles with no controls left).
+  Array.from(root.querySelectorAll(".pudding-settings-section")).forEach(
+    function (section) {
+      const useful = section.querySelector(
+        ".form-check, .btn, select, input, .pudding-settings-btn-row, .remix-custom-card, #stat-chooser, #black-dice-settings, #remix-custom-settings"
+      );
+      if (!useful) window.remixHideSettingsNode(section, bin);
+    }
+  );
 
   const dicePanel = document.getElementById("remix-custom-panel-dice");
   const blackDice = document.getElementById("black-dice-settings");

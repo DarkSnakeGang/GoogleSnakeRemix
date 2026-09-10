@@ -355,7 +355,10 @@ window.RemixSpeedInfo.runCodeBefore = function () {
       cb.checked = true;
       const box = document.getElementById("speedinfo-popup-pudding");
       if (box) {
-        box.style.display = "block";
+        // Match Pudding SpeedInfoShow: flex column (sticky Controls / input footer).
+        box.style.display = "flex";
+        box.style.flexDirection = "column";
+        box.style.boxSizing = "border-box";
         box.style.visibility = "visible";
       }
     }
@@ -469,10 +472,11 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     const editMode = document.getElementById("edit-mode");
     if (!editMode) return;
 
-    const unsBorder = "0.5vh ridge #00000000";
-    const selBorder = "0.5vh ridge #af4490ff";
+    // Match Pudding Timer settings trophy chip size (Libraries/TimeKeeper edit UI).
+    const unsBorder = "0.45vh ridge #00000000";
+    const selBorder = "0.45vh ridge #af4490ff";
     const baseStyle =
-      "cursor: pointer; border-radius: 1vh; width: 3.5vh; height: 3.5vh;";
+      "cursor: pointer; border-radius: 1vh; width: 3.2vh; height: 3.2vh;";
 
     const remixModes = [
       {

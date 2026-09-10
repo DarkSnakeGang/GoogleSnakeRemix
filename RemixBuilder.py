@@ -4,12 +4,25 @@ import subprocess
 import base64
 
 BASE = os.path.dirname(os.path.abspath(__file__))
+CACHE = os.path.join(BASE, ".cache", "pudding-build")
 
 # MorePudding = PuddingMod + MoreMenuMod + VisibilityMod + MorePuddingInit.
-# It exposes window.MorePudding as well as the individual window.PuddingMod /
-# window.VisibilityModCode / window.moreMenu objects it bundles.
-MOREPUDDING_URL = "https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakePudding/main/MorePudding.js"
-BOOTSTRAP_URL = "https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakePudding/main/bootstrap-stripped.css"
+# Upstream MorePudding.js is often stale vs PuddingMod.js, so Remix rebuilds it
+# from the same parts MoreBuilder.py uses (mirrors GoogleSnakePudding).
+PUDDING_REPO = "https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakePudding/main"
+PUDDINGMOD_URL = f"{PUDDING_REPO}/PuddingMod.js"
+MOREPUDDING_INIT_URL = f"{PUDDING_REPO}/MorePuddingInit.js"
+# Fallback only if a local rebuild is impossible.
+MOREPUDDING_URL = f"{PUDDING_REPO}/MorePudding.js"
+MOREMENU_URL = (
+    "https://raw.githubusercontent.com/DarkSnakeGang/"
+    "GoogleSnakeCustomMenuStuff/main/modloadercode.js"
+)
+VISIBILITY_URL = (
+    "https://raw.githubusercontent.com/DarkSnakeGang/"
+    "GoogleSnakeDeleteStuffMod/main/VisibilityInit.js"
+)
+BOOTSTRAP_URL = f"{PUDDING_REPO}/bootstrap-stripped.css"
 LEVEL_EDITOR_URL = "https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v13/modloadercode.js"
 
 REMIX_PARTS = [
@@ -54,7 +67,27 @@ ULTRA_PARTS = [
 
 def download(url, dest):
     print(f"Downloading {url} -> {dest}")
+    os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
     urllib.request.urlretrieve(url, dest)
+
+
+def rebuild_morepudding(dest):
+    """Concatenate latest PuddingMod + menu/visibility like upstream MoreBuilder."""
+    os.makedirs(CACHE, exist_ok=True)
+    pudding = os.path.join(CACHE, "PuddingMod.js")
+    more_menu = os.path.join(CACHE, "MoreMenuMod.js")
+    visibility = os.path.join(CACHE, "VisibilityMod.js")
+    more_init = os.path.join(CACHE, "MorePuddingInit.js")
+    download(PUDDINGMOD_URL, pudding)
+    download(MOREMENU_URL, more_menu)
+    download(VISIBILITY_URL, visibility)
+    download(MOREPUDDING_INIT_URL, more_init)
+    print(f"Rebuilding MorePudding.js from PuddingMod + deps -> {dest}")
+    with open(dest, "w", encoding="utf-8") as out:
+        for path in (pudding, more_menu, visibility, more_init):
+            with open(path, "r", encoding="utf-8") as f:
+                out.write(f.read())
+    print(f"Wrote rebuilt {dest} ({os.path.getsize(dest)} bytes)")
 
 
 FEAR_ASSET_TOKENS = {
@@ -113,7 +146,11 @@ def main():
     le_path = os.path.join(BASE, "LevelEditorInit.js")
     ultra_out = os.path.join(BASE, "RemixUltraMod.js")
 
-    download(MOREPUDDING_URL, morepudding_path)
+    try:
+        rebuild_morepudding(morepudding_path)
+    except Exception as err:
+        print(f"MorePudding rebuild failed ({err}); falling back to upstream bundle")
+        download(MOREPUDDING_URL, morepudding_path)
     download(BOOTSTRAP_URL, bootstrap_path)
     # Chess/Burger are CE level HS modes in FastSnakeStats; upstream SpeedInfo
     # only knows vanilla trophy ids, so teach it about Remix mode globals.

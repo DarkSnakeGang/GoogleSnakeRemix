@@ -64,6 +64,12 @@ describe("Custom fruit presets + validator (offline)", () => {
       assert.match(g.poisonReal, /^data:image\/png;base64,/);
     }
     assert.ok(poison.some((p) => p.id === "skull-poison"));
+    const jacko = poison.find((p) => p.id === "jack-o-lantern-poison");
+    assert.ok(jacko, "Jack-o-lantern poison preset");
+    assert.equal(jacko.label, "Jack-o-lantern");
+    assert.match(jacko.poisonNormal, /true-jacko\.png/);
+    assert.match(jacko.poisonPixel, /jacko-px\.png/);
+    assert.match(jacko.poisonReal, /jacko-real\.png/);
   });
 
   it("cat fruit preset PNGs are exact Normal/Pixel/Real sizes", () => {
