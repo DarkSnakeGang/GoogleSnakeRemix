@@ -2135,7 +2135,7 @@ window.ultraInstallGameplayToggleUi = function ultraInstallGameplayToggleUi() {
   for (let i = 0; i < specs.length; i++) {
     const spec = specs[i];
     const wrap = document.createElement("div");
-    wrap.className = "form-check form-check-inline";
+    wrap.className = "form-check form-switch";
     wrap.innerHTML =
       '<input class="form-check-input" type="checkbox" role="switch" id="' +
       spec.id +

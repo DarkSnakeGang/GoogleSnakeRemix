@@ -566,7 +566,7 @@ window.remixInstallWallEveryAppleToggle = function remixInstallWallEveryAppleTog
   let input = document.getElementById("WallEveryApple");
   if (!input) {
     const wrap = document.createElement("div");
-    wrap.className = "form-check form-check-inline";
+    wrap.className = "form-check form-switch";
     wrap.innerHTML =
       '<input class="form-check-input" type="checkbox" role="switch" id="WallEveryApple">' +
       '<label class="form-check-label" for="WallEveryApple">Walls spawn every apple</label>';
@@ -577,6 +577,9 @@ window.remixInstallWallEveryAppleToggle = function remixInstallWallEveryAppleTog
       window.pudding_settings.WallEveryApple = !!input.checked;
       if (typeof window.saveSettings === "function") window.saveSettings();
     });
+  } else {
+    const wrap = input.closest(".form-check");
+    if (wrap) wrap.className = "form-check form-switch";
   }
   window.remixSyncWallEveryAppleEnabled();
   return input;

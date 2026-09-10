@@ -142,7 +142,7 @@ window.remixInstallHamiltonCheckbox = function remixInstallHamiltonCheckbox(play
   if (wrap) wrap = wrap.closest(".form-check") || wrap.parentElement;
   if (!wrap) {
     wrap = document.createElement("div");
-    wrap.className = "form-check form-check-inline";
+    wrap.className = "form-check form-switch";
     wrap.innerHTML =
       '<input class="form-check-input" type="checkbox" role="switch" id="HamiltonTour">' +
       '<label class="form-check-label" for="HamiltonTour">Hamilton tour</label>';
@@ -154,6 +154,8 @@ window.remixInstallHamiltonCheckbox = function remixInstallHamiltonCheckbox(play
     } else {
       play.appendChild(wrap);
     }
+  } else {
+    wrap.className = "form-check form-switch";
   }
   const box = document.getElementById("HamiltonTour");
   if (!box || box.dataset.remixHamiltonBound === "1") return;
