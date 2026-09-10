@@ -17867,6 +17867,7 @@ window.fear_reset_state = function fear_reset_state() {
   window.__fearSeenFruits = new WeakSet();
   window.fearTurnsRemaining = 0;
   window.__fearRefreshedMove = false;
+  window.__fearGhostTopUpThisEat = false;
 };
 window.fear_reset_state();
 
@@ -18695,6 +18696,7 @@ window.fear_remove_fresh_pair = function fear_remove_fresh_pair(game, fruit) {
 window.fear_before_native_fruit_eat =
   function fear_before_native_fruit_eat(game, fruit, nativeIndex) {
     if (!game || !fruit) return nativeIndex;
+    window.__fearGhostTopUpThisEat = false;
     if (window.fear_is_ghost(fruit)) {
       window.fear_direct_contact(game, fruit);
       // The native branch has already retained this object in `d`. Mark that
@@ -18721,32 +18723,34 @@ window.fear_native_ghost_top_up =
           : null;
     if (!g || !list || !spawn) return false;
     window.__fearE4E = spawn;
-    let added = false;
-    for (let guard = 0; guard < 64; guard++) {
+    // At most one ghost spawn attempt per apple eat (e4E / g4E / after_respawn).
+    if (window.__fearGhostTopUpThisEat) return false;
+    window.fear_sync_fruit_types(g);
+    const ghosts = list.filter(function (fruit) {
+      return window.fear_is_ghost(fruit);
+    }).length;
+    const fresh = list.length - ghosts;
+    if (ghosts >= fresh) return false;
+    window.__fearGhostTopUpThisEat = true;
+    const before = list.length;
+    const ok = spawn(mgr);
+    if (ok === false || list.length <= before) {
       window.fear_sync_fruit_types(g);
-      const ghosts = list.filter(function (fruit) {
-        return window.fear_is_ghost(fruit);
-      }).length;
-      const fresh = list.length - ghosts;
-      // After an eat/refill: if board has X fresh and fewer ghosts, spawn.
-      if (ghosts >= fresh) break;
-      const before = list.length;
-      const ok = spawn(mgr);
-      if (ok === false || list.length <= before) break;
-      for (let i = before; i < list.length; i++) {
-        const fruit = list[i];
-        if (!fruit) continue;
-        fruit.__fearGhost = true;
-        fruit.Oka = false;
-        window.__fearSeenFruits.add(fruit);
-        window.fear_sync_fruit_type(fruit);
-      }
-      window.fear_pair_new_fruits(g);
-      added = true;
+      window.fear_reconcile_pairs(g, true);
+      return false;
     }
+    for (let i = before; i < list.length; i++) {
+      const fruit = list[i];
+      if (!fruit) continue;
+      fruit.__fearGhost = true;
+      fruit.Oka = false;
+      window.__fearSeenFruits.add(fruit);
+      window.fear_sync_fruit_type(fruit);
+    }
+    window.fear_pair_new_fruits(g);
     window.fear_sync_fruit_types(g);
     window.fear_reconcile_pairs(g, true);
-    return added;
+    return true;
   };
 
 window.fear_direct_contact = function fear_direct_contact(game, fruit) {

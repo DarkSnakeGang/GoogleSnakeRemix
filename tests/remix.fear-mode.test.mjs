@@ -401,7 +401,7 @@ test("directly eating a ghost doubles that Fear instance's duration", () => {
   assert.equal(g.wa.ka.includes(ghost), false);
 });
 
-test("ghost top-up spawns until ghosts match fresh fruit count", () => {
+test("ghost top-up spawns at most one ghost per apple eat", () => {
   const w = loadFear();
   const fruits = [
     { Oka: false, pos: { x: 1, y: 1 } },
@@ -414,21 +414,23 @@ test("ghost top-up spawns until ghosts match fresh fruit count", () => {
   w.fear_sync_fruit_types(g);
   for (const fruit of fruits) w.__fearSeenFruits.add(fruit);
   w.fear_reconcile_pairs(g, true);
+  w.__fearGhostTopUpThisEat = false;
   let spawned = 0;
-  const ok = w.fear_native_ghost_top_up(g.wa, (mgr) => {
+  const spawn = (mgr) => {
     spawned++;
     mgr.ka.push({
       Oka: true,
       pos: { x: 5 + spawned, y: 1 },
     });
     return true;
-  });
-  assert.equal(ok, true);
-  assert.equal(spawned, 2);
+  };
+  assert.equal(w.fear_native_ghost_top_up(g.wa, spawn), true);
+  assert.equal(w.fear_native_ghost_top_up(g.wa, spawn), false);
+  assert.equal(spawned, 1);
   const ghosts = g.wa.ka.filter((f) => w.fear_is_ghost(f)).length;
   const fresh = g.wa.ka.filter((f) => !w.fear_is_ghost(f)).length;
-  assert.equal(ghosts, fresh);
   assert.equal(fresh, 3);
+  assert.equal(ghosts, 2);
 });
 
 test("ghost top-up is a no-op when ghosts already match fresh", () => {
