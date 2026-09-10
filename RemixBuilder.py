@@ -82,6 +82,11 @@ def rebuild_morepudding(dest):
     download(MOREMENU_URL, more_menu)
     download(VISIBILITY_URL, visibility)
     download(MOREPUDDING_INIT_URL, more_init)
+    print("Patching MoreMenu custom-speed inject for current snake.js")
+    subprocess.check_call(
+        ["node", os.path.join("tools", "patch_moremenu_speed.mjs"), more_menu],
+        cwd=BASE,
+    )
     print(f"Rebuilding MorePudding.js from PuddingMod + deps -> {dest}")
     with open(dest, "w", encoding="utf-8") as out:
         for path in (pudding, more_menu, visibility, more_init):
@@ -149,8 +154,7 @@ def main():
     try:
         rebuild_morepudding(morepudding_path)
     except Exception as err:
-        print(f"MorePudding rebuild failed ({err}); falling back to upstream bundle")
-        download(MOREPUDDING_URL, morepudding_path)
+        raise SystemExit(f"MorePudding rebuild failed: {err}") from err
     download(BOOTSTRAP_URL, bootstrap_path)
     # Chess/Burger are CE level HS modes in FastSnakeStats; upstream SpeedInfo
     # only knows vanilla trophy ids, so teach it about Remix mode globals.

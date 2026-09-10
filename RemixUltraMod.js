@@ -9729,19 +9729,15 @@ window.moreMenu = {
       /tick\n?\(\n?\)\n?{\n?[^]*?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\.\n?keys\n?,\n?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?,\n?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\)\n?}\n?}\n?}\n?}/
     )[0]
     const replacePoint = tickFunction.match(
-      /\.5\n?:\n?1\.25\n?\);\n?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\+\+;/
-    )[0]
+      // Legacy this.Sh++; current a.Sh++ after light+=...?.5:1.25)
+      /\.5\n?:\n?1\.25\n?\);\n?(?:this\n?\.\n?)?[a-zA-Z0-9_$]{1,8}\n?(?:\.\n?[a-zA-Z0-9_$]{1,8}\n?)?\+\+;/
+    )
+    // __remixMoreMenuSpeedPatched
   
     window.bunnyTurtleSpeed = 1.33
     window.lightningSnailSpeed = 1.85
-  
-    code = code.assertReplace(tickFunction,
-      tickFunction.replaceAll(
-        '&&', ' && '
-      ).replace(
-        replacePoint,
-        replacePoint
-         + `
+
+    const speedMultiplierBlock = `
           window.bunnyTurtleSpeed = Math.random() < .5 ? .66 : 1.33
           window.lightningSnailSpeed = Math.random() < .5 ? .45 : 1.85
           let speedMultiplier
@@ -9789,11 +9785,30 @@ window.moreMenu = {
               speedMultiplier = 1
               break
           }
-          ${tileLengthSetLine.replace(/\*\n?a/, '* speedMultiplier').replace('d.isMobile', 'this.settings.isMobile')}
+          ${tileLengthSetLine.replace(/\*\n?a/, '* speedMultiplier').replace(/d\.isMobile/g, 'this.settings.isMobile')}
         `
+
+    if (replacePoint) {
+      code = code.assertReplace(tickFunction,
+        tickFunction.replaceAll(
+          '&&', ' && '
+        ).replace(
+          replacePoint[0],
+          replacePoint[0] + speedMultiplierBlock
+        )
       )
-    )
-  
+    } else {
+      const tickAnchor = tickFunction.match(
+        /\}else if\(!window\.timeKeeper\.runStarted\)\{window\.timeKeeper\.start\(\);\}/
+      )
+      if (!tickAnchor) {
+        throw new Error('More Menu: could not find tick speed injection point')
+      }
+      code = code.assertReplace(
+        tickFunction,
+        tickFunction.assertReplace(tickAnchor[0], tickAnchor[0] + speedMultiplierBlock)
+      )
+    }
     const resetFunction1 = code.match(
       /reset\n?\(\n?\)\n?{\n?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?=\n?null[^]*?\.66[^]*?!0\n?\)\n?\)\n?}/
     )[0]
