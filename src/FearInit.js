@@ -1046,6 +1046,102 @@ window.fear_before_native_fruit_eat =
     return updated >= 0 ? updated : nativeIndex;
   };
 
+window.fear_board_counts = function fear_board_counts(game) {
+  const g = game || window.__remixGame;
+  const list = g && g.wa && g.wa.ka;
+  if (!list) return { ghosts: 0, fresh: 0, list: null };
+  window.fear_sync_fruit_types(g);
+  let ghosts = 0;
+  for (let i = 0; i < list.length; i++) {
+    if (window.fear_is_ghost(list[i])) ghosts++;
+  }
+  return { ghosts: ghosts, fresh: list.length - ghosts, list: list };
+};
+
+window.fear_find_free_pos = function fear_find_free_pos(mgr, except) {
+  const g = window.__remixGame;
+  const free =
+    typeof window.__fearFreePos === "function"
+      ? window.__fearFreePos
+      : typeof window.__chessFreePos === "function"
+        ? window.__chessFreePos
+        : typeof window.__bombFruitFreePos === "function"
+          ? window.__bombFruitFreePos
+          : null;
+  const board =
+    (mgr && mgr.oa) ||
+    (g && g.oa) ||
+    (g && g.wa && g.wa.oa) ||
+    null;
+  if (typeof free === "function" && board) {
+    for (let attempt = 0; attempt < 24; attempt++) {
+      let pos = null;
+      try {
+        pos = free(board, null, 4);
+      } catch (_e) {
+        break;
+      }
+      if (!pos) break;
+      const x = Math.round(+pos.x);
+      const y = Math.round(+pos.y);
+      if (
+        except &&
+        except.pos &&
+        Math.round(+except.pos.x) === x &&
+        Math.round(+except.pos.y) === y
+      ) {
+        continue;
+      }
+      if (window.fear_position_allowed(g, x, y, except)) {
+        return { x: x, y: y };
+      }
+    }
+  }
+  const box = window.fear_box(g);
+  if (!box) return null;
+  const startX = (Math.random() * box.width) | 0;
+  const startY = (Math.random() * box.height) | 0;
+  for (let i = 0; i < box.width * box.height; i++) {
+    const x = (startX + i) % box.width;
+    const y = (startY + ((startX + i) / box.width) | 0) % box.height;
+    if (
+      except &&
+      except.pos &&
+      Math.round(+except.pos.x) === x &&
+      Math.round(+except.pos.y) === y
+    ) {
+      continue;
+    }
+    if (window.fear_position_allowed(g, x, y, except)) {
+      return { x: x, y: y };
+    }
+  }
+  return null;
+};
+
+window.fear_relocate_one_ghost = function fear_relocate_one_ghost(game, mgr) {
+  const g = game || window.__remixGame;
+  const list = (mgr && mgr.ka) || (g && g.wa && g.wa.ka);
+  if (!list || !list.length) return false;
+  const ghosts = [];
+  for (let i = 0; i < list.length; i++) {
+    if (list[i] && window.fear_is_ghost(list[i])) ghosts.push(list[i]);
+  }
+  if (!ghosts.length) return false;
+  const ghost = ghosts[(Math.random() * ghosts.length) | 0];
+  const next = window.fear_find_free_pos(mgr || (g && g.wa), ghost);
+  if (!next || !ghost.pos) return false;
+  if (
+    Math.round(+ghost.pos.x) === next.x &&
+    Math.round(+ghost.pos.y) === next.y
+  ) {
+    return false;
+  }
+  ghost.pos.x = next.x;
+  ghost.pos.y = next.y;
+  return true;
+};
+
 window.fear_native_ghost_top_up =
   function fear_native_ghost_top_up(mgr, nativeTopUp) {
     const g = window.__remixGame;
@@ -1056,36 +1152,50 @@ window.fear_native_ghost_top_up =
         : typeof window.__fearE4E === "function"
           ? window.__fearE4E
           : null;
-    if (!g || !list || !spawn) return false;
-    window.__fearE4E = spawn;
-    // At most one ghost spawn attempt per apple eat (e4E / g4E / after_respawn).
+    if (!g || !list) return false;
+    if (typeof spawn === "function") window.__fearE4E = spawn;
+    // One companion action per apple eat: spawn OR relocate, never a fill loop.
     if (window.__fearGhostTopUpThisEat) return false;
-    window.fear_sync_fruit_types(g);
-    const ghosts = list.filter(function (fruit) {
-      return window.fear_is_ghost(fruit);
-    }).length;
-    const fresh = list.length - ghosts;
-    if (ghosts >= fresh) return false;
-    window.__fearGhostTopUpThisEat = true;
-    const before = list.length;
-    const ok = spawn(mgr);
-    if (ok === false || list.length <= before) {
-      window.fear_sync_fruit_types(g);
+    const counts = window.fear_board_counts(g);
+    // Hard cap: never keep more ghosts than edible fruit.
+    if (counts.ghosts > counts.fresh) {
+      window.__fearGhostTopUpThisEat = true;
       window.fear_reconcile_pairs(g, true);
       return false;
     }
-    for (let i = before; i < list.length; i++) {
-      const fruit = list[i];
-      if (!fruit) continue;
-      fruit.__fearGhost = true;
-      fruit.Oka = false;
-      window.__fearSeenFruits.add(fruit);
-      window.fear_sync_fruit_type(fruit);
+    window.__fearGhostTopUpThisEat = true;
+    if (counts.ghosts < counts.fresh) {
+      // Fruit refill already placed one apple; add one ghost so the eat
+      // refills as a pair (2) instead of a lone fruit (1).
+      if (typeof spawn !== "function") {
+        window.fear_reconcile_pairs(g, true);
+        return false;
+      }
+      const before = list.length;
+      const ok = spawn(mgr);
+      if (ok === false || list.length <= before) {
+        window.fear_sync_fruit_types(g);
+        window.fear_reconcile_pairs(g, true);
+        return false;
+      }
+      for (let i = before; i < list.length; i++) {
+        const fruit = list[i];
+        if (!fruit) continue;
+        fruit.__fearGhost = true;
+        fruit.Oka = false;
+        window.__fearSeenFruits.add(fruit);
+        window.fear_sync_fruit_type(fruit);
+      }
+      window.fear_pair_new_fruits(g);
+      window.fear_sync_fruit_types(g);
+      window.fear_reconcile_pairs(g, true);
+      return true;
     }
-    window.fear_pair_new_fruits(g);
+    // Already covered by ghosts — move one ghost instead of adding another.
+    const moved = window.fear_relocate_one_ghost(g, mgr);
     window.fear_sync_fruit_types(g);
     window.fear_reconcile_pairs(g, true);
-    return true;
+    return moved;
   };
 
 window.fear_direct_contact = function fear_direct_contact(game, fruit) {
@@ -1304,11 +1414,16 @@ window.FearMod.alterSnakeCode = function (code) {
     'S6E=(window.__fearNativeArrowConsume=h7,window.__fearNativeTurn=function(a,b){a.direction=b;a.Qb=!0;a.yb="NONE";a.Ga="NONE";a.Fb&&(a.kc=a.direction);a.Fb=!1},window.__fearNativeArrowStep=function(a,b,c,d){var e=U3E(b,d);if(e==="NONE")return e;if(e===Z6(c.direction)){a&&typeof a.Oa==="function"&&a.Oa();return"CRASH"}S6E(c,e);h7(b,d,!0);return e},window.__fearNativeTurn)'
   );
 
-  // Keep a handle so post-respawn can top-up ghosts when fresh > ghosts.
+  // Keep handles so post-respawn can top-up / relocate ghosts.
   fearReplace(
     "expose native e4E",
     /,e4E=function\(a\)\{/,
     ",e4E=window.__fearE4E=function(a){"
+  );
+  fearReplace(
+    "expose native d4E",
+    /,d4E=function\(a,b,c\)\{/,
+    ",d4E=window.__fearFreePos=function(a,b,c){"
   );
 
   // Treat full Fear / Fear blender as native Poison for pair counts and refill.
