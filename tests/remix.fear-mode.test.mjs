@@ -401,6 +401,55 @@ test("directly eating a ghost doubles that Fear instance's duration", () => {
   assert.equal(g.wa.ka.includes(ghost), false);
 });
 
+test("ghost top-up spawns until ghosts match fresh fruit count", () => {
+  const w = loadFear();
+  const fruits = [
+    { Oka: false, pos: { x: 1, y: 1 } },
+    { Oka: false, pos: { x: 2, y: 1 } },
+    { Oka: false, pos: { x: 3, y: 1 } },
+    { Oka: true, pos: { x: 4, y: 1 } },
+  ];
+  const g = game(fruits);
+  w.__remixGame = g;
+  w.fear_sync_fruit_types(g);
+  for (const fruit of fruits) w.__fearSeenFruits.add(fruit);
+  w.fear_reconcile_pairs(g, true);
+  let spawned = 0;
+  const ok = w.fear_native_ghost_top_up(g.wa, (mgr) => {
+    spawned++;
+    mgr.ka.push({
+      Oka: true,
+      pos: { x: 5 + spawned, y: 1 },
+    });
+    return true;
+  });
+  assert.equal(ok, true);
+  assert.equal(spawned, 2);
+  const ghosts = g.wa.ka.filter((f) => w.fear_is_ghost(f)).length;
+  const fresh = g.wa.ka.filter((f) => !w.fear_is_ghost(f)).length;
+  assert.equal(ghosts, fresh);
+  assert.equal(fresh, 3);
+});
+
+test("ghost top-up is a no-op when ghosts already match fresh", () => {
+  const w = loadFear();
+  const g = game([
+    { Oka: false, pos: { x: 1, y: 1 } },
+    { Oka: true, pos: { x: 2, y: 1 } },
+  ]);
+  w.__remixGame = g;
+  w.fear_sync_fruit_types(g);
+  let spawned = 0;
+  assert.equal(
+    w.fear_native_ghost_top_up(g.wa, () => {
+      spawned++;
+      return true;
+    }),
+    false
+  );
+  assert.equal(spawned, 0);
+});
+
 test("eating fresh fruit removes only its paired ghost before refill", () => {
   const w = loadFear();
   const ghostA = { Oka: true, pos: { x: 1, y: 1 } };

@@ -1048,18 +1048,40 @@ window.fear_native_ghost_top_up =
   function fear_native_ghost_top_up(mgr, nativeTopUp) {
     const g = window.__remixGame;
     const list = mgr && mgr.ka;
-    if (!g || !list || typeof nativeTopUp !== "function") return false;
-    window.fear_sync_fruit_types(g);
-    const ghosts = list.filter(function (fruit) {
-      return window.fear_is_ghost(fruit);
-    }).length;
-    const fresh = list.length - ghosts;
-    if (ghosts >= fresh) return false;
-    nativeTopUp(mgr);
-    window.fear_pair_new_fruits(g);
+    const spawn =
+      typeof nativeTopUp === "function"
+        ? nativeTopUp
+        : typeof window.__fearE4E === "function"
+          ? window.__fearE4E
+          : null;
+    if (!g || !list || !spawn) return false;
+    window.__fearE4E = spawn;
+    let added = false;
+    for (let guard = 0; guard < 64; guard++) {
+      window.fear_sync_fruit_types(g);
+      const ghosts = list.filter(function (fruit) {
+        return window.fear_is_ghost(fruit);
+      }).length;
+      const fresh = list.length - ghosts;
+      // After an eat/refill: if board has X fresh and fewer ghosts, spawn.
+      if (ghosts >= fresh) break;
+      const before = list.length;
+      const ok = spawn(mgr);
+      if (ok === false || list.length <= before) break;
+      for (let i = before; i < list.length; i++) {
+        const fruit = list[i];
+        if (!fruit) continue;
+        fruit.__fearGhost = true;
+        fruit.Oka = false;
+        window.__fearSeenFruits.add(fruit);
+        window.fear_sync_fruit_type(fruit);
+      }
+      window.fear_pair_new_fruits(g);
+      added = true;
+    }
     window.fear_sync_fruit_types(g);
     window.fear_reconcile_pairs(g, true);
-    return true;
+    return added;
   };
 
 window.fear_direct_contact = function fear_direct_contact(game, fruit) {
@@ -1239,7 +1261,12 @@ window.fear_after_respawn = function fear_after_respawn(mgr) {
   const g = window.__remixGame;
   if (!g || !mgr || !window.isFearActive()) return;
   window.fear_pair_new_fruits(g);
-  window.fear_reconcile_pairs(g, true);
+  if (window.fear_uses_ghost_pairs && window.fear_uses_ghost_pairs(g)) {
+    window.fear_native_ghost_top_up(mgr);
+  } else {
+    window.fear_sync_fruit_types(g);
+    window.fear_reconcile_pairs(g, true);
+  }
   window.fear_rebuild_grid(g);
   window.fear_win_if_empty(g, mgr);
 };
@@ -1271,6 +1298,13 @@ window.FearMod.alterSnakeCode = function (code) {
     "native Arrow collision exposure",
     /S6E=function\(a,b\)\{a\.direction=b;a\.Qb=!0;a\.yb="NONE";a\.Ga="NONE";a\.Fb&&\(a\.kc=a\.direction\);a\.Fb=!1\}/,
     'S6E=(window.__fearNativeArrowConsume=h7,window.__fearNativeTurn=function(a,b){a.direction=b;a.Qb=!0;a.yb="NONE";a.Ga="NONE";a.Fb&&(a.kc=a.direction);a.Fb=!1},window.__fearNativeArrowStep=function(a,b,c,d){var e=U3E(b,d);if(e==="NONE")return e;if(e===Z6(c.direction)){a&&typeof a.Oa==="function"&&a.Oa();return"CRASH"}S6E(c,e);h7(b,d,!0);return e},window.__fearNativeTurn)'
+  );
+
+  // Keep a handle so post-respawn can top-up ghosts when fresh > ghosts.
+  fearReplace(
+    "expose native e4E",
+    /,e4E=function\(a\)\{/,
+    ",e4E=window.__fearE4E=function(a){"
   );
 
   // Treat full Fear / Fear blender as native Poison for pair counts and refill.
