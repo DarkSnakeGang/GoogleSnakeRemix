@@ -560,8 +560,12 @@ window.remixPatchCustomFruitAtlas = function remixPatchCustomFruitAtlas() {
       if (!sprite) {
         const img = new Image();
         img.crossOrigin = "Anonymous";
-        const color = document.createElement("canvas").getContext("2d");
-        const grey = document.createElement("canvas").getContext("2d");
+        const color = document.createElement("canvas").getContext("2d", {
+          willReadFrequently: true,
+        });
+        const grey = document.createElement("canvas").getContext("2d", {
+          willReadFrequently: true,
+        });
         sprite = { path: "", jB: img, oa: color, ka: grey, loaded: false };
         window.__remixCustomPoisonAtlas[slot] = sprite;
       }

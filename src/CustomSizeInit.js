@@ -29,7 +29,7 @@ window.remixHueShiftImageUrl = function remixHueShiftImageUrl(src, hueRotateDeg,
       const c = document.createElement("canvas");
       c.width = 40;
       c.height = 40;
-      const ctx = c.getContext("2d");
+      const ctx = c.getContext("2d", { willReadFrequently: true });
       ctx.drawImage(img, 0, 0, 40, 40);
       const imageData = ctx.getImageData(0, 0, 40, 40);
       const d = imageData.data;

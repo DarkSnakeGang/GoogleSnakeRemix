@@ -36,9 +36,49 @@ window.remixBaseRunCodeBefore = function remixBaseRunCodeBefore() {
 };
 
 window.remixBaseAlterSnakeCode = function remixBaseAlterSnakeCode(code) {
-  if (window.MorePudding) return window.MorePudding.alterSnakeCode(code);
-  code = window.PuddingMod.alterSnakeCode(code);
-  return window.VisibilityModCode.alterSnakeCode(code);
+  if (window.MorePudding) {
+    code = window.MorePudding.alterSnakeCode(code);
+  } else {
+    code = window.PuddingMod.alterSnakeCode(code);
+    code = window.VisibilityModCode.alterSnakeCode(code);
+  }
+  return window.remixPatchCanvasReadback(code);
+};
+
+// Native sprite recolor (D3E) repeatedly getImageData's F3E atlas canvases.
+// Chrome warns unless those contexts opt into willReadFrequently.
+window.remixPatchCanvasReadback = function remixPatchCanvasReadback(code) {
+  if (typeof code !== "string") return code;
+  if (code.indexOf("willReadFrequently:!0") >= 0) return code;
+  const atlas =
+    /this\.oa=document\.createElement\("canvas"\)\.getContext\("2d"\);this\.ka=document\.createElement\("canvas"\)\.getContext\("2d"\);/;
+  if (atlas.test(code)) {
+    code = code.assertReplace
+      ? code.assertReplace(
+          atlas,
+          'this.oa=document.createElement("canvas").getContext("2d",{willReadFrequently:!0});this.ka=document.createElement("canvas").getContext("2d",{willReadFrequently:!0});'
+        )
+      : code.replace(
+          atlas,
+          'this.oa=document.createElement("canvas").getContext("2d",{willReadFrequently:!0});this.ka=document.createElement("canvas").getContext("2d",{willReadFrequently:!0});'
+        );
+  } else {
+    console.error("RemixMod: failed to patch F3E willReadFrequently");
+  }
+  const scratch =
+    /R5E=function\(\)\{return document\.createElement\("canvas"\)\.getContext\("2d"\)\}/;
+  if (scratch.test(code)) {
+    code = code.assertReplace
+      ? code.assertReplace(
+          scratch,
+          'R5E=function(){return document.createElement("canvas").getContext("2d",{willReadFrequently:!0})}'
+        )
+      : code.replace(
+          scratch,
+          'R5E=function(){return document.createElement("canvas").getContext("2d",{willReadFrequently:!0})}'
+        );
+  }
+  return code;
 };
 
 window.remixInjectSettingsCss = function remixInjectSettingsCss() {

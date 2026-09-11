@@ -150,7 +150,7 @@ window.HamiltonMod.runCodeBefore = function () {
     const canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = h;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
     ctx.drawImage(img, 0, 0);
     const data = ctx.getImageData(0, 0, w, h);
     const px = data.data;
