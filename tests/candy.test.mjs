@@ -8,11 +8,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 
 describe("candy/chess icons", () => {
-  it("CandyInit and ChessInit use postimg icon URLs", () => {
+  it("CandyInit and ChessInit embed icon assets as data URLs", () => {
     const candy = readFileSync(path.join(ROOT, "src", "CandyInit.js"), "utf8");
     const chess = readFileSync(path.join(ROOT, "src", "ChessInit.js"), "utf8");
-    assert.match(candy, /i\.postimg\.cc\/rsSFx6gg\/candy\.png/);
-    assert.match(chess, /i\.postimg\.cc\/ZqK0CB95\/bn\.png/);
+    assert.match(candy, /window\.CANDY_ICON = "data:image\/png;base64,/);
+    assert.match(chess, /window\.CHESS_ICON = "data:image\/png;base64,/);
+    assert.doesNotMatch(candy, /i\.postimg\.cc/);
+    assert.doesNotMatch(chess, /i\.postimg\.cc/);
   });
 
   it("deathscreen compares numeric settings.ob not padded string b", () => {

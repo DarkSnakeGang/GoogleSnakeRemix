@@ -2,6 +2,7 @@ import urllib.request
 import os
 import subprocess
 import base64
+import sys
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 CACHE = os.path.join(BASE, ".cache", "pudding-build")
@@ -82,6 +83,16 @@ def rebuild_morepudding(dest):
     download(MOREMENU_URL, more_menu)
     download(VISIBILITY_URL, visibility)
     download(MOREPUDDING_INIT_URL, more_init)
+    print("Embedding postimg assets in MoreMenu + Visibility as data URLs")
+    subprocess.check_call(
+        [
+            sys.executable,
+            os.path.join("tools", "embed_postimg.py"),
+            more_menu,
+            visibility,
+        ],
+        cwd=BASE,
+    )
     print("Patching MoreMenu custom-speed inject for current snake.js")
     subprocess.check_call(
         ["node", os.path.join("tools", "patch_moremenu_speed.mjs"), more_menu],
