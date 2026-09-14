@@ -26789,7 +26789,7 @@ window.DiceCounts.runCodeBefore = function () {
         const c = document.createElement("canvas");
         c.width = 40;
         c.height = 40;
-        const ctx = c.getContext("2d", { willReadFrequently: true });
+        const ctx = c.getContext("2d");
         ctx.drawImage(img, 0, 0, 40, 40);
         const imageData = ctx.getImageData(0, 0, 40, 40);
         const d = imageData.data;
@@ -26867,7 +26867,7 @@ window.DiceCounts.runCodeBefore = function () {
         const c = document.createElement("canvas");
         c.width = 40;
         c.height = 40;
-        const ctx = c.getContext("2d", { willReadFrequently: true });
+        const ctx = c.getContext("2d");
         ctx.drawImage(img, 0, 0, 40, 40);
         const imageData = ctx.getImageData(0, 0, 40, 40);
         const d = imageData.data;
@@ -27700,7 +27700,7 @@ window.remixHueShiftImageUrl = function remixHueShiftImageUrl(src, hueRotateDeg,
       const c = document.createElement("canvas");
       c.width = 40;
       c.height = 40;
-      const ctx = c.getContext("2d", { willReadFrequently: true });
+      const ctx = c.getContext("2d");
       ctx.drawImage(img, 0, 0, 40, 40);
       const imageData = ctx.getImageData(0, 0, 40, 40);
       const d = imageData.data;
@@ -29320,12 +29320,8 @@ window.remixPatchCustomFruitAtlas = function remixPatchCustomFruitAtlas() {
       if (!sprite) {
         const img = new Image();
         img.crossOrigin = "Anonymous";
-        const color = document.createElement("canvas").getContext("2d", {
-          willReadFrequently: true,
-        });
-        const grey = document.createElement("canvas").getContext("2d", {
-          willReadFrequently: true,
-        });
+        const color = document.createElement("canvas").getContext("2d");
+        const grey = document.createElement("canvas").getContext("2d");
         sprite = { path: "", jB: img, oa: color, ka: grey, loaded: false };
         window.__remixCustomPoisonAtlas[slot] = sprite;
       }
@@ -30124,7 +30120,7 @@ window.HamiltonMod.runCodeBefore = function () {
     const canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = h;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const ctx = canvas.getContext("2d");
     ctx.drawImage(img, 0, 0);
     const data = ctx.getImageData(0, 0, w, h);
     const px = data.data;
@@ -32169,11 +32165,11 @@ window.remixPatchCanvasReadback = function remixPatchCanvasReadback(code) {
     code = code.assertReplace
       ? code.assertReplace(
           atlas,
-          'this.oa=document.createElement("canvas").getContext("2d",{willReadFrequently:!0});this.ka=document.createElement("canvas").getContext("2d",{willReadFrequently:!0});'
+          'this.oa=document.createElement("canvas").getContext("2d");this.ka=document.createElement("canvas").getContext("2d");'
         )
       : code.replace(
           atlas,
-          'this.oa=document.createElement("canvas").getContext("2d",{willReadFrequently:!0});this.ka=document.createElement("canvas").getContext("2d",{willReadFrequently:!0});'
+          'this.oa=document.createElement("canvas").getContext("2d");this.ka=document.createElement("canvas").getContext("2d");'
         );
   } else {
     console.error("RemixMod: failed to patch F3E willReadFrequently");
@@ -32184,11 +32180,11 @@ window.remixPatchCanvasReadback = function remixPatchCanvasReadback(code) {
     code = code.assertReplace
       ? code.assertReplace(
           scratch,
-          'R5E=function(){return document.createElement("canvas").getContext("2d",{willReadFrequently:!0})}'
+          'R5E=function(){return document.createElement("canvas").getContext("2d")}'
         )
       : code.replace(
           scratch,
-          'R5E=function(){return document.createElement("canvas").getContext("2d",{willReadFrequently:!0})}'
+          'R5E=function(){return document.createElement("canvas").getContext("2d")}'
         );
   }
   return code;

@@ -66,7 +66,7 @@ async function processSlot({ srcDataUrl, size, style }) {
       const work = document.createElement("canvas");
       work.width = iw;
       work.height = ih;
-      const wctx = work.getContext("2d", { willReadFrequently: true });
+      const wctx = work.getContext("2d");
       wctx.clearRect(0, 0, iw, ih);
       wctx.drawImage(img, 0, 0);
       const data = wctx.getImageData(0, 0, iw, ih);
@@ -168,7 +168,7 @@ async function processSlot({ srcDataUrl, size, style }) {
         const tiny = document.createElement("canvas");
         tiny.width = grid;
         tiny.height = grid;
-        const tctx = tiny.getContext("2d", { willReadFrequently: true });
+        const tctx = tiny.getContext("2d");
         tctx.imageSmoothingEnabled = false;
         tctx.clearRect(0, 0, grid, grid);
         const tPad = 1;
