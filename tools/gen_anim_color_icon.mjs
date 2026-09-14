@@ -37,7 +37,7 @@ const result = await page.evaluate(async (src) => {
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
-  const ctx = c.getContext("2d", { willReadFrequently: true });
+  const ctx = c.getContext("2d");
   ctx.drawImage(img, 0, 0);
   const id = ctx.getImageData(0, 0, w, h);
   const d = id.data;
