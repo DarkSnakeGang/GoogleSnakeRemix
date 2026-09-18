@@ -35,7 +35,21 @@ describe("Mexico Mode (offline)", () => {
     );
     assert.match(mx, /mexico_is_wave_count&&window\.mexico_is_wave_count\(a\)/);
     assert.match(mx, /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\),window\.isMexicoActive/);
-    assert.match(mx, /mexico_refill_wave&&window\.mexico_refill_wave/);
+    assert.match(
+      mx,
+      /mexico_constrain_new_apples\(a\.wa,2\)/,
+      "j4E must constrain only the new portal pair"
+    );
+    assert.doesNotMatch(
+      mx,
+      /mexico_constrain_new_apples\(a\.wa,a\.wa\.ka\.length\)/,
+      "must not relocate the whole board on j4E"
+    );
+    assert.match(
+      mx,
+      /mexico_refill_wave\(g\.wa,\s*g\)/,
+      "empty wave refill lives in tick, not j4E"
+    );
     assert.match(mx, /__mexicoWallDone/);
     assert.match(mx, /Math\.floor\(\(h\s*\|\s*0\)\s*\/\s*2\)/);
     assert.match(mx, /b===2&&window\.isMexicoActive/);

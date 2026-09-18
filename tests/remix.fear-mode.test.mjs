@@ -452,7 +452,7 @@ test("wave ghost fill matches fruit count", () => {
     { Oka: true, pos: { x: 4, y: 1 } },
   ];
   const g = game(fruits);
-  g.settings = { ka: 6 };
+  g.settings = { ka: 4 }; // dice-like: match fruit count
   w.__remixGame = g;
   w.fear_sync_fruit_types(g);
   for (const fruit of fruits) w.__fearSeenFruits.add(fruit);
@@ -468,7 +468,6 @@ test("wave ghost fill matches fruit count", () => {
     });
     return true;
   };
-  // Clears existing ghosts first, then fills 1:1 with fresh fruit.
   assert.equal(w.fear_wave_ghost_fill(g.wa, spawn), 3);
   assert.equal(spawned, 3);
   const ghosts = g.wa.ka.filter((f) => w.fear_is_ghost(f)).length;
@@ -478,15 +477,15 @@ test("wave ghost fill matches fruit count", () => {
   assert.equal(w.__fearWaveGhostFill, false);
 });
 
-test("tally last-index wave never exceeds fruit after leftover ghosts", () => {
+test("tally last-index wave ghosts are 1..maxFruitIndex only", () => {
   const w = loadFear();
-  // Simulate post-t7E: 5 new indexed fruit + previous-wave ghosts still on board.
-  const planted = [1, 2, 3, 4, 5].map((n) => ({
+  // Post-t7E: only indices 1..4 fit (one fruit spawn failed); leftover ghosts.
+  const planted = [1, 2, 3, 4].map((n) => ({
     Oka: false,
     sequenceNumber: n,
     pos: { x: n, y: 1 },
   }));
-  const leftovers = [1, 2, 3, 4, 5].map((n) => ({
+  const leftovers = [1, 2, 3, 4, 5, 6, 7].map((n) => ({
     Oka: false,
     __fearGhost: true,
     sequenceNumber: n,
@@ -509,12 +508,31 @@ test("tally last-index wave never exceeds fruit after leftover ghosts", () => {
     return true;
   };
   w.fear_wave_ghost_fill(g.wa, spawn);
-  const ghosts = g.wa.ka.filter((f) => w.fear_is_ghost(f)).length;
-  const fresh = g.wa.ka.filter((f) => !w.fear_is_ghost(f)).length;
-  assert.equal(fresh, 5);
-  assert.equal(ghosts, 5);
-  assert.ok(ghosts <= fresh);
+  const ghosts = g.wa.ka.filter((f) => w.fear_is_ghost(f));
+  const fresh = g.wa.ka.filter((f) => !w.fear_is_ghost(f));
+  assert.equal(fresh.length, 4);
+  assert.equal(ghosts.length, 4, "one ghost per max index, not leftovers+fill");
   assert.ok(leftovers.every((gh) => !g.wa.ka.includes(gh)));
+  const seqs = ghosts.map((gh) => gh.sequenceNumber).sort((a, b) => a - b);
+  assert.deepEqual(seqs, [1, 2, 3, 4]);
+  assert.equal(spawned, 4);
+});
+
+test("tally does not wave-fill on gap alone without t7E flag", () => {
+  const w = loadFear();
+  const fruits = [
+    { Oka: false, sequenceNumber: 1, pos: { x: 1, y: 1 } },
+    { Oka: false, sequenceNumber: 2, pos: { x: 2, y: 1 } },
+    { Oka: false, sequenceNumber: 3, pos: { x: 3, y: 1 } },
+  ];
+  const g = game(fruits);
+  g.settings = { ka: 6 };
+  w.__remixGame = g;
+  w.fear_sync_fruit_types(g);
+  w.__fearWaveGhostFill = false;
+  assert.equal(w.fear_should_wave_ghost_fill(g), false);
+  w.__fearWaveGhostFill = true;
+  assert.equal(w.fear_should_wave_ghost_fill(g), true);
 });
 
 test("pair_new_fruits keeps tally wave plants as fresh fruit", () => {
@@ -548,13 +566,11 @@ test("pair_new_fruits keeps tally wave plants as fresh fruit", () => {
 
 test("wave fill never leaves more ghosts than fruit even if e4E plants pairs", () => {
   const w = loadFear();
-  const fruits = [
-    { Oka: false, pos: { x: 1, y: 1 } },
-    { Oka: false, pos: { x: 2, y: 1 } },
-    { Oka: false, pos: { x: 3, y: 1 } },
-    { Oka: false, pos: { x: 4, y: 1 } },
-    { Oka: false, pos: { x: 5, y: 1 } },
-  ];
+  const fruits = [1, 2, 3, 4, 5].map((n) => ({
+    Oka: false,
+    sequenceNumber: n,
+    pos: { x: n, y: 1 },
+  }));
   const leftover = [
     { Oka: false, __fearGhost: true, pos: { x: 8, y: 1 } },
     { Oka: false, __fearGhost: true, pos: { x: 9, y: 1 } },
@@ -581,11 +597,14 @@ test("wave fill never leaves more ghosts than fruit even if e4E plants pairs", (
   w.__fearGhostTopUpThisEat = false;
   w.fear_pair_new_fruits(g);
   w.fear_wave_ghost_fill(g.wa, spawn);
-  const ghosts = g.wa.ka.filter((f) => w.fear_is_ghost(f)).length;
-  const fresh = g.wa.ka.filter((f) => !w.fear_is_ghost(f)).length;
-  assert.equal(fresh, 5);
-  assert.equal(ghosts, 5);
-  assert.ok(ghosts <= fresh);
+  const ghosts = g.wa.ka.filter((f) => w.fear_is_ghost(f));
+  const fresh = g.wa.ka.filter((f) => !w.fear_is_ghost(f));
+  assert.equal(fresh.length, 5);
+  assert.equal(ghosts.length, 5);
+  assert.deepEqual(
+    ghosts.map((gh) => gh.sequenceNumber).sort((a, b) => a - b),
+    [1, 2, 3, 4, 5]
+  );
   // Leftover previous-wave ghosts must be wiped before refill.
   assert.ok(
     leftover.every((gh) => !g.wa.ka.includes(gh)),
@@ -593,60 +612,68 @@ test("wave fill never leaves more ghosts than fruit even if e4E plants pairs", (
   );
 });
 
-test("tally wave-fills on gap after clear when flag missing", () => {
+test("tally native top-up does not wave-fill mid-plant", () => {
   const w = loadFear();
-  const fruits = [
-    { Oka: false, pos: { x: 1, y: 1 } },
-    { Oka: false, pos: { x: 2, y: 1 } },
-    { Oka: false, pos: { x: 3, y: 1 } },
-    { Oka: false, pos: { x: 4, y: 1 } },
-    { Oka: false, pos: { x: 5, y: 1 } },
-  ];
-  const leftovers = [
-    { Oka: false, __fearGhost: true, pos: { x: 8, y: 1 } },
-    { Oka: false, __fearGhost: true, pos: { x: 9, y: 1 } },
-  ];
-  const g = game([...fruits, ...leftovers]);
+  const fruits = [1, 2].map((n) => ({
+    Oka: false,
+    sequenceNumber: n,
+    pos: { x: n, y: 1 },
+  }));
+  const g = game(fruits);
   g.settings = { ka: 6 };
   w.__remixGame = g;
+  w.fear_mode_selected = () => true;
+  w.isFearActive = () => true;
+  w.fear_uses_ghost_pairs = () => true;
   w.fear_sync_fruit_types(g);
-  w.__fearWaveGhostFill = false;
-  // 5 fresh vs 2 ghosts → gap 3; tally may wave-fill without t7E flag.
-  assert.equal(w.fear_should_wave_ghost_fill(g), true);
+  for (const fruit of fruits) w.__fearSeenFruits.add(fruit);
+  w.__fearWaveGhostFill = true;
+  w.__fearGhostTopUpThisEat = false;
   let spawned = 0;
   const spawn = (mgr) => {
     spawned++;
     mgr.ka.push({ Oka: true, pos: { x: 20 + spawned, y: 1 } });
     return true;
   };
-  w.fear_wave_ghost_fill(g.wa, spawn);
-  const ghosts = g.wa.ka.filter((f) => w.fear_is_ghost(f)).length;
-  const fresh = g.wa.ka.filter((f) => !w.fear_is_ghost(f)).length;
-  assert.equal(fresh, 5);
-  assert.equal(ghosts, 5);
-  assert.ok(leftovers.every((gh) => !g.wa.ka.includes(gh)));
+  assert.equal(w.fear_should_wave_ghost_fill(g), true);
+  assert.equal(w.fear_native_ghost_top_up(g.wa, spawn), false);
+  assert.equal(spawned, 0, "poison top-up must wait for after_respawn");
+  assert.equal(w.__fearWaveGhostFill, true, "flag stays for after_respawn");
 });
 
-test("tally does not wave-fill on gap alone without t7E flag", () => {
+test("tally after_respawn wins before ghosts when fruit wave planted nothing", () => {
   const w = loadFear();
-  const fruits = [
-    { Oka: false, pos: { x: 1, y: 1 } },
-    { Oka: false, pos: { x: 2, y: 1 } },
-    { Oka: false, pos: { x: 3, y: 1 } },
-  ];
-  const g = game(fruits);
+  const leftovers = [1, 2, 3].map((n) => ({
+    Oka: false,
+    __fearGhost: true,
+    sequenceNumber: n,
+    pos: { x: n, y: 1 },
+  }));
+  const g = game(leftovers);
   g.settings = { ka: 6 };
+  g.nj = false;
+  g.lj = false;
   w.__remixGame = g;
+  w.fear_mode_selected = () => true;
+  w.isFearActive = () => true;
+  w.fear_uses_ghost_pairs = () => true;
   w.fear_sync_fruit_types(g);
-  w.__fearWaveGhostFill = false;
-  // gap 3 with 0 ghosts — wave-fill is intentional for tally plants.
-  assert.equal(w.fear_should_wave_ghost_fill(g), true);
-  // gap 0/1 still refuses full match.
-  g.wa.ka.push({ Oka: false, __fearGhost: true, pos: { x: 9, y: 1 } });
-  g.wa.ka.push({ Oka: false, __fearGhost: true, pos: { x: 10, y: 1 } });
-  w.fear_sync_fruit_types(g);
-  assert.equal(w.fear_board_counts(g).fresh - w.fear_board_counts(g).ghosts, 1);
-  assert.equal(w.fear_should_wave_ghost_fill(g), false);
+  for (const fruit of leftovers) w.__fearSeenFruits.add(fruit);
+  w.__fearWaveGhostFill = true;
+  let spawned = 0;
+  w.__fearE4E = () => {
+    spawned++;
+    return false;
+  };
+  w.fear_win_if_empty = (game) => {
+    game.nj = true;
+    return true;
+  };
+  w.fear_after_respawn(g.wa);
+  assert.equal(g.nj, true);
+  assert.equal(spawned, 0, "ghosts must not spawn after empty fruit wave");
+  assert.equal(g.wa.ka.filter((f) => w.fear_is_ghost(f)).length, 0);
+  assert.equal(w.__fearWaveGhostFill, false);
 });
 
 test("fear_stamp_ghost_tally_from_pairs copies sequenceNumber", () => {

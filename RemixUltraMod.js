@@ -15914,21 +15914,18 @@ window.MexicoMod.alterSnakeCode = function (code) {
       if ((g.Sh | 0) >= 1 && !window.__mexicoWallDone) {
         window.mexico_place_mid_walls(g);
       }
-      // After the eat/respawn pipeline finishes: wave counts refill on empty
-      // (Tally/Dice/Bomb-first). Only win when refill cannot plant anything.
-      if (g.wa && g.wa.ka) {
+      // Do NOT re-constrain the whole board here — that relocates existing fruit.
+      // New apples are half-placed in f4E via mexico_constrain_new_apples(a, g)
+      // for the newly added count only.
+      // Tally/Dice/Bomb-first: empty after last wave unit → plant a new wave.
+      // Win only if the board is still empty after that attempt.
+      if (g.wa && g.wa.ka && g.wa.ka.length === 0) {
         try {
+          if (window.mexico_is_wave_count(g)) {
+            window.mexico_refill_wave(g.wa, g);
+          }
           if (g.wa.ka.length === 0) {
-            if (
-              window.mexico_is_wave_count(g) &&
-              window.mexico_refill_wave(g.wa, g) > 0
-            ) {
-              // planted
-            } else {
-              window.mexico_win_if_empty(g, g.wa);
-            }
-          } else {
-            window.mexico_constrain_new_apples(g.wa, g.wa.ka.length);
+            window.mexico_win_if_empty(g, g.wa);
           }
         } catch (_e) {}
       }
@@ -15964,12 +15961,12 @@ window.MexicoMod.alterSnakeCode = function (code) {
   mexicoReplace(
     "f4E mexico constrain",
     /if\(window\.isChessActive&&window\.isChessActive\(\)&&g>0\)\{window\.chess_convert_new_apples\(a,g\);\}/,
-    "if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(window.isMexicoActive&&window.isMexicoActive()&&g>0){try{window.mexico_constrain_new_apples(a,g);}catch(_mx){}}if(window.isMexicoActive&&window.isMexicoActive()&&a.ka&&a.ka.length===0){try{window.mexico_refill_wave(a,window.__remixGame);}catch(_mx2){}}"
+    "if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(window.isMexicoActive&&window.isMexicoActive()&&g>0){try{window.mexico_constrain_new_apples(a,g);}catch(_mx){}}"
   );
 
-  // Mexico uses native Portal twin respawn (j4E via e=!0) for normal counts.
-  // Tally/Dice/Bomb-first must NOT mid-board top-up (same as Chess+Portal):
-  // portal physics still clears the twin; empty board refills via mexico_refill_wave.
+  // Mexico uses native Portal twin respawn (j4E) for normal counts.
+  // Tally/Dice/Bomb-first: no mid-board pair top-up — existing fruit stay put;
+  // empty board after the last wave unit is refilled in mexico_tick_logic.
   mexicoReplace(
     "eat respawn mexico as portal",
     /e=!1;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{window\.__chessMakeApple=g7;window\.__chessFreePos=d4E;window\.__chessPickType=Q3E;e=!1;if\(window\.just_ate==='fruit'&&!\(e7\(a\.settings,8\)\|\|e7\(a\.settings,9\)\)\)\{if\(window\.chess_portal_combo&&window\.chess_portal_combo\(\)\)\{window\.chess_portal_note_fruit_twin\(a\.wa,k\);\}else if\(!\(a\.settings\.ka===4\|\|a\.settings\.ka===6\|\|\(a\.settings\.ka===5&&!a\.kc\)\)\)\{window\.chess_fruit_respawn\(a\.wa,g7,d4E,Q3E\);if\(window\.isBurgerActive&&window\.isBurgerActive\(\)&&window\.just_ate==='fruit'\)\{window\.burger_after_respawn\(a\);\}\}\}\}else e7\(a\.settings,2\)\?e=!0:/,
@@ -15977,13 +15974,15 @@ window.MexicoMod.alterSnakeCode = function (code) {
   );
 
   // j4E sits inside a ternary — must not insert `;` statements. Comma-op only.
+  // Constrain only the board after a successful pair plant — never relocate the
+  // whole board, and never invent a wave refill here (tick handles empty).
   mexicoReplace(
     "j4E mexico constrain pair",
     /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\)/,
-    "j4E(a.wa,k,d,a.Vm.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&(a.wa.ka.length>0?(window.mexico_constrain_new_apples(a.wa,a.wa.ka.length),0):(window.mexico_refill_wave&&window.mexico_refill_wave(a.wa,a),0))"
+    "j4E(a.wa,k,d,a.Vm.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.wa.ka.length>0&&(window.mexico_constrain_new_apples(a.wa,2),0)"
   );
 
-  // Tally wave: 5 portal units = 10 apples (match Chess), so constrain keeps pairs.
+  // Tally wave: 5 portal units = 10 apples (match Chess), so pairs stay even.
   if (
     !mexicoReplace(
       "tally wave size mexico after chess",
@@ -17314,8 +17313,8 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   if (
     !bfReplace(
       "j4E bomb fruit after mexico",
-      /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&a\.wa\.ka\.length>0&&\(window\.mexico_constrain_new_apples\(a\.wa,a\.wa\.ka\.length\),0\)/,
-      "j4E(a.wa,k,d,a.Vm.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.wa.ka.length>0&&(window.mexico_constrain_new_apples(a.wa,a.wa.ka.length),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0)"
+      /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&a\.wa\.ka\.length>0&&\(window\.mexico_constrain_new_apples\(a\.wa,2\),0\)/,
+      "j4E(a.wa,k,d,a.Vm.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.wa.ka.length>0&&(window.mexico_constrain_new_apples(a.wa,2),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0)"
     )
   ) {
     bfReplace(
@@ -19377,8 +19376,12 @@ window.fear_remove_all_ghosts = function fear_remove_all_ghosts(mgr) {
 };
 
 /**
- * Dice last-empty / Bomb first-empty / Tally empty wave: fill ghosts to match
- * edible fruit. Clears the wave flag and consumes the per-eat top-up latch.
+ * Dice last-empty / Bomb first-empty / Tally empty wave: fill ghosts after the
+ * fruit plant. Clears the wave flag and consumes the per-eat top-up latch.
+ *
+ * Tally: ghosts are indexed 1..maxFruitIndex (not "one per fruit object").
+ * Spawn failures are fine — stop early. Never invent ghosts when no fresh fruit
+ * remain (caller should win first).
  */
 window.fear_wave_ghost_fill = function fear_wave_ghost_fill(mgr, nativeTopUp) {
   window.__fearWaveGhostFill = false;
@@ -19387,8 +19390,10 @@ window.fear_wave_ghost_fill = function fear_wave_ghost_fill(mgr, nativeTopUp) {
   if (g && g.settings && (g.settings.ka | 0) === 5) {
     window.__fearBombWaveGhostDone = true;
   }
-  // New wave fruit is authoritative — drop previous-wave ghosts so they cannot
-  // stack when t7E / dice / bomb plants the next batch.
+  if (g && g.settings && (g.settings.ka | 0) === 6) {
+    return window.fear_tally_wave_ghosts(mgr, nativeTopUp);
+  }
+  // Dice / Bomb: drop previous-wave ghosts, then match edible fruit count.
   window.fear_remove_all_ghosts(mgr);
   const added = window.fear_fill_ghosts_to_match_fruit(mgr, nativeTopUp);
   window.fear_stamp_ghost_tally_from_pairs();
@@ -19397,7 +19402,6 @@ window.fear_wave_ghost_fill = function fear_wave_ghost_fill(mgr, nativeTopUp) {
     window.fear_reconcile_pairs(g, true);
     counts = window.fear_board_counts(g);
   }
-  // Absolute cap: never leave more ghosts than edible fruit after a wave fill.
   while (counts.ghosts > counts.fresh) {
     const list = mgr && mgr.ka;
     if (!list) break;
@@ -19415,6 +19419,91 @@ window.fear_wave_ghost_fill = function fear_wave_ghost_fill(mgr, nativeTopUp) {
   return added;
 };
 
+/** Max sequenceNumber among edible (non-ghost) fruit; 0 if none. */
+window.fear_tally_max_fruit_index = function fear_tally_max_fruit_index(game) {
+  const g = game || window.__remixGame;
+  const list = g && g.wa && g.wa.ka;
+  if (!list) return 0;
+  let max = 0;
+  for (let i = 0; i < list.length; i++) {
+    const f = list[i];
+    if (!f || window.fear_is_ghost(f)) continue;
+    const s = f.sequenceNumber | 0;
+    if (s > max) max = s;
+  }
+  return max;
+};
+
+/**
+ * After t7E planted tally fruit: clear old ghosts, then try to spawn one ghost
+ * per index from 1..maxFruitIndex (spawn radius failures stop early — OK).
+ */
+window.fear_tally_wave_ghosts = function fear_tally_wave_ghosts(
+  mgr,
+  nativeTopUp
+) {
+  const g = window.__remixGame;
+  const list = mgr && mgr.ka;
+  if (!g || !list) return 0;
+  const counts = window.fear_board_counts(g);
+  // No edible fruit → do not spawn ghosts (win path handles empty fruit).
+  if (counts.fresh <= 0) return 0;
+  window.fear_remove_all_ghosts(mgr);
+  // Ghosts are indexed 1..max sequenceNumber among edible fruit (not "match
+  // object count" — failed fruit seats leave a lower max, and that is fine).
+  let maxIdx = window.fear_tally_max_fruit_index(g);
+  if (maxIdx <= 0) maxIdx = counts.fresh;
+  const spawn =
+    typeof nativeTopUp === "function"
+      ? nativeTopUp
+      : typeof window.__fearE4E === "function"
+        ? window.__fearE4E
+        : null;
+  if (typeof spawn !== "function") return 0;
+  window.__fearE4E = spawn;
+  let added = 0;
+  for (let idx = 1; idx <= maxIdx; idx++) {
+    const before = list.length;
+    let ok = false;
+    try {
+      ok = spawn(mgr);
+    } catch (_e) {
+      break;
+    }
+    if (ok === false || list.length <= before) break;
+    // Mark at most one new apple as this index's ghost; drop e4E extras.
+    window.fear_mark_new_as_ghosts(list, before, 1);
+    const ghost = list[list.length - 1];
+    if (ghost && window.fear_is_ghost(ghost)) {
+      ghost.sequenceNumber = idx;
+      window.__fearSeenFruits.add(ghost);
+    }
+    added++;
+  }
+  window.fear_pair_new_fruits(g);
+  window.fear_sync_fruit_types(g);
+  window.fear_reconcile_pairs(g, true);
+  // Absolute cap: ghosts cannot exceed edible fruit or max index.
+  let finalCounts = window.fear_board_counts(g);
+  const cap = Math.min(
+    finalCounts.fresh,
+    window.fear_tally_max_fruit_index(g) || finalCounts.fresh
+  );
+  while (finalCounts.ghosts > cap) {
+    let removed = false;
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i] && window.fear_is_ghost(list[i])) {
+        list.splice(i, 1);
+        removed = true;
+        break;
+      }
+    }
+    if (!removed) break;
+    finalCounts = window.fear_board_counts(g);
+  }
+  return added;
+};
+
 /** True when this eat should full-match ghosts (not the single-ghost rule). */
 window.fear_should_wave_ghost_fill = function fear_should_wave_ghost_fill(
   game
@@ -19428,9 +19517,9 @@ window.fear_should_wave_ghost_fill = function fear_should_wave_ghost_fill(
   // Mid-board / single-fruit eats leave gap 0 or 1; wave plants leave a larger gap.
   if (gap <= 1) return false;
   const ka = g.settings.ka | 0;
-  // Tally empty→plant leaves gap > 1. Wave fill clears leftover ghosts first, so
-  // matching on gap is safe even when the t7E flag patch did not fire.
-  if (ka === 6) return true;
+  // Tally: ONLY on the t7E wave flag — never on gap alone (that stacked ghosts
+  // when the last indexed fruit was eaten while leftovers remained).
+  if (ka === 6) return false;
   if (typeof window.slot_is_dice_count === "function") {
     try {
       if (window.slot_is_dice_count(g)) return true;
@@ -19589,6 +19678,11 @@ window.fear_native_ghost_top_up =
     if (typeof spawn === "function") window.__fearE4E = spawn;
     // Wave plants use full match via fear_wave_ghost_fill / after_respawn.
     if (window.fear_should_wave_ghost_fill(g)) {
+      const ka = g.settings ? g.settings.ka | 0 : -1;
+      // Tally: t7E sets the wave flag before fruit finish planting. Poison
+      // top-up must not fill mid-plant (that stacked ghosts every e4E tick).
+      // fear_after_respawn owns the 1..maxIndex ghost wave once t7E returns.
+      if (ka === 6) return false;
       return window.fear_wave_ghost_fill(mgr, spawn) > 0;
     }
     // One top-up attempt per apple eat (e4E / g4E / after_respawn).
@@ -19799,9 +19893,16 @@ window.fear_after_respawn = function fear_after_respawn(mgr) {
   if (!g || !mgr || !window.isFearActive()) return;
   window.fear_pair_new_fruits(g);
   if (window.fear_uses_ghost_pairs && window.fear_uses_ghost_pairs(g)) {
-    // Dice/Tally empty wave and Bomb first empty: full ghost match.
-    // Otherwise spawn a missing ghost first; relocate only when already matched.
     if (window.fear_should_wave_ghost_fill(g)) {
+      const ka = g.settings ? g.settings.ka | 0 : -1;
+      const counts = window.fear_board_counts(g);
+      // Tally: if the fruit wave planted nothing, win before attempting ghosts.
+      if (ka === 6 && counts.fresh <= 0) {
+        window.__fearWaveGhostFill = false;
+        window.fear_remove_all_ghosts(mgr);
+        window.fear_win_if_empty(g, mgr);
+        return;
+      }
       window.fear_wave_ghost_fill(mgr);
     } else {
       const counts = window.fear_board_counts(g);

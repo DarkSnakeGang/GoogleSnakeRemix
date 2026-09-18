@@ -596,21 +596,18 @@ window.MexicoMod.alterSnakeCode = function (code) {
       if ((g.Sh | 0) >= 1 && !window.__mexicoWallDone) {
         window.mexico_place_mid_walls(g);
       }
-      // After the eat/respawn pipeline finishes: wave counts refill on empty
-      // (Tally/Dice/Bomb-first). Only win when refill cannot plant anything.
-      if (g.wa && g.wa.ka) {
+      // Do NOT re-constrain the whole board here — that relocates existing fruit.
+      // New apples are half-placed in f4E via mexico_constrain_new_apples(a, g)
+      // for the newly added count only.
+      // Tally/Dice/Bomb-first: empty after last wave unit → plant a new wave.
+      // Win only if the board is still empty after that attempt.
+      if (g.wa && g.wa.ka && g.wa.ka.length === 0) {
         try {
+          if (window.mexico_is_wave_count(g)) {
+            window.mexico_refill_wave(g.wa, g);
+          }
           if (g.wa.ka.length === 0) {
-            if (
-              window.mexico_is_wave_count(g) &&
-              window.mexico_refill_wave(g.wa, g) > 0
-            ) {
-              // planted
-            } else {
-              window.mexico_win_if_empty(g, g.wa);
-            }
-          } else {
-            window.mexico_constrain_new_apples(g.wa, g.wa.ka.length);
+            window.mexico_win_if_empty(g, g.wa);
           }
         } catch (_e) {}
       }
@@ -646,12 +643,12 @@ window.MexicoMod.alterSnakeCode = function (code) {
   mexicoReplace(
     "f4E mexico constrain",
     /if\(window\.isChessActive&&window\.isChessActive\(\)&&g>0\)\{window\.chess_convert_new_apples\(a,g\);\}/,
-    "if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(window.isMexicoActive&&window.isMexicoActive()&&g>0){try{window.mexico_constrain_new_apples(a,g);}catch(_mx){}}if(window.isMexicoActive&&window.isMexicoActive()&&a.ka&&a.ka.length===0){try{window.mexico_refill_wave(a,window.__remixGame);}catch(_mx2){}}"
+    "if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(window.isMexicoActive&&window.isMexicoActive()&&g>0){try{window.mexico_constrain_new_apples(a,g);}catch(_mx){}}"
   );
 
-  // Mexico uses native Portal twin respawn (j4E via e=!0) for normal counts.
-  // Tally/Dice/Bomb-first must NOT mid-board top-up (same as Chess+Portal):
-  // portal physics still clears the twin; empty board refills via mexico_refill_wave.
+  // Mexico uses native Portal twin respawn (j4E) for normal counts.
+  // Tally/Dice/Bomb-first: no mid-board pair top-up — existing fruit stay put;
+  // empty board after the last wave unit is refilled in mexico_tick_logic.
   mexicoReplace(
     "eat respawn mexico as portal",
     /e=!1;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{window\.__chessMakeApple=g7;window\.__chessFreePos=d4E;window\.__chessPickType=Q3E;e=!1;if\(window\.just_ate==='fruit'&&!\(e7\(a\.settings,8\)\|\|e7\(a\.settings,9\)\)\)\{if\(window\.chess_portal_combo&&window\.chess_portal_combo\(\)\)\{window\.chess_portal_note_fruit_twin\(a\.wa,k\);\}else if\(!\(a\.settings\.ka===4\|\|a\.settings\.ka===6\|\|\(a\.settings\.ka===5&&!a\.kc\)\)\)\{window\.chess_fruit_respawn\(a\.wa,g7,d4E,Q3E\);if\(window\.isBurgerActive&&window\.isBurgerActive\(\)&&window\.just_ate==='fruit'\)\{window\.burger_after_respawn\(a\);\}\}\}\}else e7\(a\.settings,2\)\?e=!0:/,
@@ -659,13 +656,15 @@ window.MexicoMod.alterSnakeCode = function (code) {
   );
 
   // j4E sits inside a ternary — must not insert `;` statements. Comma-op only.
+  // Constrain only the board after a successful pair plant — never relocate the
+  // whole board, and never invent a wave refill here (tick handles empty).
   mexicoReplace(
     "j4E mexico constrain pair",
     /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\)/,
-    "j4E(a.wa,k,d,a.Vm.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&(a.wa.ka.length>0?(window.mexico_constrain_new_apples(a.wa,a.wa.ka.length),0):(window.mexico_refill_wave&&window.mexico_refill_wave(a.wa,a),0))"
+    "j4E(a.wa,k,d,a.Vm.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.wa.ka.length>0&&(window.mexico_constrain_new_apples(a.wa,2),0)"
   );
 
-  // Tally wave: 5 portal units = 10 apples (match Chess), so constrain keeps pairs.
+  // Tally wave: 5 portal units = 10 apples (match Chess), so pairs stay even.
   if (
     !mexicoReplace(
       "tally wave size mexico after chess",

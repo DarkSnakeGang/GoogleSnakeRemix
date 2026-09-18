@@ -1203,8 +1203,12 @@ window.fear_remove_all_ghosts = function fear_remove_all_ghosts(mgr) {
 };
 
 /**
- * Dice last-empty / Bomb first-empty / Tally empty wave: fill ghosts to match
- * edible fruit. Clears the wave flag and consumes the per-eat top-up latch.
+ * Dice last-empty / Bomb first-empty / Tally empty wave: fill ghosts after the
+ * fruit plant. Clears the wave flag and consumes the per-eat top-up latch.
+ *
+ * Tally: ghosts are indexed 1..maxFruitIndex (not "one per fruit object").
+ * Spawn failures are fine — stop early. Never invent ghosts when no fresh fruit
+ * remain (caller should win first).
  */
 window.fear_wave_ghost_fill = function fear_wave_ghost_fill(mgr, nativeTopUp) {
   window.__fearWaveGhostFill = false;
@@ -1213,8 +1217,10 @@ window.fear_wave_ghost_fill = function fear_wave_ghost_fill(mgr, nativeTopUp) {
   if (g && g.settings && (g.settings.ka | 0) === 5) {
     window.__fearBombWaveGhostDone = true;
   }
-  // New wave fruit is authoritative — drop previous-wave ghosts so they cannot
-  // stack when t7E / dice / bomb plants the next batch.
+  if (g && g.settings && (g.settings.ka | 0) === 6) {
+    return window.fear_tally_wave_ghosts(mgr, nativeTopUp);
+  }
+  // Dice / Bomb: drop previous-wave ghosts, then match edible fruit count.
   window.fear_remove_all_ghosts(mgr);
   const added = window.fear_fill_ghosts_to_match_fruit(mgr, nativeTopUp);
   window.fear_stamp_ghost_tally_from_pairs();
@@ -1223,7 +1229,6 @@ window.fear_wave_ghost_fill = function fear_wave_ghost_fill(mgr, nativeTopUp) {
     window.fear_reconcile_pairs(g, true);
     counts = window.fear_board_counts(g);
   }
-  // Absolute cap: never leave more ghosts than edible fruit after a wave fill.
   while (counts.ghosts > counts.fresh) {
     const list = mgr && mgr.ka;
     if (!list) break;
@@ -1241,6 +1246,91 @@ window.fear_wave_ghost_fill = function fear_wave_ghost_fill(mgr, nativeTopUp) {
   return added;
 };
 
+/** Max sequenceNumber among edible (non-ghost) fruit; 0 if none. */
+window.fear_tally_max_fruit_index = function fear_tally_max_fruit_index(game) {
+  const g = game || window.__remixGame;
+  const list = g && g.wa && g.wa.ka;
+  if (!list) return 0;
+  let max = 0;
+  for (let i = 0; i < list.length; i++) {
+    const f = list[i];
+    if (!f || window.fear_is_ghost(f)) continue;
+    const s = f.sequenceNumber | 0;
+    if (s > max) max = s;
+  }
+  return max;
+};
+
+/**
+ * After t7E planted tally fruit: clear old ghosts, then try to spawn one ghost
+ * per index from 1..maxFruitIndex (spawn radius failures stop early — OK).
+ */
+window.fear_tally_wave_ghosts = function fear_tally_wave_ghosts(
+  mgr,
+  nativeTopUp
+) {
+  const g = window.__remixGame;
+  const list = mgr && mgr.ka;
+  if (!g || !list) return 0;
+  const counts = window.fear_board_counts(g);
+  // No edible fruit → do not spawn ghosts (win path handles empty fruit).
+  if (counts.fresh <= 0) return 0;
+  window.fear_remove_all_ghosts(mgr);
+  // Ghosts are indexed 1..max sequenceNumber among edible fruit (not "match
+  // object count" — failed fruit seats leave a lower max, and that is fine).
+  let maxIdx = window.fear_tally_max_fruit_index(g);
+  if (maxIdx <= 0) maxIdx = counts.fresh;
+  const spawn =
+    typeof nativeTopUp === "function"
+      ? nativeTopUp
+      : typeof window.__fearE4E === "function"
+        ? window.__fearE4E
+        : null;
+  if (typeof spawn !== "function") return 0;
+  window.__fearE4E = spawn;
+  let added = 0;
+  for (let idx = 1; idx <= maxIdx; idx++) {
+    const before = list.length;
+    let ok = false;
+    try {
+      ok = spawn(mgr);
+    } catch (_e) {
+      break;
+    }
+    if (ok === false || list.length <= before) break;
+    // Mark at most one new apple as this index's ghost; drop e4E extras.
+    window.fear_mark_new_as_ghosts(list, before, 1);
+    const ghost = list[list.length - 1];
+    if (ghost && window.fear_is_ghost(ghost)) {
+      ghost.sequenceNumber = idx;
+      window.__fearSeenFruits.add(ghost);
+    }
+    added++;
+  }
+  window.fear_pair_new_fruits(g);
+  window.fear_sync_fruit_types(g);
+  window.fear_reconcile_pairs(g, true);
+  // Absolute cap: ghosts cannot exceed edible fruit or max index.
+  let finalCounts = window.fear_board_counts(g);
+  const cap = Math.min(
+    finalCounts.fresh,
+    window.fear_tally_max_fruit_index(g) || finalCounts.fresh
+  );
+  while (finalCounts.ghosts > cap) {
+    let removed = false;
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i] && window.fear_is_ghost(list[i])) {
+        list.splice(i, 1);
+        removed = true;
+        break;
+      }
+    }
+    if (!removed) break;
+    finalCounts = window.fear_board_counts(g);
+  }
+  return added;
+};
+
 /** True when this eat should full-match ghosts (not the single-ghost rule). */
 window.fear_should_wave_ghost_fill = function fear_should_wave_ghost_fill(
   game
@@ -1254,9 +1344,9 @@ window.fear_should_wave_ghost_fill = function fear_should_wave_ghost_fill(
   // Mid-board / single-fruit eats leave gap 0 or 1; wave plants leave a larger gap.
   if (gap <= 1) return false;
   const ka = g.settings.ka | 0;
-  // Tally empty→plant leaves gap > 1. Wave fill clears leftover ghosts first, so
-  // matching on gap is safe even when the t7E flag patch did not fire.
-  if (ka === 6) return true;
+  // Tally: ONLY on the t7E wave flag — never on gap alone (that stacked ghosts
+  // when the last indexed fruit was eaten while leftovers remained).
+  if (ka === 6) return false;
   if (typeof window.slot_is_dice_count === "function") {
     try {
       if (window.slot_is_dice_count(g)) return true;
@@ -1415,6 +1505,11 @@ window.fear_native_ghost_top_up =
     if (typeof spawn === "function") window.__fearE4E = spawn;
     // Wave plants use full match via fear_wave_ghost_fill / after_respawn.
     if (window.fear_should_wave_ghost_fill(g)) {
+      const ka = g.settings ? g.settings.ka | 0 : -1;
+      // Tally: t7E sets the wave flag before fruit finish planting. Poison
+      // top-up must not fill mid-plant (that stacked ghosts every e4E tick).
+      // fear_after_respawn owns the 1..maxIndex ghost wave once t7E returns.
+      if (ka === 6) return false;
       return window.fear_wave_ghost_fill(mgr, spawn) > 0;
     }
     // One top-up attempt per apple eat (e4E / g4E / after_respawn).
@@ -1625,9 +1720,16 @@ window.fear_after_respawn = function fear_after_respawn(mgr) {
   if (!g || !mgr || !window.isFearActive()) return;
   window.fear_pair_new_fruits(g);
   if (window.fear_uses_ghost_pairs && window.fear_uses_ghost_pairs(g)) {
-    // Dice/Tally empty wave and Bomb first empty: full ghost match.
-    // Otherwise spawn a missing ghost first; relocate only when already matched.
     if (window.fear_should_wave_ghost_fill(g)) {
+      const ka = g.settings ? g.settings.ka | 0 : -1;
+      const counts = window.fear_board_counts(g);
+      // Tally: if the fruit wave planted nothing, win before attempting ghosts.
+      if (ka === 6 && counts.fresh <= 0) {
+        window.__fearWaveGhostFill = false;
+        window.fear_remove_all_ghosts(mgr);
+        window.fear_win_if_empty(g, mgr);
+        return;
+      }
       window.fear_wave_ghost_fill(mgr);
     } else {
       const counts = window.fear_board_counts(g);
