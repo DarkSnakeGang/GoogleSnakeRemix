@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "fs";
 import path from "path";
+import vm from "vm";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -87,6 +88,22 @@ describe("RemixUltra build artifacts", () => {
     assert.match(ultra, /id: \"custom\"/);
     assert.match(ultra, /remixEnsureCustomSettingsUi/);
     assert.match(ultra, /window\.CustomSize/);
+    assert.match(ultra, /ULTRA_SMALL_PATHS_INDEX/);
+    assert.match(ultra, /ULTRA_SMALL_PATHS_BASE/);
+    assert.match(ultra, /preset-selected-ham/);
+    assert.match(ultra, /Selected Ham/);
+    assert.match(ultra, /selected-ham-panel/);
+    assert.match(ultra, /getSelectedHamPixelList/);
+    assert.match(ultra, /ultraMaybeHamiltonAfterHamPreset/);
+  });
+
+  it("RemixMod.js has no Selected Ham UI / small_paths index", () => {
+    const remix = fs.readFileSync(REMIX, "utf8");
+    assert.doesNotMatch(remix, /ULTRA_SMALL_PATHS_INDEX/);
+    assert.doesNotMatch(remix, /ULTRA_SMALL_PATHS_BASE/);
+    assert.doesNotMatch(remix, /selected-ham-panel/);
+    assert.doesNotMatch(remix, /getSelectedHamPixelList/);
+    assert.doesNotMatch(remix, /textContent = "Selected Ham"/);
   });
 
   it("bridgeColor capture matches pudding-transformed theme checks", () => {
@@ -1296,5 +1313,192 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
     } finally {
       await h.close();
     }
+  });
+});
+
+describe("Ultra Selected Ham (offline)", () => {
+  function fromVm(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function loadSelectedHamHelpers() {
+    const indexSrc = fs.readFileSync(
+      path.join(ROOT, "src", "UltraSmallPathsIndex.js"),
+      "utf8"
+    );
+    const ultraSrc = fs.readFileSync(path.join(ROOT, "src", "UltraInit.js"), "utf8");
+    const names = [
+      "ultraSelectedHamIndex",
+      "ultraSelectedHamWallKeys",
+      "ultraSelectedHamKindsForWalls",
+      "ultraSelectedHamFilesFor",
+      "ultraSelectedHamLineCount",
+      "ultraClampInt",
+      "ultraSelectedHamSelectionKey",
+      "ultraSelectedHamFileUrl",
+      "ultraFetchSelectedHamLines",
+      "ultraBuildHamPixelListFromCode",
+      "ultraSyncSelectedHamPanel",
+      "ultraMaybeApplySelectedHam",
+      "ultraPersistSelectedHam",
+      "ultraRestoreSelectedHamFromSettings",
+      "ultraSetSelectedHamStatus",
+      "ultraEnsureSelectedHamPanel",
+      "ultraBindSelectedHamPanel",
+    ];
+    const chunks = [indexSrc];
+    for (const name of names) {
+      const re = new RegExp(
+        "window\\." + name + " = function[\\s\\S]*?\\n\\};\\n"
+      );
+      const m = ultraSrc.match(re);
+      assert.ok(m, "missing helper " + name);
+      chunks.push(m[0]);
+    }
+    const els = {};
+    function makeEl(id, tag) {
+      const el = {
+        id,
+        tagName: (tag || "INPUT").toUpperCase(),
+        value: "",
+        disabled: false,
+        min: "",
+        max: "",
+        textContent: "",
+        style: {},
+        addEventListener() {},
+      };
+      els[id] = el;
+      return el;
+    }
+    [
+      "selected-ham-walls",
+      "selected-ham-kind",
+      "selected-ham-file",
+      "selected-ham-line",
+      "selected-ham-walls-range",
+      "selected-ham-kind-range",
+      "selected-ham-file-range",
+      "selected-ham-line-range",
+      "selected-ham-status",
+      "selected-ham-panel",
+    ].forEach((id) => makeEl(id, id.includes("kind") && !id.includes("range") ? "SELECT" : "INPUT"));
+
+    const sandbox = {
+      window: {
+        pudding_settings: {},
+        __ultraSelectedHam: {
+          walls: null,
+          kind: null,
+          file: null,
+          line: null,
+          code: null,
+        },
+        __ultraSmallPathsFileCache: {},
+        saveSettings() {},
+      },
+      document: {
+        getElementById(id) {
+          return els[id] || null;
+        },
+        getElementsByClassName() {
+          return [];
+        },
+        createElement() {
+          return { style: {}, innerHTML: "", appendChild() {} };
+        },
+        querySelector() {
+          return null;
+        },
+      },
+      fetch: null,
+      console,
+    };
+    sandbox.window.document = sandbox.document;
+    vm.runInNewContext(chunks.join("\n"), sandbox);
+    return { sandbox, els };
+  }
+
+  it("index has walls 11 paths-only and Kind helpers auto-lock", () => {
+    const { sandbox, els } = loadSelectedHamHelpers();
+    const w = sandbox.window;
+    assert.deepEqual(fromVm(w.ultraSelectedHamKindsForWalls(11)), ["paths"]);
+    assert.ok(fromVm(w.ultraSelectedHamKindsForWalls(12)).includes("paths"));
+    assert.ok(fromVm(w.ultraSelectedHamKindsForWalls(12)).includes("cycles"));
+    w.__ultraSelectedHam = {
+      walls: 11,
+      kind: null,
+      file: null,
+      line: null,
+      code: null,
+    };
+    w.ultraSyncSelectedHamPanel();
+    assert.equal(w.__ultraSelectedHam.kind, "paths");
+    assert.equal(els["selected-ham-kind"].disabled, true);
+    assert.match(String(els["selected-ham-kind-range"].textContent), /locked/);
+  });
+
+  it("cascade: changing walls clears file and line", () => {
+    const { sandbox, els } = loadSelectedHamHelpers();
+    const w = sandbox.window;
+    w.__ultraSelectedHam = {
+      walls: 12,
+      kind: "cycles",
+      file: 1,
+      line: 5,
+      code: "10x9 W1,1",
+    };
+    w.ultraSyncSelectedHamPanel();
+    assert.equal(w.__ultraSelectedHam.file, 1);
+    assert.equal(w.__ultraSelectedHam.line, 5);
+    els["selected-ham-walls"].value = "11";
+    // simulate walls commit used by bind handlers
+    const wallKeys = fromVm(w.ultraSelectedHamWallKeys());
+    const n = w.ultraClampInt(
+      Number(els["selected-ham-walls"].value),
+      wallKeys[0],
+      wallKeys[wallKeys.length - 1]
+    );
+    const sel = w.__ultraSelectedHam;
+    if (n !== sel.walls) {
+      sel.walls = n;
+      sel.kind = null;
+      sel.file = null;
+      sel.line = null;
+      sel.code = null;
+    }
+    w.ultraSyncSelectedHamPanel();
+    assert.equal(w.__ultraSelectedHam.walls, 11);
+    assert.equal(w.__ultraSelectedHam.kind, "paths");
+    assert.equal(w.__ultraSelectedHam.file, null);
+    assert.equal(w.__ultraSelectedHam.line, null);
+    assert.equal(w.__ultraSelectedHam.code, null);
+  });
+
+  it("stubbed fetch: selecting line 2 yields the second code string", async () => {
+    const { sandbox } = loadSelectedHamHelpers();
+    const w = sandbox.window;
+    const codes = ["10x9 W1,1", "10x9 W2,2"];
+    sandbox.fetch = async () => ({
+      ok: true,
+      text: async () => codes.join("\n"),
+    });
+    w.customPresetManager = {
+      getPixelListFromLevelCode(code) {
+        const m = /W(\d+),(\d+)/.exec(code);
+        return [{ x: Number(m[1]), y: Number(m[2]), category: "wall", type: -1 }];
+      },
+    };
+    w.ultraHamAppleCoords = () => [];
+    w.ultraHamFruitType = () => 0;
+    const lines = fromVm(await w.ultraFetchSelectedHamLines(11, "paths", 1));
+    assert.deepEqual(lines, codes);
+    const code = lines[2 - 1];
+    assert.equal(code, "10x9 W2,2");
+    const pixels = fromVm(w.ultraBuildHamPixelListFromCode(code));
+    assert.equal(pixels.length, 1);
+    assert.equal(pixels[0].x, 2);
+    assert.equal(pixels[0].y, 2);
+    assert.equal(pixels[0].category, "wall");
   });
 });

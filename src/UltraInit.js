@@ -52,7 +52,8 @@ window.ultraChallengeOrHamActive = function ultraChallengeOrHamActive() {
     if (!el) return false;
     return (
       el.classList.contains("preset-challenge") ||
-      el.classList.contains("preset-random-ham")
+      el.classList.contains("preset-random-ham") ||
+      el.classList.contains("preset-selected-ham")
     );
   } catch (_e) {
     return false;
@@ -157,7 +158,7 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   background: var(--ultra-btn, #1155CC);
   color: #fff;
 }
-#place-panel, #preset-panel, #custom-panel, #challenge-panel,
+#place-panel, #preset-panel, #custom-panel, #challenge-panel, #selected-ham-panel,
 #speedinfo-popup-pudding, #settings-popup-pudding, #split-panel-pudding,
 #ultra-input-slot {
   background: var(--ultra-bar, #4a752c) !important;
@@ -320,7 +321,8 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   grid-column: span 2;
 }
 #preset-panel .preset-none,
-#preset-panel .preset-random-ham {
+#preset-panel .preset-random-ham,
+#preset-panel .preset-selected-ham {
   grid-column: span 3 !important;
   width: auto !important;
   max-width: none !important;
@@ -336,7 +338,7 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   white-space: nowrap;
   overflow: hidden;
 }
-#custom-panel, #challenge-panel {
+#custom-panel, #challenge-panel, #selected-ham-panel {
   width: 248px !important;
   overflow: hidden !important;
   padding: 8px !important;
@@ -401,8 +403,8 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
 #split-panel-list {
   overflow-y: auto !important;
 }
-#custom-panel p, #challenge-panel p,
-#custom-panel label, #challenge-panel label {
+#custom-panel p, #challenge-panel p, #selected-ham-panel p,
+#custom-panel label, #challenge-panel label, #selected-ham-panel label {
   color: #fff !important;
 }
 #custom-preset-canvas {
@@ -414,7 +416,7 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   border: 2px solid rgba(255,255,255,0.28) !important;
   border-radius: 8px !important;
 }
-#custom-panel p, #challenge-panel p {
+#custom-panel p, #challenge-panel p, #selected-ham-panel p {
   font-size: 12px !important;
   line-height: 1.35;
 }
@@ -436,6 +438,41 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   color: #fff !important;
   border: none !important;
   font-family: Roboto, Arial, sans-serif !important;
+}
+#selected-ham-panel .selected-ham-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  flex-wrap: wrap;
+}
+#selected-ham-panel .selected-ham-row label {
+  flex: 0 0 44px;
+  margin: 0 !important;
+  font-size: 12px !important;
+}
+#selected-ham-panel .selected-ham-row input[type="number"],
+#selected-ham-panel .selected-ham-row select {
+  flex: 0 0 72px;
+  min-width: 0;
+  width: 72px;
+  border-radius: 8px !important;
+  border: none !important;
+  padding: 4px 6px !important;
+  font-size: 12px !important;
+  font-family: Roboto, Arial, sans-serif !important;
+}
+#selected-ham-panel .selected-ham-range {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px !important;
+  opacity: 0.85;
+}
+#selected-ham-panel #selected-ham-status {
+  font-size: 11px !important;
+  opacity: 0.9;
+  margin: 4px 0 0;
+  min-height: 1.2em;
 }
 #custom-clear { background: #b41111 !important; }
 .ultra-custom-field {
@@ -559,6 +596,7 @@ window.ultraLayoutMenus = function ultraLayoutMenus() {
     const preset = document.getElementById("preset-panel");
     const custom = document.getElementById("custom-panel");
     const challenge = document.getElementById("challenge-panel");
+    const selectedHam = document.getElementById("selected-ham-panel");
     const speed = document.getElementById("speedinfo-popup-pudding");
     const more = document.getElementById("settings-popup-pudding");
     const splits = document.getElementById("split-panel-pudding");
@@ -574,6 +612,7 @@ window.ultraLayoutMenus = function ultraLayoutMenus() {
       window.ultraSetPanelDisplay(preset, false, "grid");
       window.ultraSetPanelDisplay(custom, false, "block");
       window.ultraSetPanelDisplay(challenge, false, "block");
+      window.ultraSetPanelDisplay(selectedHam, false, "block");
       window.ultraSetPanelDisplay(speed, false, "flex");
       window.ultraSetPanelDisplay(more, false, "block");
       window.ultraSetPanelDisplay(splits, false, "flex");
@@ -642,8 +681,10 @@ window.ultraLayoutMenus = function ultraLayoutMenus() {
     const leftH = window.ultraPanelH() + "px";
     window.ultraSetPanelDisplay(custom, left === "custom", "flex");
     window.ultraSetPanelDisplay(challenge, left === "challenge", "block");
+    window.ultraSetPanelDisplay(selectedHam, left === "selected-ham", "block");
     if (custom) custom.style.height = leftH;
     if (challenge) challenge.style.height = leftH;
+    if (selectedHam) selectedHam.style.height = leftH;
     if (splits) {
       splits.style.top = window.ultraDockTabH + "px";
       splits.style.height = leftH;
@@ -913,15 +954,25 @@ window.ultraSyncWallCoordsFromBoard = function ultraSyncWallCoordsFromBoard() {
   return coords;
 };
 
-window.ultraMaybeHamiltonAfterRandomHam = function ultraMaybeHamiltonAfterRandomHam() {
+window.ultraMaybeHamiltonAfterHamPreset = function ultraMaybeHamiltonAfterHamPreset() {
   if (typeof window.remixHamiltonEnabled !== "function") return;
   if (!window.remixHamiltonEnabled()) return;
   const chosen = document.querySelector(".chosen-preset");
-  if (!chosen || !chosen.classList.contains("preset-random-ham")) return;
+  if (
+    !chosen ||
+    (!chosen.classList.contains("preset-random-ham") &&
+      !chosen.classList.contains("preset-selected-ham"))
+  ) {
+    return;
+  }
   window.ultraSyncWallCoordsFromBoard();
   if (typeof window.remixHamiltonSolveCurrentPattern === "function") {
     window.remixHamiltonSolveCurrentPattern();
   }
+};
+
+window.ultraMaybeHamiltonAfterRandomHam = function ultraMaybeHamiltonAfterRandomHam() {
+  window.ultraMaybeHamiltonAfterHamPreset();
 };
 
 window.ultraBlitChosenPreset = function ultraBlitChosenPreset() {
@@ -1113,6 +1164,17 @@ window.ultraSyncLeNav = function ultraSyncLeNav() {
           if (this.classList.contains("preset-random-ham")) {
             window.ultraSetWallModeSpawn(false);
           }
+          if (this.classList.contains("preset-selected-ham")) {
+            window.ultraSetWallModeSpawn(false);
+            ev.stopImmediatePropagation();
+            window.ultraSetSizeSetting(1);
+            window.ultraSelectPresetKind("selected-ham", true);
+            window.ultraSetRight("presets");
+            window.ultraSetLeft("selected-ham");
+            window.ultraSyncSelectedHamPanel();
+            window.ultraMaybeApplySelectedHam();
+            return;
+          }
           if (this.tagName === "IMG") {
             ev.stopImmediatePropagation();
             window.ultraApplyImagePreset(this);
@@ -1127,6 +1189,9 @@ window.ultraSyncLeNav = function ultraSyncLeNav() {
         } else if (this.classList.contains("preset-challenge")) {
           window.ultraSetRight("presets");
           window.ultraSetLeft("challenge");
+        } else if (this.classList.contains("preset-selected-ham")) {
+          window.ultraSetRight("presets");
+          window.ultraSetLeft("selected-ham");
         } else if (!this.classList.contains("preset-none")) {
           window.ultraSetLeft(null);
         }
@@ -1871,22 +1936,12 @@ window.ultraPatchLevelLoads = function ultraPatchLevelLoads() {
       return [];
     }
     const chosen = codes[Math.floor(Math.random() * codes.length)];
-    const decoded = window.customPresetManager.getPixelListFromLevelCode(chosen);
-    const walls = decoded.filter(function (e) {
-      return e.category === "wall";
-    });
-    const apples = window.ultraHamAppleCoords(walls);
-    const fruitType = window.ultraHamFruitType();
-    for (let i = 0; i < apples.length; i++) {
-      walls.push({
-        x: apples[i].x,
-        y: apples[i].y,
-        category: "apple",
-        type: fruitType,
-      });
-    }
-    window.__ultraLastHamWalls = walls.slice();
-    return walls;
+    return window.ultraBuildHamPixelListFromCode(chosen);
+  };
+  mgr.getSelectedHamPixelList = function () {
+    const sel = window.__ultraSelectedHam;
+    if (!sel || !sel.code) return [];
+    return window.ultraBuildHamPixelListFromCode(sel.code);
   };
   mgr.__ultra = true;
 };
@@ -1925,6 +1980,446 @@ window.ultraInstallPresetNoneButton = function ultraInstallPresetNoneButton() {
     ham.textContent = "Random Ham";
     ham.before(none);
   }
+  let selected = panel.querySelector(".preset-selected-ham");
+  if (!selected) {
+    selected = document.createElement("div");
+    selected.className = "preset-option preset-selected-ham";
+    if (ham && ham.nextSibling) {
+      ham.after(selected);
+    } else if (ham) {
+      panel.appendChild(selected);
+    } else {
+      panel.appendChild(selected);
+    }
+  }
+  selected.textContent = "Selected Ham";
+  window.ultraEnsureSelectedHamPanel();
+};
+
+window.__ultraSelectedHam = window.__ultraSelectedHam || {
+  walls: null,
+  kind: null,
+  file: null,
+  line: null,
+  code: null,
+};
+window.__ultraSmallPathsFileCache = window.__ultraSmallPathsFileCache || {};
+
+window.ultraSelectedHamIndex = function ultraSelectedHamIndex() {
+  return window.ULTRA_SMALL_PATHS_INDEX || {};
+};
+
+window.ultraSelectedHamWallKeys = function ultraSelectedHamWallKeys() {
+  const idx = window.ultraSelectedHamIndex();
+  return Object.keys(idx)
+    .map(function (k) {
+      return parseInt(k, 10);
+    })
+    .filter(function (n) {
+      return Number.isFinite(n);
+    })
+    .sort(function (a, b) {
+      return a - b;
+    });
+};
+
+window.ultraSelectedHamKindsForWalls = function ultraSelectedHamKindsForWalls(walls) {
+  const entry = window.ultraSelectedHamIndex()[String(walls)];
+  if (!entry) return [];
+  const kinds = [];
+  if (entry.paths && Object.keys(entry.paths).length) kinds.push("paths");
+  if (entry.cycles && Object.keys(entry.cycles).length) kinds.push("cycles");
+  return kinds;
+};
+
+window.ultraSelectedHamFilesFor = function ultraSelectedHamFilesFor(walls, kind) {
+  const entry = window.ultraSelectedHamIndex()[String(walls)];
+  if (!entry || !kind || !entry[kind]) return [];
+  return Object.keys(entry[kind])
+    .map(function (k) {
+      return parseInt(k, 10);
+    })
+    .filter(function (n) {
+      return Number.isFinite(n);
+    })
+    .sort(function (a, b) {
+      return a - b;
+    });
+};
+
+window.ultraSelectedHamLineCount = function ultraSelectedHamLineCount(walls, kind, file) {
+  const entry = window.ultraSelectedHamIndex()[String(walls)];
+  if (!entry || !kind || !entry[kind]) return 0;
+  const n = entry[kind][String(file)];
+  return typeof n === "number" ? n : 0;
+};
+
+window.ultraPersistSelectedHam = function ultraPersistSelectedHam() {
+  try {
+    const s = window.pudding_settings || (window.pudding_settings = {});
+    const sel = window.__ultraSelectedHam || {};
+    s.SelectedHamWalls = sel.walls;
+    s.SelectedHamKind = sel.kind;
+    s.SelectedHamFile = sel.file;
+    s.SelectedHamLine = sel.line;
+    if (typeof window.saveSettings === "function") window.saveSettings();
+  } catch (_e) {}
+};
+
+window.ultraRestoreSelectedHamFromSettings = function ultraRestoreSelectedHamFromSettings() {
+  const s = window.pudding_settings || {};
+  const walls = s.SelectedHamWalls != null ? Number(s.SelectedHamWalls) : null;
+  const kind = s.SelectedHamKind === "cycles" || s.SelectedHamKind === "paths"
+    ? s.SelectedHamKind
+    : null;
+  const file = s.SelectedHamFile != null ? Number(s.SelectedHamFile) : null;
+  const line = s.SelectedHamLine != null ? Number(s.SelectedHamLine) : null;
+  window.__ultraSelectedHam = {
+    walls: Number.isFinite(walls) ? walls : null,
+    kind: kind,
+    file: Number.isFinite(file) ? file : null,
+    line: Number.isFinite(line) ? line : null,
+    code: null,
+  };
+};
+
+window.ultraEnsureSelectedHamPanel = function ultraEnsureSelectedHamPanel() {
+  if (document.getElementById("selected-ham-panel")) return;
+  const host = document.getElementsByClassName("sEOCsb")[0];
+  if (!host) return;
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "position: absolute; right: 100%;z-index:1001;";
+  wrap.innerHTML =
+    '<div id="selected-ham-panel" style="display:none;box-sizing:border-box;border:10px solid rgb(80, 127, 48);background-color:rgb(191, 222, 128);">' +
+    '<div style="padding:2px;font-family:Arial">' +
+    '<p style="margin:0 0 8px;font-size:13px;">Pick a small_paths board</p>' +
+    '<div class="selected-ham-row">' +
+    '<label for="selected-ham-walls">Walls</label>' +
+    '<input type="number" id="selected-ham-walls" step="1">' +
+    '<span class="selected-ham-range" id="selected-ham-walls-range"></span>' +
+    "</div>" +
+    '<div class="selected-ham-row">' +
+    '<label for="selected-ham-kind">Kind</label>' +
+    '<select id="selected-ham-kind">' +
+    '<option value="paths">paths</option>' +
+    '<option value="cycles">cycles</option>' +
+    "</select>" +
+    '<span class="selected-ham-range" id="selected-ham-kind-range"></span>' +
+    "</div>" +
+    '<div class="selected-ham-row">' +
+    '<label for="selected-ham-file">File</label>' +
+    '<input type="number" id="selected-ham-file" step="1">' +
+    '<span class="selected-ham-range" id="selected-ham-file-range"></span>' +
+    "</div>" +
+    '<div class="selected-ham-row">' +
+    '<label for="selected-ham-line">Line</label>' +
+    '<input type="number" id="selected-ham-line" step="1">' +
+    '<span class="selected-ham-range" id="selected-ham-line-range"></span>' +
+    "</div>" +
+    '<p id="selected-ham-status"></p>' +
+    "</div></div>";
+  host.appendChild(wrap);
+  const panel = document.getElementById("selected-ham-panel");
+  if (panel) panel.style.borderRight = "none";
+  window.ultraBindSelectedHamPanel();
+};
+
+window.ultraSetSelectedHamStatus = function ultraSetSelectedHamStatus(msg) {
+  const el = document.getElementById("selected-ham-status");
+  if (el) el.textContent = msg || "";
+};
+
+window.ultraClampInt = function ultraClampInt(n, min, max) {
+  if (!Number.isFinite(n)) return null;
+  if (min != null && n < min) n = min;
+  if (max != null && n > max) n = max;
+  return n;
+};
+
+window.ultraSelectedHamSelectionKey = function ultraSelectedHamSelectionKey(sel) {
+  if (!sel) return "";
+  return [sel.walls, sel.kind, sel.file, sel.line].join("|");
+};
+
+window.ultraSyncSelectedHamPanel = function ultraSyncSelectedHamPanel() {
+  window.ultraEnsureSelectedHamPanel();
+  const wallsIn = document.getElementById("selected-ham-walls");
+  const kindIn = document.getElementById("selected-ham-kind");
+  const fileIn = document.getElementById("selected-ham-file");
+  const lineIn = document.getElementById("selected-ham-line");
+  if (!wallsIn || !kindIn || !fileIn || !lineIn) return;
+
+  const wallKeys = window.ultraSelectedHamWallKeys();
+  const wMin = wallKeys.length ? wallKeys[0] : null;
+  const wMax = wallKeys.length ? wallKeys[wallKeys.length - 1] : null;
+  const wallsRange = document.getElementById("selected-ham-walls-range");
+  if (wallsRange) {
+    wallsRange.textContent =
+      wMin != null ? "Walls " + wMin + "–" + wMax : "no index";
+  }
+  if (wMin != null) {
+    wallsIn.min = String(wMin);
+    wallsIn.max = String(wMax);
+  }
+
+  let sel = window.__ultraSelectedHam || (window.__ultraSelectedHam = {});
+  if (sel.walls == null && wMin != null) sel.walls = wMin;
+
+  if (sel.walls != null) {
+    sel.walls = window.ultraClampInt(Number(sel.walls), wMin, wMax);
+  }
+  wallsIn.value = sel.walls != null ? String(sel.walls) : "";
+
+  const kinds = window.ultraSelectedHamKindsForWalls(sel.walls);
+  const kindRange = document.getElementById("selected-ham-kind-range");
+  if (!kinds.length) {
+    kindIn.disabled = true;
+    kindIn.value = "paths";
+    sel.kind = null;
+    sel.file = null;
+    sel.line = null;
+    sel.code = null;
+    if (kindRange) kindRange.textContent = "none";
+    window.ultraSetSelectedHamStatus("No paths/cycles for this wall count.");
+  } else if (kinds.length === 1) {
+    sel.kind = kinds[0];
+    kindIn.value = sel.kind;
+    kindIn.disabled = true;
+    if (kindRange) kindRange.textContent = "locked (" + sel.kind + ")";
+    window.ultraSetSelectedHamStatus("");
+  } else {
+    kindIn.disabled = false;
+    if (sel.kind !== "paths" && sel.kind !== "cycles") sel.kind = "paths";
+    if (kinds.indexOf(sel.kind) < 0) sel.kind = kinds[0];
+    kindIn.value = sel.kind;
+    if (kindRange) kindRange.textContent = "paths or cycles";
+    window.ultraSetSelectedHamStatus("");
+  }
+
+  const files = sel.kind
+    ? window.ultraSelectedHamFilesFor(sel.walls, sel.kind)
+    : [];
+  const fMin = files.length ? files[0] : null;
+  const fMax = files.length ? files[files.length - 1] : null;
+  const fileRange = document.getElementById("selected-ham-file-range");
+  if (fileRange) {
+    fileRange.textContent =
+      fMin != null ? "File " + fMin + "–" + fMax : "—";
+  }
+  if (fMin != null) {
+    fileIn.min = String(fMin);
+    fileIn.max = String(fMax);
+    if (sel.file != null) {
+      sel.file = window.ultraClampInt(Number(sel.file), fMin, fMax);
+    }
+  } else {
+    sel.file = null;
+    sel.line = null;
+    sel.code = null;
+  }
+  fileIn.value = sel.file != null ? String(sel.file) : "";
+  fileIn.disabled = fMin == null;
+
+  const lineCount =
+    sel.file != null
+      ? window.ultraSelectedHamLineCount(sel.walls, sel.kind, sel.file)
+      : 0;
+  const lineRange = document.getElementById("selected-ham-line-range");
+  if (lineRange) {
+    lineRange.textContent = lineCount > 0 ? "Line 1–" + lineCount : "—";
+  }
+  if (lineCount > 0) {
+    lineIn.min = "1";
+    lineIn.max = String(lineCount);
+    if (sel.line != null) {
+      sel.line = window.ultraClampInt(Number(sel.line), 1, lineCount);
+    }
+  } else {
+    sel.line = null;
+    sel.code = null;
+  }
+  lineIn.value = sel.line != null ? String(sel.line) : "";
+  lineIn.disabled = lineCount <= 0;
+
+  window.__ultraSelectedHam = sel;
+  window.ultraPersistSelectedHam();
+};
+
+window.ultraBindSelectedHamPanel = function ultraBindSelectedHamPanel() {
+  if (window.__ultraSelectedHamBound) return;
+  window.__ultraSelectedHamBound = true;
+
+  function onWallsCommit() {
+    const wallsIn = document.getElementById("selected-ham-walls");
+    const wallKeys = window.ultraSelectedHamWallKeys();
+    const wMin = wallKeys[0];
+    const wMax = wallKeys[wallKeys.length - 1];
+    const n = window.ultraClampInt(Number(wallsIn && wallsIn.value), wMin, wMax);
+    const sel = window.__ultraSelectedHam || (window.__ultraSelectedHam = {});
+    if (n !== sel.walls) {
+      sel.walls = n;
+      sel.kind = null;
+      sel.file = null;
+      sel.line = null;
+      sel.code = null;
+    }
+    window.ultraSyncSelectedHamPanel();
+    window.ultraMaybeApplySelectedHam();
+  }
+
+  function onKindCommit() {
+    const kindIn = document.getElementById("selected-ham-kind");
+    const sel = window.__ultraSelectedHam || (window.__ultraSelectedHam = {});
+    const next = kindIn && kindIn.value;
+    if (next !== sel.kind) {
+      sel.kind = next === "cycles" ? "cycles" : "paths";
+      sel.file = null;
+      sel.line = null;
+      sel.code = null;
+    }
+    window.ultraSyncSelectedHamPanel();
+    window.ultraMaybeApplySelectedHam();
+  }
+
+  function onFileCommit() {
+    const fileIn = document.getElementById("selected-ham-file");
+    const sel = window.__ultraSelectedHam || (window.__ultraSelectedHam = {});
+    const files = window.ultraSelectedHamFilesFor(sel.walls, sel.kind);
+    const fMin = files[0];
+    const fMax = files[files.length - 1];
+    const n = window.ultraClampInt(Number(fileIn && fileIn.value), fMin, fMax);
+    if (n !== sel.file) {
+      sel.file = n;
+      sel.line = null;
+      sel.code = null;
+    }
+    window.ultraSyncSelectedHamPanel();
+    window.ultraMaybeApplySelectedHam();
+  }
+
+  function onLineCommit() {
+    const lineIn = document.getElementById("selected-ham-line");
+    const sel = window.__ultraSelectedHam || (window.__ultraSelectedHam = {});
+    const max = window.ultraSelectedHamLineCount(sel.walls, sel.kind, sel.file);
+    const n = window.ultraClampInt(Number(lineIn && lineIn.value), 1, max);
+    if (n !== sel.line) {
+      sel.line = n;
+      sel.code = null;
+    }
+    window.ultraSyncSelectedHamPanel();
+    window.ultraMaybeApplySelectedHam();
+  }
+
+  const pairs = [
+    ["selected-ham-walls", onWallsCommit],
+    ["selected-ham-kind", onKindCommit],
+    ["selected-ham-file", onFileCommit],
+    ["selected-ham-line", onLineCommit],
+  ];
+  for (let i = 0; i < pairs.length; i++) {
+    const el = document.getElementById(pairs[i][0]);
+    if (!el) continue;
+    el.addEventListener("change", pairs[i][1]);
+    el.addEventListener("blur", pairs[i][1]);
+    el.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        pairs[i][1]();
+      }
+    });
+  }
+};
+
+window.ultraSelectedHamFileUrl = function ultraSelectedHamFileUrl(walls, kind, file) {
+  const base =
+    window.ULTRA_SMALL_PATHS_BASE ||
+    "https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeRemix/main/small_paths/";
+  return base + walls + "/" + kind + "/" + file + ".txt";
+};
+
+window.ultraFetchSelectedHamLines = function ultraFetchSelectedHamLines(walls, kind, file) {
+  const key = String(walls) + "/" + kind + "/" + String(file);
+  const cache = window.__ultraSmallPathsFileCache;
+  if (cache[key]) return Promise.resolve(cache[key]);
+  const url = window.ultraSelectedHamFileUrl(walls, kind, file);
+  return fetch(url)
+    .then(function (res) {
+      if (!res.ok) throw new Error("fetch " + res.status);
+      return res.text();
+    })
+    .then(function (text) {
+      const lines = String(text || "")
+        .split(/\r?\n/)
+        .filter(function (line) {
+          return String(line || "").trim().length > 0;
+        });
+      cache[key] = lines;
+      return lines;
+    });
+};
+
+window.ultraBuildHamPixelListFromCode = function ultraBuildHamPixelListFromCode(code) {
+  if (!code || !window.customPresetManager) return [];
+  const decoded = window.customPresetManager.getPixelListFromLevelCode(code);
+  const walls = decoded.filter(function (e) {
+    return e.category === "wall";
+  });
+  const apples = window.ultraHamAppleCoords(walls);
+  const fruitType = window.ultraHamFruitType();
+  for (let i = 0; i < apples.length; i++) {
+    walls.push({
+      x: apples[i].x,
+      y: apples[i].y,
+      category: "apple",
+      type: fruitType,
+    });
+  }
+  window.__ultraLastHamWalls = walls.slice();
+  return walls;
+};
+
+window.ultraMaybeApplySelectedHam = function ultraMaybeApplySelectedHam() {
+  const sel = window.__ultraSelectedHam;
+  if (
+    !sel ||
+    sel.walls == null ||
+    !sel.kind ||
+    sel.file == null ||
+    sel.line == null
+  ) {
+    return;
+  }
+  const chosen = document.querySelector(".chosen-preset");
+  if (!chosen || !chosen.classList.contains("preset-selected-ham")) return;
+
+  const reqKey = window.ultraSelectedHamSelectionKey(sel);
+  window.__ultraSelectedHamPending = reqKey;
+  window.ultraSetSelectedHamStatus("Loading…");
+  window
+    .ultraFetchSelectedHamLines(sel.walls, sel.kind, sel.file)
+    .then(function (lines) {
+      if (window.__ultraSelectedHamPending !== reqKey) return;
+      const code = lines[sel.line - 1];
+      if (!code) {
+        window.ultraSetSelectedHamStatus("Line not found in file.");
+        return;
+      }
+      sel.code = code;
+      window.__ultraSelectedHam = sel;
+      window.ultraPersistSelectedHam();
+      window.ultraSetSelectedHamStatus("");
+      window.ultraSetSizeSetting(1);
+      window.ultraHardResetBoard();
+      setTimeout(function () {
+        window.ultraMaybeHamiltonAfterHamPreset();
+      }, 0);
+    })
+    .catch(function (err) {
+      if (window.__ultraSelectedHamPending !== reqKey) return;
+      window.ultraSetSelectedHamStatus(
+        "Load failed: " + (err && err.message ? err.message : "error")
+      );
+    });
 };
 
 window.ultraOrganizeSettings = function ultraOrganizeSettings() {
@@ -2169,7 +2664,9 @@ window.ultraSetupLayout = function ultraSetupLayout() {
   window.ultraInjectThemeCss();
   window.ultraInjectTabStrip();
   window.ultraMoveInputDisplay();
+  window.ultraRestoreSelectedHamFromSettings();
   window.ultraInstallPresetNoneButton();
+  window.ultraSyncSelectedHamPanel();
   window.ultraSyncLeNav();
   window.ultraWrapShowHide();
   window.ultraDisableSpeedInfo();

@@ -13,10 +13,14 @@ window.remixHamiltonEnabled = function remixHamiltonEnabled() {
   return !!window.pudding_settings.Hamilton;
 };
 
-/** Random Ham preset is selected (Ultra) — pattern tour should stay frozen. */
+/** Random/Selected Ham preset is selected (Ultra) — pattern tour should stay frozen. */
 window.remixHamiltonRandomHamChosen = function remixHamiltonRandomHamChosen() {
   const chosen = document.querySelector(".chosen-preset");
-  return !!(chosen && chosen.classList.contains("preset-random-ham"));
+  return !!(
+    chosen &&
+    (chosen.classList.contains("preset-random-ham") ||
+      chosen.classList.contains("preset-selected-ham"))
+  );
 };
 
 /**
