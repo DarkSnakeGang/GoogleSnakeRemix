@@ -1268,6 +1268,7 @@ window.RemixMod.runCodeAfter = function () {
   }, 0);
 
   let modIndicator = document.createElement("div");
+  modIndicator.id = "remix-mod-indicator";
   modIndicator.style =
     "position:absolute;font-family:Arial,sans-serif;color:white;font-size:14px;padding-top:4px;padding-left:30px;user-select: none;";
   modIndicator.textContent = "Remix Mod v13";
@@ -1275,5 +1276,13 @@ window.RemixMod.runCodeAfter = function () {
   let parent = document.getElementsByClassName("EjCLSb")[0];
   if (parent && canvasNode) {
     parent.insertBefore(modIndicator, canvasNode);
+  }
+  if (
+    typeof window.remixHamiltonEnabled === "function" &&
+    window.remixHamiltonEnabled() &&
+    window.HamiltonMod &&
+    typeof window.HamiltonMod.updateIndicator === "function"
+  ) {
+    window.HamiltonMod.updateIndicator();
   }
 };

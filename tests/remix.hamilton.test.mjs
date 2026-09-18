@@ -20,7 +20,10 @@ describe("Hamilton tour (offline)", () => {
     const ultra = fs.readFileSync(path.join(ROOT, "RemixUltraMod.js"), "utf8");
     assert.match(ultra, /window\.HamiltonMod/);
     assert.match(ultra, /ultraMaybeHamiltonAfterRandomHam/);
+    assert.match(ultra, /ultraMaybeHamiltonAfterHamPreset/);
     assert.match(ultra, /ultraSyncWallCoordsFromBoard/);
+    assert.match(ultra, /remixHamiltonHamPresetChosen/);
+    assert.match(ultra, /preset-selected-ham/);
   });
 
   it("HamiltonInit gates solve when toggle is off", () => {
@@ -55,6 +58,7 @@ describe("Hamilton tour (offline)", () => {
     assert.equal(globalThis.remixHamiltonSolveCurrentPattern(), false);
     assert.equal(started, false);
     globalThis.pudding_settings.Hamilton = true;
+    globalThis.wallCoords = [[1, 1], [2, 2]];
     assert.equal(globalThis.remixHamiltonSolveCurrentPattern(), true);
     assert.equal(started, true);
   });
@@ -100,10 +104,110 @@ describe("Hamilton tour (offline)", () => {
     globalThis.remixGateHamiltonMod();
     assert.equal(HM.getScoreBarIcon(), modeIcon);
     assert.equal(HM._restoreWallIconSrc(), "https://example/orig_trophy_01.png");
-    const ind = { style: { paddingTop: "4px" } };
+    const ind = { style: { display: "" }, setAttribute() {} };
     HM._indicatorEl = ind;
     globalThis.remixOffsetHamiltonIndicator();
-    assert.equal(ind.style.paddingTop, "22px");
+    assert.equal(ind.style.display, "none");
+  });
+
+  it("appends Hamilton stats to Remix/Ultra indicator without a Hamilton Mod label", () => {
+    globalThis.window = globalThis;
+    const host = {
+      id: "remix-ultra-indicator",
+      textContent: "Remix Ultra v13",
+      dataset: {},
+    };
+    const hamEl = {
+      id: "hamilton-mod-indicator",
+      style: { display: "" },
+      setAttribute() {},
+    };
+    globalThis.document = {
+      getElementById(id) {
+        if (id === "remix-ultra-indicator") return host;
+        if (id === "hamilton-mod-indicator") return hamEl;
+        return null;
+      },
+      getElementsByClassName() {
+        return [];
+      },
+      querySelector() {
+        return null;
+      },
+    };
+    const src = fs.readFileSync(path.join(ROOT, "src/HamiltonInit.js"), "utf8");
+    eval(src);
+    const modSrc = fs.readFileSync(path.join(ROOT, "src/HamiltonMod.js"), "utf8");
+    // Pull formatIndicatorText from HM bootstrap by evaluating a minimal stub.
+    globalThis.pudding_settings = { Hamilton: true };
+    globalThis.HamiltonMod = {
+      __remixGated: false,
+      formatIndicatorText(counts) {
+        const c = counts || { white: 1, black: 2, ratio: 0.5, total: 3 };
+        return (
+          "White: " +
+          c.white +
+          " - Black: " +
+          c.black +
+          " | Ratio: " +
+          c.ratio +
+          " | Total: " +
+          c.total
+        );
+      },
+      getBoardDims() {
+        return { width: 10, height: 9, cells: 90 };
+      },
+      countWallCheckerColors() {
+        return { white: 1, black: 2, ratio: 0.5, total: 3 };
+      },
+      updateIndicator() {},
+      _indicatorEl: hamEl,
+    };
+    globalThis.remixGateHamiltonMod();
+    globalThis.HamiltonMod.updateIndicator();
+    assert.equal(hamEl.style.display, "none");
+    assert.match(host.textContent, /^Remix Ultra v13 \| White: 1/);
+    assert.doesNotMatch(host.textContent, /Hamilton Mod/);
+    globalThis.pudding_settings.Hamilton = false;
+    globalThis.HamiltonMod.updateIndicator();
+    assert.equal(host.textContent, "Remix Ultra v13");
+  });
+
+  it("skips notifyWallSpawn re-solve while Selected Ham is chosen", () => {
+    globalThis.window = globalThis;
+    let notified = 0;
+    let indicated = 0;
+    const hamEl = { classList: { contains: (c) => c === "preset-selected-ham" } };
+    globalThis.document = {
+      getElementById() {
+        return null;
+      },
+      getElementsByClassName() {
+        return [];
+      },
+      querySelector(sel) {
+        return sel === ".chosen-preset" ? hamEl : null;
+      },
+    };
+    const src = fs.readFileSync(path.join(ROOT, "src/HamiltonInit.js"), "utf8");
+    eval(src);
+    globalThis.pudding_settings = { Hamilton: true };
+    globalThis.HamiltonMod = {
+      __remixGated: false,
+      notifyWallSpawn() {
+        notified++;
+      },
+      updateIndicator() {
+        indicated++;
+      },
+    };
+    globalThis.remixGateHamiltonMod();
+    globalThis.HamiltonMod.notifyWallSpawn();
+    assert.equal(notified, 0);
+    assert.equal(indicated, 1);
+    assert.equal(globalThis.remixHamiltonHamPresetChosen(), true);
+    assert.equal(globalThis.remixHamiltonRandomHamChosen(), true);
   });
 
   it("skips notifyWallSpawn re-solve while Random Ham is chosen", () => {

@@ -452,15 +452,28 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   font-size: 12px !important;
 }
 #selected-ham-panel .selected-ham-row input[type="number"],
+#selected-ham-panel .selected-ham-row input.selected-ham-num,
 #selected-ham-panel .selected-ham-row select {
   flex: 0 0 72px;
   min-width: 0;
   width: 72px;
+  box-sizing: border-box !important;
   border-radius: 8px !important;
   border: none !important;
   padding: 4px 6px !important;
   font-size: 12px !important;
   font-family: Roboto, Arial, sans-serif !important;
+}
+/* No spinner arrows — type digits only. */
+#selected-ham-panel .selected-ham-row input.selected-ham-num {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+#selected-ham-panel .selected-ham-row input.selected-ham-num::-webkit-inner-spin-button,
+#selected-ham-panel .selected-ham-row input.selected-ham-num::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+  display: none;
 }
 #selected-ham-panel .selected-ham-range {
   flex: 1;
@@ -965,10 +978,22 @@ window.ultraMaybeHamiltonAfterHamPreset = function ultraMaybeHamiltonAfterHamPre
   ) {
     return;
   }
-  window.ultraSyncWallCoordsFromBoard();
-  if (typeof window.remixHamiltonSolveCurrentPattern === "function") {
-    window.remixHamiltonSolveCurrentPattern();
+  function trySolve(attempt) {
+    window.ultraSyncWallCoordsFromBoard();
+    if (window.wallCoords && window.wallCoords.length) {
+      if (typeof window.remixHamiltonSolveCurrentPattern === "function") {
+        window.remixHamiltonSolveCurrentPattern();
+      }
+      return;
+    }
+    // Selected Ham fetch→reset can land a frame after this hook; retry once.
+    if (attempt < 1) {
+      setTimeout(function () {
+        trySolve(attempt + 1);
+      }, 40);
+    }
   }
+  trySolve(0);
 };
 
 window.ultraMaybeHamiltonAfterRandomHam = function ultraMaybeHamiltonAfterRandomHam() {
@@ -1381,7 +1406,7 @@ window.ultraSetIndicator = function ultraSetIndicator() {
   for (const el of [...parent.querySelectorAll("div")]) {
     const t = (el.textContent || "").trim();
     // Match bare or versioned labels (Pudding-style "… v13").
-    if (/^(Remix Mod|Level Editor Mod|Remix Ultra)( v\d+)?$/.test(t)) {
+    if (/^(Remix Mod|Level Editor Mod|Remix Ultra)( v\d+)?(\s*\|.*)?$/.test(t)) {
       el.remove();
     }
   }
@@ -1393,6 +1418,14 @@ window.ultraSetIndicator = function ultraSetIndicator() {
   modIndicator.textContent = "Remix Ultra v13";
   if (canvasNode) parent.insertBefore(modIndicator, canvasNode);
   else parent.appendChild(modIndicator);
+  if (
+    typeof window.remixHamiltonEnabled === "function" &&
+    window.remixHamiltonEnabled() &&
+    window.HamiltonMod &&
+    typeof window.HamiltonMod.updateIndicator === "function"
+  ) {
+    window.HamiltonMod.updateIndicator();
+  }
 };
 
 window.ultraAppleManager = function ultraAppleManager() {
@@ -2095,7 +2128,7 @@ window.ultraEnsureSelectedHamPanel = function ultraEnsureSelectedHamPanel() {
     '<p style="margin:0 0 8px;font-size:13px;">Pick a small_paths board</p>' +
     '<div class="selected-ham-row">' +
     '<label for="selected-ham-walls">Walls</label>' +
-    '<input type="number" id="selected-ham-walls" step="1">' +
+    '<input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" class="selected-ham-num" id="selected-ham-walls">' +
     '<span class="selected-ham-range" id="selected-ham-walls-range"></span>' +
     "</div>" +
     '<div class="selected-ham-row">' +
@@ -2108,12 +2141,12 @@ window.ultraEnsureSelectedHamPanel = function ultraEnsureSelectedHamPanel() {
     "</div>" +
     '<div class="selected-ham-row">' +
     '<label for="selected-ham-file">File</label>' +
-    '<input type="number" id="selected-ham-file" step="1">' +
+    '<input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" class="selected-ham-num" id="selected-ham-file">' +
     '<span class="selected-ham-range" id="selected-ham-file-range"></span>' +
     "</div>" +
     '<div class="selected-ham-row">' +
     '<label for="selected-ham-line">Line</label>' +
-    '<input type="number" id="selected-ham-line" step="1">' +
+    '<input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" class="selected-ham-num" id="selected-ham-line">' +
     '<span class="selected-ham-range" id="selected-ham-line-range"></span>' +
     "</div>" +
     '<p id="selected-ham-status"></p>' +
@@ -2141,13 +2174,25 @@ window.ultraSelectedHamSelectionKey = function ultraSelectedHamSelectionKey(sel)
   return [sel.walls, sel.kind, sel.file, sel.line].join("|");
 };
 
-window.ultraSyncSelectedHamPanel = function ultraSyncSelectedHamPanel() {
+window.ultraSyncSelectedHamPanel = function ultraSyncSelectedHamPanel(opts) {
+  opts = opts || {};
+  const skipEl = opts.skipEl || null;
   window.ultraEnsureSelectedHamPanel();
   const wallsIn = document.getElementById("selected-ham-walls");
   const kindIn = document.getElementById("selected-ham-kind");
   const fileIn = document.getElementById("selected-ham-file");
   const lineIn = document.getElementById("selected-ham-line");
   if (!wallsIn || !kindIn || !fileIn || !lineIn) return;
+
+  const active =
+    typeof document !== "undefined" ? document.activeElement : null;
+  function canWrite(el) {
+    if (!el) return false;
+    if (skipEl && el === skipEl) return false;
+    // Rewriting value while focused (esp. number spinners) makes the value run away.
+    if (active && el === active) return false;
+    return true;
+  }
 
   const wallKeys = window.ultraSelectedHamWallKeys();
   const wMin = wallKeys.length ? wallKeys[0] : null;
@@ -2163,18 +2208,22 @@ window.ultraSyncSelectedHamPanel = function ultraSyncSelectedHamPanel() {
   }
 
   let sel = window.__ultraSelectedHam || (window.__ultraSelectedHam = {});
-  if (sel.walls == null && wMin != null) sel.walls = wMin;
+  if (sel.walls == null && wMin != null && active !== wallsIn) {
+    sel.walls = wMin;
+  }
 
   if (sel.walls != null) {
     sel.walls = window.ultraClampInt(Number(sel.walls), wMin, wMax);
   }
-  wallsIn.value = sel.walls != null ? String(sel.walls) : "";
+  if (canWrite(wallsIn)) {
+    wallsIn.value = sel.walls != null ? String(sel.walls) : "";
+  }
 
   const kinds = window.ultraSelectedHamKindsForWalls(sel.walls);
   const kindRange = document.getElementById("selected-ham-kind-range");
   if (!kinds.length) {
     kindIn.disabled = true;
-    kindIn.value = "paths";
+    if (canWrite(kindIn)) kindIn.value = "paths";
     sel.kind = null;
     sel.file = null;
     sel.line = null;
@@ -2183,7 +2232,7 @@ window.ultraSyncSelectedHamPanel = function ultraSyncSelectedHamPanel() {
     window.ultraSetSelectedHamStatus("No paths/cycles for this wall count.");
   } else if (kinds.length === 1) {
     sel.kind = kinds[0];
-    kindIn.value = sel.kind;
+    if (canWrite(kindIn)) kindIn.value = sel.kind;
     kindIn.disabled = true;
     if (kindRange) kindRange.textContent = "locked (" + sel.kind + ")";
     window.ultraSetSelectedHamStatus("");
@@ -2191,7 +2240,7 @@ window.ultraSyncSelectedHamPanel = function ultraSyncSelectedHamPanel() {
     kindIn.disabled = false;
     if (sel.kind !== "paths" && sel.kind !== "cycles") sel.kind = "paths";
     if (kinds.indexOf(sel.kind) < 0) sel.kind = kinds[0];
-    kindIn.value = sel.kind;
+    if (canWrite(kindIn)) kindIn.value = sel.kind;
     if (kindRange) kindRange.textContent = "paths or cycles";
     window.ultraSetSelectedHamStatus("");
   }
@@ -2202,23 +2251,32 @@ window.ultraSyncSelectedHamPanel = function ultraSyncSelectedHamPanel() {
   const fMin = files.length ? files[0] : null;
   const fMax = files.length ? files[files.length - 1] : null;
   const fileRange = document.getElementById("selected-ham-file-range");
-  if (fileRange) {
-    fileRange.textContent =
-      fMin != null ? "File " + fMin + "–" + fMax : "—";
-  }
-  if (fMin != null) {
+  if (files.length === 1) {
+    sel.file = files[0];
+    if (fileRange) fileRange.textContent = "locked (" + sel.file + ")";
+    fileIn.min = String(sel.file);
+    fileIn.max = String(sel.file);
+    fileIn.disabled = true;
+  } else if (fMin != null) {
+    if (fileRange) {
+      fileRange.textContent = "File " + fMin + "–" + fMax;
+    }
     fileIn.min = String(fMin);
     fileIn.max = String(fMax);
+    fileIn.disabled = false;
     if (sel.file != null) {
       sel.file = window.ultraClampInt(Number(sel.file), fMin, fMax);
     }
   } else {
+    if (fileRange) fileRange.textContent = "—";
     sel.file = null;
     sel.line = null;
     sel.code = null;
+    fileIn.disabled = true;
   }
-  fileIn.value = sel.file != null ? String(sel.file) : "";
-  fileIn.disabled = fMin == null;
+  if (canWrite(fileIn)) {
+    fileIn.value = sel.file != null ? String(sel.file) : "";
+  }
 
   const lineCount =
     sel.file != null
@@ -2238,7 +2296,9 @@ window.ultraSyncSelectedHamPanel = function ultraSyncSelectedHamPanel() {
     sel.line = null;
     sel.code = null;
   }
-  lineIn.value = sel.line != null ? String(sel.line) : "";
+  if (canWrite(lineIn)) {
+    lineIn.value = sel.line != null ? String(sel.line) : "";
+  }
   lineIn.disabled = lineCount <= 0;
 
   window.__ultraSelectedHam = sel;
@@ -2249,12 +2309,46 @@ window.ultraBindSelectedHamPanel = function ultraBindSelectedHamPanel() {
   if (window.__ultraSelectedHamBound) return;
   window.__ultraSelectedHamBound = true;
 
-  function onWallsCommit() {
+  function digitsOnly(el) {
+    if (!el) return;
+    const cleaned = String(el.value || "").replace(/\D+/g, "");
+    if (el.value !== cleaned) el.value = cleaned;
+  }
+
+  function readInt(el) {
+    if (!el) return null;
+    const raw = String(el.value || "").replace(/\D+/g, "");
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function onWallsLive() {
     const wallsIn = document.getElementById("selected-ham-walls");
+    digitsOnly(wallsIn);
     const wallKeys = window.ultraSelectedHamWallKeys();
     const wMin = wallKeys[0];
     const wMax = wallKeys[wallKeys.length - 1];
-    const n = window.ultraClampInt(Number(wallsIn && wallsIn.value), wMin, wMax);
+    const raw = readInt(wallsIn);
+    if (raw == null) return;
+    if (raw < wMin || raw > wMax) return;
+    const sel = window.__ultraSelectedHam || (window.__ultraSelectedHam = {});
+    if (raw === sel.walls) return;
+    sel.walls = raw;
+    sel.kind = null;
+    sel.file = null;
+    sel.line = null;
+    sel.code = null;
+    window.ultraSyncSelectedHamPanel({ skipEl: wallsIn });
+  }
+
+  function onWallsCommit() {
+    const wallsIn = document.getElementById("selected-ham-walls");
+    digitsOnly(wallsIn);
+    const wallKeys = window.ultraSelectedHamWallKeys();
+    const wMin = wallKeys[0];
+    const wMax = wallKeys[wallKeys.length - 1];
+    const n = window.ultraClampInt(readInt(wallsIn), wMin, wMax);
     const sel = window.__ultraSelectedHam || (window.__ultraSelectedHam = {});
     if (n !== sel.walls) {
       sel.walls = n;
@@ -2281,13 +2375,31 @@ window.ultraBindSelectedHamPanel = function ultraBindSelectedHamPanel() {
     window.ultraMaybeApplySelectedHam();
   }
 
+  function onFileLive() {
+    const fileIn = document.getElementById("selected-ham-file");
+    digitsOnly(fileIn);
+    const sel = window.__ultraSelectedHam || (window.__ultraSelectedHam = {});
+    const files = window.ultraSelectedHamFilesFor(sel.walls, sel.kind);
+    if (!files.length) return;
+    const fMin = files[0];
+    const fMax = files[files.length - 1];
+    const raw = readInt(fileIn);
+    if (raw == null || raw < fMin || raw > fMax) return;
+    if (raw === sel.file) return;
+    sel.file = raw;
+    sel.line = null;
+    sel.code = null;
+    window.ultraSyncSelectedHamPanel({ skipEl: fileIn });
+  }
+
   function onFileCommit() {
     const fileIn = document.getElementById("selected-ham-file");
+    digitsOnly(fileIn);
     const sel = window.__ultraSelectedHam || (window.__ultraSelectedHam = {});
     const files = window.ultraSelectedHamFilesFor(sel.walls, sel.kind);
     const fMin = files[0];
     const fMax = files[files.length - 1];
-    const n = window.ultraClampInt(Number(fileIn && fileIn.value), fMin, fMax);
+    const n = window.ultraClampInt(readInt(fileIn), fMin, fMax);
     if (n !== sel.file) {
       sel.file = n;
       sel.line = null;
@@ -2297,11 +2409,26 @@ window.ultraBindSelectedHamPanel = function ultraBindSelectedHamPanel() {
     window.ultraMaybeApplySelectedHam();
   }
 
-  function onLineCommit() {
+  function onLineLive() {
     const lineIn = document.getElementById("selected-ham-line");
+    digitsOnly(lineIn);
     const sel = window.__ultraSelectedHam || (window.__ultraSelectedHam = {});
     const max = window.ultraSelectedHamLineCount(sel.walls, sel.kind, sel.file);
-    const n = window.ultraClampInt(Number(lineIn && lineIn.value), 1, max);
+    if (max <= 0) return;
+    const raw = readInt(lineIn);
+    if (raw == null || raw < 1 || raw > max) return;
+    if (raw === sel.line) return;
+    sel.line = raw;
+    sel.code = null;
+    window.ultraSyncSelectedHamPanel({ skipEl: lineIn });
+  }
+
+  function onLineCommit() {
+    const lineIn = document.getElementById("selected-ham-line");
+    digitsOnly(lineIn);
+    const sel = window.__ultraSelectedHam || (window.__ultraSelectedHam = {});
+    const max = window.ultraSelectedHamLineCount(sel.walls, sel.kind, sel.file);
+    const n = window.ultraClampInt(readInt(lineIn), 1, max);
     if (n !== sel.line) {
       sel.line = n;
       sel.code = null;
@@ -2310,24 +2437,29 @@ window.ultraBindSelectedHamPanel = function ultraBindSelectedHamPanel() {
     window.ultraMaybeApplySelectedHam();
   }
 
-  const pairs = [
-    ["selected-ham-walls", onWallsCommit],
-    ["selected-ham-kind", onKindCommit],
-    ["selected-ham-file", onFileCommit],
-    ["selected-ham-line", onLineCommit],
-  ];
-  for (let i = 0; i < pairs.length; i++) {
-    const el = document.getElementById(pairs[i][0]);
-    if (!el) continue;
-    el.addEventListener("change", pairs[i][1]);
-    el.addEventListener("blur", pairs[i][1]);
+  function bindNum(el, onLive, onCommit) {
+    if (!el) return;
+    el.addEventListener("beforeinput", function (ev) {
+      if (ev.inputType && ev.inputType.indexOf("insert") === 0) {
+        const data = ev.data == null ? "" : String(ev.data);
+        if (data && /\D/.test(data)) ev.preventDefault();
+      }
+    });
+    el.addEventListener("input", onLive);
+    el.addEventListener("blur", onCommit);
     el.addEventListener("keydown", function (ev) {
       if (ev.key === "Enter") {
         ev.preventDefault();
-        pairs[i][1]();
+        el.blur();
       }
     });
   }
+
+  bindNum(document.getElementById("selected-ham-walls"), onWallsLive, onWallsCommit);
+  const kindIn = document.getElementById("selected-ham-kind");
+  if (kindIn) kindIn.addEventListener("change", onKindCommit);
+  bindNum(document.getElementById("selected-ham-file"), onFileLive, onFileCommit);
+  bindNum(document.getElementById("selected-ham-line"), onLineLive, onLineCommit);
 };
 
 window.ultraSelectedHamFileUrl = function ultraSelectedHamFileUrl(walls, kind, file) {

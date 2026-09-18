@@ -191,6 +191,11 @@ def main():
 
     rewrite_ultra_storage_keys(morepudding_path, ultra_pudding)
     download(LEVEL_EDITOR_URL, le_path)
+    print("Patching Selected Ham into LevelEditorInit.js")
+    subprocess.check_call(
+        ["node", os.path.join("tools", "patch_level_editor_selected_ham.mjs"), le_path],
+        cwd=BASE,
+    )
     concat(ultra_out, ["MorePudding.ultra.js"] + ULTRA_PARTS)
 
 

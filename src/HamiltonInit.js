@@ -14,13 +14,18 @@ window.remixHamiltonEnabled = function remixHamiltonEnabled() {
 };
 
 /** Random/Selected Ham preset is selected (Ultra) — pattern tour should stay frozen. */
-window.remixHamiltonRandomHamChosen = function remixHamiltonRandomHamChosen() {
+window.remixHamiltonHamPresetChosen = function remixHamiltonHamPresetChosen() {
   const chosen = document.querySelector(".chosen-preset");
   return !!(
     chosen &&
     (chosen.classList.contains("preset-random-ham") ||
       chosen.classList.contains("preset-selected-ham"))
   );
+};
+
+/** @deprecated use remixHamiltonHamPresetChosen */
+window.remixHamiltonRandomHamChosen = function remixHamiltonRandomHamChosen() {
+  return window.remixHamiltonHamPresetChosen();
 };
 
 /**
@@ -31,7 +36,7 @@ window.remixHamiltonRandomHamChosen = function remixHamiltonRandomHamChosen() {
  */
 window.remixHamiltonShouldTintModeTrophy = function remixHamiltonShouldTintModeTrophy() {
   if (!window.remixHamiltonEnabled()) return false;
-  if (window.remixHamiltonRandomHamChosen()) return false;
+  if (window.remixHamiltonHamPresetChosen()) return false;
   const HM = window.HamiltonMod;
   if (!HM) return false;
   if (typeof HM.__remixNativeIsWallMode === "function") {
@@ -91,12 +96,19 @@ window.remixHamiltonDisableOverlay = function remixHamiltonDisableOverlay() {
   try {
     if (typeof HM.setWallIconState === "function") HM.setWallIconState("idle");
   } catch (_e3) {}
-  try {
-    if (typeof HM.updateIndicator === "function") HM.updateIndicator();
-  } catch (_e4) {}
   const el =
     (HM && HM._indicatorEl) || document.getElementById("hamilton-mod-indicator");
-  if (el) el.style.display = "none";
+  if (el) {
+    el.style.display = "none";
+    el.setAttribute("aria-hidden", "true");
+  }
+  const host =
+    typeof window.remixHamiltonHostIndicator === "function"
+      ? window.remixHamiltonHostIndicator()
+      : null;
+  if (host && typeof window.remixHamiltonBaseLabel === "function") {
+    host.textContent = window.remixHamiltonBaseLabel(host);
+  }
 };
 
 window.remixHamiltonEnableOverlay = function remixHamiltonEnableOverlay() {
@@ -113,15 +125,23 @@ window.remixHamiltonEnableOverlay = function remixHamiltonEnableOverlay() {
 };
 
 /**
- * Solve from current window.wallCoords even outside wall mode (Random Ham / LE).
+ * Solve from current window.wallCoords even outside wall mode (Random/Selected Ham / LE).
  * No-ops when the Play toggle is off.
  */
 window.remixHamiltonSolveCurrentPattern = function remixHamiltonSolveCurrentPattern() {
   if (!window.remixHamiltonEnabled()) return false;
   const HM = window.HamiltonMod;
   if (!HM || typeof HM._startSolve !== "function") return false;
+  // Ham presets blit walls outside native wall-mode tracking — rebuild coords first.
+  if (
+    (!window.wallCoords || !window.wallCoords.length) &&
+    typeof window.ultraSyncWallCoordsFromBoard === "function"
+  ) {
+    window.ultraSyncWallCoordsFromBoard();
+  }
+  if (!window.wallCoords || !window.wallCoords.length) return false;
   window.remixHamiltonEnableOverlay();
-  // LE / Random Ham walls are not always "wall mode"; allow paint while a tour exists.
+  // LE / Ham walls are not always "wall mode"; allow paint while a tour exists.
   HM.__remixPatternSolve = true;
   window.remixHamiltonReleaseModeTrophy();
   const dims =
@@ -170,6 +190,13 @@ window.remixInstallHamiltonCheckbox = function remixInstallHamiltonCheckbox(play
     if (typeof window.saveSettings === "function") window.saveSettings();
     if (this.checked) {
       window.remixHamiltonEnableOverlay();
+      if (
+        window.remixHamiltonHamPresetChosen &&
+        window.remixHamiltonHamPresetChosen() &&
+        typeof window.ultraSyncWallCoordsFromBoard === "function"
+      ) {
+        window.ultraSyncWallCoordsFromBoard();
+      }
       if (
         window.wallCoords &&
         window.wallCoords.length &&
@@ -245,13 +272,13 @@ window.remixGateHamiltonMod = function remixGateHamiltonMod() {
     };
   };
 
-  // Wall-mode apple eats push wallCoords + notifyWallSpawn. For Random Ham the
+  // Wall-mode apple eats push wallCoords + notifyWallSpawn. For Ham presets the
   // tour is for the blit pattern; re-solving on each spawn clears it mid-run.
   const origNotify = HM.notifyWallSpawn;
   if (typeof origNotify === "function") {
     HM.notifyWallSpawn = function () {
       if (!window.remixHamiltonEnabled()) return;
-      if (window.remixHamiltonRandomHamChosen()) {
+      if (window.remixHamiltonHamPresetChosen()) {
         if (typeof HM.updateIndicator === "function") HM.updateIndicator();
         return;
       }
@@ -265,16 +292,36 @@ window.remixGateHamiltonMod = function remixGateHamiltonMod() {
   const origUpdate = HM.updateIndicator;
   if (typeof origUpdate === "function") {
     HM.updateIndicator = function () {
+      const hamEl =
+        HM._indicatorEl || document.getElementById("hamilton-mod-indicator");
+      if (hamEl) {
+        hamEl.style.display = "none";
+        hamEl.setAttribute("aria-hidden", "true");
+      }
+      const host = window.remixHamiltonHostIndicator
+        ? window.remixHamiltonHostIndicator()
+        : null;
       if (!window.remixHamiltonEnabled()) {
-        const el =
-          HM._indicatorEl || document.getElementById("hamilton-mod-indicator");
-        if (el) el.style.display = "none";
+        if (host && typeof window.remixHamiltonBaseLabel === "function") {
+          host.textContent = window.remixHamiltonBaseLabel(host);
+        }
         return;
       }
-      const el =
-        HM._indicatorEl || document.getElementById("hamilton-mod-indicator");
-      if (el) el.style.display = "";
-      return origUpdate.apply(this, arguments);
+      if (!host) return origUpdate.apply(this, arguments);
+      const dims = typeof HM.getBoardDims === "function" ? HM.getBoardDims() : null;
+      const counts =
+        typeof HM.countWallCheckerColors === "function"
+          ? HM.countWallCheckerColors(window.wallCoords || [], dims)
+          : { white: 0, black: 0, ratio: 0, total: 0 };
+      const stats =
+        typeof HM.formatIndicatorText === "function"
+          ? HM.formatIndicatorText(counts)
+          : "";
+      const base =
+        typeof window.remixHamiltonBaseLabel === "function"
+          ? window.remixHamiltonBaseLabel(host)
+          : (host.textContent || "").split(" | ")[0];
+      host.textContent = stats ? base + " | " + stats : base;
     };
   }
 
@@ -287,13 +334,40 @@ window.remixGateHamiltonMod = function remixGateHamiltonMod() {
   }
 };
 
-/** Stack Hamilton status text under Remix / Remix Ultra (same top-left slot). */
+/** Host label for Remix / Remix Ultra — Hamilton stats append on the same line. */
+window.remixHamiltonHostIndicator = function remixHamiltonHostIndicator() {
+  const ultra = document.getElementById("remix-ultra-indicator");
+  if (ultra) return ultra;
+  const remix = document.getElementById("remix-mod-indicator");
+  if (remix) return remix;
+  const parent = document.getElementsByClassName("EjCLSb")[0];
+  if (!parent) return null;
+  const kids = parent.querySelectorAll("div");
+  for (let i = 0; i < kids.length; i++) {
+    const t = (kids[i].textContent || "").trim();
+    if (/^(Remix Mod|Remix Ultra)( v\d+)?(\s*\|.*)?$/.test(t)) return kids[i];
+  }
+  return null;
+};
+
+window.remixHamiltonBaseLabel = function remixHamiltonBaseLabel(host) {
+  const el = host || window.remixHamiltonHostIndicator();
+  if (!el) return "Remix Mod";
+  if (el.dataset && el.dataset.remixHamBase) return el.dataset.remixHamBase;
+  const raw = (el.textContent || "").trim();
+  const base = raw.split(" | ")[0] || raw || "Remix Mod";
+  if (el.dataset) el.dataset.remixHamBase = base;
+  return base;
+};
+
+/** Hide the standalone Hamilton label — stats live on the Remix/Ultra line. */
 window.remixOffsetHamiltonIndicator = function remixOffsetHamiltonIndicator() {
   const el =
     (window.HamiltonMod && window.HamiltonMod._indicatorEl) ||
     document.getElementById("hamilton-mod-indicator");
   if (!el) return;
-  el.style.paddingTop = "22px";
+  el.style.display = "none";
+  el.setAttribute("aria-hidden", "true");
 };
 
 window.HamiltonRemix = window.HamiltonRemix || {};
@@ -320,5 +394,13 @@ window.HamiltonRemix.runCodeAfter = function () {
   window.remixOffsetHamiltonIndicator();
   if (!window.remixHamiltonEnabled()) {
     window.remixHamiltonDisableOverlay();
+  } else if (
+    window.HamiltonMod &&
+    typeof window.HamiltonMod.updateIndicator === "function"
+  ) {
+    // Remix/Ultra host label may be created after this; refresh next tick.
+    setTimeout(function () {
+      window.HamiltonMod.updateIndicator();
+    }, 0);
   }
 };

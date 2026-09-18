@@ -311,7 +311,8 @@ describe("Custom fruit bundle artifacts", () => {
     assert.match(remix, /CustomPoisonUserPresets/);
     assert.match(remix, /remix-custom-fruit-save-preset/);
     assert.match(remix, /remix-custom-poison-save-preset/);
-    assert.match(remix, /HLr5YJmb\/modloader-icon/);
+    assert.match(remix, /data:image\/png;base64,/);
+    assert.match(remix, /modloader-icon/);
     assert.match(remix, /grid-template-columns:\s*repeat\(4,\s*1fr\)/);
     assert.match(
       remix,

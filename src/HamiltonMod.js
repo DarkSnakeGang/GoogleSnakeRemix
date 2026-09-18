@@ -566,7 +566,7 @@ window.HamiltonMod.runCodeBefore = function () {
   HM.formatIndicatorText = function formatIndicatorText(counts) {
     const c = counts || { white: 0, black: 0, ratio: 0, total: 0 };
     return (
-      "Hamilton Mod | White: " +
+      "White: " +
       c.white +
       " - Black: " +
       c.black +
