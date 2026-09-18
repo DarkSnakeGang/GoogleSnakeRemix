@@ -18167,6 +18167,7 @@ window.fear_reset_state = function fear_reset_state() {
   window.fearTurnsRemaining = 0;
   window.__fearRefreshedMove = false;
   window.__fearGhostTopUpThisEat = false;
+  window.__fearAllowGhostRelocate = false;
   window.__fearWaveGhostFill = false;
   window.__fearBombWaveGhostDone = false;
 };
@@ -18963,6 +18964,10 @@ window.fear_remove_fresh_pair = function fear_remove_fresh_pair(game, fruit) {
   const list = game && game.wa && game.wa.ka;
   if (!list || !fruit || window.fear_is_ghost(fruit)) return 0;
   window.fear_reconcile_pairs(game, true);
+  // Already missing ghosts vs fruit: never despawn another ghost on this eat.
+  // (Remove+spawn elsewhere looks like a move and keeps the deficit.)
+  const counts = window.fear_board_counts(game);
+  if (counts.ghosts < counts.fresh) return 0;
   const index = list.indexOf(fruit);
   if (index < 0) return 0;
   if (fruit.__fearPairId != null) {
@@ -19306,13 +19311,21 @@ window.fear_native_ghost_top_up =
       window.fear_reconcile_pairs(g, true);
       return false;
     }
-    window.__fearGhostTopUpThisEat = true;
-    if (counts.fresh <= 0) return false;
+    if (counts.fresh <= 0) {
+      window.__fearGhostTopUpThisEat = true;
+      return false;
+    }
+    // Prefer spawn whenever a ghost is missing.
     if (counts.ghosts < counts.fresh) {
+      window.__fearGhostTopUpThisEat = true;
       // At most one new ghost; do not relocate other ghosts on this path.
       return window.fear_spawn_one_ghost(mgr, spawn) > 0;
     }
-    // Already covered by ghosts — move one ghost instead of adding another.
+    // ghosts === fresh: only relocate after fruit respawn. The poison e4E
+    // hook can run mid-eat while fruit is still down (temporary match), and
+    // relocating+latching there skips the needed spawn once fruit returns.
+    if (!window.__fearAllowGhostRelocate) return false;
+    window.__fearGhostTopUpThisEat = true;
     const moved = window.fear_relocate_one_ghost(g, mgr);
     window.fear_sync_fruit_types(g);
     window.fear_reconcile_pairs(g, true);
@@ -19498,11 +19511,22 @@ window.fear_after_respawn = function fear_after_respawn(mgr) {
   window.fear_pair_new_fruits(g);
   if (window.fear_uses_ghost_pairs && window.fear_uses_ghost_pairs(g)) {
     // Dice/Tally empty wave and Bomb first empty: full ghost match.
-    // Otherwise at most one ghost (or relocate when already covered).
+    // Otherwise spawn a missing ghost first; relocate only when already matched.
     if (window.fear_should_wave_ghost_fill(g)) {
       window.fear_wave_ghost_fill(mgr);
     } else {
-      window.fear_native_ghost_top_up(mgr);
+      const counts = window.fear_board_counts(g);
+      // Mid-eat poison e4E may have seen a temporary match and done nothing.
+      // If fruit respawn left us short a ghost, allow one spawn now.
+      if (counts.ghosts < counts.fresh) {
+        window.__fearGhostTopUpThisEat = false;
+      }
+      window.__fearAllowGhostRelocate = true;
+      try {
+        window.fear_native_ghost_top_up(mgr);
+      } finally {
+        window.__fearAllowGhostRelocate = false;
+      }
     }
   } else {
     window.fear_sync_fruit_types(g);
@@ -31941,27 +31965,37 @@ window.RemixSpeedInfo = {};
 ////////////////////////////////////////////////////////////////////
 
 // Pudding now keys TimeKeeper / SpeedInfo through ModeRegistry (stable
-// modeKeys like "chess", "wall+burger"). Remix still gates SpeedInfo panel
-// data to Chess / Burger; other modes show a switch prompt.
+// modeKeys like "chess", "wall+burger"). Remix gates SpeedInfo panel data to
+// custom modes Candy … Fear (Ghost) on official count/speed/size only.
 //
-// Chess/Burger TimeKeeper only tracks official apple counts 0..Tally (6),
+// TimeKeeper only tracks official apple counts 0..Tally (6),
 // plus Normal/Fast/Slow and Standard/Small/Large — not MoreMenu / colored dice.
 //
 // Timer settings (#edit-mode) is hardcoded Classic…Peaceful; we add
-// Candy/Chess/Burger/Cat/Mexico (index-aligned; gaps stay hidden so PB keys match).
-// Cat/Candy/Mexico have no CE/SRC boards — SpeedInfo stays gated to Chess/Burger.
+// Candy…Fear (+ Slot Machine for PB key alignment; gaps stay hidden).
+// Classic / vanilla / Slot Machine still show the switch / official-only prompts.
 window.RemixSpeedInfo.runCodeBefore = function () {
   window.remixNativeBlenderMode = 22;
   // Last vanilla count index (1 / 3 / 5 / 10 / Dice / Bomb / Tally).
   window.REMIX_OFFICIAL_COUNT_MAX = 6;
 
-  window.remixChessBurgerTimeKeeperActive =
-    function remixChessBurgerTimeKeeperActive() {
+  // Candy → Chess → Burger → Cat → Mexico → Bomb Fruit → Temp Walls → Fear.
+  window.remixCustomModeTimeKeeperActive =
+    function remixCustomModeTimeKeeperActive() {
       return !!(
+        (window.isCandyActive && window.isCandyActive()) ||
         (window.isChessActive && window.isChessActive()) ||
-        (window.isBurgerActive && window.isBurgerActive())
+        (window.isBurgerActive && window.isBurgerActive()) ||
+        (window.isCatActive && window.isCatActive()) ||
+        (window.isMexicoActive && window.isMexicoActive()) ||
+        (window.isBombFruitActive && window.isBombFruitActive()) ||
+        (window.isTempWallsActive && window.isTempWallsActive()) ||
+        (window.fear_mode_selected && window.fear_mode_selected())
       );
     };
+  // Back-compat alias (Ultra + older tests).
+  window.remixChessBurgerTimeKeeperActive =
+    window.remixCustomModeTimeKeeperActive;
 
   window.remixTimeKeeperOfficialSettings =
     function remixTimeKeeperOfficialSettings(ctx) {
@@ -31991,12 +32025,12 @@ window.RemixSpeedInfo.runCodeBefore = function () {
 
   window.remixSpeedInfoAllowed = function remixSpeedInfoAllowed() {
     return (
-      window.remixChessBurgerTimeKeeperActive() &&
+      window.remixCustomModeTimeKeeperActive() &&
       window.remixTimeKeeperOfficialSettings()
     );
   };
 
-  // Chess/Burger: never record PBs outside official count/speed/size.
+  // Custom modes: never record PBs outside official count/speed/size.
   if (
     window.timeKeeper &&
     typeof window.timeKeeper.shouldTrack === "function" &&
@@ -32005,7 +32039,7 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     const origShouldTrack = window.timeKeeper.shouldTrack;
     window.timeKeeper.shouldTrack = function remixShouldTrack(ctx) {
       if (!origShouldTrack.call(this, ctx)) return false;
-      if (window.remixChessBurgerTimeKeeperActive()) {
+      if (window.remixCustomModeTimeKeeperActive()) {
         return window.remixTimeKeeperOfficialSettings(ctx);
       }
       return true;
@@ -32178,6 +32212,10 @@ window.RemixSpeedInfo.runCodeBefore = function () {
         if (window.bomb_fruit_blending && ids.indexOf("bomb_fruit") < 0) {
           ids.push("bomb_fruit");
         }
+        if (window.temp_walls_blending && ids.indexOf("temp_walls") < 0) {
+          ids.push("temp_walls");
+        }
+        if (window.fear_blending && ids.indexOf("fear") < 0) ids.push("fear");
         if (!ids.length) return "blender";
         return ids.slice().sort().join("+");
       };
@@ -32340,7 +32378,7 @@ window.RemixSpeedInfo.runCodeBefore = function () {
       if (!window.pudding_settings || !window.pudding_settings.SpeedInfo) {
         return;
       }
-      if (!window.remixChessBurgerTimeKeeperActive()) {
+      if (!window.remixCustomModeTimeKeeperActive()) {
         window.remixSpeedInfoShowSwitchMessage();
         return;
       }
@@ -32363,7 +32401,7 @@ window.RemixSpeedInfo.runCodeBefore = function () {
       if (!window.pudding_settings || !window.pudding_settings.SpeedInfo) {
         return;
       }
-      if (!window.remixChessBurgerTimeKeeperActive()) {
+      if (!window.remixCustomModeTimeKeeperActive()) {
         window.remixSpeedInfoShowSwitchMessage();
         return;
       }
@@ -32386,7 +32424,7 @@ window.RemixSpeedInfo.runCodeBefore = function () {
       if (!window.pudding_settings || !window.pudding_settings.SpeedInfo) {
         return;
       }
-      if (!window.remixChessBurgerTimeKeeperActive()) {
+      if (!window.remixCustomModeTimeKeeperActive()) {
         window.remixSpeedInfoShowSwitchMessage();
         return;
       }
@@ -32400,8 +32438,8 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     window.getRecordSRC.__remixGated = true;
   }
 
-  // Timer settings (#edit-mode) is hardcoded Classic…Peaceful. Append only
-  // Candy / Chess / Burger. Hidden placeholders fill index gaps (e.g. Blender)
+  // Timer settings (#edit-mode) is hardcoded Classic…Peaceful. Append Remix
+  // custom modes. Hidden placeholders fill index gaps (e.g. Blender)
   // so getSelected indices still match mode ids for PB storage.
   window.remixEnsureTimerEditModes = function remixEnsureTimerEditModes() {
     window.remixSpeedInfoEnsureModeLabels();
@@ -33499,7 +33537,13 @@ window.remixEnsureVisibilityButton = function remixEnsureVisibilityButton(setup)
     });
   }
   if (setup.firstChild !== btn) setup.insertBefore(btn, setup.firstChild);
-  window.remixSyncVisibilityButton();
+  // Visibility Mod injects its panel visible; Remix starts it hidden.
+  if (!window.__remixVisibilityDefaulted) {
+    window.remixSetVisibilityOpen(false);
+    window.__remixVisibilityDefaulted = true;
+  } else {
+    window.remixSyncVisibilityButton();
+  }
   const popup = window.remixVisibilityPopup();
   if (popup && !popup.__remixVisObs) {
     const obs = new MutationObserver(function () {

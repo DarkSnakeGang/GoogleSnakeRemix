@@ -727,7 +727,13 @@ window.remixEnsureVisibilityButton = function remixEnsureVisibilityButton(setup)
     });
   }
   if (setup.firstChild !== btn) setup.insertBefore(btn, setup.firstChild);
-  window.remixSyncVisibilityButton();
+  // Visibility Mod injects its panel visible; Remix starts it hidden.
+  if (!window.__remixVisibilityDefaulted) {
+    window.remixSetVisibilityOpen(false);
+    window.__remixVisibilityDefaulted = true;
+  } else {
+    window.remixSyncVisibilityButton();
+  }
   const popup = window.remixVisibilityPopup();
   if (popup && !popup.__remixVisObs) {
     const obs = new MutationObserver(function () {

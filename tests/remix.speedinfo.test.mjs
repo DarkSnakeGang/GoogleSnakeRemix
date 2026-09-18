@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 const runBrowser = process.env.RUN_BROWSER_TESTS === "1";
 
 describe("Remix SpeedInfo gate (browser)", { skip: !runBrowser }, () => {
-  it("keeps SpeedInfo toggle enabled and gates data to Chess/Burger", async () => {
+  it("keeps SpeedInfo toggle enabled and gates data to Candy…Fear custom modes", async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 13, headless: true });
     try {
@@ -91,7 +91,6 @@ describe("Remix SpeedInfo gate (browser)", { skip: !runBrowser }, () => {
         if (window.pudding_settings) window.pudding_settings.SpeedInfo = true;
         await window.SpeedInfoUpdate();
         const label = (document.getElementById("mode-selected") || {}).innerHTML || "";
-        // SpeedInfo panel is gated, but TimeKeeper naming must still resolve.
         const formatted = window.remixTimeKeeperFormatGamemode(
           window.timeKeeper.getCurrentMode()
         );
@@ -99,13 +98,32 @@ describe("Remix SpeedInfo gate (browser)", { skip: !runBrowser }, () => {
           allowed: window.remixSpeedInfoAllowed(),
           modeLabel: label,
           formatted,
+          isSwitch: /Switch to PuddingMod/.test(label),
           hasUnknown: /Unknown/.test(formatted),
         };
       });
-      assert.equal(candy.allowed, false, JSON.stringify(candy));
-      assert.match(candy.modeLabel, /Switch to PuddingMod/);
+      assert.equal(candy.allowed, true, JSON.stringify(candy));
+      assert.equal(candy.isSwitch, false, JSON.stringify(candy));
       assert.equal(candy.hasUnknown, false, JSON.stringify(candy));
+      assert.match(candy.modeLabel, /Candy/);
       assert.match(candy.formatted, /Candy/);
+
+      await h.start({ mode: "fear", count: COUNT.ONE, size: SIZE.NORMAL });
+      const fear = await h.page.evaluate(async () => {
+        if (window.pudding_settings) window.pudding_settings.SpeedInfo = true;
+        await window.SpeedInfoUpdate();
+        const label = (document.getElementById("mode-selected") || {}).innerHTML || "";
+        return {
+          allowed: window.remixSpeedInfoAllowed(),
+          modeLabel: label,
+          isSwitch: /Switch to PuddingMod/.test(label),
+          modeKey: window.timeKeeper.getCurrentMode(),
+        };
+      });
+      assert.equal(fear.allowed, true, JSON.stringify(fear));
+      assert.equal(fear.isSwitch, false, JSON.stringify(fear));
+      assert.match(fear.modeLabel, /Fear/);
+      assert.equal(fear.modeKey, "fear", JSON.stringify(fear));
 
       assert.deepEqual(h.modErrors(), [], "no mod errors");
     } finally {
@@ -113,7 +131,7 @@ describe("Remix SpeedInfo gate (browser)", { skip: !runBrowser }, () => {
     }
   });
 
-  it("Chess/Burger TimeKeeper only tracks official counts through Tally", async () => {
+  it("custom-mode TimeKeeper only tracks official counts through Tally", async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 16, headless: true });
     try {

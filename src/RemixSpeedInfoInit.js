@@ -5,27 +5,37 @@ window.RemixSpeedInfo = {};
 ////////////////////////////////////////////////////////////////////
 
 // Pudding now keys TimeKeeper / SpeedInfo through ModeRegistry (stable
-// modeKeys like "chess", "wall+burger"). Remix still gates SpeedInfo panel
-// data to Chess / Burger; other modes show a switch prompt.
+// modeKeys like "chess", "wall+burger"). Remix gates SpeedInfo panel data to
+// custom modes Candy … Fear (Ghost) on official count/speed/size only.
 //
-// Chess/Burger TimeKeeper only tracks official apple counts 0..Tally (6),
+// TimeKeeper only tracks official apple counts 0..Tally (6),
 // plus Normal/Fast/Slow and Standard/Small/Large — not MoreMenu / colored dice.
 //
 // Timer settings (#edit-mode) is hardcoded Classic…Peaceful; we add
-// Candy/Chess/Burger/Cat/Mexico (index-aligned; gaps stay hidden so PB keys match).
-// Cat/Candy/Mexico have no CE/SRC boards — SpeedInfo stays gated to Chess/Burger.
+// Candy…Fear (+ Slot Machine for PB key alignment; gaps stay hidden).
+// Classic / vanilla / Slot Machine still show the switch / official-only prompts.
 window.RemixSpeedInfo.runCodeBefore = function () {
   window.remixNativeBlenderMode = 22;
   // Last vanilla count index (1 / 3 / 5 / 10 / Dice / Bomb / Tally).
   window.REMIX_OFFICIAL_COUNT_MAX = 6;
 
-  window.remixChessBurgerTimeKeeperActive =
-    function remixChessBurgerTimeKeeperActive() {
+  // Candy → Chess → Burger → Cat → Mexico → Bomb Fruit → Temp Walls → Fear.
+  window.remixCustomModeTimeKeeperActive =
+    function remixCustomModeTimeKeeperActive() {
       return !!(
+        (window.isCandyActive && window.isCandyActive()) ||
         (window.isChessActive && window.isChessActive()) ||
-        (window.isBurgerActive && window.isBurgerActive())
+        (window.isBurgerActive && window.isBurgerActive()) ||
+        (window.isCatActive && window.isCatActive()) ||
+        (window.isMexicoActive && window.isMexicoActive()) ||
+        (window.isBombFruitActive && window.isBombFruitActive()) ||
+        (window.isTempWallsActive && window.isTempWallsActive()) ||
+        (window.fear_mode_selected && window.fear_mode_selected())
       );
     };
+  // Back-compat alias (Ultra + older tests).
+  window.remixChessBurgerTimeKeeperActive =
+    window.remixCustomModeTimeKeeperActive;
 
   window.remixTimeKeeperOfficialSettings =
     function remixTimeKeeperOfficialSettings(ctx) {
@@ -55,12 +65,12 @@ window.RemixSpeedInfo.runCodeBefore = function () {
 
   window.remixSpeedInfoAllowed = function remixSpeedInfoAllowed() {
     return (
-      window.remixChessBurgerTimeKeeperActive() &&
+      window.remixCustomModeTimeKeeperActive() &&
       window.remixTimeKeeperOfficialSettings()
     );
   };
 
-  // Chess/Burger: never record PBs outside official count/speed/size.
+  // Custom modes: never record PBs outside official count/speed/size.
   if (
     window.timeKeeper &&
     typeof window.timeKeeper.shouldTrack === "function" &&
@@ -69,7 +79,7 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     const origShouldTrack = window.timeKeeper.shouldTrack;
     window.timeKeeper.shouldTrack = function remixShouldTrack(ctx) {
       if (!origShouldTrack.call(this, ctx)) return false;
-      if (window.remixChessBurgerTimeKeeperActive()) {
+      if (window.remixCustomModeTimeKeeperActive()) {
         return window.remixTimeKeeperOfficialSettings(ctx);
       }
       return true;
@@ -242,6 +252,10 @@ window.RemixSpeedInfo.runCodeBefore = function () {
         if (window.bomb_fruit_blending && ids.indexOf("bomb_fruit") < 0) {
           ids.push("bomb_fruit");
         }
+        if (window.temp_walls_blending && ids.indexOf("temp_walls") < 0) {
+          ids.push("temp_walls");
+        }
+        if (window.fear_blending && ids.indexOf("fear") < 0) ids.push("fear");
         if (!ids.length) return "blender";
         return ids.slice().sort().join("+");
       };
@@ -404,7 +418,7 @@ window.RemixSpeedInfo.runCodeBefore = function () {
       if (!window.pudding_settings || !window.pudding_settings.SpeedInfo) {
         return;
       }
-      if (!window.remixChessBurgerTimeKeeperActive()) {
+      if (!window.remixCustomModeTimeKeeperActive()) {
         window.remixSpeedInfoShowSwitchMessage();
         return;
       }
@@ -427,7 +441,7 @@ window.RemixSpeedInfo.runCodeBefore = function () {
       if (!window.pudding_settings || !window.pudding_settings.SpeedInfo) {
         return;
       }
-      if (!window.remixChessBurgerTimeKeeperActive()) {
+      if (!window.remixCustomModeTimeKeeperActive()) {
         window.remixSpeedInfoShowSwitchMessage();
         return;
       }
@@ -450,7 +464,7 @@ window.RemixSpeedInfo.runCodeBefore = function () {
       if (!window.pudding_settings || !window.pudding_settings.SpeedInfo) {
         return;
       }
-      if (!window.remixChessBurgerTimeKeeperActive()) {
+      if (!window.remixCustomModeTimeKeeperActive()) {
         window.remixSpeedInfoShowSwitchMessage();
         return;
       }
@@ -464,8 +478,8 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     window.getRecordSRC.__remixGated = true;
   }
 
-  // Timer settings (#edit-mode) is hardcoded Classic…Peaceful. Append only
-  // Candy / Chess / Burger. Hidden placeholders fill index gaps (e.g. Blender)
+  // Timer settings (#edit-mode) is hardcoded Classic…Peaceful. Append Remix
+  // custom modes. Hidden placeholders fill index gaps (e.g. Blender)
   // so getSelected indices still match mode ids for PB storage.
   window.remixEnsureTimerEditModes = function remixEnsureTimerEditModes() {
     window.remixSpeedInfoEnsureModeLabels();

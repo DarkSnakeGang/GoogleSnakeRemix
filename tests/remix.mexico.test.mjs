@@ -68,14 +68,14 @@ describe("Mexico Mode (offline)", () => {
     }
   });
 
-  it("SpeedInfo registers Mexico without CE mapping", () => {
+  it("SpeedInfo registers Mexico for TimeKeeper / SpeedInfo", () => {
     const si = read("src/RemixSpeedInfoInit.js");
     assert.match(si, /LABELS\.mexico\s*=\s*"Mexico"/);
     assert.match(si, /modeToTxt\[window\.MEXICO_MODE\]/);
     assert.match(si, /mexico_blending/);
     assert.match(si, /name:\s*"Mexico"/);
-    assert.match(si, /remixChessBurgerTimeKeeperActive/);
-    assert.doesNotMatch(si, /isMexicoActive.*remixSpeedInfoAllowed/);
+    assert.match(si, /isMexicoActive/);
+    assert.match(si, /remixCustomModeTimeKeeperActive/);
   });
 
   it("built bundles include MexicoMod after splice", () => {

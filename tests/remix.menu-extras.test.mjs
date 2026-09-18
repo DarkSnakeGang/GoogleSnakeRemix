@@ -362,9 +362,6 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
         const resetCs = resetBtn && getComputedStyle(resetBtn);
         const onTab = document.querySelector("#ultra-settings-pager .ultra-settings-tab.ultra-tab-on");
         const tabCs = onTab && getComputedStyle(onTab);
-        window.remixSetVisibilityOpen(false);
-        const visBtnBox = visBtn && visBtn.getBoundingClientRect();
-        const setupBox = setup && setup.getBoundingClientRect();
         const before = !!(vis && vis.hidden);
         const labelBefore = visBtn && visBtn.textContent;
         if (visBtn) visBtn.click();
@@ -372,6 +369,8 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
         const labelShown = visBtn && visBtn.textContent;
         if (visBtn) visBtn.click();
         const hiddenAgain = !!(vis && vis.hidden);
+        const visBtnBox = visBtn && visBtn.getBoundingClientRect();
+        const setupBox = setup && setup.getBoundingClientRect();
         const timerBtn = document.getElementById("TimerSettings");
         if (timerBtn) timerBtn.click();
         else if (typeof window.editTimer === "function") window.editTimer();

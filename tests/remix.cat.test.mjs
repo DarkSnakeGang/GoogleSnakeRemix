@@ -86,15 +86,14 @@ describe("Cat Mode (offline)", () => {
     assert.ok(sIdx >= 0 && sSpeed > sIdx);
   });
 
-  it("SpeedInfo registers Cat without CE mapping", () => {
+  it("SpeedInfo registers Cat for TimeKeeper / SpeedInfo", () => {
     const si = read("src/RemixSpeedInfoInit.js");
     assert.match(si, /LABELS\.cat\s*=\s*"Cat"/);
     assert.match(si, /modeToTxt\[window\.CAT_MODE\]/);
     assert.match(si, /cat_blending/);
     assert.match(si, /name:\s*"Cat"/);
-    // Still Chess/Burger-only for TimeKeeper / SRC data.
-    assert.match(si, /remixChessBurgerTimeKeeperActive/);
-    assert.doesNotMatch(si, /isCatActive.*remixSpeedInfoAllowed/);
+    assert.match(si, /isCatActive/);
+    assert.match(si, /remixCustomModeTimeKeeperActive/);
   });
 
   it("life banking is incremental every 5 apples (spend sticks)", () => {

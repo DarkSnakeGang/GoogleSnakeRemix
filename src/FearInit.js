@@ -203,6 +203,7 @@ window.fear_reset_state = function fear_reset_state() {
   window.fearTurnsRemaining = 0;
   window.__fearRefreshedMove = false;
   window.__fearGhostTopUpThisEat = false;
+  window.__fearAllowGhostRelocate = false;
   window.__fearWaveGhostFill = false;
   window.__fearBombWaveGhostDone = false;
 };
@@ -999,6 +1000,10 @@ window.fear_remove_fresh_pair = function fear_remove_fresh_pair(game, fruit) {
   const list = game && game.wa && game.wa.ka;
   if (!list || !fruit || window.fear_is_ghost(fruit)) return 0;
   window.fear_reconcile_pairs(game, true);
+  // Already missing ghosts vs fruit: never despawn another ghost on this eat.
+  // (Remove+spawn elsewhere looks like a move and keeps the deficit.)
+  const counts = window.fear_board_counts(game);
+  if (counts.ghosts < counts.fresh) return 0;
   const index = list.indexOf(fruit);
   if (index < 0) return 0;
   if (fruit.__fearPairId != null) {
@@ -1342,13 +1347,21 @@ window.fear_native_ghost_top_up =
       window.fear_reconcile_pairs(g, true);
       return false;
     }
-    window.__fearGhostTopUpThisEat = true;
-    if (counts.fresh <= 0) return false;
+    if (counts.fresh <= 0) {
+      window.__fearGhostTopUpThisEat = true;
+      return false;
+    }
+    // Prefer spawn whenever a ghost is missing.
     if (counts.ghosts < counts.fresh) {
+      window.__fearGhostTopUpThisEat = true;
       // At most one new ghost; do not relocate other ghosts on this path.
       return window.fear_spawn_one_ghost(mgr, spawn) > 0;
     }
-    // Already covered by ghosts — move one ghost instead of adding another.
+    // ghosts === fresh: only relocate after fruit respawn. The poison e4E
+    // hook can run mid-eat while fruit is still down (temporary match), and
+    // relocating+latching there skips the needed spawn once fruit returns.
+    if (!window.__fearAllowGhostRelocate) return false;
+    window.__fearGhostTopUpThisEat = true;
     const moved = window.fear_relocate_one_ghost(g, mgr);
     window.fear_sync_fruit_types(g);
     window.fear_reconcile_pairs(g, true);
@@ -1534,11 +1547,22 @@ window.fear_after_respawn = function fear_after_respawn(mgr) {
   window.fear_pair_new_fruits(g);
   if (window.fear_uses_ghost_pairs && window.fear_uses_ghost_pairs(g)) {
     // Dice/Tally empty wave and Bomb first empty: full ghost match.
-    // Otherwise at most one ghost (or relocate when already covered).
+    // Otherwise spawn a missing ghost first; relocate only when already matched.
     if (window.fear_should_wave_ghost_fill(g)) {
       window.fear_wave_ghost_fill(mgr);
     } else {
-      window.fear_native_ghost_top_up(mgr);
+      const counts = window.fear_board_counts(g);
+      // Mid-eat poison e4E may have seen a temporary match and done nothing.
+      // If fruit respawn left us short a ghost, allow one spawn now.
+      if (counts.ghosts < counts.fresh) {
+        window.__fearGhostTopUpThisEat = false;
+      }
+      window.__fearAllowGhostRelocate = true;
+      try {
+        window.fear_native_ghost_top_up(mgr);
+      } finally {
+        window.__fearAllowGhostRelocate = false;
+      }
     }
   } else {
     window.fear_sync_fruit_types(g);
