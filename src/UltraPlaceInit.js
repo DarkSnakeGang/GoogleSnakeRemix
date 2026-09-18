@@ -385,10 +385,17 @@ window.ultraPlacePuddingEntries = function () {
       : document.querySelector("#apple")
         ? document.querySelector("#apple").children.length - 1
         : 23;
+  // Place Pudding fruits through Custom Fruit only — not Fear / chess / secret tail.
+  const maxIdx =
+    typeof window.CUSTOM_FRUIT_NEW_FRUIT_INDEX === "number"
+      ? window.CUSTOM_FRUIT_NEW_FRUIT_INDEX
+      : fruits.length - 1;
   const out = [];
   for (let i = 0; i < fruits.length; i++) {
+    if (i > maxIdx) break;
     const f = fruits[i];
     if (!f) continue;
+    if (f.__fearGhostFruit) continue;
     if (window.ultraPlaceIsChessFruit(f)) continue;
     if (window.ultraPlaceIsGoldenFruit(f)) continue;
     if (window.ultraPlaceIsSkullFruit(f)) continue;
@@ -549,7 +556,7 @@ window.ultraPlaceTabDefs = function () {
     { id: "pudding", label: "Pudding Fruit", cols: 4 },
     { id: "objects", label: "Objects", cols: 4 },
     { id: "key", label: "Key", cols: 5 },
-    { id: "chess", label: "Chess", cols: 6 },
+    { id: "chess", label: "Chess", cols: 3 },
   ];
 };
 

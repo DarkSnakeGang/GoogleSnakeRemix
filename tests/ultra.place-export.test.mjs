@@ -995,3 +995,40 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
     }
   });
 });
+
+describe("Ultra Place pudding fruit list", () => {
+  it("includes through Custom Fruit and excludes Fear/chess/secret tail", () => {
+    const src = fs.readFileSync(PLACE_SRC, "utf8");
+    const start = src.indexOf("window.ultraPlaceIsChessFruit");
+    const end = src.indexOf("window.ultraPlaceSpritePos");
+    assert.ok(start >= 0 && end > start);
+    const sandbox = {
+      window: {
+        new_fruit: [
+          { Normal: "pudding-a.png" },
+          { Normal: "pudding-b.png" },
+          { Normal: "custom.png" },
+          { Normal: "fear.png", __fearGhostFruit: true },
+          { Normal: "https://x/bp.png" },
+          { Normal: "gold-apple.png" },
+          { Normal: "poison-skull.png" },
+        ],
+        CUSTOM_FRUIT_NEW_FRUIT_INDEX: 2,
+      },
+      last_fruit_num: 23,
+      document: {
+        querySelector() {
+          return null;
+        },
+      },
+    };
+    sandbox.window.document = sandbox.document;
+    vm.runInNewContext(src.slice(start, end), sandbox);
+    const entries = fromVm(sandbox.window.ultraPlacePuddingEntries());
+    assert.deepEqual(
+      entries.map((e) => e.index),
+      [0, 1, 2]
+    );
+    assert.equal(entries[2].type, 26);
+  });
+});

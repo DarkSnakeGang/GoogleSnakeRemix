@@ -36062,10 +36062,17 @@ window.ultraPlacePuddingEntries = function () {
       : document.querySelector("#apple")
         ? document.querySelector("#apple").children.length - 1
         : 23;
+  // Place Pudding fruits through Custom Fruit only — not Fear / chess / secret tail.
+  const maxIdx =
+    typeof window.CUSTOM_FRUIT_NEW_FRUIT_INDEX === "number"
+      ? window.CUSTOM_FRUIT_NEW_FRUIT_INDEX
+      : fruits.length - 1;
   const out = [];
   for (let i = 0; i < fruits.length; i++) {
+    if (i > maxIdx) break;
     const f = fruits[i];
     if (!f) continue;
+    if (f.__fearGhostFruit) continue;
     if (window.ultraPlaceIsChessFruit(f)) continue;
     if (window.ultraPlaceIsGoldenFruit(f)) continue;
     if (window.ultraPlaceIsSkullFruit(f)) continue;
@@ -36226,7 +36233,7 @@ window.ultraPlaceTabDefs = function () {
     { id: "pudding", label: "Pudding Fruit", cols: 4 },
     { id: "objects", label: "Objects", cols: 4 },
     { id: "key", label: "Key", cols: 5 },
-    { id: "chess", label: "Chess", cols: 6 },
+    { id: "chess", label: "Chess", cols: 3 },
   ];
 };
 
@@ -39047,9 +39054,13 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   margin-bottom: 6px;
   padding: 0;
 }
+#place-panel[data-ultra-place-cols="3"] #ultra-place-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
 #place-panel[data-ultra-place-cols="6"] #ultra-place-grid {
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
+#place-panel[data-ultra-place-cols="3"] #ultra-place-grid .place-option,
 #place-panel[data-ultra-place-cols="5"] #ultra-place-grid .place-option,
 #place-panel[data-ultra-place-cols="6"] #ultra-place-grid .place-option {
   width: 100% !important;
@@ -39103,6 +39114,7 @@ window.ultraInjectThemeCss = function ultraInjectThemeCss() {
   box-shadow: inset 0 0 0 4px #1a73e8;
   background-color: rgba(26, 115, 232, 0.42);
 }
+#place-panel[data-ultra-place-cols="3"] .place-option.ultra-place-on,
 #place-panel[data-ultra-place-cols="5"] .place-option.ultra-place-on,
 #place-panel[data-ultra-place-cols="6"] .place-option.ultra-place-on {
   box-shadow: inset 0 0 0 3px #1a73e8;
