@@ -26,9 +26,16 @@ describe("Mexico Mode (offline)", () => {
     assert.match(mx, /mexico_pos_on_wall/);
     assert.match(mx, /mexico_win_if_empty/);
     assert.match(mx, /mexico_drop_pair_at/);
-    assert.match(mx, /else if\(window\.isMexicoActive&&window\.isMexicoActive\(\)\)\{e=!window\.cat_allows_pair_spawn\|\|window\.cat_allows_pair_spawn\(a\);\}/);
+    assert.match(mx, /mexico_is_wave_count/);
+    assert.match(mx, /mexico_refill_wave/);
+    assert.match(mx, /mexico_spawn_n_pairs/);
+    assert.match(
+      mx,
+      /else if\(window\.isMexicoActive&&window\.isMexicoActive\(\)\)\{e=!1;if\(window\.just_ate==='fruit'/
+    );
+    assert.match(mx, /mexico_is_wave_count&&window\.mexico_is_wave_count\(a\)/);
     assert.match(mx, /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\),window\.isMexicoActive/);
-    assert.match(mx, /a\.wa\.ka\.length>0&&\(window\.mexico_constrain_new_apples/);
+    assert.match(mx, /mexico_refill_wave&&window\.mexico_refill_wave/);
     assert.match(mx, /__mexicoWallDone/);
     assert.match(mx, /Math\.floor\(\(h\s*\|\s*0\)\s*\/\s*2\)/);
     assert.match(mx, /b===2&&window\.isMexicoActive/);
@@ -40,6 +47,105 @@ describe("Mexico Mode (offline)", () => {
     assert.match(mx, /mexicoReplace/);
     assert.doesNotMatch(mx, /ensureGameMode\s*\(\s*1\s*\)/);
     assert.doesNotMatch(mx, /placeWall/);
+  });
+
+  it("mexico_refill_wave plants tally pairs instead of winning on empty", async () => {
+    const vm = await import("node:vm");
+    const src = read("src/MexicoInit.js");
+    const sandbox = {
+      window: {
+        console,
+        document: {
+          querySelector: () => null,
+          getElementById: () => null,
+        },
+        Image: class {
+          constructor() {
+            this.src = "";
+            this.classList = { add() {} };
+          }
+        },
+      },
+      console,
+      document: {
+        querySelector: () => null,
+        getElementById: () => null,
+      },
+      Image: class {
+        constructor() {
+          this.src = "";
+          this.classList = { add() {} };
+        }
+      },
+      g7: null,
+      d4E: null,
+      Q3E: null,
+    };
+    vm.createContext(sandbox);
+    // Runtime helpers are registered inside alterSnakeCode (before patches).
+    vm.runInContext(
+      src +
+        `
+      window.MexicoMod.runCodeBefore();
+      String.prototype.assertReplace = function(re, rep) {
+        return this.replace(re, rep);
+      };
+      window.MexicoMod.alterSnakeCode("/* mexico stub */");
+    `,
+      sandbox
+    );
+    const w = sandbox.window;
+    assert.equal(typeof w.mexico_is_wave_count, "function");
+    assert.equal(typeof w.mexico_refill_wave, "function");
+    const g = {
+      settings: { ka: 6 },
+      kc: false,
+      nj: false,
+      lj: false,
+      Sh: 5,
+      Ca: {
+        wa: Array.from({ length: 9 }, () => Array(9).fill(0)),
+        Aa: { set() {} },
+      },
+      oa: { ka: [{ x: 4, y: 4 }] },
+      wa: { ka: [], oa: null },
+    };
+    g.wa.oa = g.oa;
+    w.__remixGame = g;
+    w.isMexicoActive = () => true;
+    let seq = 0;
+    sandbox.g7 = () => ({
+      pos: {
+        x: 0,
+        y: 0,
+        clone() {
+          return { x: this.x, y: this.y };
+        },
+      },
+      type: seq++,
+    });
+    sandbox.Q3E = () => 0;
+    let calls = 0;
+    w.mexico_find_spawn = function (_b, _f, _o, half) {
+      calls++;
+      const y = half === "top" ? 1 : 7;
+      return {
+        x: calls,
+        y: y,
+        clone() {
+          return { x: this.x, y: this.y };
+        },
+      };
+    };
+    const added = w.mexico_refill_wave(g.wa, g);
+    assert.equal(added, 10, "5 portal pairs");
+    assert.equal(g.wa.ka.length, 10);
+    assert.equal(g.nj, false, "must not win when refill succeeds");
+    assert.equal(g.wa.wa, 1);
+    const seqs = [...new Set(g.wa.ka.map((f) => f.sequenceNumber))].sort(
+      (a, b) => a - b
+    );
+    assert.deepEqual(seqs, [1, 2, 3, 4, 5]);
   });
 
   it("RemixInit / UltraInit wire Mexico after Cat", () => {

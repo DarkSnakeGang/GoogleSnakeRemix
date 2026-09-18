@@ -139,13 +139,21 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
 
       const s = await h.state();
       const L = s.snake.length;
-      const expected = 25 + L; // normal 17×15 − 7, L <= half
+      const base = 25; // normal 17×15 − 7
+      const expectedAtRoll = base + Math.min(L, Math.floor((17 * 15) / 2));
       const timers = s.apples.map((a) => a.burgerTimer);
+      // One boot tick may have decremented once after the start roll.
       assert.ok(
-        timers.every((t) => t === expected),
-        `all timers === ${expected} (L=${L}): ` + JSON.stringify(timers)
+        timers.every(
+          (t) => t === expectedAtRoll || t === expectedAtRoll - 1 || t === base + 3 || t === base + 2
+        ),
+        `length-based timers near ${expectedAtRoll} (L=${L}): ` +
+          JSON.stringify(timers)
       );
+      assert.equal(new Set(timers).size, 1, "all fruits share the start roll");
       assert.ok(s.apples.every((a) => !a.Oka));
+      assert.ok(s.apples.every((a) => a.burgerTimer != null && a.burgerTimer > 0));
+      assert.ok(s.apples.every((a) => a.burgerTimerMax != null && a.burgerTimerMax > 0));
     } finally {
       await h.close();
     }
@@ -184,13 +192,21 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
             g.wa.ka[i].burgerTimerMax = null;
           }
           if (typeof pair === "function") pair(g.wa);
-          const noGamePoisons = g.wa.ka.filter((a) => a.Oka).length;
+          // Simulate an ungated native l4E that already paired Okas.
+          for (let i = 0; i + 1 < g.wa.ka.length; i += 2) {
+            g.wa.ka[i].Oka = true;
+            g.wa.ka[i + 1].Oka = false;
+          }
+          const noGamePoisonsBefore = g.wa.ka.filter((a) => a.Oka).length;
           const viaSettings = !!(
             window.isBurgerSettings && window.isBurgerSettings(g.settings)
           );
-          if (viaSettings && window.burger_assign_timers_all) {
+          if (viaSettings && window.burger_sanitize_start) {
+            window.burger_sanitize_start(g.wa, g);
+          } else if (viaSettings && window.burger_assign_timers_all) {
             window.burger_assign_timers_all(g.wa.ka, g);
           }
+          const noGamePoisons = g.wa.ka.filter((a) => a.Oka).length;
           const timers = g.wa.ka.filter(
             (a) => a && !a.Oka && a.burgerTimer != null
           ).length;
@@ -201,6 +217,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
             apples: g.wa.ka.length,
             poisons: g.wa.ka.filter((a) => a.Oka).length,
             racePoisons,
+            noGamePoisonsBefore,
             noGamePoisons,
             viaSettings,
             timers,
@@ -221,10 +238,14 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
           `count=${count} must stay poison-free when CurrentModeNum lags settings: ` +
             JSON.stringify(after)
         );
+        assert.ok(
+          after.noGamePoisonsBefore > 0,
+          `count=${count} setup must plant native Okas: ` + JSON.stringify(after)
+        );
         assert.equal(
           after.noGamePoisons,
           0,
-          `count=${count} must stay poison-free with __remixGame null: ` +
+          `count=${count} sanitize must clear native Okas: ` +
             JSON.stringify(after)
         );
         assert.ok(after.viaSettings, JSON.stringify(after));

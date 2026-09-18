@@ -573,14 +573,19 @@ window.CatMod.alterSnakeCode = function (code) {
   if (
     !catReplace(
       "burger reset hook",
+      /if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_sanitize_start\?window\.burger_sanitize_start\(this\):window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{console\.error\("BurgerMod: reset failed",_be\);\}\}/,
+      `if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
+    ) &&
+    !catReplace(
+      "burger reset hook legacy",
       /if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{console\.error\("BurgerMod: reset failed",_be\);\}\}/,
       `if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
     )
   ) {
     catReplace(
       "burger reset hook quiet",
-      /if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/,
-      `if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
+      /if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;(?:window\.burger_sanitize_start\?window\.burger_sanitize_start\(this\):)?window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/,
+      `if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
     );
   }
 
@@ -611,13 +616,13 @@ window.CatMod.alterSnakeCode = function (code) {
   // Match quietly — missing Burger inject is expected when its patch drifts.
   {
     const tallyBurger =
-      /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\);if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/;
+      /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\);(?:window\.burger_settings_snapshot&&window\.burger_settings_snapshot\(this\.settings\);window\.__burgerStartOk=!1;)?if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;(?:window\.burger_sanitize_start\?window\.burger_sanitize_start\(this\):)?window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/;
     const tallyRaw = /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\)\}/;
     if (code.match(tallyBurger)) {
       catReplace(
         "tally reset after burger",
         tallyBurger,
-        `this.settings.ka===6&&($3E(this),this.Ca=!1);if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
+        `this.settings.ka===6&&($3E(this),this.Ca=!1);window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
       );
     } else if (code.match(tallyRaw)) {
       catReplace(

@@ -6091,6 +6091,11 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("slot_block_l4E") < 0) {
     if (
       !smReplace(
+        "slot block l4E after burger gate snapshot",
+        /window\.__remixGame=(this|a),window\.burger_settings_snapshot&&window\.burger_settings_snapshot\(\1\.settings\),e7\(\1\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(\1\.settings\)\)&&l4E\(\1\.wa\)/g,
+        "window.__remixGame=$1,window.burger_settings_snapshot&&window.burger_settings_snapshot($1.settings),e7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
+      ) &&
+      !smReplace(
         "slot block l4E after burger gate",
         /window\.__remixGame=(this|a),e7\(\1\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(\1\.settings\)\)&&l4E\(\1\.wa\)/g,
         "window.__remixGame=$1,e7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
@@ -6107,7 +6112,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         "e7($1.settings,10)&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
       );
     }
-    if (code.indexOf("l4E=function(a){if(window.isBurgerSettings") >= 0) {
+    if (code.indexOf("l4E=function(a){var _bs=") >= 0) {
+      smReplace(
+        "slot block l4E function after burger sanitize",
+        /l4E=function\(a\)\{var _bs=\(a&&a\.settings\)\|\|\(window\.__remixGame&&window\.__remixGame\.settings\)\|\|window\.__burgerSettingsRef;if\(window\.isBurgerSettings&&window\.isBurgerSettings\(_bs\)\)return;/,
+        "l4E=function(a){var _bs=(a&&a.settings)||(window.__remixGame&&window.__remixGame.settings)||window.__burgerSettingsRef;if(window.isBurgerSettings&&window.isBurgerSettings(_bs))return;if(window.isSlotMachineActive&&window.isSlotMachineActive())return;"
+      );
+    } else if (code.indexOf("l4E=function(a){if(window.isBurgerSettings") >= 0) {
       smReplace(
         "slot block l4E function after burger",
         /l4E=function\(a\)\{if\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)return;/,

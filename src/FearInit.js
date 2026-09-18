@@ -395,23 +395,43 @@ window.fear_initialize_layout = function fear_initialize_layout(game) {
   if (!list.some(function (fruit) {
     return fruit && window.fear_is_ghost(fruit);
   })) {
-    // Stable ModeRegistry ids can make native l4E see "fear" rather than 10.
-    // If native made no poison at all, repair the paired layout in place.
-    for (let i = 0; i + 1 < list.length; i += 2) {
-      const a = list[i];
-      const b = list[i + 1];
-      if (!a || !b) continue;
-      const firstGhost = Math.random() < 0.5;
-      a.__fearGhost = firstGhost;
-      b.__fearGhost = !firstGhost;
-      a.Oka = false;
-      b.Oka = false;
+    const ka = g.settings ? g.settings.ka | 0 : -1;
+    const waveCount =
+      ka === 6 ||
+      ka === 4 ||
+      ka === 5 ||
+      (typeof window.remixIsDiceLike === "function" &&
+        window.remixIsDiceLike(ka));
+    if (waveCount) {
+      // Tally/Dice/Bomb open with indexed fruit only. Ghosts are filled once
+      // via fear_wave_ghost_fill — do not half-convert the plant in place.
+      window.__fearWaveGhostFill = true;
+    } else {
+      // Stable ModeRegistry ids can make native l4E see "fear" rather than 10.
+      // If native made no poison at all, repair the paired layout in place.
+      for (let i = 0; i + 1 < list.length; i += 2) {
+        const a = list[i];
+        const b = list[i + 1];
+        if (!a || !b) continue;
+        const firstGhost = Math.random() < 0.5;
+        a.__fearGhost = firstGhost;
+        b.__fearGhost = !firstGhost;
+        a.Oka = false;
+        b.Oka = false;
+      }
     }
   }
   for (let i = 0; i < list.length; i++) {
     if (list[i]) {
       window.fear_capture_ghost_type(list[i]);
       window.__fearSeenFruits.add(list[i]);
+    }
+  }
+  if (window.__fearWaveGhostFill && g.wa) {
+    try {
+      window.fear_wave_ghost_fill(g.wa);
+    } catch (_e) {
+      window.__fearWaveGhostFill = false;
     }
   }
 };
@@ -430,16 +450,23 @@ window.fear_pair_new_fruits = function fear_pair_new_fruits(game) {
   for (let i = 0; i + 1 < freshObjects.length; i += 2) {
     const a = freshObjects[i];
     const b = freshObjects[i + 1];
-    if (!!a.Oka === !!b.Oka) {
+    if (!!a.Oka !== !!b.Oka) {
+      // Native poison pair: Oka marks the bad twin.
+      a.__fearGhost = !!a.Oka;
+      b.__fearGhost = !!b.Oka;
+    } else if (a.Oka && b.Oka) {
       const firstGhost = Math.random() < 0.5;
       a.__fearGhost = firstGhost;
       b.__fearGhost = !firstGhost;
     } else {
-      a.__fearGhost = !!a.Oka;
-      b.__fearGhost = !!b.Oka;
+      // Both fresh (Tally/Dice/Bomb wave plants): keep as fruit. Ghosts are
+      // added by wave fill / top-up — do not half-convert the plant or leftover
+      // previous-wave ghosts will outnumber fruit.
+      a.__fearGhost = false;
+      b.__fearGhost = false;
     }
-    a.Oka = false;
-    b.Oka = false;
+    if (window.fear_is_ghost(a)) a.Oka = false;
+    if (window.fear_is_ghost(b)) b.Oka = false;
     window.fear_sync_fruit_type(a);
     window.fear_sync_fruit_type(b);
   }
@@ -1067,11 +1094,14 @@ window.fear_board_counts = function fear_board_counts(game) {
 
 window.fear_mark_new_as_ghosts = function fear_mark_new_as_ghosts(
   list,
-  before
+  before,
+  maxMark
 ) {
   if (!list) return 0;
   let marked = 0;
-  for (let i = before; i < list.length; i++) {
+  const limit =
+    typeof maxMark === "number" && maxMark >= 0 ? maxMark : list.length - before;
+  for (let i = before; i < list.length && marked < limit; i++) {
     const fruit = list[i];
     if (!fruit) continue;
     fruit.__fearGhost = true;
@@ -1079,6 +1109,10 @@ window.fear_mark_new_as_ghosts = function fear_mark_new_as_ghosts(
     window.__fearSeenFruits.add(fruit);
     window.fear_sync_fruit_type(fruit);
     marked++;
+  }
+  // Poison e4E may plant two apples; drop extras so ghosts cannot overshoot fruit.
+  if (list.length - before > marked) {
+    list.splice(before + marked, list.length - (before + marked));
   }
   return marked;
 };
@@ -1101,6 +1135,7 @@ window.fear_fill_ghosts_to_match_fruit =
       // No apples on the board → never invent ghosts.
       if (counts.fresh <= 0) break;
       if (counts.ghosts >= counts.fresh) break;
+      const need = counts.fresh - counts.ghosts;
       const before = list.length;
       let ok = false;
       try {
@@ -1111,12 +1146,17 @@ window.fear_fill_ghosts_to_match_fruit =
       }
       // e4E returns false when d4E finds no valid seat (radius, full board, etc).
       if (ok === false || list.length <= before) break;
-      window.fear_mark_new_as_ghosts(list, before);
+      window.fear_mark_new_as_ghosts(list, before, need);
       window.fear_pair_new_fruits(g);
       added++;
     }
     window.fear_sync_fruit_types(g);
     window.fear_reconcile_pairs(g, true);
+    // Hard cap after reconcile in case pairing left extras.
+    const finalCounts = window.fear_board_counts(g);
+    if (finalCounts.ghosts > finalCounts.fresh) {
+      window.fear_reconcile_pairs(g, true);
+    }
     return added;
   };
 
@@ -1142,11 +1182,24 @@ window.fear_spawn_one_ghost = function fear_spawn_one_ghost(mgr, nativeTopUp) {
     return 0;
   }
   if (ok === false || list.length <= before) return 0;
-  window.fear_mark_new_as_ghosts(list, before);
+  window.fear_mark_new_as_ghosts(list, before, 1);
   window.fear_pair_new_fruits(g);
   window.fear_sync_fruit_types(g);
   window.fear_reconcile_pairs(g, true);
   return 1;
+};
+
+window.fear_remove_all_ghosts = function fear_remove_all_ghosts(mgr) {
+  const list = (mgr && mgr.ka) || null;
+  if (!list) return 0;
+  let n = 0;
+  for (let i = list.length - 1; i >= 0; i--) {
+    if (list[i] && window.fear_is_ghost(list[i])) {
+      list.splice(i, 1);
+      n++;
+    }
+  }
+  return n;
 };
 
 /**
@@ -1160,8 +1213,31 @@ window.fear_wave_ghost_fill = function fear_wave_ghost_fill(mgr, nativeTopUp) {
   if (g && g.settings && (g.settings.ka | 0) === 5) {
     window.__fearBombWaveGhostDone = true;
   }
+  // New wave fruit is authoritative — drop previous-wave ghosts so they cannot
+  // stack when t7E / dice / bomb plants the next batch.
+  window.fear_remove_all_ghosts(mgr);
   const added = window.fear_fill_ghosts_to_match_fruit(mgr, nativeTopUp);
   window.fear_stamp_ghost_tally_from_pairs();
+  let counts = window.fear_board_counts(g);
+  if (counts.ghosts > counts.fresh) {
+    window.fear_reconcile_pairs(g, true);
+    counts = window.fear_board_counts(g);
+  }
+  // Absolute cap: never leave more ghosts than edible fruit after a wave fill.
+  while (counts.ghosts > counts.fresh) {
+    const list = mgr && mgr.ka;
+    if (!list) break;
+    let removed = false;
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i] && window.fear_is_ghost(list[i])) {
+        list.splice(i, 1);
+        removed = true;
+        break;
+      }
+    }
+    if (!removed) break;
+    counts = window.fear_board_counts(g);
+  }
   return added;
 };
 
@@ -1169,6 +1245,7 @@ window.fear_wave_ghost_fill = function fear_wave_ghost_fill(mgr, nativeTopUp) {
 window.fear_should_wave_ghost_fill = function fear_should_wave_ghost_fill(
   game
 ) {
+  // Explicit empty→plant flag (t7E / Slot dice|tally|bomb wave).
   if (window.__fearWaveGhostFill) return true;
   const g = game || window.__remixGame;
   if (!g || !g.settings) return false;
@@ -1177,7 +1254,9 @@ window.fear_should_wave_ghost_fill = function fear_should_wave_ghost_fill(
   // Mid-board / single-fruit eats leave gap 0 or 1; wave plants leave a larger gap.
   if (gap <= 1) return false;
   const ka = g.settings.ka | 0;
-  if (ka === 6) return true; // Tally empty wave
+  // Tally empty→plant leaves gap > 1. Wave fill clears leftover ghosts first, so
+  // matching on gap is safe even when the t7E flag patch did not fire.
+  if (ka === 6) return true;
   if (typeof window.slot_is_dice_count === "function") {
     try {
       if (window.slot_is_dice_count(g)) return true;
@@ -1624,13 +1703,13 @@ window.FearMod.alterSnakeCode = function (code) {
     );
   fearReplace(
     "expose native t7E",
-    /,t7E=function\(/,
-    ",t7E=window.__fearT7E=window.t7E=function("
+    /,t7E=function\(([^)]*)\)\{/,
+    ",t7E=window.__fearT7E=window.t7E=function($1){if(window.isFearActive&&window.isFearActive())window.__fearWaveGhostFill=!0;"
   ) ||
     fearReplace(
       "expose native t7E (spaced)",
-      /,\s*t7E\s*=\s*function\s*\(/,
-      ",t7E=window.__fearT7E=window.t7E=function("
+      /,\s*t7E\s*=\s*function\s*\(([^)]*)\)\s*\{/,
+      ",t7E=window.__fearT7E=window.t7E=function($1){if(window.isFearActive&&window.isFearActive())window.__fearWaveGhostFill=!0;"
     );
 
   // Treat full Fear / Fear blender as native Poison for pair counts and refill.

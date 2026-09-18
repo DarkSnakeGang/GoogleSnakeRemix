@@ -109,6 +109,11 @@ window.BurgerMod.alterSnakeCode = function (code) {
     return false;
   };
 
+  window.burger_settings_snapshot = function burger_settings_snapshot(s) {
+    if (s) window.__burgerSettingsRef = s;
+    return s || window.__burgerSettingsRef || null;
+  };
+
   window.isBurgerActive = function isBurgerActive() {
     if (window.BURGER_MODE == null) return false;
     if (
@@ -126,9 +131,43 @@ window.BurgerMod.alterSnakeCode = function (code) {
     }
     // Match e7(...,10): layout may pair Okas (l4E) while settings.ub is already
     // Burger but CurrentModeNum has not flipped yet — that half-poisoned the start.
+    if (window.isBurgerSettings(window.__burgerSettingsRef)) return true;
     const g = window.__remixGame;
     if (g && window.isBurgerSettings(g.settings)) return true;
     return false;
+  };
+
+  /**
+   * Play-start safety net: native Poison l4E can pair Okas before Burger gates
+   * see live settings, and timer hooks can miss the same race. Strip unpaired
+   * native skulls (no burger lifetime) and arm every fresh fruit.
+   * Does not touch Fear ghosts or Burger-expired poisons (those keep burgerTimerMax).
+   */
+  window.burger_sanitize_start = function burger_sanitize_start(mgr, game) {
+    const g = game || window.__remixGame;
+    const settings =
+      (mgr && mgr.settings) ||
+      (g && g.settings) ||
+      window.__burgerSettingsRef;
+    if (!window.isBurgerSettings(settings) && !window.isBurgerActive()) {
+      return false;
+    }
+    window.burger_settings_snapshot(settings);
+    const list = mgr && mgr.ka;
+    if (!list) return false;
+    let stripped = 0;
+    for (let i = 0; i < list.length; i++) {
+      const a = list[i];
+      if (!a || !a.Oka) continue;
+      // Burger-expired poisons always get a lifetime via burger_make_poison.
+      if ((a.burgerTimerMax | 0) > 0 || (a.burgerTimer | 0) > 0) continue;
+      if (a.__fearGhost || a.__slotFearGhost) continue;
+      a.Oka = false;
+      stripped++;
+    }
+    window.burger_fruits_eaten = 0;
+    window.burger_assign_timers_all(list, g || { settings: settings, wa: mgr });
+    return stripped > 0;
   };
 
   window.updateBurgerTrophySRC = function updateBurgerTrophySRC() {
@@ -138,6 +177,8 @@ window.BurgerMod.alterSnakeCode = function (code) {
   };
 
   window.burger_fruits_eaten = 0;
+  window.__burgerSettingsRef = null;
+  window.__burgerStartOk = false;
 
   window.burger_board_box = function burger_board_box() {
     const g = window.__remixGame;
@@ -464,6 +505,11 @@ window.BurgerMod.alterSnakeCode = function (code) {
     if (!window.isBurgerActive || !window.isBurgerActive()) return;
     const game = window.__remixGame;
     if (!game || !game.wa || !game.wa.ka || window.burger_ended(game)) return;
+    // Heal play-start race: native l4E pairs + missed timer hooks.
+    if (!window.__burgerStartOk) {
+      window.burger_sanitize_start(game.wa, game);
+      window.__burgerStartOk = true;
+    }
     const apples = game.wa.ka;
     const toExpire = [];
     for (let i = 0; i < apples.length; i++) {
@@ -608,7 +654,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
     if (l4ECalls && l4ECalls.length) {
       code = code.replace(
         /e7\((this|a)\.settings,10\)\s*&&\s*l4E\(\1\.wa\)/g,
-        `window.__remixGame=$1,e7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&l4E($1.wa)`
+        `window.__remixGame=$1,window.burger_settings_snapshot&&window.burger_settings_snapshot($1.settings),e7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&l4E($1.wa)`
       );
     } else {
       console.error("BurgerMod: failed to patch l4E call sites");
@@ -621,7 +667,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   ) {
     code = code.assertReplace(
       /l4E=function\(a\)\{for\(let b=0;b\+1<a\.ka\.length;b\+=2\)\{let c=Math\.random\(\)<\.5;\s*a\.ka\[b\]\.Oka=c;a\.ka\[b\+1\]\.Oka=!c\}\}/,
-      `l4E=function(a){if(window.isBurgerSettings&&window.isBurgerSettings(a.settings))return;for(let b=0;b+1<a.ka.length;b+=2){let c=Math.random()<.5;a.ka[b].Oka=c;a.ka[b+1].Oka=!c}};window.__l4E=l4E;window.__uaF=l4E`
+      `l4E=function(a){var _bs=(a&&a.settings)||(window.__remixGame&&window.__remixGame.settings)||window.__burgerSettingsRef;if(window.isBurgerSettings&&window.isBurgerSettings(_bs))return;for(let b=0;b+1<a.ka.length;b+=2){let c=Math.random()<.5;a.ka[b].Oka=c;a.ka[b+1].Oka=!c}};window.__l4E=l4E;window.__uaF=l4E`
     );
   } else {
     console.error("BurgerMod: failed to patch l4E function");
@@ -686,12 +732,12 @@ window.BurgerMod.alterSnakeCode = function (code) {
   if (code.match(burgerShieldInitChess)) {
     code = code.assertReplace(
       burgerShieldInitChess,
-      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}`
+      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}`
     );
   } else if (code.match(burgerShieldInit)) {
     code = code.assertReplace(
       burgerShieldInit,
-      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}`
+      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){}}`
     );
   } else {
     console.error("BurgerMod: failed to find reset timer hook");
@@ -702,7 +748,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   if (code.match(/this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\)\}/)) {
     code = code.assertReplace(
       /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\)\}/,
-      `this.settings.ka===6&&($3E(this),this.Ca=!1);if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}}`
+      `this.settings.ka===6&&($3E(this),this.Ca=!1);window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){}}}`
     );
   }
 

@@ -13781,6 +13781,11 @@ window.BurgerMod.alterSnakeCode = function (code) {
     return false;
   };
 
+  window.burger_settings_snapshot = function burger_settings_snapshot(s) {
+    if (s) window.__burgerSettingsRef = s;
+    return s || window.__burgerSettingsRef || null;
+  };
+
   window.isBurgerActive = function isBurgerActive() {
     if (window.BURGER_MODE == null) return false;
     if (
@@ -13798,9 +13803,43 @@ window.BurgerMod.alterSnakeCode = function (code) {
     }
     // Match e7(...,10): layout may pair Okas (l4E) while settings.ub is already
     // Burger but CurrentModeNum has not flipped yet — that half-poisoned the start.
+    if (window.isBurgerSettings(window.__burgerSettingsRef)) return true;
     const g = window.__remixGame;
     if (g && window.isBurgerSettings(g.settings)) return true;
     return false;
+  };
+
+  /**
+   * Play-start safety net: native Poison l4E can pair Okas before Burger gates
+   * see live settings, and timer hooks can miss the same race. Strip unpaired
+   * native skulls (no burger lifetime) and arm every fresh fruit.
+   * Does not touch Fear ghosts or Burger-expired poisons (those keep burgerTimerMax).
+   */
+  window.burger_sanitize_start = function burger_sanitize_start(mgr, game) {
+    const g = game || window.__remixGame;
+    const settings =
+      (mgr && mgr.settings) ||
+      (g && g.settings) ||
+      window.__burgerSettingsRef;
+    if (!window.isBurgerSettings(settings) && !window.isBurgerActive()) {
+      return false;
+    }
+    window.burger_settings_snapshot(settings);
+    const list = mgr && mgr.ka;
+    if (!list) return false;
+    let stripped = 0;
+    for (let i = 0; i < list.length; i++) {
+      const a = list[i];
+      if (!a || !a.Oka) continue;
+      // Burger-expired poisons always get a lifetime via burger_make_poison.
+      if ((a.burgerTimerMax | 0) > 0 || (a.burgerTimer | 0) > 0) continue;
+      if (a.__fearGhost || a.__slotFearGhost) continue;
+      a.Oka = false;
+      stripped++;
+    }
+    window.burger_fruits_eaten = 0;
+    window.burger_assign_timers_all(list, g || { settings: settings, wa: mgr });
+    return stripped > 0;
   };
 
   window.updateBurgerTrophySRC = function updateBurgerTrophySRC() {
@@ -13810,6 +13849,8 @@ window.BurgerMod.alterSnakeCode = function (code) {
   };
 
   window.burger_fruits_eaten = 0;
+  window.__burgerSettingsRef = null;
+  window.__burgerStartOk = false;
 
   window.burger_board_box = function burger_board_box() {
     const g = window.__remixGame;
@@ -14136,6 +14177,11 @@ window.BurgerMod.alterSnakeCode = function (code) {
     if (!window.isBurgerActive || !window.isBurgerActive()) return;
     const game = window.__remixGame;
     if (!game || !game.wa || !game.wa.ka || window.burger_ended(game)) return;
+    // Heal play-start race: native l4E pairs + missed timer hooks.
+    if (!window.__burgerStartOk) {
+      window.burger_sanitize_start(game.wa, game);
+      window.__burgerStartOk = true;
+    }
     const apples = game.wa.ka;
     const toExpire = [];
     for (let i = 0; i < apples.length; i++) {
@@ -14280,7 +14326,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
     if (l4ECalls && l4ECalls.length) {
       code = code.replace(
         /e7\((this|a)\.settings,10\)\s*&&\s*l4E\(\1\.wa\)/g,
-        `window.__remixGame=$1,e7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&l4E($1.wa)`
+        `window.__remixGame=$1,window.burger_settings_snapshot&&window.burger_settings_snapshot($1.settings),e7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&l4E($1.wa)`
       );
     } else {
       console.error("BurgerMod: failed to patch l4E call sites");
@@ -14293,7 +14339,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   ) {
     code = code.assertReplace(
       /l4E=function\(a\)\{for\(let b=0;b\+1<a\.ka\.length;b\+=2\)\{let c=Math\.random\(\)<\.5;\s*a\.ka\[b\]\.Oka=c;a\.ka\[b\+1\]\.Oka=!c\}\}/,
-      `l4E=function(a){if(window.isBurgerSettings&&window.isBurgerSettings(a.settings))return;for(let b=0;b+1<a.ka.length;b+=2){let c=Math.random()<.5;a.ka[b].Oka=c;a.ka[b+1].Oka=!c}};window.__l4E=l4E;window.__uaF=l4E`
+      `l4E=function(a){var _bs=(a&&a.settings)||(window.__remixGame&&window.__remixGame.settings)||window.__burgerSettingsRef;if(window.isBurgerSettings&&window.isBurgerSettings(_bs))return;for(let b=0;b+1<a.ka.length;b+=2){let c=Math.random()<.5;a.ka[b].Oka=c;a.ka[b+1].Oka=!c}};window.__l4E=l4E;window.__uaF=l4E`
     );
   } else {
     console.error("BurgerMod: failed to patch l4E function");
@@ -14358,12 +14404,12 @@ window.BurgerMod.alterSnakeCode = function (code) {
   if (code.match(burgerShieldInitChess)) {
     code = code.assertReplace(
       burgerShieldInitChess,
-      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}`
+      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}`
     );
   } else if (code.match(burgerShieldInit)) {
     code = code.assertReplace(
       burgerShieldInit,
-      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}`
+      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){}}`
     );
   } else {
     console.error("BurgerMod: failed to find reset timer hook");
@@ -14374,7 +14420,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   if (code.match(/this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\)\}/)) {
     code = code.assertReplace(
       /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\)\}/,
-      `this.settings.ka===6&&($3E(this),this.Ca=!1);if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}}`
+      `this.settings.ka===6&&($3E(this),this.Ca=!1);window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){}}}`
     );
   }
 
@@ -15128,14 +15174,19 @@ window.CatMod.alterSnakeCode = function (code) {
   if (
     !catReplace(
       "burger reset hook",
+      /if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_sanitize_start\?window\.burger_sanitize_start\(this\):window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{console\.error\("BurgerMod: reset failed",_be\);\}\}/,
+      `if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
+    ) &&
+    !catReplace(
+      "burger reset hook legacy",
       /if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{console\.error\("BurgerMod: reset failed",_be\);\}\}/,
       `if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
     )
   ) {
     catReplace(
       "burger reset hook quiet",
-      /if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/,
-      `if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
+      /if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;(?:window\.burger_sanitize_start\?window\.burger_sanitize_start\(this\):)?window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/,
+      `if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
     );
   }
 
@@ -15166,13 +15217,13 @@ window.CatMod.alterSnakeCode = function (code) {
   // Match quietly — missing Burger inject is expected when its patch drifts.
   {
     const tallyBurger =
-      /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\);if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/;
+      /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\);(?:window\.burger_settings_snapshot&&window\.burger_settings_snapshot\(this\.settings\);window\.__burgerStartOk=!1;)?if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;(?:window\.burger_sanitize_start\?window\.burger_sanitize_start\(this\):)?window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/;
     const tallyRaw = /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\)\}/;
     if (code.match(tallyBurger)) {
       catReplace(
         "tally reset after burger",
         tallyBurger,
-        `this.settings.ka===6&&($3E(this),this.Ca=!1);if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
+        `this.settings.ka===6&&($3E(this),this.Ca=!1);window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
       );
     } else if (code.match(tallyRaw)) {
       catReplace(
@@ -15420,6 +15471,144 @@ window.MexicoMod.alterSnakeCode = function (code) {
     if (list && list.length > 0) return false;
     window.mexico_trigger_win(game || window.__remixGame);
     return true;
+  };
+
+  // Tally / dice / first Bomb wave: no mid-board portal top-up; empty → refill.
+  window.mexico_is_wave_count = function mexico_is_wave_count(game) {
+    const g = game || window.__remixGame;
+    if (!g || !g.settings) return false;
+    const ka = g.settings.ka | 0;
+    if (ka === 6) return true;
+    if (ka === 4) return true;
+    if (ka === 5 && !g.kc) return true;
+    if (typeof window.remixIsDiceLike === "function") {
+      try {
+        if (window.remixIsDiceLike(ka)) return true;
+      } catch (_e) {}
+    }
+    return false;
+  };
+
+  window.mexico_spawn_n_pairs = function mexico_spawn_n_pairs(
+    mgr,
+    makeApple,
+    freePos,
+    pickType,
+    pairCount,
+    assignSeq
+  ) {
+    if (!mgr || !mgr.ka || typeof makeApple !== "function") return 0;
+    let added = 0;
+    const n = Math.max(0, pairCount | 0);
+    for (let i = 0; i < n; i++) {
+      const before = mgr.ka.length;
+      const got = window.mexico_fruit_respawn(
+        mgr,
+        makeApple,
+        freePos,
+        pickType
+      );
+      if (got < 2 || mgr.ka.length < before + 2) break;
+      if (typeof assignSeq === "function") {
+        const a = mgr.ka[mgr.ka.length - 2];
+        const b = mgr.ka[mgr.ka.length - 1];
+        try {
+          assignSeq(a, b, i);
+        } catch (_e) {}
+      }
+      added += 2;
+    }
+    window.appleArray = mgr.ka;
+    return added;
+  };
+
+  /**
+   * Empty-board refill for Tally/Dice/Bomb-first — same idea as Chess portal
+   * combo. Plants portal pairs (top+bottom) so mexico_constrain does not wipe
+   * a native odd-sized t7E plant on Small boards.
+   */
+  window.mexico_refill_wave = function mexico_refill_wave(mgr, game) {
+    const g = game || window.__remixGame;
+    if (!mgr || !mgr.ka || mgr.ka.length > 0) return 0;
+    if (!window.mexico_is_wave_count(g)) return 0;
+    const make =
+      typeof g7 === "function"
+        ? g7
+        : typeof window.__chessMakeApple === "function"
+          ? window.__chessMakeApple
+          : null;
+    const freePos =
+      typeof d4E === "function"
+        ? d4E
+        : typeof window.__chessFreePos === "function"
+          ? window.__chessFreePos
+          : null;
+    const pickType =
+      typeof Q3E === "function"
+        ? Q3E
+        : typeof window.__chessPickType === "function"
+          ? window.__chessPickType
+          : null;
+    if (typeof make !== "function") return 0;
+    const ka = g.settings ? g.settings.ka | 0 : -1;
+
+    // Avoid mexico_fruit_respawn's empty-fail win while we still have pairs to try.
+    const prevWin = window.mexico_win_if_empty;
+    window.mexico_win_if_empty = function () {
+      return false;
+    };
+    let added = 0;
+    try {
+      if (ka === 5 && !g.kc) {
+        added = window.mexico_spawn_n_pairs(
+          mgr,
+          make,
+          freePos,
+          pickType,
+          24,
+          null
+        );
+        if (added > 0) g.kc = true;
+      } else if (
+        (window.remixIsDiceLike && window.remixIsDiceLike(ka)) ||
+        ka === 4
+      ) {
+        const R =
+          typeof window.remixDiceSpawnCount === "function"
+            ? window.remixDiceSpawnCount(ka, Math.ceil(Math.random() * 6))
+            : Math.ceil(Math.random() * 6);
+        added = window.mexico_spawn_n_pairs(
+          mgr,
+          make,
+          freePos,
+          pickType,
+          R,
+          null
+        );
+      } else if (ka === 6) {
+        const pairs = 5;
+        added = window.mexico_spawn_n_pairs(
+          mgr,
+          make,
+          freePos,
+          pickType,
+          pairs,
+          function (a, b, i) {
+            const seq = pairs - i;
+            if (a) a.sequenceNumber = seq;
+            if (b) b.sequenceNumber = seq;
+          }
+        );
+        if (mgr.ka.length > 0) {
+          // Native tally counter points at the lowest living index (1).
+          mgr.wa = 1;
+        }
+      }
+    } finally {
+      window.mexico_win_if_empty = prevWin;
+    }
+    window.appleArray = mgr.ka;
+    return added;
   };
 
   window.mexico_drop_pair_at = function mexico_drop_pair_at(mgr, pairBase) {
@@ -15725,12 +15914,19 @@ window.MexicoMod.alterSnakeCode = function (code) {
       if ((g.Sh | 0) >= 1 && !window.__mexicoWallDone) {
         window.mexico_place_mid_walls(g);
       }
-      // After the eat/respawn pipeline finishes: empty board → win; otherwise
-      // re-validate pairs (illegal/wrong-half fruit).
+      // After the eat/respawn pipeline finishes: wave counts refill on empty
+      // (Tally/Dice/Bomb-first). Only win when refill cannot plant anything.
       if (g.wa && g.wa.ka) {
         try {
           if (g.wa.ka.length === 0) {
-            window.mexico_win_if_empty(g, g.wa);
+            if (
+              window.mexico_is_wave_count(g) &&
+              window.mexico_refill_wave(g.wa, g) > 0
+            ) {
+              // planted
+            } else {
+              window.mexico_win_if_empty(g, g.wa);
+            }
           } else {
             window.mexico_constrain_new_apples(g.wa, g.wa.ka.length);
           }
@@ -15768,25 +15964,39 @@ window.MexicoMod.alterSnakeCode = function (code) {
   mexicoReplace(
     "f4E mexico constrain",
     /if\(window\.isChessActive&&window\.isChessActive\(\)&&g>0\)\{window\.chess_convert_new_apples\(a,g\);\}/,
-    "if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(window.isMexicoActive&&window.isMexicoActive()&&g>0){try{window.mexico_constrain_new_apples(a,g);}catch(_mx){}}"
+    "if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(window.isMexicoActive&&window.isMexicoActive()&&g>0){try{window.mexico_constrain_new_apples(a,g);}catch(_mx){}}if(window.isMexicoActive&&window.isMexicoActive()&&a.ka&&a.ka.length===0){try{window.mexico_refill_wave(a,window.__remixGame);}catch(_mx2){}}"
   );
 
-  // Mexico uses native Portal twin respawn (j4E via e=!0). Do NOT Chess-style
-  // takeover with mexico_fruit_respawn — that splices only the eaten apple and
-  // leaves the exit twin on the board. Half placement is enforced in f4E via
-  // mexico_constrain_new_apples (all counts: 1/3/5/10/dice/bomb/tally).
+  // Mexico uses native Portal twin respawn (j4E via e=!0) for normal counts.
+  // Tally/Dice/Bomb-first must NOT mid-board top-up (same as Chess+Portal):
+  // portal physics still clears the twin; empty board refills via mexico_refill_wave.
   mexicoReplace(
     "eat respawn mexico as portal",
     /e=!1;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{window\.__chessMakeApple=g7;window\.__chessFreePos=d4E;window\.__chessPickType=Q3E;e=!1;if\(window\.just_ate==='fruit'&&!\(e7\(a\.settings,8\)\|\|e7\(a\.settings,9\)\)\)\{if\(window\.chess_portal_combo&&window\.chess_portal_combo\(\)\)\{window\.chess_portal_note_fruit_twin\(a\.wa,k\);\}else if\(!\(a\.settings\.ka===4\|\|a\.settings\.ka===6\|\|\(a\.settings\.ka===5&&!a\.kc\)\)\)\{window\.chess_fruit_respawn\(a\.wa,g7,d4E,Q3E\);if\(window\.isBurgerActive&&window\.isBurgerActive\(\)&&window\.just_ate==='fruit'\)\{window\.burger_after_respawn\(a\);\}\}\}\}else e7\(a\.settings,2\)\?e=!0:/,
-    "e=!1;if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;e=!1;if(window.just_ate==='fruit'&&!(e7(a.settings,8)||e7(a.settings,9))){if(window.chess_portal_combo&&window.chess_portal_combo()){window.chess_portal_note_fruit_twin(a.wa,k);}else if(!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.kc))){window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);if(window.isBurgerActive&&window.isBurgerActive()&&window.just_ate==='fruit'){window.burger_after_respawn(a);}}}}else if(window.isMexicoActive&&window.isMexicoActive()){e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a);}else e7(a.settings,2)?e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a):"
+    "e=!1;if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;e=!1;if(window.just_ate==='fruit'&&!(e7(a.settings,8)||e7(a.settings,9))){if(window.chess_portal_combo&&window.chess_portal_combo()){window.chess_portal_note_fruit_twin(a.wa,k);}else if(!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.kc))){window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);if(window.isBurgerActive&&window.isBurgerActive()&&window.just_ate==='fruit'){window.burger_after_respawn(a);}}}}else if(window.isMexicoActive&&window.isMexicoActive()){e=!1;if(window.just_ate==='fruit'&&!(e7(a.settings,8)||e7(a.settings,9))){if(!(window.mexico_is_wave_count&&window.mexico_is_wave_count(a))){e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a);}}}else e7(a.settings,2)?e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a):"
   );
 
   // j4E sits inside a ternary — must not insert `;` statements. Comma-op only.
   mexicoReplace(
     "j4E mexico constrain pair",
     /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\)/,
-    "j4E(a.wa,k,d,a.Vm.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.wa.ka.length>0&&(window.mexico_constrain_new_apples(a.wa,a.wa.ka.length),0)"
+    "j4E(a.wa,k,d,a.Vm.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&(a.wa.ka.length>0?(window.mexico_constrain_new_apples(a.wa,a.wa.ka.length),0):(window.mexico_refill_wave&&window.mexico_refill_wave(a.wa,a),0))"
   );
+
+  // Tally wave: 5 portal units = 10 apples (match Chess), so constrain keeps pairs.
+  if (
+    !mexicoReplace(
+      "tally wave size mexico after chess",
+      /var b=\(e7\(a\.settings,11\)\|\|\(window\.isChessActive&&window\.isChessActive\(\)\)\)\?10:5;/,
+      "var b=(e7(a.settings,11)||(window.isChessActive&&window.isChessActive())||(window.isMexicoActive&&window.isMexicoActive()))?10:5;"
+    )
+  ) {
+    mexicoReplace(
+      "tally wave size mexico",
+      /var b=e7\(a\.settings,11\)\?10:5;/,
+      "var b=(e7(a.settings,11)||(window.isMexicoActive&&window.isMexicoActive()))?10:5;"
+    );
+  }
 
   if (
     !mexicoReplace(
@@ -17044,8 +17254,8 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   ) {
     bfReplace(
       "reset clear shields after burger",
-      /if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{console\.error\("BurgerMod: reset failed",_be\);\}\}/,
-      'if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_clear_shields(this);}catch(_bf){}}'
+      /if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;(?:window\.burger_sanitize_start\?window\.burger_sanitize_start\(this\):)?window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{console\.error\("BurgerMod: reset failed",_be\);\}\}/,
+      'if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_clear_shields(this);}catch(_bf){}}'
     );
   }
 
@@ -18359,23 +18569,43 @@ window.fear_initialize_layout = function fear_initialize_layout(game) {
   if (!list.some(function (fruit) {
     return fruit && window.fear_is_ghost(fruit);
   })) {
-    // Stable ModeRegistry ids can make native l4E see "fear" rather than 10.
-    // If native made no poison at all, repair the paired layout in place.
-    for (let i = 0; i + 1 < list.length; i += 2) {
-      const a = list[i];
-      const b = list[i + 1];
-      if (!a || !b) continue;
-      const firstGhost = Math.random() < 0.5;
-      a.__fearGhost = firstGhost;
-      b.__fearGhost = !firstGhost;
-      a.Oka = false;
-      b.Oka = false;
+    const ka = g.settings ? g.settings.ka | 0 : -1;
+    const waveCount =
+      ka === 6 ||
+      ka === 4 ||
+      ka === 5 ||
+      (typeof window.remixIsDiceLike === "function" &&
+        window.remixIsDiceLike(ka));
+    if (waveCount) {
+      // Tally/Dice/Bomb open with indexed fruit only. Ghosts are filled once
+      // via fear_wave_ghost_fill — do not half-convert the plant in place.
+      window.__fearWaveGhostFill = true;
+    } else {
+      // Stable ModeRegistry ids can make native l4E see "fear" rather than 10.
+      // If native made no poison at all, repair the paired layout in place.
+      for (let i = 0; i + 1 < list.length; i += 2) {
+        const a = list[i];
+        const b = list[i + 1];
+        if (!a || !b) continue;
+        const firstGhost = Math.random() < 0.5;
+        a.__fearGhost = firstGhost;
+        b.__fearGhost = !firstGhost;
+        a.Oka = false;
+        b.Oka = false;
+      }
     }
   }
   for (let i = 0; i < list.length; i++) {
     if (list[i]) {
       window.fear_capture_ghost_type(list[i]);
       window.__fearSeenFruits.add(list[i]);
+    }
+  }
+  if (window.__fearWaveGhostFill && g.wa) {
+    try {
+      window.fear_wave_ghost_fill(g.wa);
+    } catch (_e) {
+      window.__fearWaveGhostFill = false;
     }
   }
 };
@@ -18394,16 +18624,23 @@ window.fear_pair_new_fruits = function fear_pair_new_fruits(game) {
   for (let i = 0; i + 1 < freshObjects.length; i += 2) {
     const a = freshObjects[i];
     const b = freshObjects[i + 1];
-    if (!!a.Oka === !!b.Oka) {
+    if (!!a.Oka !== !!b.Oka) {
+      // Native poison pair: Oka marks the bad twin.
+      a.__fearGhost = !!a.Oka;
+      b.__fearGhost = !!b.Oka;
+    } else if (a.Oka && b.Oka) {
       const firstGhost = Math.random() < 0.5;
       a.__fearGhost = firstGhost;
       b.__fearGhost = !firstGhost;
     } else {
-      a.__fearGhost = !!a.Oka;
-      b.__fearGhost = !!b.Oka;
+      // Both fresh (Tally/Dice/Bomb wave plants): keep as fruit. Ghosts are
+      // added by wave fill / top-up — do not half-convert the plant or leftover
+      // previous-wave ghosts will outnumber fruit.
+      a.__fearGhost = false;
+      b.__fearGhost = false;
     }
-    a.Oka = false;
-    b.Oka = false;
+    if (window.fear_is_ghost(a)) a.Oka = false;
+    if (window.fear_is_ghost(b)) b.Oka = false;
     window.fear_sync_fruit_type(a);
     window.fear_sync_fruit_type(b);
   }
@@ -19031,11 +19268,14 @@ window.fear_board_counts = function fear_board_counts(game) {
 
 window.fear_mark_new_as_ghosts = function fear_mark_new_as_ghosts(
   list,
-  before
+  before,
+  maxMark
 ) {
   if (!list) return 0;
   let marked = 0;
-  for (let i = before; i < list.length; i++) {
+  const limit =
+    typeof maxMark === "number" && maxMark >= 0 ? maxMark : list.length - before;
+  for (let i = before; i < list.length && marked < limit; i++) {
     const fruit = list[i];
     if (!fruit) continue;
     fruit.__fearGhost = true;
@@ -19043,6 +19283,10 @@ window.fear_mark_new_as_ghosts = function fear_mark_new_as_ghosts(
     window.__fearSeenFruits.add(fruit);
     window.fear_sync_fruit_type(fruit);
     marked++;
+  }
+  // Poison e4E may plant two apples; drop extras so ghosts cannot overshoot fruit.
+  if (list.length - before > marked) {
+    list.splice(before + marked, list.length - (before + marked));
   }
   return marked;
 };
@@ -19065,6 +19309,7 @@ window.fear_fill_ghosts_to_match_fruit =
       // No apples on the board → never invent ghosts.
       if (counts.fresh <= 0) break;
       if (counts.ghosts >= counts.fresh) break;
+      const need = counts.fresh - counts.ghosts;
       const before = list.length;
       let ok = false;
       try {
@@ -19075,12 +19320,17 @@ window.fear_fill_ghosts_to_match_fruit =
       }
       // e4E returns false when d4E finds no valid seat (radius, full board, etc).
       if (ok === false || list.length <= before) break;
-      window.fear_mark_new_as_ghosts(list, before);
+      window.fear_mark_new_as_ghosts(list, before, need);
       window.fear_pair_new_fruits(g);
       added++;
     }
     window.fear_sync_fruit_types(g);
     window.fear_reconcile_pairs(g, true);
+    // Hard cap after reconcile in case pairing left extras.
+    const finalCounts = window.fear_board_counts(g);
+    if (finalCounts.ghosts > finalCounts.fresh) {
+      window.fear_reconcile_pairs(g, true);
+    }
     return added;
   };
 
@@ -19106,11 +19356,24 @@ window.fear_spawn_one_ghost = function fear_spawn_one_ghost(mgr, nativeTopUp) {
     return 0;
   }
   if (ok === false || list.length <= before) return 0;
-  window.fear_mark_new_as_ghosts(list, before);
+  window.fear_mark_new_as_ghosts(list, before, 1);
   window.fear_pair_new_fruits(g);
   window.fear_sync_fruit_types(g);
   window.fear_reconcile_pairs(g, true);
   return 1;
+};
+
+window.fear_remove_all_ghosts = function fear_remove_all_ghosts(mgr) {
+  const list = (mgr && mgr.ka) || null;
+  if (!list) return 0;
+  let n = 0;
+  for (let i = list.length - 1; i >= 0; i--) {
+    if (list[i] && window.fear_is_ghost(list[i])) {
+      list.splice(i, 1);
+      n++;
+    }
+  }
+  return n;
 };
 
 /**
@@ -19124,8 +19387,31 @@ window.fear_wave_ghost_fill = function fear_wave_ghost_fill(mgr, nativeTopUp) {
   if (g && g.settings && (g.settings.ka | 0) === 5) {
     window.__fearBombWaveGhostDone = true;
   }
+  // New wave fruit is authoritative — drop previous-wave ghosts so they cannot
+  // stack when t7E / dice / bomb plants the next batch.
+  window.fear_remove_all_ghosts(mgr);
   const added = window.fear_fill_ghosts_to_match_fruit(mgr, nativeTopUp);
   window.fear_stamp_ghost_tally_from_pairs();
+  let counts = window.fear_board_counts(g);
+  if (counts.ghosts > counts.fresh) {
+    window.fear_reconcile_pairs(g, true);
+    counts = window.fear_board_counts(g);
+  }
+  // Absolute cap: never leave more ghosts than edible fruit after a wave fill.
+  while (counts.ghosts > counts.fresh) {
+    const list = mgr && mgr.ka;
+    if (!list) break;
+    let removed = false;
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i] && window.fear_is_ghost(list[i])) {
+        list.splice(i, 1);
+        removed = true;
+        break;
+      }
+    }
+    if (!removed) break;
+    counts = window.fear_board_counts(g);
+  }
   return added;
 };
 
@@ -19133,6 +19419,7 @@ window.fear_wave_ghost_fill = function fear_wave_ghost_fill(mgr, nativeTopUp) {
 window.fear_should_wave_ghost_fill = function fear_should_wave_ghost_fill(
   game
 ) {
+  // Explicit empty→plant flag (t7E / Slot dice|tally|bomb wave).
   if (window.__fearWaveGhostFill) return true;
   const g = game || window.__remixGame;
   if (!g || !g.settings) return false;
@@ -19141,7 +19428,9 @@ window.fear_should_wave_ghost_fill = function fear_should_wave_ghost_fill(
   // Mid-board / single-fruit eats leave gap 0 or 1; wave plants leave a larger gap.
   if (gap <= 1) return false;
   const ka = g.settings.ka | 0;
-  if (ka === 6) return true; // Tally empty wave
+  // Tally empty→plant leaves gap > 1. Wave fill clears leftover ghosts first, so
+  // matching on gap is safe even when the t7E flag patch did not fire.
+  if (ka === 6) return true;
   if (typeof window.slot_is_dice_count === "function") {
     try {
       if (window.slot_is_dice_count(g)) return true;
@@ -19588,13 +19877,13 @@ window.FearMod.alterSnakeCode = function (code) {
     );
   fearReplace(
     "expose native t7E",
-    /,t7E=function\(/,
-    ",t7E=window.__fearT7E=window.t7E=function("
+    /,t7E=function\(([^)]*)\)\{/,
+    ",t7E=window.__fearT7E=window.t7E=function($1){if(window.isFearActive&&window.isFearActive())window.__fearWaveGhostFill=!0;"
   ) ||
     fearReplace(
       "expose native t7E (spaced)",
-      /,\s*t7E\s*=\s*function\s*\(/,
-      ",t7E=window.__fearT7E=window.t7E=function("
+      /,\s*t7E\s*=\s*function\s*\(([^)]*)\)\s*\{/,
+      ",t7E=window.__fearT7E=window.t7E=function($1){if(window.isFearActive&&window.isFearActive())window.__fearWaveGhostFill=!0;"
     );
 
   // Treat full Fear / Fear blender as native Poison for pair counts and refill.
@@ -25821,6 +26110,11 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("slot_block_l4E") < 0) {
     if (
       !smReplace(
+        "slot block l4E after burger gate snapshot",
+        /window\.__remixGame=(this|a),window\.burger_settings_snapshot&&window\.burger_settings_snapshot\(\1\.settings\),e7\(\1\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(\1\.settings\)\)&&l4E\(\1\.wa\)/g,
+        "window.__remixGame=$1,window.burger_settings_snapshot&&window.burger_settings_snapshot($1.settings),e7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
+      ) &&
+      !smReplace(
         "slot block l4E after burger gate",
         /window\.__remixGame=(this|a),e7\(\1\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(\1\.settings\)\)&&l4E\(\1\.wa\)/g,
         "window.__remixGame=$1,e7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
@@ -25837,7 +26131,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         "e7($1.settings,10)&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
       );
     }
-    if (code.indexOf("l4E=function(a){if(window.isBurgerSettings") >= 0) {
+    if (code.indexOf("l4E=function(a){var _bs=") >= 0) {
+      smReplace(
+        "slot block l4E function after burger sanitize",
+        /l4E=function\(a\)\{var _bs=\(a&&a\.settings\)\|\|\(window\.__remixGame&&window\.__remixGame\.settings\)\|\|window\.__burgerSettingsRef;if\(window\.isBurgerSettings&&window\.isBurgerSettings\(_bs\)\)return;/,
+        "l4E=function(a){var _bs=(a&&a.settings)||(window.__remixGame&&window.__remixGame.settings)||window.__burgerSettingsRef;if(window.isBurgerSettings&&window.isBurgerSettings(_bs))return;if(window.isSlotMachineActive&&window.isSlotMachineActive())return;"
+      );
+    } else if (code.indexOf("l4E=function(a){if(window.isBurgerSettings") >= 0) {
       smReplace(
         "slot block l4E function after burger",
         /l4E=function\(a\)\{if\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)return;/,
