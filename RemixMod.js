@@ -1863,6 +1863,32 @@ window.TimeKeeper.make = function () {
         return out;
     };
 
+    // v10 Speed Info personal PB format: zero-padded 01m23s456ms (keeps ms when hours > 0)
+    window.timeKeeper.formatTimeV10Style = function (ms) {
+        ms = Math.floor(Number(ms) || 0);
+        const hours = Math.floor(ms / 3600000);
+        const minutes = String(Math.floor(ms / 60000 - hours * 60)).padStart(2, "0");
+        const seconds = String(
+            Math.floor((ms - minutes * 60000 - hours * 3600000) / 1000)
+        ).padStart(2, "0");
+        const mseconds = String(
+            ms - minutes * 60000 - seconds * 1000 - hours * 3600000
+        ).padStart(3, "0");
+        if (hours === 0) return minutes + "m" + seconds + "s" + mseconds + "ms";
+        return hours + "h" + minutes + "m" + seconds + "s" + mseconds + "ms";
+    };
+
+    // Speed Info PB times: current SRC style by default; v10 padded style when toggled
+    window.timeKeeper.formatDisplayTime = function (ms) {
+        if (
+            window.pudding_settings &&
+            window.pudding_settings.OldTimeKeeperFormat
+        ) {
+            return window.timeKeeper.formatTimeV10Style(ms);
+        }
+        return window.timeKeeper.formatTimeSrcStyle(ms);
+    };
+
     window.timeKeeper.makeStorage = function () {
         let storage = localStorage.getItem("snake_timeKeeper_remix");
         if (storage == null) {
@@ -3402,6 +3428,7 @@ window.SettingsSaver.make = function () {
                 SavedGameSettings: null,
                 SplitPanel: false,
                 BigPanelText: true,
+                OldTimeKeeperFormat: false,
             };
             for (const key of COUNT_KEYS) {
                 pudding_settings.SelectedPairsByCount[key] = defaultPoolForCount(Number(key));
@@ -3433,6 +3460,9 @@ window.SettingsSaver.make = function () {
             }
             if (typeof pudding_settings.BigPanelText !== 'boolean') {
                 pudding_settings.BigPanelText = true;
+            }
+            if (typeof pudding_settings.OldTimeKeeperFormat !== 'boolean') {
+                pudding_settings.OldTimeKeeperFormat = false;
             }
             if (
                 pudding_settings.SavedGameSettings !== null &&
@@ -5433,11 +5463,13 @@ window.SpeedInfo.make = function () {
         if (!bold) return;
 
         const name = scoreKey + "-" + modeKey + "-" + count + "-" + speed + "-" + size;
-        const fmt = window.timeKeeper.formatTimeSrcStyle
-            ? window.timeKeeper.formatTimeSrcStyle.bind(window.timeKeeper)
-            : function (ms) {
-                  return String(ms);
-              };
+        const fmt = window.timeKeeper.formatDisplayTime
+            ? window.timeKeeper.formatDisplayTime.bind(window.timeKeeper)
+            : window.timeKeeper.formatTimeSrcStyle
+              ? window.timeKeeper.formatTimeSrcStyle.bind(window.timeKeeper)
+              : function (ms) {
+                    return String(ms);
+                };
 
         if (scoreKey === "att") {
             const totalAttempts =
@@ -5586,11 +5618,13 @@ window.SpeedInfo.make = function () {
             mode_label2.textContent = window.HandleSpeed(speed) + window.HandleSize(size);
         }
 
-        const fmt = window.timeKeeper.formatTimeSrcStyle
-            ? window.timeKeeper.formatTimeSrcStyle.bind(window.timeKeeper)
-            : function (ms) {
-                  return String(ms);
-              };
+        const fmt = window.timeKeeper.formatDisplayTime
+            ? window.timeKeeper.formatDisplayTime.bind(window.timeKeeper)
+            : window.timeKeeper.formatTimeSrcStyle
+              ? window.timeKeeper.formatTimeSrcStyle.bind(window.timeKeeper)
+              : function (ms) {
+                    return String(ms);
+                };
 
         const goldJobs = [];
 
@@ -7867,7 +7901,8 @@ window.BootstrapMenu.make = function () {
         a.style = 'position:relative;left:200px;top:70px;';
         window.divList = document.createElement('div');
         divList.class = 'counter-num'
-        divList.style = 'width:25px;z-index:5;position:relative;left:230px;top:45px;font-size:14px;font-family:Roboto,Arial,sans-serif;color:white;font-size:14px;line-height: normal;'
+        // Nudge below Google's built-in in-game timer (was 45px)
+        divList.style = 'width:25px;z-index:5;position:relative;left:230px;top:52px;font-size:14px;font-family:Roboto,Arial,sans-serif;color:white;font-size:14px;line-height: normal;'
         divList.id = 'counter-num'
 
         document.getElementsByClassName('sEOCsb')[0].appendChild(a);
@@ -8058,6 +8093,10 @@ window.BootstrapMenu.make = function () {
     <label class="form-check-label" for="AlwaysOnTimeKeeper">Show Speed Info</label>
   </div>
   <div class="form-check form-switch">
+    <input class="form-check-input" type="checkbox" role="switch" id="OldTimeKeeperFormat">
+    <label class="form-check-label" for="OldTimeKeeperFormat">Old TimeKeeper format</label>
+  </div>
+  <div class="form-check form-switch">
     <input class="form-check-input" type="checkbox" role="switch" id="ShowSplitPanel">
     <label class="form-check-label" for="ShowSplitPanel">Show Split Panel</label>
   </div>
@@ -8143,6 +8182,21 @@ window.BootstrapMenu.make = function () {
                     window.applyPuddingPanelTextSize();
                 }
                 if (typeof window.saveSettings === "function") window.saveSettings();
+            });
+        }
+
+        const oldTimeKeeperFormatCheckbox = document.getElementById("OldTimeKeeperFormat");
+        if (oldTimeKeeperFormatCheckbox) {
+            if (typeof window.pudding_settings.OldTimeKeeperFormat !== "boolean") {
+                window.pudding_settings.OldTimeKeeperFormat = false;
+            }
+            oldTimeKeeperFormatCheckbox.checked = !!window.pudding_settings.OldTimeKeeperFormat;
+            oldTimeKeeperFormatCheckbox.addEventListener("change", function () {
+                window.pudding_settings.OldTimeKeeperFormat = !!oldTimeKeeperFormatCheckbox.checked;
+                if (typeof window.saveSettings === "function") window.saveSettings();
+                if (window.timeKeeper && typeof window.timeKeeper.refreshSpeedInfo === "function") {
+                    window.timeKeeper.refreshSpeedInfo();
+                }
             });
         }
 
@@ -9498,7 +9552,7 @@ window.PuddingMod.alterSnakeCode = function (code) {
 window.PuddingMod.runCodeAfter = function () {
   let modIndicator = document.createElement('div');
   modIndicator.style = 'position:absolute;font-family:Roboto,Arial,sans-serif;color:white;font-size:14px;padding-top:4px;padding-left:30px;user-select: none;';
-  modIndicator.textContent = 'Pudding Mod';
+  modIndicator.textContent = 'Pudding Mod v13';
   if (window.loaded_code) {
     // commented out cuz i dont want it to annoy people since its now the official version
     //modIndicator.textContent = 'Pudding Mod - Google Test Version';
@@ -11397,7 +11451,7 @@ window.MorePudding.runCodeAfter = function() {
   //window.moreMenu.runCodeAfter();
   let modIndicator = document.createElement('div');
   modIndicator.style='position:absolute;font-family:Arial,sans-serif;color:white;font-size:14px;padding-top:4px;padding-left:30px;user-select: none;';
-  modIndicator.textContent = 'More Pudding Mod';
+  modIndicator.textContent = 'More Pudding Mod v13';
   let canvasNode = document.getElementsByClassName('jNB0Ic')[0];
   document.getElementsByClassName('EjCLSb')[0].insertBefore(modIndicator, canvasNode);
 
@@ -11643,9 +11697,15 @@ window.ChessMod.runCodeBefore = function () {
     let secretTail = 6;
     let insertAt = window.new_fruit.length - secretTail;
     let skull = window.new_fruit[window.new_fruit.length - 1];
-    if (insertAt < 0 || !skull || !/poison-skull/.test(skull.Real || "")) {
+    // Pudding keeps a 6-entry secret tail ending in the skull. Older builds
+    // named it poison-skull in Real; data-URI puddings lose that filename.
+    const namedSkull = !!(skull && /poison-skull/i.test(skull.Real || ""));
+    const trustTail = insertAt >= 0 && !!skull && window.new_fruit.length >= secretTail;
+    if (!trustTail) {
       console.error("ChessMod: Pudding secret-fruit tail not found, appending at end");
       insertAt = window.new_fruit.length;
+    } else if (!namedSkull) {
+      // Still splice ahead of the last six — do not append past the skull.
     }
     let startType = base + 1 + insertAt;
 
@@ -13498,25 +13558,56 @@ window.BurgerMod.runCodeBefore = function () {
 window.BurgerMod.alterSnakeCode = function (code) {
   console.log("Coding Burger Mode into the game (v13)");
 
-  window.isBurgerActive = function isBurgerActive() {
-    if (window.BURGER_MODE == null) return false;
-    if (window.CurrentModeNum === window.BURGER_MODE) return true;
-    if (window.CurrentModeNum === 22 && window.burger_blending) return true;
-    // Match e7(...,10): layout may pair Okas (l4E) while settings.ub is already
-    // Burger but CurrentModeNum has not flipped yet — that half-poisoned the start.
-    const g = window.__remixGame;
-    const s = g && g.settings;
-    if (!s) return false;
+  // Live settings check — same object e7(...,10) sees. Must stay false for Fear
+  // / native Poison / other modes (narrow Burger ids only).
+  window.isBurgerSettings = function isBurgerSettings(s) {
+    if (!s || window.BURGER_MODE == null) return false;
     if (s.ub === window.BURGER_MODE || s.ob === window.BURGER_MODE) return true;
+    if (s.ub === "burger" || s.ob === "burger") return true;
     if (
-      (s.ub === 22 || window.CurrentModeNum === 22) &&
+      (s.ub === 22 || s.ub === "blender") &&
       s.rSa &&
       typeof s.rSa.has === "function" &&
       s.rSa.has(window.BURGER_MODE)
     ) {
       return true;
     }
-    if (s.ub === 22 && window.burger_blending) return true;
+    if (
+      (s.ub === 22 || s.ub === "blender") &&
+      window.burger_blending
+    ) {
+      return true;
+    }
+    if (
+      s.Qa &&
+      s.Lc &&
+      typeof s.Lc.has === "function" &&
+      (s.Lc.has(window.BURGER_MODE) || s.Lc.has("burger"))
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  window.isBurgerActive = function isBurgerActive() {
+    if (window.BURGER_MODE == null) return false;
+    if (
+      window.CurrentModeNum === window.BURGER_MODE ||
+      window.CurrentModeNum === "burger"
+    ) {
+      return true;
+    }
+    if (
+      (window.CurrentModeNum === 22 ||
+        window.CurrentModeNum === "blender") &&
+      window.burger_blending
+    ) {
+      return true;
+    }
+    // Match e7(...,10): layout may pair Okas (l4E) while settings.ub is already
+    // Burger but CurrentModeNum has not flipped yet — that half-poisoned the start.
+    const g = window.__remixGame;
+    if (g && window.isBurgerSettings(g.settings)) return true;
     return false;
   };
 
@@ -13730,19 +13821,25 @@ window.BurgerMod.alterSnakeCode = function (code) {
 
   // Type index of Pudding's skull sprite, the one its "Skull Poison Fruit"
   // setting swaps poisons to. Pudding maps new_fruit[i] to last_fruit_num+1+i.
+  // Skull is the last new_fruit entry; older builds also named it poison-skull.
   window.burger_skull_type = function burger_skull_type() {
     const fruits = window.new_fruit;
-    if (!Array.isArray(fruits)) return null;
+    if (!Array.isArray(fruits) || !fruits.length) return null;
     const base =
       typeof last_fruit_num !== "undefined"
         ? last_fruit_num
-        : document.querySelector("#apple").children.length - 1;
+        : document.querySelector("#apple")
+          ? document.querySelector("#apple").children.length - 1
+          : null;
+    if (base == null) return null;
     for (let i = 0; i < fruits.length; i++) {
-      if (fruits[i] && /poison-skull/.test(fruits[i].Real || "")) {
+      const real = (fruits[i] && (fruits[i].Real || fruits[i].src || "")) + "";
+      if (/poison-skull/i.test(real)) {
         return base + 1 + i;
       }
     }
-    return null;
+    // Pudding keeps the skull as the last custom fruit (secret tail end).
+    return base + fruits.length;
   };
 
   window.burger_make_poison = function burger_make_poison(apple, game) {
@@ -13946,7 +14043,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   ) {
     code = code.assertReplace(
       /e7=function\(a,b\)\{var r=a\.Qa\?a\.Lc\.has\(b\):a\.ub===22&&a\.rSa\.has\(b\)\?!0:a\.ub===b;if\(!r&&b===15&&window\.CHESS_MODE!=null\)\{if\(a\.ub===window\.CHESS_MODE\)return!0;if\(a\.ub===22&&a\.rSa&&a\.rSa\.has\(window\.CHESS_MODE\)\)return!0;\}return r\}/,
-      `e7=function(a,b){var r=a.Qa?a.Lc.has(b):a.ub===22&&a.rSa.has(b)?!0:a.ub===b;if(!r&&b===15&&window.CHESS_MODE!=null){if(a.ub===window.CHESS_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.CHESS_MODE))return!0;}if(!r&&b===10&&window.BURGER_MODE!=null){if(a.ub===window.BURGER_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BURGER_MODE))return!0;}return r}`
+      `e7=function(a,b){var r=a.Qa?a.Lc.has(b):a.ub===22&&a.rSa.has(b)?!0:a.ub===b;if(!r&&b===15&&window.CHESS_MODE!=null){if(a.ub===window.CHESS_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.CHESS_MODE))return!0;}if(!r&&b===10&&window.BURGER_MODE!=null){if(a.ub===window.BURGER_MODE||a.ub==='burger'||a.ob==='burger')return!0;if((a.ub===22||a.ub==='blender')&&a.rSa&&a.rSa.has(window.BURGER_MODE))return!0;if(a.Qa&&a.Lc&&(a.Lc.has(window.BURGER_MODE)||a.Lc.has('burger')))return!0;}return r}`
     );
   } else if (
     code.match(
@@ -13955,17 +14052,17 @@ window.BurgerMod.alterSnakeCode = function (code) {
   ) {
     code = code.assertReplace(
       /e7=function\(a,b\)\{return a\.Qa\?a\.Lc\.has\(b\):a\.ub===22&&a\.rSa\.has\(b\)\?!0:a\.ub===b\}/,
-      `e7=function(a,b){var r=a.Qa?a.Lc.has(b):a.ub===22&&a.rSa.has(b)?!0:a.ub===b;if(!r&&b===10&&window.BURGER_MODE!=null){if(a.ub===window.BURGER_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BURGER_MODE))return!0;}return r}`
+      `e7=function(a,b){var r=a.Qa?a.Lc.has(b):a.ub===22&&a.rSa.has(b)?!0:a.ub===b;if(!r&&b===10&&window.BURGER_MODE!=null){if(a.ub===window.BURGER_MODE||a.ub==='burger'||a.ob==='burger')return!0;if((a.ub===22||a.ub==='blender')&&a.rSa&&a.rSa.has(window.BURGER_MODE))return!0;if(a.Qa&&a.Lc&&(a.Lc.has(window.BURGER_MODE)||a.Lc.has('burger')))return!0;}return r}`
     );
   } else {
     console.error("BurgerMod: failed to patch e7 for poison mode");
   }
 
-  // Classic layout: Y3E must ignore Burger's e7(10).
+  // Classic layout: Y3E must ignore Burger's e7(10). `a` here is settings.
   if (code.match(/Y3E=function\(a\)\{return e7\(a,2\)\|\|e7\(a,8\)\|\|e7\(a,9\)\|\|e7\(a,10\)\}/)) {
     code = code.assertReplace(
       /Y3E=function\(a\)\{return e7\(a,2\)\|\|e7\(a,8\)\|\|e7\(a,9\)\|\|e7\(a,10\)\}/,
-      `Y3E=function(a){return e7(a,2)||e7(a,8)||e7(a,9)||(e7(a,10)&&!(window.isBurgerActive&&window.isBurgerActive()))}`
+      `Y3E=function(a){return e7(a,2)||e7(a,8)||e7(a,9)||(e7(a,10)&&!(window.isBurgerSettings&&window.isBurgerSettings(a)))}`
     );
   } else {
     console.error("BurgerMod: failed to patch Y3E");
@@ -13975,7 +14072,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   if (code.match(/e7\(a\.settings,10\)&&!f&&e4E\(a\)/)) {
     code = code.assertReplace(
       /e7\(a\.settings,10\)&&!f&&e4E\(a\)/,
-      `e7(a.settings,10)&&!f&&!(window.isBurgerActive&&window.isBurgerActive())&&e4E(a)`
+      `e7(a.settings,10)&&!f&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&e4E(a)`
     );
   } else {
     console.error("BurgerMod: failed to patch e4E gate");
@@ -13983,7 +14080,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
 
   // Native Poison pairs every other apple as poison at game start / after some
   // spawns (l4E). That is exactly the "5a starts with 2 poisons" bug. Gate every
-  // call site and the function itself.
+  // call site and the function itself. Set __remixGame so tick helpers stay warm.
   {
     const l4ECalls = code.match(
       /e7\((?:this|a)\.settings,10\)\s*&&\s*l4E\((?:this|a)\.wa\)/g
@@ -13991,7 +14088,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
     if (l4ECalls && l4ECalls.length) {
       code = code.replace(
         /e7\((this|a)\.settings,10\)\s*&&\s*l4E\(\1\.wa\)/g,
-        `e7($1.settings,10)&&!(window.isBurgerActive&&window.isBurgerActive())&&l4E($1.wa)`
+        `window.__remixGame=$1,e7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&l4E($1.wa)`
       );
     } else {
       console.error("BurgerMod: failed to patch l4E call sites");
@@ -14004,7 +14101,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   ) {
     code = code.assertReplace(
       /l4E=function\(a\)\{for\(let b=0;b\+1<a\.ka\.length;b\+=2\)\{let c=Math\.random\(\)<\.5;\s*a\.ka\[b\]\.Oka=c;a\.ka\[b\+1\]\.Oka=!c\}\}/,
-      `l4E=function(a){if(window.isBurgerActive&&window.isBurgerActive())return;for(let b=0;b+1<a.ka.length;b+=2){let c=Math.random()<.5;a.ka[b].Oka=c;a.ka[b+1].Oka=!c}};window.__l4E=l4E;window.__uaF=l4E`
+      `l4E=function(a){if(window.isBurgerSettings&&window.isBurgerSettings(a.settings))return;for(let b=0;b+1<a.ka.length;b+=2){let c=Math.random()<.5;a.ka[b].Oka=c;a.ka[b+1].Oka=!c}};window.__l4E=l4E;window.__uaF=l4E`
     );
   } else {
     console.error("BurgerMod: failed to patch l4E function");
@@ -14018,7 +14115,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   ) {
     code = code.assertReplace(
       /e7\(a\.settings,10\)&&\(c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.Oka=c,a\.ka\[a\.ka\.length-2\]\.Oka=!c\)/,
-      `e7(a.settings,10)&&!(window.isBurgerActive&&window.isBurgerActive())&&(c=Math.random()<.5,a.ka[a.ka.length-1].Oka=c,a.ka[a.ka.length-2].Oka=!c)`
+      `e7(a.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&(c=Math.random()<.5,a.ka[a.ka.length-1].Oka=c,a.ka[a.ka.length-2].Oka=!c)`
     );
   } else {
     console.error("BurgerMod: failed to patch qaF nla pair");
@@ -14033,7 +14130,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   if (code.match(poisonTopUp)) {
     code = code.assertReplace(
       poisonTopUp,
-      `$1!(window.isBurgerActive&&window.isBurgerActive())&&e4E(a)`
+      `$1!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&e4E(a)`
     );
   } else {
     console.error("BurgerMod: failed to patch poison top-up e4E");
@@ -14061,6 +14158,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   // After apple reset / shield init (Chess may have already appended): assign burger timers.
   // Hook the end of apple manager reset via shield init line (post-Pudding doubleDE).
   // Chess may gate P3E behind ultraShouldSpawnFruitShields (Remix Ultra).
+  // Gate on live this.settings — same object e7 sees; do not wait for __remixGame.
   const burgerShieldInit =
     /if\(e7\(this\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);/;
   const burgerShieldInitChess =
@@ -14068,12 +14166,12 @@ window.BurgerMod.alterSnakeCode = function (code) {
   if (code.match(burgerShieldInitChess)) {
     code = code.assertReplace(
       burgerShieldInitChess,
-      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}`
+      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}`
     );
   } else if (code.match(burgerShieldInit)) {
     code = code.assertReplace(
       burgerShieldInit,
-      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}`
+      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}`
     );
   } else {
     console.error("BurgerMod: failed to find reset timer hook");
@@ -14084,7 +14182,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   if (code.match(/this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\)\}/)) {
     code = code.assertReplace(
       /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\)\}/,
-      `this.settings.ka===6&&($3E(this),this.Ca=!1);if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}}`
+      `this.settings.ka===6&&($3E(this),this.Ca=!1);if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}}`
     );
   }
 
@@ -14097,7 +14195,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   ) {
     code = code.assertReplace(
       /if\(window\.isChessActive&&window\.isChessActive\(\)&&g>0\)\{window\.chess_convert_new_apples\(a,g\);\}/,
-      `if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(window.isBurgerActive&&window.isBurgerActive()&&g>0){for(let _bi=a.ka.length-g;_bi<a.ka.length;_bi++){if(a.ka[_bi]&&!a.ka[_bi].Oka)window.burger_assign_timer(a.ka[_bi]);}}`
+      `if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(window.isBurgerSettings&&window.isBurgerSettings(a.settings)&&g>0){for(let _bi=a.ka.length-g;_bi<a.ka.length;_bi++){if(a.ka[_bi]&&!a.ka[_bi].Oka)window.burger_assign_timer(a.ka[_bi]);}}`
     );
   } else if (
     code.match(
@@ -14106,7 +14204,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   ) {
     code = code.assertReplace(
       /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(e7\(a\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.nba=P3E\(a,c\.pos\);/,
-      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(e7(a.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.nba=P3E(a,c.pos);if(window.isBurgerActive&&window.isBurgerActive()&&g>0){for(let _bi=a.ka.length-g;_bi<a.ka.length;_bi++){if(a.ka[_bi]&&!a.ka[_bi].Oka)window.burger_assign_timer(a.ka[_bi]);}}`
+      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(e7(a.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.nba=P3E(a,c.pos);if(window.isBurgerSettings&&window.isBurgerSettings(a.settings)&&g>0){for(let _bi=a.ka.length-g;_bi<a.ka.length;_bi++){if(a.ka[_bi]&&!a.ka[_bi].Oka)window.burger_assign_timer(a.ka[_bi]);}}`
     );
   } else {
     console.error("BurgerMod: failed to find qaF trailing hook");
@@ -14790,8 +14888,8 @@ window.CatMod.alterSnakeCode = function (code) {
   // --- e7: temporary Peaceful (mode 21) while grace ticks remain ---
   catReplace(
     "e7 temporary Peaceful",
-    /if\(!r&&b===10&&window\.BURGER_MODE!=null\)\{if\(a\.ub===window\.BURGER_MODE\)return!0;if\(a\.ub===22&&a\.rSa&&a\.rSa\.has\(window\.BURGER_MODE\)\)return!0;\}return r\}/,
-    `if(!r&&b===10&&window.BURGER_MODE!=null){if(a.ub===window.BURGER_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BURGER_MODE))return!0;}if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;return r}`
+    /if\(!r&&b===10&&window\.BURGER_MODE!=null\)\{if\(a\.ub===window\.BURGER_MODE\|\|a\.ub==='burger'\|\|a\.ob==='burger'\)return!0;if\(\(a\.ub===22\|\|a\.ub==='blender'\)&&a\.rSa&&a\.rSa\.has\(window\.BURGER_MODE\)\)return!0;if\(a\.Qa&&a\.Lc&&\(a\.Lc\.has\(window\.BURGER_MODE\)\|\|a\.Lc\.has\('burger'\)\)\)return!0;\}return r\}/,
+    `if(!r&&b===10&&window.BURGER_MODE!=null){if(a.ub===window.BURGER_MODE||a.ub==='burger'||a.ob==='burger')return!0;if((a.ub===22||a.ub==='blender')&&a.rSa&&a.rSa.has(window.BURGER_MODE))return!0;if(a.Qa&&a.Lc&&(a.Lc.has(window.BURGER_MODE)||a.Lc.has('burger')))return!0;}if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;return r}`
   );
 
   // --- Death intercept: Oa() is the real kill path (wall/self/poison crash) ---
@@ -14838,14 +14936,14 @@ window.CatMod.alterSnakeCode = function (code) {
   if (
     !catReplace(
       "burger reset hook",
-      /if\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{console\.error\("BurgerMod: reset failed",_be\);\}\}/,
-      `if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
+      /if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{console\.error\("BurgerMod: reset failed",_be\);\}\}/,
+      `if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
     )
   ) {
     catReplace(
       "burger reset hook quiet",
-      /if\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/,
-      `if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
+      /if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/,
+      `if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
     );
   }
 
@@ -14876,13 +14974,13 @@ window.CatMod.alterSnakeCode = function (code) {
   // Match quietly — missing Burger inject is expected when its patch drifts.
   {
     const tallyBurger =
-      /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\);if\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/;
+      /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\);if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/;
     const tallyRaw = /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\)\}/;
     if (code.match(tallyBurger)) {
       catReplace(
         "tally reset after burger",
         tallyBurger,
-        `this.settings.ka===6&&($3E(this),this.Ca=!1);if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
+        `this.settings.ka===6&&($3E(this),this.Ca=!1);if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
       );
     } else if (code.match(tallyRaw)) {
       catReplace(
@@ -16754,8 +16852,8 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   ) {
     bfReplace(
       "reset clear shields after burger",
-      /if\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{console\.error\("BurgerMod: reset failed",_be\);\}\}/,
-      'if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_clear_shields(this);}catch(_bf){}}'
+      /if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{console\.error\("BurgerMod: reset failed",_be\);\}\}/,
+      'if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_clear_shields(this);}catch(_bf){}}'
     );
   }
 
@@ -19190,14 +19288,22 @@ window.FearMod.alterSnakeCode = function (code) {
 
   fearReplace(
     "conditional Fear poison twin spawn",
-    /e7\(a\.settings,10\)&&!f&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&e4E\(a\)/,
-    "e7(a.settings,10)&&!f&&!(window.isBurgerActive&&window.isBurgerActive())&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+    /e7\(a\.settings,10\)&&!f((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&e4E\(a\)/,
+    "e7(a.settings,10)&&!f$1&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
   );
 
   fearReplace(
     "conditional Fear poison top-up",
-    /b<a\.ka\.length\/2&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&e4E\(a\)/,
-    "b<a.ka.length/2&&!(window.isBurgerActive&&window.isBurgerActive())&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+    /b<a\.ka\.length\/2((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&e4E\(a\)/,
+    "b<a.ka.length/2$1&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+  );
+
+  // Tally empty-count (r7E) only skips Oka. Fear clears Oka on ghosts for atlas
+  // draw, which made ghosts block the next tally wave like Bomb's length check.
+  fearReplace(
+    "r7E ignore Fear ghosts like poison",
+    /if\(e7\(b\.settings,10\)\|\|e7\(b\.settings,11\)\)for\(var d of b\.ka\)!d\.Oka&&d\.Lh&&c\+\+/,
+    "if(e7(b.settings,10)||e7(b.settings,11))for(var d of b.ka)!(d.Oka||window.fear_is_ghost&&window.fear_is_ghost(d))&&d.Lh&&c++"
   );
 
   fearReplace(
@@ -23211,6 +23317,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     for (let i = start; i < list.length; i++) {
       const f = list[i];
       if (!f || f.Oka) continue;
+      if (window.fear_is_ghost && window.fear_is_ghost(f)) continue;
       if (f.__slotPortal) {
         const pid = f.__slotPortalPairId;
         if (pid != null) {
@@ -23279,6 +23386,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     for (let i = 0; i < mgr.ka.length; i++) {
       const f = mgr.ka[i];
       if (!f || f.Oka || f === excludeFruit) continue;
+      if (window.fear_is_ghost && window.fear_is_ghost(f)) continue;
       const s = f.sequenceNumber | 0;
       if (s > max) max = s;
     }
@@ -23293,6 +23401,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     mgr
   ) {
     if (!fruit || fruit.Oka) return false;
+    if (window.fear_is_ghost && window.fear_is_ghost(fruit)) return false;
     const g = window.__remixGame;
     if (!window.slot_is_tally_count || !window.slot_is_tally_count(g)) {
       return false;
@@ -23317,6 +23426,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
       if (!f || f.Oka) continue;
+      if (window.fear_is_ghost && window.fear_is_ghost(f)) continue;
       if (eaten && f === eaten) continue;
       n++;
     }
@@ -24539,8 +24649,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot Y3E ignore leftover key/soko for layout",
-        /Y3E=function\(a\)\{return e7\(a,2\)\|\|e7\(a,8\)\|\|e7\(a,9\)\|\|\(e7\(a,10\)&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)\)\}/,
-        "Y3E=function(a){return window.isSlotMachineActive&&window.isSlotMachineActive()?(window.slot_Y3E_gate=1,(window.__slotActive|0)===2):e7(a,2)||e7(a,8)||e7(a,9)||(e7(a,10)&&!(window.isBurgerActive&&window.isBurgerActive()))}"
+        /Y3E=function\(a\)\{return e7\(a,2\)\|\|e7\(a,8\)\|\|e7\(a,9\)\|\|\(e7\(a,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\)\)\)\}/,
+        "Y3E=function(a){return window.isSlotMachineActive&&window.isSlotMachineActive()?(window.slot_Y3E_gate=1,(window.__slotActive|0)===2):e7(a,2)||e7(a,8)||e7(a,9)||(e7(a,10)&&!(window.isBurgerSettings&&window.isBurgerSettings(a)))}"
       )
     ) {
       smReplace(
@@ -25264,8 +25374,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot gate poison Oka pairing after burger",
-        /e7\(a\.settings,10\)&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&\(c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.Oka=c,a\.ka\[a\.ka\.length-2\]\.Oka=!c\)/,
-        "e7(a.settings,10)&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive())&&(window.slot_poison_oka_gate=1,c=Math.random()<.5,a.ka[a.ka.length-1].Oka=c,a.ka[a.ka.length-2].Oka=!c)"
+        /e7\(a\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)&&\(c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.Oka=c,a\.ka\[a\.ka\.length-2\]\.Oka=!c\)/,
+        "e7(a.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive())&&(window.slot_poison_oka_gate=1,c=Math.random()<.5,a.ka[a.ka.length-1].Oka=c,a.ka[a.ka.length-2].Oka=!c)"
       )
     ) {
       smReplace(
@@ -25282,13 +25392,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot block e4E after Fear gate",
-        /e7\(a\.settings,10\)&&!f&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&\(\(window\.fear_uses_ghost_pairs&&window\.fear_uses_ghost_pairs\(window\.__remixGame\)\)\?window\.fear_native_ghost_top_up\(a,e4E\):e4E\(a\)\)/,
-        "e7(a.settings,10)&&!f&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+        /e7\(a\.settings,10\)&&!f((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&\(\(window\.fear_uses_ghost_pairs&&window\.fear_uses_ghost_pairs\(window\.__remixGame\)\)\?window\.fear_native_ghost_top_up\(a,e4E\):e4E\(a\)\)/,
+        "e7(a.settings,10)&&!f$1&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
       ) &&
       !smReplace(
         "slot block e4E after burger gate",
-        /e7\(a\.settings,10\)&&!f&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&e4E\(a\)/,
-        "e7(a.settings,10)&&!f&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&e4E(a)"
+        /e7\(a\.settings,10\)&&!f&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)&&e4E\(a\)/,
+        "e7(a.settings,10)&&!f&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&e4E(a)"
       )
     ) {
       smReplace(
@@ -25302,8 +25412,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot block l4E after burger gate",
-        /e7\((this|a)\.settings,10\)&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&l4E\(\1\.wa\)/g,
-        "e7($1.settings,10)&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
+        /window\.__remixGame=(this|a),e7\(\1\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(\1\.settings\)\)&&l4E\(\1\.wa\)/g,
+        "window.__remixGame=$1,e7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
+      ) &&
+      !smReplace(
+        "slot block l4E after burger gate legacy",
+        /e7\((this|a)\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(\1\.settings\)\)&&l4E\(\1\.wa\)/g,
+        "e7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
       )
     ) {
       smReplace(
@@ -25312,11 +25427,11 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         "e7($1.settings,10)&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
       );
     }
-    if (code.indexOf("l4E=function(a){if(window.isBurgerActive") >= 0) {
+    if (code.indexOf("l4E=function(a){if(window.isBurgerSettings") >= 0) {
       smReplace(
         "slot block l4E function after burger",
-        /l4E=function\(a\)\{if\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)return;/,
-        "l4E=function(a){if(window.isBurgerActive&&window.isBurgerActive())return;if(window.isSlotMachineActive&&window.isSlotMachineActive())return;"
+        /l4E=function\(a\)\{if\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)return;/,
+        "l4E=function(a){if(window.isBurgerSettings&&window.isBurgerSettings(a.settings))return;if(window.isSlotMachineActive&&window.isSlotMachineActive())return;"
       );
     } else if (code.indexOf("l4E=function(a){if(window.isSlotMachineActive") < 0) {
       smReplace(
@@ -25330,13 +25445,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot block g4E top-up after Fear",
-        /b<a\.ka\.length\/2&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&\(\(window\.fear_uses_ghost_pairs&&window\.fear_uses_ghost_pairs\(window\.__remixGame\)\)\?window\.fear_native_ghost_top_up\(a,e4E\):e4E\(a\)\)/,
-        "b<a.ka.length/2&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_g4E=1))&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+        /b<a\.ka\.length\/2((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&\(\(window\.fear_uses_ghost_pairs&&window\.fear_uses_ghost_pairs\(window\.__remixGame\)\)\?window\.fear_native_ghost_top_up\(a,e4E\):e4E\(a\)\)/,
+        "b<a.ka.length/2$1&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_g4E=1))&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
       ) &&
       !smReplace(
         "slot block g4E top-up after burger",
-        /b<a\.ka\.length\/2&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&e4E\(a\)/,
-        "b<a.ka.length/2&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_g4E=1))&&e4E(a)"
+        /b<a\.ka\.length\/2&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)&&e4E\(a\)/,
+        "b<a.ka.length/2&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_g4E=1))&&e4E(a)"
       )
     ) {
       smReplace(
@@ -29749,9 +29864,13 @@ window.injectCustomFruit = function injectCustomFruit() {
   const secretTail = 6;
   let insertAt = window.new_fruit.length - secretTail;
   const skull = window.new_fruit[window.new_fruit.length - 1];
-  if (insertAt < 0 || !skull || !/poison-skull/.test(skull.Real || "")) {
+  const namedSkull = !!(skull && /poison-skull/i.test(skull.Real || ""));
+  const trustTail = insertAt >= 0 && !!skull && window.new_fruit.length >= secretTail;
+  if (!trustTail) {
     console.error("CustomFruit: secret tail not found, appending at end");
     insertAt = window.new_fruit.length;
+  } else if (!namedSkull) {
+    // data-URI puddings lose the poison-skull filename; still use the tail.
   }
   while (
     insertAt > 0 &&
@@ -30024,6 +30143,10 @@ window.HamiltonMod.runCodeBefore = function () {
   HM.isCycle = false;
   HM.iconState = "idle";
   HM.solveId = 0;
+  HM.solvePhase = "idle";
+  HM._activeBits = null;
+  HM._activeSolveId = 0;
+  HM._workerEpoch = 0;
   HM.worker = null;
   HM._boardProps = null;
   HM.WORKER_MAX_RETRIES = 4;
@@ -30276,13 +30399,51 @@ window.HamiltonMod.runCodeBefore = function () {
     }
   };
 
-  HM.onGameReset = function onGameReset() {
-    HM.cancelSolve(true);
+  /** Invalidate any in-flight solve so stale worker messages cannot apply. */
+  HM.beginSolveGeneration = function beginSolveGeneration(bits) {
+    const id = ++HM.solveId;
+    HM._activeSolveId = id;
+    HM._activeBits = bits || null;
+    HM.solvePhase = "idle";
     HM.clearTour();
+    HM._workerEpoch = (HM._workerEpoch || 0) + 1;
+    HM.cancelSolve(true);
+    return id;
+  };
+
+  HM.onGameReset = function onGameReset() {
+    HM.beginSolveGeneration(null);
     if (!window.wallCoords) window.wallCoords = [];
     else window.wallCoords.length = 0;
     HM.setWallIconState("idle");
     HM.updateIndicator();
+  };
+
+  HM._messageMatchesActive = function _messageMatchesActive(msg) {
+    if (msg.id !== HM.solveId || msg.id !== HM._activeSolveId) return false;
+    if (msg.bits != null && HM._activeBits != null && msg.bits !== HM._activeBits) {
+      return false;
+    }
+    return true;
+  };
+
+  HM._phaseFromLog = function _phaseFromLog(text) {
+    const t = String(text || "").toLowerCase();
+    if (t.indexOf("searching for a path") >= 0 || t.indexOf("path found") >= 0) {
+      return "path";
+    }
+    if (
+      t.indexOf("searching for a cycle") >= 0 ||
+      t.indexOf("cycle found") >= 0 ||
+      t.indexOf("cycle search") >= 0
+    ) {
+      return "cycle";
+    }
+    if (t.indexOf("closest") >= 0 || t.indexOf("gap") >= 0) {
+      return "closest";
+    }
+    if (t.indexOf("coloring rules out") >= 0) return "none";
+    return null;
   };
 
   HM.countWallCheckerColors = function countWallCheckerColors(coords, dims) {
@@ -30516,6 +30677,7 @@ window.HamiltonMod.runCodeBefore = function () {
   };
 
   HM._spawnWorkerOnce = function _spawnWorkerOnce() {
+    const epoch = HM._workerEpoch;
     const code = HM._INLINE_CLASSIC_WORKER;
     if (!code || typeof code !== "string") {
       throw new Error("inline classic worker missing — rebuild embed");
@@ -30541,6 +30703,20 @@ window.HamiltonMod.runCodeBefore = function () {
         HM.setWallIconState("worker");
       }
     };
+    // A newer pattern may have killed/replaced the generation while we spawned.
+    if (epoch !== HM._workerEpoch) {
+      try {
+        w.terminate();
+      } catch (_) {
+        /* ignore */
+      }
+      try {
+        URL.revokeObjectURL(blobUrl);
+      } catch (_) {
+        /* ignore */
+      }
+      return null;
+    }
     HM.worker = w;
     HM._workerBlobUrl = blobUrl;
     return w;
@@ -30550,12 +30726,15 @@ window.HamiltonMod.runCodeBefore = function () {
     if (HM.worker) return Promise.resolve(HM.worker);
     if (HM._workerPromise) return HM._workerPromise;
 
+    const epoch = HM._workerEpoch;
     const trySpawn = function (remaining) {
+      if (epoch !== HM._workerEpoch) return Promise.resolve(null);
       return Promise.resolve()
         .then(function () {
           return HM._spawnWorkerOnce();
         })
         .catch(function (err) {
+          if (epoch !== HM._workerEpoch) return null;
           HM.worker = null;
           if (remaining <= 1) {
             console.error("HamiltonMod: failed to start worker after retries", err);
@@ -30574,20 +30753,26 @@ window.HamiltonMod.runCodeBefore = function () {
         });
     };
 
-    HM._workerPromise = trySpawn(HM.WORKER_MAX_RETRIES).finally(function () {
-      HM._workerPromise = null;
+    const spawnPromise = trySpawn(HM.WORKER_MAX_RETRIES).finally(function () {
+      if (HM._workerPromise === spawnPromise) {
+        HM._workerPromise = null;
+      }
     });
+    HM._workerPromise = spawnPromise;
     return HM._workerPromise;
   };
 
   HM.onWorkerMessage = function onWorkerMessage(msg) {
-    if (msg.id !== HM.solveId) return;
+    if (!HM._messageMatchesActive(msg)) return;
     if (msg.type === "log") {
+      const phase = HM._phaseFromLog(msg.message);
+      if (phase) HM.solvePhase = phase;
       if (window.NepDebug) console.log("[Hamilton]", msg.message);
       return;
     }
     if (msg.type === "error") {
       console.error("HamiltonMod solve error:", msg.message);
+      HM.solvePhase = "none";
       HM.setWallIconState("none");
       HM.clearTour();
       return;
@@ -30596,19 +30781,24 @@ window.HamiltonMod.runCodeBefore = function () {
       if (msg.tour && msg.tour.length) {
         HM.currentTour = msg.tour;
         HM.isCycle = msg.kind === "cycle";
+        HM.solvePhase = msg.kind === "cycle" ? "cycle" : "path";
         HM.setWallIconState("ok");
       }
       return;
     }
     if (msg.type === "done") {
+      // Cancelled / superseded leftovers must not flip icon or tour.
+      if (msg.stopped) return;
       if (msg.coloring) HM._lastColoring = msg.coloring;
-      if (msg.bits) HM.updateIndicator();
+      HM.updateIndicator();
       if (msg.tour && msg.tour.length) {
         HM.currentTour = msg.tour;
         HM.isCycle = msg.kind === "cycle";
+        HM.solvePhase = "done";
         HM.setWallIconState("ok");
       } else {
         HM.clearTour();
+        HM.solvePhase = "none";
         HM.setWallIconState("none");
       }
     }
@@ -30655,8 +30845,7 @@ window.HamiltonMod.runCodeBefore = function () {
   };
 
   HM._startSolve = function _startSolve(bits, dims) {
-    HM.cancelSolve(false);
-    HM.clearTour();
+    const id = HM.beginSolveGeneration(bits);
     HM._lastBits = bits;
     HM._lastColoring = HM.pathColoringFromBits(
       bits,
@@ -30666,21 +30855,22 @@ window.HamiltonMod.runCodeBefore = function () {
     HM.updateIndicator();
 
     if (HM.isColoringImpossible(HM._lastColoring)) {
+      HM.solvePhase = "none";
       HM.setWallIconState("none");
       return;
     }
 
+    HM.solvePhase = "searching";
     HM.setWallIconState("searching");
-
-    const id = ++HM.solveId;
 
     const run = function (retriesLeft) {
       HM.ensureWorker().then(function (worker) {
-        if (id !== HM.solveId) return;
+        if (id !== HM.solveId || id !== HM._activeSolveId) return;
         if (!worker) {
           console.error(
             "HamiltonMod: no Worker after retries — skipping solve (will not freeze the game)"
           );
+          HM.solvePhase = "worker";
           HM.setWallIconState("worker");
           return;
         }
@@ -30690,6 +30880,7 @@ window.HamiltonMod.runCodeBefore = function () {
           console.error("HamiltonMod: postMessage failed", err);
           HM.cancelSolve(true);
           if (retriesLeft <= 0) {
+            HM.solvePhase = "worker";
             HM.setWallIconState("worker");
             return;
           }

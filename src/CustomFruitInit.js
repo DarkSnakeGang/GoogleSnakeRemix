@@ -989,9 +989,13 @@ window.injectCustomFruit = function injectCustomFruit() {
   const secretTail = 6;
   let insertAt = window.new_fruit.length - secretTail;
   const skull = window.new_fruit[window.new_fruit.length - 1];
-  if (insertAt < 0 || !skull || !/poison-skull/.test(skull.Real || "")) {
+  const namedSkull = !!(skull && /poison-skull/i.test(skull.Real || ""));
+  const trustTail = insertAt >= 0 && !!skull && window.new_fruit.length >= secretTail;
+  if (!trustTail) {
     console.error("CustomFruit: secret tail not found, appending at end");
     insertAt = window.new_fruit.length;
+  } else if (!namedSkull) {
+    // data-URI puddings lose the poison-skull filename; still use the tail.
   }
   while (
     insertAt > 0 &&

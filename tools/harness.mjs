@@ -245,6 +245,7 @@ export async function launchHarness(opts = {}) {
           if (mode === "bomb" || mode === "bomb_fruit") modeId = window.BOMB_FRUIT_MODE;
           if (mode === "temp_walls" || mode === "temp-walls") modeId = window.TEMP_WALLS_MODE;
           if (mode === "slot" || mode === "slot_machine") modeId = window.SLOT_MACHINE_MODE;
+          if (mode === "fear") modeId = window.FEAR_MODE;
           if (mode === "portal") modeId = 2;
           if (mode === "shield") modeId = 15;
           if (mode === "classic") modeId = 0;
@@ -261,12 +262,18 @@ export async function launchHarness(opts = {}) {
           g.settings.Aa = size;
 
           g.wa.reset();
+          // Ensure a playable heading — reset can leave direction NONE until
+          // the first key, which breaks eat-placement tests.
+          if (g.oa && (g.oa.direction == null || g.oa.direction === "NONE")) {
+            g.oa.direction = "RIGHT";
+          }
           // Native play-start also runs l4E/uaF when mode 10 is active. Burger
           // gates it; calling the live binding here keeps Burger harness
           // starts honest to that path (and must not run for other modes).
+          // Fear uses the same poison-pair path (ghosts), so invoke it too.
           if (
-            window.isBurgerActive &&
-            window.isBurgerActive()
+            (window.isBurgerActive && window.isBurgerActive()) ||
+            (window.isFearActive && window.isFearActive())
           ) {
             const pair =
               typeof window.__uaF === "function"

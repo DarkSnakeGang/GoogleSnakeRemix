@@ -49,9 +49,15 @@ window.ChessMod.runCodeBefore = function () {
     let secretTail = 6;
     let insertAt = window.new_fruit.length - secretTail;
     let skull = window.new_fruit[window.new_fruit.length - 1];
-    if (insertAt < 0 || !skull || !/poison-skull/.test(skull.Real || "")) {
+    // Pudding keeps a 6-entry secret tail ending in the skull. Older builds
+    // named it poison-skull in Real; data-URI puddings lose that filename.
+    const namedSkull = !!(skull && /poison-skull/i.test(skull.Real || ""));
+    const trustTail = insertAt >= 0 && !!skull && window.new_fruit.length >= secretTail;
+    if (!trustTail) {
       console.error("ChessMod: Pudding secret-fruit tail not found, appending at end");
       insertAt = window.new_fruit.length;
+    } else if (!namedSkull) {
+      // Still splice ahead of the last six — do not append past the skull.
     }
     let startType = base + 1 + insertAt;
 

@@ -6,7 +6,7 @@ Remix Mod for Google Snake — adds **Chess Mode**, **Candy Mode**, **Burger Mod
 
 - **Candy Mode** — extra snake length (+1..+6) per fruit; own trophy after Blender
 - **Chess Mode** — chess-piece apples with attack/unlock rules; own trophy (does **not** replace Shield)
-- **Burger Mode** — every fruit carries a timer; it greys out as it ages, turns into a skull poison when it runs out, and a fresh one spawns. Eating a fresh fruit clears every poison on the board; eating a poison costs you control like native Poison mode.
+- **Burger Mode** — every fruit carries a timer; it greys out as it ages, turns into a skull poison when it runs out, and a fresh one spawns. Eating a fresh fruit does **not** clear poisons — they keep their own timers; eating a poison costs you control like native Poison mode.
 - **Cat Mode** — nine lives: bank +1 life every 5 apples (cap 9); a fatal hit spends a life and grants temporary Peaceful for `ceil((score + 3) / 2)` ticks (snake drawn at 75% opacity). Game over only with 0 lives and no grace left.
 - **Mexico Mode** — Portal physics with a hard north/south split: each fruit pair is one apple in the top half and one in the bottom. After the first apple, the middle row fills with walls once (no ongoing Wall Mode spawns). If a required half cannot spawn, you win.
 - **Cat Speed** — between Normal and Fast in feel (`0.85×`), appended after MoreMenu speeds

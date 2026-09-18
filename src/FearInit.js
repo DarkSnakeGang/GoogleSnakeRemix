@@ -1516,14 +1516,22 @@ window.FearMod.alterSnakeCode = function (code) {
 
   fearReplace(
     "conditional Fear poison twin spawn",
-    /e7\(a\.settings,10\)&&!f&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&e4E\(a\)/,
-    "e7(a.settings,10)&&!f&&!(window.isBurgerActive&&window.isBurgerActive())&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+    /e7\(a\.settings,10\)&&!f((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&e4E\(a\)/,
+    "e7(a.settings,10)&&!f$1&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
   );
 
   fearReplace(
     "conditional Fear poison top-up",
-    /b<a\.ka\.length\/2&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&e4E\(a\)/,
-    "b<a.ka.length/2&&!(window.isBurgerActive&&window.isBurgerActive())&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+    /b<a\.ka\.length\/2((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&e4E\(a\)/,
+    "b<a.ka.length/2$1&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+  );
+
+  // Tally empty-count (r7E) only skips Oka. Fear clears Oka on ghosts for atlas
+  // draw, which made ghosts block the next tally wave like Bomb's length check.
+  fearReplace(
+    "r7E ignore Fear ghosts like poison",
+    /if\(e7\(b\.settings,10\)\|\|e7\(b\.settings,11\)\)for\(var d of b\.ka\)!d\.Oka&&d\.Lh&&c\+\+/,
+    "if(e7(b.settings,10)||e7(b.settings,11))for(var d of b.ka)!(d.Oka||window.fear_is_ghost&&window.fear_is_ghost(d))&&d.Lh&&c++"
   );
 
   fearReplace(

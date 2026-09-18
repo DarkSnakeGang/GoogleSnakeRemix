@@ -1147,8 +1147,8 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   ) {
     bfReplace(
       "reset clear shields after burger",
-      /if\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{console\.error\("BurgerMod: reset failed",_be\);\}\}/,
-      'if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_clear_shields(this);}catch(_bf){}}'
+      /if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{console\.error\("BurgerMod: reset failed",_be\);\}\}/,
+      'if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_clear_shields(this);}catch(_bf){}}'
     );
   }
 

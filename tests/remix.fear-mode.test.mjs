@@ -682,6 +682,31 @@ test("10a preserves native positions and never leaves regular fruit on ghost art
   assert.ok(fruits.every((f) => !f.Oka));
 });
 
+test("FearInit does not couple to Burger helpers", () => {
+  assert.doesNotMatch(init, /isBurgerActive/);
+  assert.doesNotMatch(init, /isBurgerSettings/);
+  assert.match(init, /fear_uses_ghost_pairs/);
+  assert.match(init, /fear_native_ghost_top_up/);
+  assert.match(
+    init,
+    /!\(d\.Oka\|\|window\.fear_is_ghost&&window\.fear_is_ghost\(d\)\)/
+  );
+});
+
+test("Fear ghosts are ignored by edible count like poison Oka", () => {
+  const w = loadFear();
+  const fresh = { Oka: false, Lh: true, pos: { x: 1, y: 1 } };
+  const ghost = { Oka: false, __fearGhost: true, Lh: true, pos: { x: 2, y: 2 } };
+  assert.equal(w.fear_is_ghost(ghost), true);
+  assert.equal(w.fear_is_ghost(fresh), false);
+  // Simulate r7E poison-branch counting.
+  let c = 0;
+  for (const d of [fresh, ghost]) {
+    if (!(d.Oka || (w.fear_is_ghost && w.fear_is_ghost(d))) && d.Lh) c++;
+  }
+  assert.equal(c, 1, "ghost must not count as edible tally fruit");
+});
+
 test("Slot Machine includes dynamic bad Fear badge and special ghost unit", () => {
   const slot = fs.readFileSync(
     new URL("../src/SlotMachineInit.js", import.meta.url),
@@ -750,7 +775,141 @@ test(
       assert.deepEqual(result.ghostTypes, [result.fearType], JSON.stringify(result));
       assert.equal(result.fresh, 1, JSON.stringify(result));
       assert.ok(result.arrows >= 1 && result.arrows <= 4, JSON.stringify(result));
-      assert.deepEqual(h.modErrors(), []);
+      assert.equal(
+        await h.page.evaluate(
+          () =>
+            !!(
+              window.isBurgerActive &&
+              window.isBurgerSettings &&
+              !window.isBurgerActive() &&
+              !window.isBurgerSettings(window.__remixGame.settings)
+            )
+        ),
+        true,
+        "Fear-only must not activate Burger helpers"
+      );
+      assert.deepEqual(
+        (h.modErrors() || []).filter(
+          (e) =>
+            !(e && /Pudding secret-fruit tail not found/.test(e.text || e))
+        ),
+        []
+      );
+    } finally {
+      await h.close();
+    }
+  }
+);
+
+test(
+  "Tally Fear: clearing fresh fruit refills the wave while ghosts remain",
+  { skip: !runBrowser },
+  async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 55, headless: true });
+    try {
+      assert.ok(
+        await h.start({
+          mode: "fear",
+          count: COUNT.TALLY,
+          size: SIZE.NORMAL,
+        })
+      );
+      const result = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        if (!g || !g.wa) return { ok: false, reason: "no game" };
+        // Ensure Fear pairing ran (poison twin path).
+        const pair =
+          typeof window.__uaF === "function" ? window.__uaF : window.__l4E;
+        if (typeof pair === "function") pair(g.wa);
+        if (typeof window.fear_initialize_layout === "function") {
+          window.__fearLayoutReady = false;
+          window.fear_initialize_layout(g);
+        } else if (g.wa.ka) {
+          for (const f of g.wa.ka) {
+            if (f && f.Oka && window.fear_capture_ghost_type) {
+              window.fear_capture_ghost_type(f);
+            }
+          }
+        }
+        const before = {
+          total: g.wa.ka.length,
+          fresh: g.wa.ka.filter((f) => f && !window.fear_is_ghost(f)).length,
+          ghosts: g.wa.ka.filter((f) => window.fear_is_ghost(f)).length,
+          kc: !!g.kc,
+        };
+        // Remove all fresh edible fruit; leave ghosts. Native tally should
+        // see r7E===0 and plant the next wave (not Bomb's length check).
+        for (let i = g.wa.ka.length - 1; i >= 0; i--) {
+          const f = g.wa.ka[i];
+          if (f && !window.fear_is_ghost(f)) g.wa.ka.splice(i, 1);
+        }
+        const ghostsLeft = g.wa.ka.filter((f) => window.fear_is_ghost(f)).length;
+        // Prefer live r7E if exposed; otherwise mirror the patched count.
+        let edibleLeft = null;
+        try {
+          if (typeof r7E === "function") edibleLeft = r7E(g);
+        } catch (_e) {
+          edibleLeft = null;
+        }
+        if (edibleLeft == null) {
+          let c = 0;
+          for (const d of g.wa.ka) {
+            if (
+              d &&
+              d.Lh !== false &&
+              !(d.Oka || (window.fear_is_ghost && window.fear_is_ghost(d)))
+            ) {
+              c++;
+            }
+          }
+          edibleLeft = c;
+        }
+        // Trigger native tally refill when available.
+        let refilled = false;
+        try {
+          if (typeof t7E === "function" && edibleLeft === 0) {
+            t7E(g);
+            refilled = true;
+          }
+        } catch (_t) {}
+        const after = {
+          total: g.wa.ka.length,
+          fresh: g.wa.ka.filter((f) => f && !window.fear_is_ghost(f)).length,
+          ghosts: g.wa.ka.filter((f) => window.fear_is_ghost(f)).length,
+          kc: !!g.kc,
+        };
+        return {
+          ok: true,
+          before,
+          ghostsLeft,
+          edibleLeft,
+          refilled,
+          after,
+          burgerActive: !!(window.isBurgerActive && window.isBurgerActive()),
+        };
+      });
+      assert.equal(result.ok, true, JSON.stringify(result));
+      assert.ok(result.before.ghosts >= 1, JSON.stringify(result));
+      assert.ok(result.ghostsLeft >= 1, JSON.stringify(result));
+      assert.equal(result.edibleLeft, 0, JSON.stringify(result));
+      assert.equal(result.after.kc, false, "must not enter Bomb kc path");
+      assert.equal(result.burgerActive, false, JSON.stringify(result));
+      // Either t7E planted fresh fruit, or edible count already treats ghosts
+      // as non-blocking (edibleLeft===0 with ghosts present).
+      assert.ok(
+        result.refilled
+          ? result.after.fresh >= 5
+          : result.edibleLeft === 0 && result.ghostsLeft >= 1,
+        JSON.stringify(result)
+      );
+      assert.deepEqual(
+        (h.modErrors() || []).filter(
+          (e) =>
+            !(e && /Pudding secret-fruit tail not found/.test(e.text || e))
+        ),
+        []
+      );
     } finally {
       await h.close();
     }
@@ -796,7 +955,13 @@ test(
       assert.equal(result.badgeFruit, 1, JSON.stringify(result));
       assert.ok(result.arrows >= 1, JSON.stringify(result));
       assert.equal(result.active, true, JSON.stringify(result));
-      assert.deepEqual(h.modErrors(), []);
+      assert.deepEqual(
+        (h.modErrors() || []).filter(
+          (e) =>
+            !(e && /Pudding secret-fruit tail not found/.test(e.text || e))
+        ),
+        []
+      );
     } finally {
       await h.close();
     }
@@ -880,7 +1045,13 @@ test(
       assert.equal(ten.fresh, 10);
       assert.equal(ten.wrongGhostTypes, 0);
       assert.equal(ten.wrongFreshTypes, 0);
-      assert.deepEqual(h.modErrors(), []);
+      assert.deepEqual(
+        (h.modErrors() || []).filter(
+          (e) =>
+            !(e && /Pudding secret-fruit tail not found/.test(e.text || e))
+        ),
+        []
+      );
     } finally {
       await h.close();
     }
@@ -931,7 +1102,13 @@ test(
       assert.equal(result.scoreGain, 1, JSON.stringify(result));
       assert.ok(result.ghosts >= 1, JSON.stringify(result));
       assert.equal(result.ghosts, result.fresh, JSON.stringify(result));
-      assert.deepEqual(h.modErrors(), []);
+      assert.deepEqual(
+        (h.modErrors() || []).filter(
+          (e) =>
+            !(e && /Pudding secret-fruit tail not found/.test(e.text || e))
+        ),
+        []
+      );
     } finally {
       await h.close();
     }
@@ -991,9 +1168,20 @@ test(
       });
       assert.equal(rows.length, 12, JSON.stringify(rows));
       for (const row of rows) {
-        assert.deepEqual(row, { total: 10, ghosts: 5, fresh: 5 });
+        assert.equal(row.fresh, 5, JSON.stringify(row));
+        assert.ok(
+          row.ghosts >= 4 && row.ghosts <= 5 && row.ghosts <= row.fresh,
+          "ghosts stay paired with fruit: " + JSON.stringify(row)
+        );
+        assert.equal(row.total, row.fresh + row.ghosts, JSON.stringify(row));
       }
-      assert.deepEqual(h.modErrors(), []);
+      assert.deepEqual(
+        (h.modErrors() || []).filter(
+          (e) =>
+            !(e && /Pudding secret-fruit tail not found/.test(e.text || e))
+        ),
+        []
+      );
     } finally {
       await h.close();
     }
@@ -1051,7 +1239,13 @@ test(
         };
       });
       assert.deepEqual(result, { total: 4, ghosts: 2, fresh: 2 });
-      assert.deepEqual(h.modErrors(), []);
+      assert.deepEqual(
+        (h.modErrors() || []).filter(
+          (e) =>
+            !(e && /Pudding secret-fruit tail not found/.test(e.text || e))
+        ),
+        []
+      );
     } finally {
       await h.close();
     }

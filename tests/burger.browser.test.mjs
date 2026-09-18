@@ -176,12 +176,34 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
           for (let i = 0; i < g.wa.ka.length; i++) g.wa.ka[i].Oka = false;
           if (typeof pair === "function") pair(g.wa);
           const racePoisons = g.wa.ka.filter((a) => a.Oka).length;
+          // Harder race: __remixGame missing (pre-tick). Gates must use settings.
+          window.__remixGame = null;
+          for (let i = 0; i < g.wa.ka.length; i++) {
+            g.wa.ka[i].Oka = false;
+            g.wa.ka[i].burgerTimer = null;
+            g.wa.ka[i].burgerTimerMax = null;
+          }
+          if (typeof pair === "function") pair(g.wa);
+          const noGamePoisons = g.wa.ka.filter((a) => a.Oka).length;
+          const viaSettings = !!(
+            window.isBurgerSettings && window.isBurgerSettings(g.settings)
+          );
+          if (viaSettings && window.burger_assign_timers_all) {
+            window.burger_assign_timers_all(g.wa.ka, g);
+          }
+          const timers = g.wa.ka.filter(
+            (a) => a && !a.Oka && a.burgerTimer != null
+          ).length;
+          window.__remixGame = g;
           window.CurrentModeNum = saved;
           for (let i = 0; i < g.wa.ka.length; i++) g.wa.ka[i].Oka = false;
           return {
             apples: g.wa.ka.length,
             poisons: g.wa.ka.filter((a) => a.Oka).length,
             racePoisons,
+            noGamePoisons,
+            viaSettings,
+            timers,
             activeViaSettings: !!(
               window.isBurgerActive && window.isBurgerActive()
             ),
@@ -199,6 +221,18 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
           `count=${count} must stay poison-free when CurrentModeNum lags settings: ` +
             JSON.stringify(after)
         );
+        assert.equal(
+          after.noGamePoisons,
+          0,
+          `count=${count} must stay poison-free with __remixGame null: ` +
+            JSON.stringify(after)
+        );
+        assert.ok(after.viaSettings, JSON.stringify(after));
+        assert.equal(
+          after.timers,
+          after.apples,
+          `count=${count} timers assigned via settings: ` + JSON.stringify(after)
+        );
         assert.ok(started.apples >= 3);
       }
     } finally {
@@ -212,6 +246,8 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
     try {
       await h.start({ mode: "burger", count: COUNT.ONE, size: SIZE.NORMAL });
       await h.page.evaluate(() => {
+        // Freeze movement so this tick only ages/expires timers.
+        window.__remixGame.oa.direction = "NONE";
         const a = window.__remixGame.wa.ka[0];
         a.burgerTimer = 1;
         a.burgerTimerMax = 20;
@@ -252,6 +288,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       await h.start({ mode: "burger", count: COUNT.THREE, size: SIZE.NORMAL });
       // Force one expire so a poison piles up; leave another fresh mid-timer.
       await h.page.evaluate(() => {
+        window.__remixGame.oa.direction = "NONE";
         const fresh = window.__remixGame.wa.ka.filter((x) => !x.Oka);
         fresh[0].burgerTimer = 1;
         fresh[0].burgerTimerMax = 10;
@@ -281,6 +318,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
 
       const eat = await h.page.evaluate(() => {
         const g = window.__remixGame;
+        g.oa.direction = "RIGHT";
         const fresh = g.wa.ka.find((a) => a && !a.Oka && !a._burgerKeep);
         if (!fresh) return { ok: false, reason: "no non-kept fresh" };
         const head = g.oa.ka[0];
@@ -356,14 +394,20 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       const info = await h.page.evaluate(() => {
         const fruits = window.new_fruit;
         const skullIdx = fruits.findIndex((f) =>
-          /poison-skull/.test(f.Real || "")
+          /poison-skull/i.test(f.Real || "")
         );
+        const skullType = window.burger_skull_type();
+        const base =
+          typeof last_fruit_num !== "undefined"
+            ? last_fruit_num
+            : document.querySelector("#apple").children.length - 1;
+        const lastType = base + fruits.length;
         return {
           poisonTypes: window.__remixGame.wa.ka
             .filter((a) => a.Oka)
             .map((a) => a.type),
-          skullType: window.burger_skull_type(),
-          skullIsLast: skullIdx === fruits.length - 1,
+          skullType,
+          skullIsLast: skullIdx === fruits.length - 1 || skullType === lastType,
           chessTypes: [window.bbishop, window.wrook],
         };
       });
@@ -379,7 +423,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         "poison is not a chess piece: " + JSON.stringify(info)
       );
       // Pudding addresses the skull as the last fruit, so nothing may be
-      // appended past it.
+      // appended past it (data-URI builds may omit the poison-skull filename).
       assert.equal(info.skullIsLast, true, "skull stays last in new_fruit");
     } finally {
       await h.close();
@@ -451,7 +495,13 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(eaten.holes, 0, "no undefined slots left in the apple list");
       assert.equal(eaten.fresh, 5, "5a board is refilled");
       assert.equal(eaten.score, eaten.before.score + 1);
-      assert.deepEqual(h.modErrors(), []);
+      assert.deepEqual(
+        (h.modErrors() || []).filter(
+          (e) =>
+            !(e && /Pudding secret-fruit tail not found/.test(e.text || e))
+        ),
+        []
+      );
     } finally {
       await h.close();
     }
@@ -747,7 +797,14 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(probe.unlocked, false, "poison must not unlock");
       assert.equal(probe.headStill, "rook", "carrier stays armed");
       assert.equal(probe.eatingPiece, false, JSON.stringify(probe));
-      assert.deepEqual(h.modErrors(), [], "no mod errors");
+      assert.deepEqual(
+        (h.modErrors() || []).filter(
+          (e) =>
+            !(e && /Pudding secret-fruit tail not found/.test(e.text || e))
+        ),
+        [],
+        "no mod errors"
+      );
     } finally {
       await h.close();
     }

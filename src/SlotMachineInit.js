@@ -3954,6 +3954,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     for (let i = start; i < list.length; i++) {
       const f = list[i];
       if (!f || f.Oka) continue;
+      if (window.fear_is_ghost && window.fear_is_ghost(f)) continue;
       if (f.__slotPortal) {
         const pid = f.__slotPortalPairId;
         if (pid != null) {
@@ -4022,6 +4023,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     for (let i = 0; i < mgr.ka.length; i++) {
       const f = mgr.ka[i];
       if (!f || f.Oka || f === excludeFruit) continue;
+      if (window.fear_is_ghost && window.fear_is_ghost(f)) continue;
       const s = f.sequenceNumber | 0;
       if (s > max) max = s;
     }
@@ -4036,6 +4038,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     mgr
   ) {
     if (!fruit || fruit.Oka) return false;
+    if (window.fear_is_ghost && window.fear_is_ghost(fruit)) return false;
     const g = window.__remixGame;
     if (!window.slot_is_tally_count || !window.slot_is_tally_count(g)) {
       return false;
@@ -4060,6 +4063,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
       if (!f || f.Oka) continue;
+      if (window.fear_is_ghost && window.fear_is_ghost(f)) continue;
       if (eaten && f === eaten) continue;
       n++;
     }
@@ -5282,8 +5286,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot Y3E ignore leftover key/soko for layout",
-        /Y3E=function\(a\)\{return e7\(a,2\)\|\|e7\(a,8\)\|\|e7\(a,9\)\|\|\(e7\(a,10\)&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)\)\}/,
-        "Y3E=function(a){return window.isSlotMachineActive&&window.isSlotMachineActive()?(window.slot_Y3E_gate=1,(window.__slotActive|0)===2):e7(a,2)||e7(a,8)||e7(a,9)||(e7(a,10)&&!(window.isBurgerActive&&window.isBurgerActive()))}"
+        /Y3E=function\(a\)\{return e7\(a,2\)\|\|e7\(a,8\)\|\|e7\(a,9\)\|\|\(e7\(a,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\)\)\)\}/,
+        "Y3E=function(a){return window.isSlotMachineActive&&window.isSlotMachineActive()?(window.slot_Y3E_gate=1,(window.__slotActive|0)===2):e7(a,2)||e7(a,8)||e7(a,9)||(e7(a,10)&&!(window.isBurgerSettings&&window.isBurgerSettings(a)))}"
       )
     ) {
       smReplace(
@@ -6007,8 +6011,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot gate poison Oka pairing after burger",
-        /e7\(a\.settings,10\)&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&\(c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.Oka=c,a\.ka\[a\.ka\.length-2\]\.Oka=!c\)/,
-        "e7(a.settings,10)&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive())&&(window.slot_poison_oka_gate=1,c=Math.random()<.5,a.ka[a.ka.length-1].Oka=c,a.ka[a.ka.length-2].Oka=!c)"
+        /e7\(a\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)&&\(c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.Oka=c,a\.ka\[a\.ka\.length-2\]\.Oka=!c\)/,
+        "e7(a.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive())&&(window.slot_poison_oka_gate=1,c=Math.random()<.5,a.ka[a.ka.length-1].Oka=c,a.ka[a.ka.length-2].Oka=!c)"
       )
     ) {
       smReplace(
@@ -6025,13 +6029,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot block e4E after Fear gate",
-        /e7\(a\.settings,10\)&&!f&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&\(\(window\.fear_uses_ghost_pairs&&window\.fear_uses_ghost_pairs\(window\.__remixGame\)\)\?window\.fear_native_ghost_top_up\(a,e4E\):e4E\(a\)\)/,
-        "e7(a.settings,10)&&!f&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+        /e7\(a\.settings,10\)&&!f((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&\(\(window\.fear_uses_ghost_pairs&&window\.fear_uses_ghost_pairs\(window\.__remixGame\)\)\?window\.fear_native_ghost_top_up\(a,e4E\):e4E\(a\)\)/,
+        "e7(a.settings,10)&&!f$1&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
       ) &&
       !smReplace(
         "slot block e4E after burger gate",
-        /e7\(a\.settings,10\)&&!f&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&e4E\(a\)/,
-        "e7(a.settings,10)&&!f&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&e4E(a)"
+        /e7\(a\.settings,10\)&&!f&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)&&e4E\(a\)/,
+        "e7(a.settings,10)&&!f&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&e4E(a)"
       )
     ) {
       smReplace(
@@ -6045,8 +6049,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot block l4E after burger gate",
-        /e7\((this|a)\.settings,10\)&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&l4E\(\1\.wa\)/g,
-        "e7($1.settings,10)&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
+        /window\.__remixGame=(this|a),e7\(\1\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(\1\.settings\)\)&&l4E\(\1\.wa\)/g,
+        "window.__remixGame=$1,e7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
+      ) &&
+      !smReplace(
+        "slot block l4E after burger gate legacy",
+        /e7\((this|a)\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(\1\.settings\)\)&&l4E\(\1\.wa\)/g,
+        "e7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
       )
     ) {
       smReplace(
@@ -6055,11 +6064,11 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         "e7($1.settings,10)&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
       );
     }
-    if (code.indexOf("l4E=function(a){if(window.isBurgerActive") >= 0) {
+    if (code.indexOf("l4E=function(a){if(window.isBurgerSettings") >= 0) {
       smReplace(
         "slot block l4E function after burger",
-        /l4E=function\(a\)\{if\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)return;/,
-        "l4E=function(a){if(window.isBurgerActive&&window.isBurgerActive())return;if(window.isSlotMachineActive&&window.isSlotMachineActive())return;"
+        /l4E=function\(a\)\{if\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)return;/,
+        "l4E=function(a){if(window.isBurgerSettings&&window.isBurgerSettings(a.settings))return;if(window.isSlotMachineActive&&window.isSlotMachineActive())return;"
       );
     } else if (code.indexOf("l4E=function(a){if(window.isSlotMachineActive") < 0) {
       smReplace(
@@ -6073,13 +6082,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot block g4E top-up after Fear",
-        /b<a\.ka\.length\/2&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&\(\(window\.fear_uses_ghost_pairs&&window\.fear_uses_ghost_pairs\(window\.__remixGame\)\)\?window\.fear_native_ghost_top_up\(a,e4E\):e4E\(a\)\)/,
-        "b<a.ka.length/2&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_g4E=1))&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+        /b<a\.ka\.length\/2((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&\(\(window\.fear_uses_ghost_pairs&&window\.fear_uses_ghost_pairs\(window\.__remixGame\)\)\?window\.fear_native_ghost_top_up\(a,e4E\):e4E\(a\)\)/,
+        "b<a.ka.length/2$1&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_g4E=1))&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
       ) &&
       !smReplace(
         "slot block g4E top-up after burger",
-        /b<a\.ka\.length\/2&&!\(window\.isBurgerActive&&window\.isBurgerActive\(\)\)&&e4E\(a\)/,
-        "b<a.ka.length/2&&!(window.isBurgerActive&&window.isBurgerActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_g4E=1))&&e4E(a)"
+        /b<a\.ka\.length\/2&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)&&e4E\(a\)/,
+        "b<a.ka.length/2&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_g4E=1))&&e4E(a)"
       )
     ) {
       smReplace(
