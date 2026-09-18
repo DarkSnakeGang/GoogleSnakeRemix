@@ -401,7 +401,7 @@ test("directly eating a ghost doubles that Fear instance's duration", () => {
   assert.equal(g.wa.ka.includes(ghost), false);
 });
 
-test("ghost top-up fully refills until ghosts match fruit", () => {
+test("ghost top-up spawns at most one ghost per eat", () => {
   const w = loadFear();
   const fruits = [
     { Oka: false, pos: { x: 1, y: 1 } },
@@ -415,6 +415,11 @@ test("ghost top-up fully refills until ghosts match fruit", () => {
   for (const fruit of fruits) w.__fearSeenFruits.add(fruit);
   w.fear_reconcile_pairs(g, true);
   w.__fearGhostTopUpThisEat = false;
+  w.__fearWaveGhostFill = false;
+  const existingGhost = g.wa.ka.find((f) => w.fear_is_ghost(f));
+  const ghostBefore = existingGhost
+    ? { x: existingGhost.pos.x, y: existingGhost.pos.y }
+    : null;
   let spawned = 0;
   const spawn = (mgr) => {
     spawned++;
@@ -426,11 +431,70 @@ test("ghost top-up fully refills until ghosts match fruit", () => {
   };
   assert.equal(w.fear_native_ghost_top_up(g.wa, spawn), true);
   assert.equal(w.fear_native_ghost_top_up(g.wa, spawn), false);
+  assert.equal(spawned, 1, "at most one ghost per eat");
+  const ghosts = g.wa.ka.filter((f) => w.fear_is_ghost(f)).length;
+  const fresh = g.wa.ka.filter((f) => !w.fear_is_ghost(f)).length;
+  assert.equal(fresh, 3);
+  assert.equal(ghosts, 2);
+  if (ghostBefore && existingGhost) {
+    assert.equal(existingGhost.pos.x, ghostBefore.x, "no relocate on spawn");
+    assert.equal(existingGhost.pos.y, ghostBefore.y, "no relocate on spawn");
+  }
+});
+
+test("wave ghost fill matches fruit count", () => {
+  const w = loadFear();
+  const fruits = [
+    { Oka: false, pos: { x: 1, y: 1 } },
+    { Oka: false, pos: { x: 2, y: 1 } },
+    { Oka: false, pos: { x: 3, y: 1 } },
+    { Oka: true, pos: { x: 4, y: 1 } },
+  ];
+  const g = game(fruits);
+  g.settings = { ka: 6 };
+  w.__remixGame = g;
+  w.fear_sync_fruit_types(g);
+  for (const fruit of fruits) w.__fearSeenFruits.add(fruit);
+  w.fear_reconcile_pairs(g, true);
+  w.__fearGhostTopUpThisEat = false;
+  w.__fearWaveGhostFill = true;
+  let spawned = 0;
+  const spawn = (mgr) => {
+    spawned++;
+    mgr.ka.push({
+      Oka: true,
+      pos: { x: 5 + spawned, y: 1 },
+    });
+    return true;
+  };
+  assert.equal(w.fear_wave_ghost_fill(g.wa, spawn), 2);
   assert.equal(spawned, 2);
   const ghosts = g.wa.ka.filter((f) => w.fear_is_ghost(f)).length;
   const fresh = g.wa.ka.filter((f) => !w.fear_is_ghost(f)).length;
   assert.equal(fresh, 3);
   assert.equal(ghosts, 3);
+  assert.equal(w.__fearWaveGhostFill, false);
+});
+
+test("fear_stamp_ghost_tally_from_pairs copies sequenceNumber", () => {
+  const w = loadFear();
+  const fresh = {
+    Oka: false,
+    __fearPairId: "p1",
+    sequenceNumber: 4,
+    pos: { x: 1, y: 1 },
+  };
+  const ghost = {
+    Oka: true,
+    __fearGhost: true,
+    __fearPairId: "p1",
+    pos: { x: 2, y: 1 },
+  };
+  const g = game([fresh, ghost]);
+  w.__remixGame = g;
+  w.fear_sync_fruit_types(g);
+  w.fear_stamp_ghost_tally_from_pairs(g);
+  assert.equal(ghost.sequenceNumber, 4);
 });
 
 test("ghost refill gives up when native spawn finds no valid space", () => {
@@ -716,7 +780,8 @@ test("Slot Machine includes dynamic bad Fear badge and special ghost unit", () =
   assert.match(slot, /SLOT_BADGE_POLARITY\[window\.FEAR_MODE \| 0\] = "bad"/);
   assert.match(slot, /ghost\.__slotFearGhost = true/);
   assert.match(slot, /m === \(window\.FEAR_MODE \| 0\)/);
-  assert.match(slot, /if \(f\.__slotFearGhost\) return true/);
+  assert.match(slot, /if \(window\.fear_is_ghost && window\.fear_is_ghost\(f\)\) continue/);
+  assert.match(slot, /if \(f\.__slotFearGhost\) continue/);
   assert.match(slot, /same transient empty phase before its special unit/);
   assert.match(
     slot,
@@ -815,10 +880,13 @@ test(
           size: SIZE.NORMAL,
         })
       );
+      const patchMiss = (h.modErrors() || []).filter(
+        (e) => e && /r7E ignore Fear ghosts/.test(e.text || e)
+      );
+      assert.deepEqual(patchMiss, [], "r7E Fear ghost skip must land");
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         if (!g || !g.wa) return { ok: false, reason: "no game" };
-        // Ensure Fear pairing ran (poison twin path).
         const pair =
           typeof window.__uaF === "function" ? window.__uaF : window.__l4E;
         if (typeof pair === "function") pair(g.wa);
@@ -838,54 +906,105 @@ test(
           ghosts: g.wa.ka.filter((f) => window.fear_is_ghost(f)).length,
           kc: !!g.kc,
         };
-        // Remove all fresh edible fruit; leave ghosts. Native tally should
-        // see r7E===0 and plant the next wave (not Bomb's length check).
         for (let i = g.wa.ka.length - 1; i >= 0; i--) {
           const f = g.wa.ka[i];
           if (f && !window.fear_is_ghost(f)) g.wa.ka.splice(i, 1);
         }
         const ghostsLeft = g.wa.ka.filter((f) => window.fear_is_ghost(f)).length;
-        // Prefer live r7E if exposed; otherwise mirror the patched count.
+        const r7EFn =
+          typeof window.__fearR7E === "function"
+            ? window.__fearR7E
+            : typeof window.r7E === "function"
+              ? window.r7E
+              : null;
         let edibleLeft = null;
+        let r7ELive = false;
         try {
-          if (typeof r7E === "function") edibleLeft = r7E(g);
+          if (r7EFn) {
+            edibleLeft = r7EFn(g);
+            r7ELive = true;
+          }
         } catch (_e) {
           edibleLeft = null;
         }
-        if (edibleLeft == null) {
-          let c = 0;
-          for (const d of g.wa.ka) {
-            if (
-              d &&
-              d.Lh !== false &&
-              !(d.Oka || (window.fear_is_ghost && window.fear_is_ghost(d)))
-            ) {
-              c++;
-            }
-          }
-          edibleLeft = c;
+        if (edibleLeft == null && window.fear_edible_fruit_count) {
+          edibleLeft = window.fear_edible_fruit_count(g);
         }
-        // Trigger native tally refill when available.
         let refilled = false;
+        const t7EFn =
+          typeof window.__fearT7E === "function"
+            ? window.__fearT7E
+            : typeof window.t7E === "function"
+              ? window.t7E
+              : null;
         try {
-          if (typeof t7E === "function" && edibleLeft === 0) {
-            t7E(g);
+          if (t7EFn && edibleLeft === 0) {
+            t7EFn(g);
             refilled = true;
           }
         } catch (_t) {}
+        if (refilled && window.fear_after_respawn) {
+          try {
+            window.__fearWaveGhostFill = true;
+            window.__fearGhostTopUpThisEat = false;
+            window.fear_after_respawn(g.wa);
+          } catch (_ar) {}
+        }
+        // If native t7E unavailable, still exercise wave ghost fill on a fake plant.
+        if (!refilled && edibleLeft === 0 && window.fear_wave_ghost_fill) {
+          const plant = window.__fearE4E;
+          if (typeof plant === "function") {
+            for (let i = 0; i < 5; i++) {
+              try {
+                plant(g.wa);
+              } catch (_p) {
+                break;
+              }
+            }
+            // Mark newly planted as fresh (not ghosts) then full-match ghosts.
+            for (const f of g.wa.ka) {
+              if (f && !window.fear_is_ghost(f)) {
+                f.sequenceNumber = f.sequenceNumber || 1;
+              }
+            }
+            window.__fearWaveGhostFill = true;
+            window.__fearGhostTopUpThisEat = false;
+            window.fear_wave_ghost_fill(g.wa);
+            refilled = true;
+          }
+        }
         const after = {
           total: g.wa.ka.length,
           fresh: g.wa.ka.filter((f) => f && !window.fear_is_ghost(f)).length,
           ghosts: g.wa.ka.filter((f) => window.fear_is_ghost(f)).length,
           kc: !!g.kc,
         };
+        const pairedSeqOk =
+          after.fresh > 0 &&
+          g.wa.ka
+            .filter((f) => window.fear_is_ghost(f) && f.__fearPairId != null)
+            .every((ghost) => {
+              const twin = g.wa.ka.find(
+                (f) =>
+                  f &&
+                  !window.fear_is_ghost(f) &&
+                  f.__fearPairId === ghost.__fearPairId
+              );
+              return (
+                twin &&
+                twin.sequenceNumber != null &&
+                ghost.sequenceNumber === twin.sequenceNumber
+              );
+            });
         return {
           ok: true,
           before,
           ghostsLeft,
           edibleLeft,
+          r7ELive,
           refilled,
           after,
+          pairedSeqOk,
           burgerActive: !!(window.isBurgerActive && window.isBurgerActive()),
         };
       });
@@ -895,18 +1014,25 @@ test(
       assert.equal(result.edibleLeft, 0, JSON.stringify(result));
       assert.equal(result.after.kc, false, "must not enter Bomb kc path");
       assert.equal(result.burgerActive, false, JSON.stringify(result));
-      // Either t7E planted fresh fruit, or edible count already treats ghosts
-      // as non-blocking (edibleLeft===0 with ghosts present).
-      assert.ok(
-        result.refilled
-          ? result.after.fresh >= 5
-          : result.edibleLeft === 0 && result.ghostsLeft >= 1,
-        JSON.stringify(result)
+      assert.equal(result.refilled, true, JSON.stringify(result));
+      assert.ok(result.after.fresh >= 5, JSON.stringify(result));
+      assert.equal(
+        result.after.ghosts,
+        result.after.fresh,
+        "ghosts should match fruit after wave fill: " + JSON.stringify(result)
       );
+      // Prefer live r7E when exposed; always require no r7E patch miss in console.
+      if (result.r7ELive != null) {
+        assert.ok(
+          result.r7ELive === true || result.edibleLeft === 0,
+          JSON.stringify(result)
+        );
+      }
       assert.deepEqual(
         (h.modErrors() || []).filter(
           (e) =>
-            !(e && /Pudding secret-fruit tail not found/.test(e.text || e))
+            !(e && /Pudding secret-fruit tail not found/.test(e.text || e)) &&
+            !(e && /r7E ignore Fear ghosts/.test(e.text || e))
         ),
         []
       );
@@ -1059,7 +1185,7 @@ test(
 );
 
 test(
-  "Dice fresh eat despawns its ghost and refills rolled ghost pairs",
+  "Dice fresh eat despawns its ghost and tops up at most one ghost",
   { skip: !runBrowser },
   async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
@@ -1088,10 +1214,14 @@ test(
         ghost.__fearOldDiceGhost = true;
         window.fear_rebuild_grid(g);
         const score = g.Sh | 0;
+        const beforeGhosts = g.wa.ka.filter((f) =>
+          window.fear_is_ghost(f)
+        ).length;
         g.tick();
         return {
           ok: true,
           oldGhostPresent: g.wa.ka.some((f) => f.__fearOldDiceGhost),
+          beforeGhosts,
           ghosts: g.wa.ka.filter((f) => window.fear_is_ghost(f)).length,
           fresh: g.wa.ka.filter((f) => !window.fear_is_ghost(f)).length,
           scoreGain: (g.Sh | 0) - score,
@@ -1100,8 +1230,12 @@ test(
       assert.equal(result.ok, true, JSON.stringify(result));
       assert.equal(result.oldGhostPresent, false, JSON.stringify(result));
       assert.equal(result.scoreGain, 1, JSON.stringify(result));
-      assert.ok(result.ghosts >= 1, JSON.stringify(result));
-      assert.equal(result.ghosts, result.fresh, JSON.stringify(result));
+      assert.ok(result.ghosts <= result.fresh, JSON.stringify(result));
+      // Mid-Dice: at most one new ghost (not a full wave match).
+      assert.ok(
+        result.ghosts >= result.fresh - 1,
+        "at most one ghost behind fruit: " + JSON.stringify(result)
+      );
       assert.deepEqual(
         (h.modErrors() || []).filter(
           (e) =>

@@ -78,7 +78,7 @@ export function ultraHarnessOpts(extra = {}) {
   return {
     modFile: "RemixUltraMod.js",
     customModName: "RemixUltraMod",
-    indicator: "Remix Ultra",
+    indicator: "Remix Ultra v13",
     ...extra,
   };
 }
@@ -92,7 +92,7 @@ export async function launchHarness(opts = {}) {
   const modFile = opts.modFile || DEFAULT_MOD_FILE;
   const modPath = resolveModPath(opts);
   const customModName = opts.customModName || "RemixMod";
-  const indicator = opts.indicator || "Remix Mod";
+  const indicator = opts.indicator || "Remix Mod v13";
 
   if (!fs.existsSync(modPath)) {
     throw new Error(`${modFile} missing — run: python RemixBuilder.py`);

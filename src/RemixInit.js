@@ -1270,7 +1270,7 @@ window.RemixMod.runCodeAfter = function () {
   let modIndicator = document.createElement("div");
   modIndicator.style =
     "position:absolute;font-family:Arial,sans-serif;color:white;font-size:14px;padding-top:4px;padding-left:30px;user-select: none;";
-  modIndicator.textContent = "Remix Mod";
+  modIndicator.textContent = "Remix Mod v13";
   let canvasNode = document.getElementsByClassName("jNB0Ic")[0];
   let parent = document.getElementsByClassName("EjCLSb")[0];
   if (parent && canvasNode) {

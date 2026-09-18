@@ -3290,7 +3290,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         const f = list[i];
         if (!f) continue;
         if (eaten && f === eaten) continue;
-        if (f.__slotFearGhost) return true;
+        // Fear ghosts (trophy or Slot special) are hazards, not edible leftover.
+        if (window.fear_is_ghost && window.fear_is_ghost(f)) continue;
+        if (f.__slotFearGhost) continue;
         if (f.Oka) continue; // poison hazard — not playable fruit
         return true; // regular / portal / chess piece / badged fruit
       }
@@ -4538,10 +4540,23 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         return false;
       }
       const n = window.slot_dice_spawn_n(g);
+      window.__fearWaveGhostFill = true;
       const planted = window.slot_plant_wave_units(g, n, m, null);
       if (planted === 0) {
+        window.__fearWaveGhostFill = false;
         window.slot_win_if_empty(g, mgr);
         return false;
+      }
+      if (
+        window.isFearActive &&
+        window.isFearActive() &&
+        window.fear_wave_ghost_fill
+      ) {
+        try {
+          window.fear_wave_ghost_fill(mgr);
+        } catch (_fg) {}
+      } else {
+        window.__fearWaveGhostFill = false;
       }
       if (m === 28) window.slot_arm_new_bomb_fruits(mgr, before);
       return true;
@@ -4556,11 +4571,24 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         return false;
       }
       const n = window.slot_bomb_spawn_n(g);
+      window.__fearWaveGhostFill = true;
       const planted = window.slot_plant_wave_units(g, n, m, null);
       if (planted > 0) g.kc = true;
       if (planted === 0) {
+        window.__fearWaveGhostFill = false;
         window.slot_win_if_empty(g, mgr);
         return false;
+      }
+      if (
+        window.isFearActive &&
+        window.isFearActive() &&
+        window.fear_wave_ghost_fill
+      ) {
+        try {
+          window.fear_wave_ghost_fill(mgr);
+        } catch (_fg) {}
+      } else {
+        window.__fearWaveGhostFill = false;
       }
       if (m === 28) window.slot_arm_new_bomb_fruits(mgr, before);
       return true;
@@ -4577,10 +4605,25 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         return false;
       }
       const n = window.slot_tally_spawn_n(g);
+      window.__fearWaveGhostFill = true;
       const planted = window.slot_plant_wave_units(g, n, m, { indexTally: true });
       if (planted === 0) {
+        window.__fearWaveGhostFill = false;
         window.slot_win_if_empty(g, mgr);
         return false;
+      }
+      if (
+        window.isFearActive &&
+        window.isFearActive() &&
+        window.fear_wave_ghost_fill
+      ) {
+        try {
+          window.fear_wave_ghost_fill(mgr);
+          window.fear_stamp_ghost_tally_from_pairs &&
+            window.fear_stamp_ghost_tally_from_pairs(g);
+        } catch (_fg) {}
+      } else {
+        window.__fearWaveGhostFill = false;
       }
       if (m === 28) window.slot_arm_new_bomb_fruits(mgr, before);
       return true;

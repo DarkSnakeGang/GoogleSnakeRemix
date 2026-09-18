@@ -62,7 +62,7 @@ describe("RemixUltra build artifacts", () => {
     assert.match(ultra, /ULTRA_PRESET_PNG/);
     assert.match(ultra, /ULTRA_CHALLENGE_TXT/);
     assert.match(ultra, /setupMakePatternHtml/);
-    assert.match(ultra, /textContent = "Remix Ultra"/);
+    assert.match(ultra, /textContent = "Remix Ultra v13"/);
     assert.match(ultra, /window\.UltraPlace/);
     assert.match(
       ultra,
@@ -125,11 +125,8 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
         const labels = parent
           ? [...parent.querySelectorAll("div")]
               .map((el) => (el.textContent || "").trim())
-              .filter(
-                (t) =>
-                  t === "Remix Mod" ||
-                  t === "Level Editor Mod" ||
-                  t === "Remix Ultra"
+              .filter((t) =>
+                /^(Remix Mod|Level Editor Mod|Remix Ultra)( v\d+)?$/.test(t)
               )
           : [];
         return {
@@ -150,7 +147,7 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       assert.equal(probe.le, true, JSON.stringify(probe));
       assert.equal(probe.keys.settings, "RemixUltraSettings");
       assert.equal(probe.keys.tk, "snake_timeKeeper_remix_ultra");
-      assert.deepEqual(probe.labels, ["Remix Ultra"], JSON.stringify(probe));
+      assert.deepEqual(probe.labels, ["Remix Ultra v13"], JSON.stringify(probe));
       assert.equal(probe.place, true);
       assert.equal(probe.tabs, true);
       assert.equal(probe.splitsTab, true);

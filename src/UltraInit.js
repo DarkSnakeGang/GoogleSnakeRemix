@@ -1315,7 +1315,8 @@ window.ultraSetIndicator = function ultraSetIndicator() {
   if (!parent) return;
   for (const el of [...parent.querySelectorAll("div")]) {
     const t = (el.textContent || "").trim();
-    if (t === "Remix Mod" || t === "Level Editor Mod" || t === "Remix Ultra") {
+    // Match bare or versioned labels (Pudding-style "… v13").
+    if (/^(Remix Mod|Level Editor Mod|Remix Ultra)( v\d+)?$/.test(t)) {
       el.remove();
     }
   }
@@ -1324,7 +1325,7 @@ window.ultraSetIndicator = function ultraSetIndicator() {
   modIndicator.id = "remix-ultra-indicator";
   modIndicator.style =
     "position:absolute;font-family:Arial,sans-serif;color:white;font-size:14px;padding-top:4px;padding-left:30px;user-select: none;";
-  modIndicator.textContent = "Remix Ultra";
+  modIndicator.textContent = "Remix Ultra v13";
   if (canvasNode) parent.insertBefore(modIndicator, canvasNode);
   else parent.appendChild(modIndicator);
 };

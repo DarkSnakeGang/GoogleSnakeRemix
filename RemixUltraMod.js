@@ -17975,6 +17975,8 @@ window.fear_reset_state = function fear_reset_state() {
   window.fearTurnsRemaining = 0;
   window.__fearRefreshedMove = false;
   window.__fearGhostTopUpThisEat = false;
+  window.__fearWaveGhostFill = false;
+  window.__fearBombWaveGhostDone = false;
 };
 window.fear_reset_state();
 
@@ -18885,6 +18887,124 @@ window.fear_fill_ghosts_to_match_fruit =
     return added;
   };
 
+/** Spawn exactly one ghost when ghosts < fruit. Does not relocate others. */
+window.fear_spawn_one_ghost = function fear_spawn_one_ghost(mgr, nativeTopUp) {
+  const g = window.__remixGame;
+  const list = mgr && mgr.ka;
+  const spawn =
+    typeof nativeTopUp === "function"
+      ? nativeTopUp
+      : typeof window.__fearE4E === "function"
+        ? window.__fearE4E
+        : null;
+  if (!g || !list || typeof spawn !== "function") return 0;
+  window.__fearE4E = spawn;
+  const counts = window.fear_board_counts(g);
+  if (counts.fresh <= 0 || counts.ghosts >= counts.fresh) return 0;
+  const before = list.length;
+  let ok = false;
+  try {
+    ok = spawn(mgr);
+  } catch (_e) {
+    return 0;
+  }
+  if (ok === false || list.length <= before) return 0;
+  window.fear_mark_new_as_ghosts(list, before);
+  window.fear_pair_new_fruits(g);
+  window.fear_sync_fruit_types(g);
+  window.fear_reconcile_pairs(g, true);
+  return 1;
+};
+
+/**
+ * Dice last-empty / Bomb first-empty / Tally empty wave: fill ghosts to match
+ * edible fruit. Clears the wave flag and consumes the per-eat top-up latch.
+ */
+window.fear_wave_ghost_fill = function fear_wave_ghost_fill(mgr, nativeTopUp) {
+  window.__fearWaveGhostFill = false;
+  window.__fearGhostTopUpThisEat = true;
+  const g = window.__remixGame;
+  if (g && g.settings && (g.settings.ka | 0) === 5) {
+    window.__fearBombWaveGhostDone = true;
+  }
+  const added = window.fear_fill_ghosts_to_match_fruit(mgr, nativeTopUp);
+  window.fear_stamp_ghost_tally_from_pairs();
+  return added;
+};
+
+/** True when this eat should full-match ghosts (not the single-ghost rule). */
+window.fear_should_wave_ghost_fill = function fear_should_wave_ghost_fill(
+  game
+) {
+  if (window.__fearWaveGhostFill) return true;
+  const g = game || window.__remixGame;
+  if (!g || !g.settings) return false;
+  const counts = window.fear_board_counts(g);
+  const gap = (counts.fresh | 0) - (counts.ghosts | 0);
+  // Mid-board / single-fruit eats leave gap 0 or 1; wave plants leave a larger gap.
+  if (gap <= 1) return false;
+  const ka = g.settings.ka | 0;
+  if (ka === 6) return true; // Tally empty wave
+  if (typeof window.slot_is_dice_count === "function") {
+    try {
+      if (window.slot_is_dice_count(g)) return true;
+    } catch (_e) {}
+  }
+  if (typeof window.remixIsDiceLike === "function") {
+    try {
+      if (window.remixIsDiceLike(ka)) return true;
+    } catch (_e2) {}
+  }
+  if (ka === 4) return true;
+  // Bomb: only the first empty → 24 plant (once). Mid-Bomb after kc stays single-ghost.
+  if (ka === 5 && !window.__fearBombWaveGhostDone) return true;
+  return false;
+};
+
+/** Edible fruit left — mirrors patched r7E poison/Fear branch (skips ghosts). */
+window.fear_edible_fruit_count = function fear_edible_fruit_count(game) {
+  const g = game || window.__remixGame;
+  const list = g && g.wa && g.wa.ka;
+  if (!list) return 0;
+  let c = 0;
+  for (let i = 0; i < list.length; i++) {
+    const d = list[i];
+    if (!d) continue;
+    if (d.Lh === false) continue;
+    if (d.Oka || (window.fear_is_ghost && window.fear_is_ghost(d))) continue;
+    c++;
+  }
+  return c;
+};
+
+/** Copy tally sequenceNumber from paired fresh fruit onto each ghost. */
+window.fear_stamp_ghost_tally_from_pairs =
+  function fear_stamp_ghost_tally_from_pairs(game) {
+    const g = game || window.__remixGame;
+    const list = g && g.wa && g.wa.ka;
+    if (!list) return;
+    for (let i = 0; i < list.length; i++) {
+      const ghost = list[i];
+      if (!ghost || !window.fear_is_ghost(ghost)) continue;
+      if (ghost.__fearPairId == null) continue;
+      for (let j = 0; j < list.length; j++) {
+        const twin = list[j];
+        if (
+          !twin ||
+          twin === ghost ||
+          window.fear_is_ghost(twin) ||
+          twin.__fearPairId !== ghost.__fearPairId
+        ) {
+          continue;
+        }
+        if (twin.sequenceNumber != null) {
+          ghost.sequenceNumber = twin.sequenceNumber;
+        }
+        break;
+      }
+    }
+  };
+
 window.fear_find_free_pos = function fear_find_free_pos(mgr, except) {
   const g = window.__remixGame;
   const free =
@@ -18981,7 +19101,11 @@ window.fear_native_ghost_top_up =
           : null;
     if (!g || !list) return false;
     if (typeof spawn === "function") window.__fearE4E = spawn;
-    // One full refill attempt per apple eat (e4E / g4E / after_respawn).
+    // Wave plants use full match via fear_wave_ghost_fill / after_respawn.
+    if (window.fear_should_wave_ghost_fill(g)) {
+      return window.fear_wave_ghost_fill(mgr, spawn) > 0;
+    }
+    // One top-up attempt per apple eat (e4E / g4E / after_respawn).
     if (window.__fearGhostTopUpThisEat) return false;
     const counts = window.fear_board_counts(g);
     // Hard cap: never keep more ghosts than edible fruit.
@@ -18993,8 +19117,8 @@ window.fear_native_ghost_top_up =
     window.__fearGhostTopUpThisEat = true;
     if (counts.fresh <= 0) return false;
     if (counts.ghosts < counts.fresh) {
-      // Full refill to match fruit; stops if native spawn finds no valid seat.
-      return window.fear_fill_ghosts_to_match_fruit(mgr, spawn) > 0;
+      // At most one new ghost; do not relocate other ghosts on this path.
+      return window.fear_spawn_one_ghost(mgr, spawn) > 0;
     }
     // Already covered by ghosts — move one ghost instead of adding another.
     const moved = window.fear_relocate_one_ghost(g, mgr);
@@ -19181,12 +19305,10 @@ window.fear_after_respawn = function fear_after_respawn(mgr) {
   if (!g || !mgr || !window.isFearActive()) return;
   window.fear_pair_new_fruits(g);
   if (window.fear_uses_ghost_pairs && window.fear_uses_ghost_pairs(g)) {
-    const counts = window.fear_board_counts(g);
-    // Dice/cluster multi-f4E can leave a larger gap after the first latch —
-    // always catch up here, and stop if the board has no valid spawn seats.
-    if (counts.fresh > 0 && counts.ghosts < counts.fresh) {
-      window.fear_fill_ghosts_to_match_fruit(mgr);
-      window.__fearGhostTopUpThisEat = true;
+    // Dice/Tally empty wave and Bomb first empty: full ghost match.
+    // Otherwise at most one ghost (or relocate when already covered).
+    if (window.fear_should_wave_ghost_fill(g)) {
+      window.fear_wave_ghost_fill(mgr);
     } else {
       window.fear_native_ghost_top_up(mgr);
     }
@@ -19238,6 +19360,26 @@ window.FearMod.alterSnakeCode = function (code) {
     /,d4E=function\(a,b,c\)\{/,
     ",d4E=window.__fearFreePos=function(a,b,c){"
   );
+  fearReplace(
+    "expose native r7E",
+    /,r7E=function\(/,
+    ",r7E=window.__fearR7E=window.r7E=function("
+  ) ||
+    fearReplace(
+      "expose native r7E (spaced)",
+      /,\s*r7E\s*=\s*function\s*\(/,
+      ",r7E=window.__fearR7E=window.r7E=function("
+    );
+  fearReplace(
+    "expose native t7E",
+    /,t7E=function\(/,
+    ",t7E=window.__fearT7E=window.t7E=function("
+  ) ||
+    fearReplace(
+      "expose native t7E (spaced)",
+      /,\s*t7E\s*=\s*function\s*\(/,
+      ",t7E=window.__fearT7E=window.t7E=function("
+    );
 
   // Treat full Fear / Fear blender as native Poison for pair counts and refill.
   fearReplace(
@@ -19300,11 +19442,20 @@ window.FearMod.alterSnakeCode = function (code) {
 
   // Tally empty-count (r7E) only skips Oka. Fear clears Oka on ghosts for atlas
   // draw, which made ghosts block the next tally wave like Bomb's length check.
-  fearReplace(
-    "r7E ignore Fear ghosts like poison",
-    /if\(e7\(b\.settings,10\)\|\|e7\(b\.settings,11\)\)for\(var d of b\.ka\)!d\.Oka&&d\.Lh&&c\+\+/,
-    "if(e7(b.settings,10)||e7(b.settings,11))for(var d of b.ka)!(d.Oka||window.fear_is_ghost&&window.fear_is_ghost(d))&&d.Lh&&c++"
-  );
+  const r7EGhostSkip =
+    /if\s*\(\s*e7\s*\(\s*b\.settings\s*,\s*10\s*\)\s*\|\|\s*e7\s*\(\s*b\.settings\s*,\s*11\s*\)\s*\)\s*for\s*\(\s*(?:var|let|const)\s+d\s+of\s+b\.ka\s*\)\s*!d\.Oka\s*&&\s*d\.Lh\s*&&\s*c\+\+/;
+  const r7EGhostRepl =
+    "if(e7(b.settings,10)||e7(b.settings,11))for(var d of b.ka)!(d.Oka||window.fear_is_ghost&&window.fear_is_ghost(d))&&d.Lh&&c++";
+  if (
+    !fearReplace("r7E ignore Fear ghosts like poison", r7EGhostSkip, r7EGhostRepl)
+  ) {
+    // Compact fallback (no whitespace flexibility).
+    fearReplace(
+      "r7E ignore Fear ghosts like poison (compact)",
+      /if\(e7\(b\.settings,10\)\|\|e7\(b\.settings,11\)\)for\(var d of b\.ka\)!d\.Oka&&d\.Lh&&c\+\+/,
+      r7EGhostRepl
+    );
+  }
 
   fearReplace(
     "reset after temp walls",
@@ -22653,7 +22804,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         const f = list[i];
         if (!f) continue;
         if (eaten && f === eaten) continue;
-        if (f.__slotFearGhost) return true;
+        // Fear ghosts (trophy or Slot special) are hazards, not edible leftover.
+        if (window.fear_is_ghost && window.fear_is_ghost(f)) continue;
+        if (f.__slotFearGhost) continue;
         if (f.Oka) continue; // poison hazard — not playable fruit
         return true; // regular / portal / chess piece / badged fruit
       }
@@ -23901,10 +24054,23 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         return false;
       }
       const n = window.slot_dice_spawn_n(g);
+      window.__fearWaveGhostFill = true;
       const planted = window.slot_plant_wave_units(g, n, m, null);
       if (planted === 0) {
+        window.__fearWaveGhostFill = false;
         window.slot_win_if_empty(g, mgr);
         return false;
+      }
+      if (
+        window.isFearActive &&
+        window.isFearActive() &&
+        window.fear_wave_ghost_fill
+      ) {
+        try {
+          window.fear_wave_ghost_fill(mgr);
+        } catch (_fg) {}
+      } else {
+        window.__fearWaveGhostFill = false;
       }
       if (m === 28) window.slot_arm_new_bomb_fruits(mgr, before);
       return true;
@@ -23919,11 +24085,24 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         return false;
       }
       const n = window.slot_bomb_spawn_n(g);
+      window.__fearWaveGhostFill = true;
       const planted = window.slot_plant_wave_units(g, n, m, null);
       if (planted > 0) g.kc = true;
       if (planted === 0) {
+        window.__fearWaveGhostFill = false;
         window.slot_win_if_empty(g, mgr);
         return false;
+      }
+      if (
+        window.isFearActive &&
+        window.isFearActive() &&
+        window.fear_wave_ghost_fill
+      ) {
+        try {
+          window.fear_wave_ghost_fill(mgr);
+        } catch (_fg) {}
+      } else {
+        window.__fearWaveGhostFill = false;
       }
       if (m === 28) window.slot_arm_new_bomb_fruits(mgr, before);
       return true;
@@ -23940,10 +24119,25 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         return false;
       }
       const n = window.slot_tally_spawn_n(g);
+      window.__fearWaveGhostFill = true;
       const planted = window.slot_plant_wave_units(g, n, m, { indexTally: true });
       if (planted === 0) {
+        window.__fearWaveGhostFill = false;
         window.slot_win_if_empty(g, mgr);
         return false;
+      }
+      if (
+        window.isFearActive &&
+        window.isFearActive() &&
+        window.fear_wave_ghost_fill
+      ) {
+        try {
+          window.fear_wave_ghost_fill(mgr);
+          window.fear_stamp_ghost_tally_from_pairs &&
+            window.fear_stamp_ghost_tally_from_pairs(g);
+        } catch (_fg) {}
+      } else {
+        window.__fearWaveGhostFill = false;
       }
       if (m === 28) window.slot_arm_new_bomb_fruits(mgr, before);
       return true;
@@ -33570,7 +33764,7 @@ window.RemixMod.runCodeAfter = function () {
   let modIndicator = document.createElement("div");
   modIndicator.style =
     "position:absolute;font-family:Arial,sans-serif;color:white;font-size:14px;padding-top:4px;padding-left:30px;user-select: none;";
-  modIndicator.textContent = "Remix Mod";
+  modIndicator.textContent = "Remix Mod v13";
   let canvasNode = document.getElementsByClassName("jNB0Ic")[0];
   let parent = document.getElementsByClassName("EjCLSb")[0];
   if (parent && canvasNode) {
@@ -39623,7 +39817,8 @@ window.ultraSetIndicator = function ultraSetIndicator() {
   if (!parent) return;
   for (const el of [...parent.querySelectorAll("div")]) {
     const t = (el.textContent || "").trim();
-    if (t === "Remix Mod" || t === "Level Editor Mod" || t === "Remix Ultra") {
+    // Match bare or versioned labels (Pudding-style "… v13").
+    if (/^(Remix Mod|Level Editor Mod|Remix Ultra)( v\d+)?$/.test(t)) {
       el.remove();
     }
   }
@@ -39632,7 +39827,7 @@ window.ultraSetIndicator = function ultraSetIndicator() {
   modIndicator.id = "remix-ultra-indicator";
   modIndicator.style =
     "position:absolute;font-family:Arial,sans-serif;color:white;font-size:14px;padding-top:4px;padding-left:30px;user-select: none;";
-  modIndicator.textContent = "Remix Ultra";
+  modIndicator.textContent = "Remix Ultra v13";
   if (canvasNode) parent.insertBefore(modIndicator, canvasNode);
   else parent.appendChild(modIndicator);
 };
