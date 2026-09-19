@@ -267,13 +267,8 @@ window.DiceCounts.runCodeBefore = function () {
     }
 
     let selected = -1;
-    try {
-      const ka =
-        window.__remixGame && window.__remixGame.settings
-          ? window.__remixGame.settings.ka
-          : null;
-      if (typeof ka === "number") selected = ka;
-    } catch (_e) {}
+    // Prefer live menu / pending Ca — ka is the last committed run and stays
+    // stale when switching counts on the death screen without playing.
     try {
       const root = document.querySelector("#count");
       if (root) {
@@ -283,6 +278,16 @@ window.DiceCounts.runCodeBefore = function () {
         if (fromDom >= 0) selected = fromDom;
       }
     } catch (_e2) {}
+    try {
+      if (selected < 0) {
+        const settings =
+          window.__remixGame && window.__remixGame.settings
+            ? window.__remixGame.settings
+            : null;
+        if (settings && typeof settings.Ca === "number") selected = settings.Ca;
+        else if (settings && typeof settings.ka === "number") selected = settings.ka;
+      }
+    } catch (_e) {}
     if (selected !== index) return;
 
     try {
@@ -588,6 +593,39 @@ window.DiceCounts.alterSnakeCode = function (code) {
   }
 
   // MoreMenu appends window.uiImage for count>3 — menu-sized, wrong for HUD.
+  // Also fix its death-screen cleanup: forward removeChild + i++ skips every
+  // other node, so switching Dice→Bomb leaves the die stacked on the bomb.
+  // And raise the append gate from >3 to >6 — Dice/Bomb/Tally are native now
+  // (O7E already shows them); only Remix extras need the append overlay.
+  if (
+    code.includes(
+      "for(let i = 2; i < appleCountDisplay.children.length; i++)"
+    ) ||
+    code.includes(
+      "for(let i=2;i<appleCountDisplay.children.length;i++)"
+    )
+  ) {
+    code = code.replace(
+      /for\s*\(\s*let\s+i\s*=\s*2\s*;\s*i\s*<\s*appleCountDisplay\.children\.length\s*;\s*i\s*\+\+\s*\)\s*\{\s*appleCountDisplay\.removeChild\s*\(\s*appleCountDisplay\.children\s*\[\s*i\s*\]\s*\)\s*;?\s*\}/,
+      "while(appleCountDisplay.children.length>2){appleCountDisplay.removeChild(appleCountDisplay.lastChild);}"
+    );
+  } else {
+    console.error("DiceCounts: failed to fix death-screen count icon cleanup");
+  }
+
+  if (
+    code.match(
+      /indexOf\(document\.querySelector\('#count'\)\.getElementsByClassName\('tuJOWd'\)\[0\]\)\)\s*>\s*3/
+    )
+  ) {
+    code = code.replace(
+      /(indexOf\(document\.querySelector\('#count'\)\.getElementsByClassName\('tuJOWd'\)\[0\]\)\)\s*>\s*)3/,
+      "$16"
+    );
+  } else {
+    console.error("DiceCounts: failed to raise death-screen count append gate");
+  }
+
   if (code.includes("const __img = window.uiImage(__src)")) {
     code = code.assertReplace(
       "const __img = window.uiImage(__src)",

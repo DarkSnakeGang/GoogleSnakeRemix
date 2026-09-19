@@ -4564,9 +4564,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         window.slot_win_if_empty(g, mgr);
         return false;
       }
+      // Trophy Fear only — Slot Fear badge already planted its one ghost.
       if (
-        window.isFearActive &&
-        window.isFearActive() &&
+        window.fear_mode_selected &&
+        window.fear_mode_selected() &&
         window.fear_wave_ghost_fill
       ) {
         try {
@@ -4596,9 +4597,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         window.slot_win_if_empty(g, mgr);
         return false;
       }
+      // Trophy Fear only — Slot Fear badge already planted its one ghost.
       if (
-        window.isFearActive &&
-        window.isFearActive() &&
+        window.fear_mode_selected &&
+        window.fear_mode_selected() &&
         window.fear_wave_ghost_fill
       ) {
         try {
@@ -4629,9 +4631,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         window.slot_win_if_empty(g, mgr);
         return false;
       }
+      // Trophy Fear only — Slot Fear badge already planted its one ghost.
       if (
-        window.isFearActive &&
-        window.isFearActive() &&
+        window.fear_mode_selected &&
+        window.fear_mode_selected() &&
         window.fear_wave_ghost_fill
       ) {
         try {

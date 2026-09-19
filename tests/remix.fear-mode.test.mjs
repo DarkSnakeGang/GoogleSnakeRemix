@@ -535,6 +535,25 @@ test("tally does not wave-fill on gap alone without t7E flag", () => {
   assert.equal(w.fear_should_wave_ghost_fill(g), true);
 });
 
+test("Slot Machine Fear badge never wave-fills ghosts", () => {
+  const w = loadFear();
+  const g = game([
+    { Oka: false, pos: { x: 1, y: 1 } },
+    { Oka: false, pos: { x: 2, y: 1 } },
+    { Oka: false, pos: { x: 3, y: 1 } },
+  ]);
+  g.settings = { ka: 5 };
+  w.__remixGame = g;
+  w.isSlotMachineActive = () => true;
+  w.fear_mode_selected = () => false;
+  w.__fearWaveGhostFill = true;
+  assert.equal(w.fear_should_wave_ghost_fill(g), false);
+  assert.match(
+    fs.readFileSync(new URL("../src/FearInit.js", import.meta.url), "utf8"),
+    /Slot Fear badge = single hazard unit/
+  );
+});
+
 test("pair_new_fruits keeps tally wave plants as fresh fruit", () => {
   const w = loadFear();
   const planted = [

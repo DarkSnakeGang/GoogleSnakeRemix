@@ -19711,6 +19711,14 @@ window.fear_tally_wave_ghosts = function fear_tally_wave_ghosts(
 window.fear_should_wave_ghost_fill = function fear_should_wave_ghost_fill(
   game
 ) {
+  // Slot Fear badge = single hazard unit, never a fruit-matched ghost wave.
+  if (
+    window.isSlotMachineActive &&
+    window.isSlotMachineActive() &&
+    !(window.fear_mode_selected && window.fear_mode_selected())
+  ) {
+    return false;
+  }
   // Explicit empty→plant flag (t7E / Slot dice|tally|bomb wave).
   if (window.__fearWaveGhostFill) return true;
   const g = game || window.__remixGame;
@@ -20096,6 +20104,18 @@ window.fear_after_respawn = function fear_after_respawn(mgr) {
   if (!g || !mgr || !window.isFearActive()) return;
   window.fear_pair_new_fruits(g);
   if (window.fear_uses_ghost_pairs && window.fear_uses_ghost_pairs(g)) {
+    // Slot Machine Fear badge plants one __slotFearGhost hazard (like Poison).
+    // Never wave-match / top-up ghosts to fruit count under Bomb/Dice/Tally.
+    if (
+      window.isSlotMachineActive &&
+      window.isSlotMachineActive() &&
+      !(window.fear_mode_selected && window.fear_mode_selected())
+    ) {
+      window.__fearWaveGhostFill = false;
+      window.fear_rebuild_grid(g);
+      window.fear_win_if_empty(g, mgr);
+      return;
+    }
     if (window.fear_should_wave_ghost_fill(g)) {
       const ka = g.settings ? g.settings.ka | 0 : -1;
       // Tally t7E pushes fruit via repeated f4E; each f4E calls after_respawn
@@ -24912,9 +24932,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         window.slot_win_if_empty(g, mgr);
         return false;
       }
+      // Trophy Fear only — Slot Fear badge already planted its one ghost.
       if (
-        window.isFearActive &&
-        window.isFearActive() &&
+        window.fear_mode_selected &&
+        window.fear_mode_selected() &&
         window.fear_wave_ghost_fill
       ) {
         try {
@@ -24944,9 +24965,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         window.slot_win_if_empty(g, mgr);
         return false;
       }
+      // Trophy Fear only — Slot Fear badge already planted its one ghost.
       if (
-        window.isFearActive &&
-        window.isFearActive() &&
+        window.fear_mode_selected &&
+        window.fear_mode_selected() &&
         window.fear_wave_ghost_fill
       ) {
         try {
@@ -24977,9 +24999,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         window.slot_win_if_empty(g, mgr);
         return false;
       }
+      // Trophy Fear only — Slot Fear badge already planted its one ghost.
       if (
-        window.isFearActive &&
-        window.isFearActive() &&
+        window.fear_mode_selected &&
+        window.fear_mode_selected() &&
         window.fear_wave_ghost_fill
       ) {
         try {
@@ -28240,13 +28263,8 @@ window.DiceCounts.runCodeBefore = function () {
     }
 
     let selected = -1;
-    try {
-      const ka =
-        window.__remixGame && window.__remixGame.settings
-          ? window.__remixGame.settings.ka
-          : null;
-      if (typeof ka === "number") selected = ka;
-    } catch (_e) {}
+    // Prefer live menu / pending Ca — ka is the last committed run and stays
+    // stale when switching counts on the death screen without playing.
     try {
       const root = document.querySelector("#count");
       if (root) {
@@ -28256,6 +28274,16 @@ window.DiceCounts.runCodeBefore = function () {
         if (fromDom >= 0) selected = fromDom;
       }
     } catch (_e2) {}
+    try {
+      if (selected < 0) {
+        const settings =
+          window.__remixGame && window.__remixGame.settings
+            ? window.__remixGame.settings
+            : null;
+        if (settings && typeof settings.Ca === "number") selected = settings.Ca;
+        else if (settings && typeof settings.ka === "number") selected = settings.ka;
+      }
+    } catch (_e) {}
     if (selected !== index) return;
 
     try {
@@ -28561,6 +28589,39 @@ window.DiceCounts.alterSnakeCode = function (code) {
   }
 
   // MoreMenu appends window.uiImage for count>3 — menu-sized, wrong for HUD.
+  // Also fix its death-screen cleanup: forward removeChild + i++ skips every
+  // other node, so switching Dice→Bomb leaves the die stacked on the bomb.
+  // And raise the append gate from >3 to >6 — Dice/Bomb/Tally are native now
+  // (O7E already shows them); only Remix extras need the append overlay.
+  if (
+    code.includes(
+      "for(let i = 2; i < appleCountDisplay.children.length; i++)"
+    ) ||
+    code.includes(
+      "for(let i=2;i<appleCountDisplay.children.length;i++)"
+    )
+  ) {
+    code = code.replace(
+      /for\s*\(\s*let\s+i\s*=\s*2\s*;\s*i\s*<\s*appleCountDisplay\.children\.length\s*;\s*i\s*\+\+\s*\)\s*\{\s*appleCountDisplay\.removeChild\s*\(\s*appleCountDisplay\.children\s*\[\s*i\s*\]\s*\)\s*;?\s*\}/,
+      "while(appleCountDisplay.children.length>2){appleCountDisplay.removeChild(appleCountDisplay.lastChild);}"
+    );
+  } else {
+    console.error("DiceCounts: failed to fix death-screen count icon cleanup");
+  }
+
+  if (
+    code.match(
+      /indexOf\(document\.querySelector\('#count'\)\.getElementsByClassName\('tuJOWd'\)\[0\]\)\)\s*>\s*3/
+    )
+  ) {
+    code = code.replace(
+      /(indexOf\(document\.querySelector\('#count'\)\.getElementsByClassName\('tuJOWd'\)\[0\]\)\)\s*>\s*)3/,
+      "$16"
+    );
+  } else {
+    console.error("DiceCounts: failed to raise death-screen count append gate");
+  }
+
   if (code.includes("const __img = window.uiImage(__src)")) {
     code = code.assertReplace(
       "const __img = window.uiImage(__src)",
@@ -32721,6 +32782,62 @@ window.RemixSpeedInfo.runCodeBefore = function () {
       return true;
     };
     window.timeKeeper.shouldTrack.__remixOfficial = true;
+  }
+
+  // TopBar / SpeedInfo call getCurrentSetting("count") on every count click.
+  // Pudding's !SpeedrunMod path does eval(window.count_var), but TopBar never
+  // exports window.count_var — eval throws and apply_topbar_icons keeps idx 0.
+  // That paints Classic 1-apple on the death screen when switching counts
+  // without starting a new run. Prefer live #count/#speed/#size DOM (or Ca).
+  // Note: window.getSelected("#count") returns 0 when nothing matches, so we
+  // must not treat a bare 0 as proof of selection.
+  if (
+    window.timeKeeper &&
+    typeof window.timeKeeper.getCurrentSetting === "function" &&
+    !window.timeKeeper.getCurrentSetting.__remixLiveMenu
+  ) {
+    const remixMenuSelectedIndex = function remixMenuSelectedIndex(id) {
+      try {
+        const root = document.querySelector("#" + id);
+        if (!root) return -1;
+        return [...root.children].findIndex(function (c) {
+          return ((c.className || "") + "").indexOf("tuJOWd") >= 0;
+        });
+      } catch (_e) {
+        return -1;
+      }
+    };
+    const origGetSetting = window.timeKeeper.getCurrentSetting;
+    window.timeKeeper.getCurrentSetting = function remixGetCurrentSetting(name) {
+      const id = name === "apple" ? "apple" : name;
+      if (
+        id === "count" ||
+        id === "speed" ||
+        id === "size" ||
+        id === "trophy" ||
+        id === "apple"
+      ) {
+        const fromDom = remixMenuSelectedIndex(id);
+        if (fromDom >= 0) return fromDom;
+        try {
+          const g =
+            (window.__remixGame && window.__remixGame.settings) ||
+            window.set_ref ||
+            null;
+          if (g) {
+            if (id === "count" && typeof g.Ca === "number") return g.Ca | 0;
+            if (id === "speed" && typeof g.Oa === "number") return g.Oa | 0;
+            if (id === "size" && typeof g.Sa === "number") return g.Sa | 0;
+          }
+        } catch (_set) {}
+      }
+      try {
+        return origGetSetting.apply(this, arguments);
+      } catch (_evalBroken) {
+        return 0;
+      }
+    };
+    window.timeKeeper.getCurrentSetting.__remixLiveMenu = true;
   }
 
   window.remixSpeedInfoEnsureModeLabels = function remixSpeedInfoEnsureModeLabels() {

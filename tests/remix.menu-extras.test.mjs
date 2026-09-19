@@ -220,6 +220,149 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
     }
   });
 
+  it("death-screen scoreboard drops leftover count icons when switching Dice→Bomb", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 27, headless: true });
+    try {
+      await h.start({ mode: "classic", count: COUNT.DICE, size: SIZE.NORMAL });
+      const probe = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        g.nj = true;
+        g.ub = true;
+        g.lj = true;
+
+        const root = document.querySelector("#count");
+        const disp = document.body.getElementsByClassName(
+          "UJhXPd wSwbef EWyEF"
+        )[0];
+        if (!root || !disp || !root.children[4] || !root.children[5]) {
+          return { ok: false, reason: "missing count UI" };
+        }
+        if (!g.menu || typeof g.menu.Jb !== "function") {
+          return { ok: false, reason: "no menu.Jb" };
+        }
+
+        // Leave a die overlay like the old buggy MoreMenu cleanup did.
+        const die = (window.remixTopBarCountIcon || window.uiImage)(
+          root.children[4].src
+        );
+        disp.appendChild(die);
+        const before = disp.children.length;
+
+        for (const c of root.children) c.classList.remove("tuJOWd", "DqMRee");
+        root.children[5].classList.add("DqMRee", "tuJOWd");
+        g.settings.Ca = 5;
+        g.menu.Jb();
+
+        const srcs = [...disp.children]
+          .filter((img) => {
+            if (!img || img.tagName !== "IMG") return false;
+            if (img.style.display === "none") return false;
+            if ((img.className || "").includes("LaTyvd")) return false;
+            return true;
+          })
+          .map((img) => img.src || "");
+        return {
+          ok: true,
+          before,
+          after: disp.children.length,
+          hasDiceOverlay: srcs.some(
+            (s) => /count_04/.test(s) && !/count_05/.test(s)
+          ),
+          srcs: srcs.map((s) => s.slice(-30)),
+          patched:
+            Function.prototype.toString
+              .call(g.menu.Jb)
+              .indexOf("while(appleCountDisplay.children.length>2)") >= 0,
+        };
+      });
+      assert.equal(probe.ok, true, JSON.stringify(probe));
+      assert.equal(probe.patched, true, JSON.stringify(probe));
+      assert.equal(probe.hasDiceOverlay, false, JSON.stringify(probe));
+      assert.ok(probe.after < probe.before, JSON.stringify(probe));
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
+
+  it("death-screen count TopBar follows menu when switching without play", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 26, headless: true });
+    try {
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
+      const probe = await h.page.evaluate(async () => {
+        if (window.pudding_settings) window.pudding_settings.TopBar = true;
+        const g = window.__remixGame;
+        // Die so the death/scoreboard UI is up, then change count without play.
+        g.nj = true;
+        g.ub = true;
+        g.lj = true;
+        if (g.menu && typeof g.menu.show === "function") {
+          try {
+            g.menu.show();
+          } catch (_e) {}
+        }
+
+        const root = document.querySelector("#count");
+        if (!root || !root.children[3]) {
+          return { ok: false, reason: "no count menu" };
+        }
+        // Leave ka at Classic 1-apple (0); only pending Ca + DOM move to Dice (4).
+        const target = 4;
+        for (const c of root.children) c.classList.remove("tuJOWd", "DqMRee");
+        const el = root.children[target];
+        el.classList.add("DqMRee", "tuJOWd");
+        g.settings.Ca = target;
+        // ka intentionally stale — reproduces switch-without-play.
+        g.settings.ka = 0;
+
+        const viaGet =
+          window.timeKeeper && window.timeKeeper.getCurrentSetting
+            ? window.timeKeeper.getCurrentSetting("count")
+            : -1;
+        if (typeof window.apply_topbar_icons === "function") {
+          window.apply_topbar_icons();
+        }
+        await new Promise((r) => setTimeout(r, 30));
+
+        const fruit =
+          window.fruit_jsname &&
+          document.querySelector('[jsname="' + window.fruit_jsname + '"]');
+        const expected =
+          (window.count_img_arr && window.count_img_arr[target]) ||
+          (el && el.src) ||
+          "";
+        return {
+          ok: true,
+          viaGet,
+          ka: g.settings.ka,
+          Ca: g.settings.Ca,
+          fruitSrc: fruit ? fruit.src : null,
+          expected,
+          patched: !!(
+            window.timeKeeper &&
+            window.timeKeeper.getCurrentSetting &&
+            window.timeKeeper.getCurrentSetting.__remixLiveMenu
+          ),
+        };
+      });
+      assert.equal(probe.ok, true, JSON.stringify(probe));
+      assert.equal(probe.patched, true, JSON.stringify(probe));
+      assert.equal(probe.viaGet, 4, JSON.stringify(probe));
+      assert.equal(probe.ka, 0, JSON.stringify(probe));
+      assert.ok(probe.fruitSrc, JSON.stringify(probe));
+      assert.equal(probe.fruitSrc, probe.expected, JSON.stringify(probe));
+      assert.ok(
+        !/count_00\.png/.test(probe.fruitSrc || ""),
+        "must not fall back to Classic 1-apple: " + JSON.stringify(probe)
+      );
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
+
   it("Black Dice rolls use Pudding Settings spawn range (default 6–24)", async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 25, headless: true });

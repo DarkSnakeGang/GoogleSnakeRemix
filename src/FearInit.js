@@ -1339,6 +1339,14 @@ window.fear_tally_wave_ghosts = function fear_tally_wave_ghosts(
 window.fear_should_wave_ghost_fill = function fear_should_wave_ghost_fill(
   game
 ) {
+  // Slot Fear badge = single hazard unit, never a fruit-matched ghost wave.
+  if (
+    window.isSlotMachineActive &&
+    window.isSlotMachineActive() &&
+    !(window.fear_mode_selected && window.fear_mode_selected())
+  ) {
+    return false;
+  }
   // Explicit empty→plant flag (t7E / Slot dice|tally|bomb wave).
   if (window.__fearWaveGhostFill) return true;
   const g = game || window.__remixGame;
@@ -1724,6 +1732,18 @@ window.fear_after_respawn = function fear_after_respawn(mgr) {
   if (!g || !mgr || !window.isFearActive()) return;
   window.fear_pair_new_fruits(g);
   if (window.fear_uses_ghost_pairs && window.fear_uses_ghost_pairs(g)) {
+    // Slot Machine Fear badge plants one __slotFearGhost hazard (like Poison).
+    // Never wave-match / top-up ghosts to fruit count under Bomb/Dice/Tally.
+    if (
+      window.isSlotMachineActive &&
+      window.isSlotMachineActive() &&
+      !(window.fear_mode_selected && window.fear_mode_selected())
+    ) {
+      window.__fearWaveGhostFill = false;
+      window.fear_rebuild_grid(g);
+      window.fear_win_if_empty(g, mgr);
+      return;
+    }
     if (window.fear_should_wave_ghost_fill(g)) {
       const ka = g.settings ? g.settings.ka | 0 : -1;
       // Tally t7E pushes fruit via repeated f4E; each f4E calls after_respawn

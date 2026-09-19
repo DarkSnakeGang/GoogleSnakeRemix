@@ -87,6 +87,62 @@ window.RemixSpeedInfo.runCodeBefore = function () {
     window.timeKeeper.shouldTrack.__remixOfficial = true;
   }
 
+  // TopBar / SpeedInfo call getCurrentSetting("count") on every count click.
+  // Pudding's !SpeedrunMod path does eval(window.count_var), but TopBar never
+  // exports window.count_var — eval throws and apply_topbar_icons keeps idx 0.
+  // That paints Classic 1-apple on the death screen when switching counts
+  // without starting a new run. Prefer live #count/#speed/#size DOM (or Ca).
+  // Note: window.getSelected("#count") returns 0 when nothing matches, so we
+  // must not treat a bare 0 as proof of selection.
+  if (
+    window.timeKeeper &&
+    typeof window.timeKeeper.getCurrentSetting === "function" &&
+    !window.timeKeeper.getCurrentSetting.__remixLiveMenu
+  ) {
+    const remixMenuSelectedIndex = function remixMenuSelectedIndex(id) {
+      try {
+        const root = document.querySelector("#" + id);
+        if (!root) return -1;
+        return [...root.children].findIndex(function (c) {
+          return ((c.className || "") + "").indexOf("tuJOWd") >= 0;
+        });
+      } catch (_e) {
+        return -1;
+      }
+    };
+    const origGetSetting = window.timeKeeper.getCurrentSetting;
+    window.timeKeeper.getCurrentSetting = function remixGetCurrentSetting(name) {
+      const id = name === "apple" ? "apple" : name;
+      if (
+        id === "count" ||
+        id === "speed" ||
+        id === "size" ||
+        id === "trophy" ||
+        id === "apple"
+      ) {
+        const fromDom = remixMenuSelectedIndex(id);
+        if (fromDom >= 0) return fromDom;
+        try {
+          const g =
+            (window.__remixGame && window.__remixGame.settings) ||
+            window.set_ref ||
+            null;
+          if (g) {
+            if (id === "count" && typeof g.Ca === "number") return g.Ca | 0;
+            if (id === "speed" && typeof g.Oa === "number") return g.Oa | 0;
+            if (id === "size" && typeof g.Sa === "number") return g.Sa | 0;
+          }
+        } catch (_set) {}
+      }
+      try {
+        return origGetSetting.apply(this, arguments);
+      } catch (_evalBroken) {
+        return 0;
+      }
+    };
+    window.timeKeeper.getCurrentSetting.__remixLiveMenu = true;
+  }
+
   window.remixSpeedInfoEnsureModeLabels = function remixSpeedInfoEnsureModeLabels() {
     if (!window.modeToTxt) window.modeToTxt = {};
     if (window.CANDY_MODE != null) {

@@ -5491,6 +5491,76 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
     }
   });
 
+  it("bomb count Fear badge wave plants a single ghost", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 34, headless: true });
+    try {
+      await h.start({
+        mode: "slot_machine",
+        count: COUNT.BOMB,
+        size: SIZE.NORMAL,
+      });
+      const result = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        window.__remixGame = g;
+        window.CurrentModeNum = window.SLOT_MACHINE_MODE;
+        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.ka = 5;
+        g.settings.Ca = 5;
+        g.kc = false;
+        window.slot_reset_state();
+        g.wa.reset();
+        window.slot_after_layout(g.wa);
+
+        // Empty board + Fear badge eat → 24-unit bomb wave with Fear FIFO.
+        g.wa.ka.length = 0;
+        const last = window.slot_make_apple(g.wa, { x: 6, y: 6 });
+        last.slotMode = window.FEAR_MODE;
+        g.wa.ka.push(last);
+        window.appleArray = g.wa.ka;
+        window.just_ate = "fruit";
+        window.__slotEatenFruit = last;
+        window.__slotEatenMode = window.FEAR_MODE;
+        window.__slotEating = true;
+        window.setSlotActive(window.FEAR_MODE, g);
+        window.slot_eat_respawn(g);
+        const ix = g.wa.ka.indexOf(last);
+        if (ix >= 0) g.wa.ka.splice(ix, 1);
+        window.appleArray = g.wa.ka;
+
+        const ghosts = g.wa.ka.filter(
+          (f) =>
+            f &&
+            (f.__slotFearGhost ||
+              (window.fear_is_ghost && window.fear_is_ghost(f)))
+        );
+        const fresh = g.wa.ka.filter(
+          (f) =>
+            f &&
+            !f.Oka &&
+            !f.__slotFearGhost &&
+            !(window.fear_is_ghost && window.fear_is_ghost(f))
+        );
+        return {
+          ghosts: ghosts.length,
+          fresh: fresh.length,
+          kc: !!g.kc,
+          fearTrophy: !!(
+            window.fear_mode_selected && window.fear_mode_selected()
+          ),
+          shouldWave: window.fear_should_wave_ghost_fill(g),
+        };
+      });
+      assert.equal(result.fearTrophy, false, JSON.stringify(result));
+      assert.equal(result.shouldWave, false, JSON.stringify(result));
+      assert.equal(result.kc, true, JSON.stringify(result));
+      assert.equal(result.ghosts, 1, JSON.stringify(result));
+      assert.ok(result.fresh >= 20, JSON.stringify(result));
+    } finally {
+      await h.close();
+    }
+  });
+
   it("bomb count after kc: cheese/statue refill 1; key stays entity-only", async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 33, headless: true });
