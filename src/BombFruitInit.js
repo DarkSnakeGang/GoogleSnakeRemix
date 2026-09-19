@@ -1228,11 +1228,19 @@ window.BombFruitMod.alterSnakeCode = function (code) {
 
   // Classic Vm fail splices the eaten apple — board may be empty before
   // bomb/dice refill. Sync only; empty win is deferred to f4E / next tick.
-  bfReplace(
-    "splice empty win after chess portal",
-    /\(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\)\)/,
-    "(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
-  );
+  if (
+    !bfReplace(
+      "splice empty win after mexico twin",
+      /\(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&\(window\.mexico_after_fruit_splice\(a\.wa,a\),0\)\)/,
+      "(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.wa,a),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
+    )
+  ) {
+    bfReplace(
+      "splice empty win after chess portal",
+      /\(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\)\)/,
+      "(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
+    );
+  }
 
   // Tick after Mexico.
   if (

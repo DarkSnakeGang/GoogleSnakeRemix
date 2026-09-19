@@ -561,6 +561,15 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.assignSlotMode = function assignSlotMode(fruit, sharedMode) {
     if (!fruit || fruit.Oka) return null;
     if (fruit.isPiece) return null;
+    // Fear ghosts are hazards — never badge them.
+    if (
+      fruit.__slotFearGhost ||
+      fruit.__fearGhost ||
+      (window.fear_is_ghost && window.fear_is_ghost(fruit))
+    ) {
+      if (fruit.slotMode != null) delete fruit.slotMode;
+      return null;
+    }
     const portalPair = window.slot_is_portal_pair_fruit(fruit);
     const portalBan = portalPair ? window.slot_portal_pair_ban || [5] : [];
     let mode =
@@ -3259,17 +3268,25 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.slot_win_if_empty = function slot_win_if_empty(game, mgr) {
     // Playable board content blocks win: badged fruit, portal pairs, chess
     // pieces, keys/keyblocks, sokoboxes/goals. Poison (Oka) and other hazards
-    // (mines, arrows, walls, etc.) do NOT count — spawn-fail + empty playable
-    // board → win.
+    // (mines, arrows, walls, fear ghosts, etc.) do NOT count — spawn-fail +
+    // empty playable board → win.
     if (window.slot_board_has_playable_content(game, mgr)) return false;
-    // Poison badge eat intentionally leaves no refill — empty is not a win.
-    if ((window.__slotActive | 0) === 10) return false;
-    // Fear badge has the same transient empty phase before its special unit.
+    // Poison badge eat intentionally leaves no refill — empty is not a win
+    // until the board is stably empty of playable fruit (poison-only may win
+    // via the playable check above when Oka is the only leftover).
+    if ((window.__slotActive | 0) === 10) {
+      // Still block only the same-eat transient empty before poison plant.
+      const list = mgr && mgr.ka;
+      if (!list || list.length === 0) return false;
+    }
+    // Fear badge: same-eat transient empty before the Fear special unit.
+    // Once a ghost exists (or any apple remains), ghosts-only may win.
     if (
       window.FEAR_MODE != null &&
       (window.__slotActive | 0) === (window.FEAR_MODE | 0)
     ) {
-      return false;
+      const list = mgr && mgr.ka;
+      if (!list || list.length === 0) return false;
     }
     const g = game || window.__remixGame;
     window.slot_trigger_win(g);
@@ -6360,18 +6377,34 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     ) {
       /* upgraded prior slot splice hook */
     } else if (code.indexOf("slot_on_eating_fruit") < 0) {
+    const spliceReMexicoBomb =
+      /(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&\(window\.mexico_after_fruit_splice\(a\.wa,a\),0\),window\.isBombFruitActive&&window\.isBombFruitActive\(\)&&\(window\.bombFruit_after_respawn\(a\.wa,0,!1\),0\))/;
     const spliceRe2 =
       /(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\),window\.isBombFruitActive&&window\.isBombFruitActive\(\)&&\(window\.bombFruit_after_respawn\(a\.wa,0,!1\),0\))/;
-    if (code.match(spliceRe2)) {
+    if (code.match(spliceReMexicoBomb)) {
+      smReplace(
+        "slot eat before splice mexico+bomb",
+        spliceReMexicoBomb,
+          "(window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.wa.ka[k]),a.wa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.wa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.wa,a),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
+      );
+    } else if (code.match(spliceRe2)) {
       smReplace(
         "slot eat before splice",
         spliceRe2,
           "(window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.wa.ka[k]),a.wa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.wa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
       );
     } else {
+      const simpleMexico =
+        /(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&\(window\.mexico_after_fruit_splice\(a\.wa,a\),0\))/;
       const simple =
         /(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\))/;
-      if (code.match(simple)) {
+      if (code.match(simpleMexico)) {
+        smReplace(
+          "slot eat before splice mexico",
+          simpleMexico,
+            "(window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.wa.ka[k]),a.wa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.wa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.wa,a),0))"
+        );
+      } else if (code.match(simple)) {
         smReplace(
           "slot eat before splice simple",
           simple,
@@ -6565,6 +6598,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     for (let i = 0; i < mgr.ka.length; i++) {
       const f = mgr.ka[i];
       if (!f || f.Oka || f.isPiece) continue;
+      if (
+        f.__slotFearGhost ||
+        (window.fear_is_ghost && window.fear_is_ghost(f))
+      ) {
+        if (f.slotMode != null) delete f.slotMode;
+        continue;
+      }
       if (f.slotMode == null) window.assignSlotMode(f);
     }
   };
@@ -6577,6 +6617,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   ) {
     if (!window.isSlotMachineActive || !window.isSlotMachineActive()) return;
     if (!fruit || fruit.Oka || fruit.isPiece || fruit.slotMode == null) return;
+    // Fear ghosts are hazards — never show a Slot badge on them.
+    if (
+      fruit.__slotFearGhost ||
+      (window.fear_is_ghost && window.fear_is_ghost(fruit))
+    ) {
+      return;
+    }
     if (!renderer || !renderer.ka || typeof renderer.ka.drawImage !== "function")
       return;
     const url = window.slot_trophy_url_for_mode(fruit.slotMode);

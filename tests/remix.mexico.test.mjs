@@ -25,14 +25,18 @@ describe("Mexico Mode (offline)", () => {
     assert.match(mx, /mexico_constrain_new_apples/);
     assert.match(mx, /mexico_pos_on_wall/);
     assert.match(mx, /mexico_win_if_empty/);
+    assert.match(mx, /mexico_assign_portal_pair_types/);
+    assert.match(mx, /mexico_note_fruit_twin/);
+    assert.match(mx, /mexico_after_fruit_splice/);
     assert.match(mx, /mexico_drop_pair_at/);
     assert.match(mx, /mexico_is_wave_count/);
     assert.match(mx, /mexico_refill_wave/);
     assert.match(mx, /mexico_spawn_n_pairs/);
     assert.match(
       mx,
-      /else if\(window\.isMexicoActive&&window\.isMexicoActive\(\)\)\{e=!1;if\(window\.just_ate==='fruit'/
+      /else if\(window\.isMexicoActive&&window\.isMexicoActive\(\)\)\{window\.__chessMakeApple=g7;window\.__chessFreePos=d4E;window\.__chessPickType=Q3E;e=!1;if\(window\.just_ate==='fruit'/
     );
+    assert.match(mx, /mexico_note_fruit_twin&&window\.mexico_note_fruit_twin/);
     assert.match(mx, /mexico_is_wave_count&&window\.mexico_is_wave_count\(a\)/);
     assert.match(mx, /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\),window\.isMexicoActive/);
     assert.match(
@@ -44,6 +48,11 @@ describe("Mexico Mode (offline)", () => {
       mx,
       /mexico_constrain_new_apples\(a\.wa,a\.wa\.ka\.length\)/,
       "must not relocate the whole board on j4E"
+    );
+    assert.match(
+      mx,
+      /mexico_after_fruit_splice\(a\.wa,a\)/,
+      "eat splice must clear Mexico portal twin"
     );
     assert.match(
       mx,
@@ -175,6 +184,116 @@ describe("Mexico Mode (offline)", () => {
     const catAlter = remix.indexOf("window.CatMod.alterSnakeCode");
     const mxAlter = remix.indexOf("window.MexicoMod.alterSnakeCode");
     assert.ok(catAlter >= 0 && mxAlter > catAlter);
+  });
+
+  it("mexico_assign_portal_pair_types matches twins and advances pairs", async () => {
+    const vm = await import("node:vm");
+    const src = read("src/MexicoInit.js");
+    const sandbox = {
+      window: {
+        console,
+        document: {
+          querySelector: () => null,
+          getElementById: () => null,
+        },
+        Image: class {
+          constructor() {
+            this.src = "";
+            this.classList = { add() {} };
+          }
+        },
+      },
+      console,
+      document: {
+        querySelector: () => null,
+        getElementById: () => null,
+      },
+      Image: class {
+        constructor() {
+          this.src = "";
+          this.classList = { add() {} };
+        }
+      },
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(
+      src +
+        `
+      window.MexicoMod.runCodeBefore();
+      String.prototype.assertReplace = function(re, rep) {
+        return this.replace(re, rep);
+      };
+      window.MexicoMod.alterSnakeCode("/* mexico stub */");
+    `,
+      sandbox
+    );
+    const w = sandbox.window;
+    const mgr = {
+      ka: Array.from({ length: 10 }, () => ({ type: 99, pos: { x: 0, y: 0 } })),
+    };
+    w.mexico_assign_portal_pair_types(mgr, 0, () => 3);
+    assert.deepEqual(
+      mgr.ka.map((a) => a.type),
+      [3, 3, 4, 4, 5, 5, 6, 6, 7, 7]
+    );
+  });
+
+  it("mexico_after_fruit_splice drops noted twin without touching other pairs", async () => {
+    const vm = await import("node:vm");
+    const src = read("src/MexicoInit.js");
+    const sandbox = {
+      window: {
+        console,
+        document: {
+          querySelector: () => null,
+          getElementById: () => null,
+        },
+        Image: class {
+          constructor() {
+            this.src = "";
+            this.classList = { add() {} };
+          }
+        },
+      },
+      console,
+      document: {
+        querySelector: () => null,
+        getElementById: () => null,
+      },
+      Image: class {
+        constructor() {
+          this.src = "";
+          this.classList = { add() {} };
+        }
+      },
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(
+      src +
+        `
+      window.MexicoMod.runCodeBefore();
+      String.prototype.assertReplace = function(re, rep) {
+        return this.replace(re, rep);
+      };
+      window.MexicoMod.alterSnakeCode("/* mexico stub */");
+    `,
+      sandbox
+    );
+    const w = sandbox.window;
+    const keep = [
+      { pos: { x: 1, y: 1 } },
+      { pos: { x: 1, y: 9 } },
+      { pos: { x: 3, y: 1 } },
+      { pos: { x: 3, y: 9 } },
+    ];
+    const mgr = { ka: keep.slice() };
+    // Eat index 2 → twin is index 3.
+    w.mexico_note_fruit_twin(mgr, 2);
+    mgr.ka.splice(2, 1); // native eat splice
+    w.mexico_after_fruit_splice(mgr, { settings: { ka: 6 }, kc: true });
+    assert.equal(mgr.ka.length, 2);
+    assert.equal(mgr.ka[0].pos.x, 1);
+    assert.equal(mgr.ka[1].pos.x, 1);
   });
 
   it("builder / splice include MexicoInit after Cat, before CatSpeed", () => {
@@ -517,6 +636,71 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
     }
   });
 
+  it("tally first eat removes only that portal pair; other fruit stay", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 45, headless: true });
+    try {
+      await h.start({ mode: "mexico", count: COUNT.TALLY, size: SIZE.NORMAL });
+
+      const probe = await h.page.evaluate(() => {
+        const g = window.__remixGame;
+        const mid = window.mexico_mid_y(g.Ca);
+        const beforeLen = (g.wa.ka || []).length;
+        // Tally only scores the current index (starts at 1).
+        let targetIdx = g.wa.ka.findIndex(
+          (a) => a && (a.sequenceNumber | 0) === 1
+        );
+        if (targetIdx < 0) targetIdx = 0;
+        const target = g.wa.ka[targetIdx];
+        const twinIdx = targetIdx % 2 === 0 ? targetIdx + 1 : targetIdx - 1;
+        const twin = g.wa.ka[twinIdx];
+        const eatenPos = { x: target.pos.x, y: target.pos.y };
+        const twinPos = { x: twin.pos.x, y: twin.pos.y };
+        const otherBefore = g.wa.ka
+          .filter((_, i) => i !== targetIdx && i !== twinIdx)
+          .map((a) => a.pos.x + "," + a.pos.y)
+          .sort();
+        for (let i = 0; i < g.oa.ka.length; i++) {
+          g.oa.ka[i].x = target.pos.x - 1;
+          g.oa.ka[i].y = target.pos.y;
+        }
+        g.oa.direction = "RIGHT";
+        const sh0 = g.Sh | 0;
+        for (let t = 0; t < 12 && (g.Sh | 0) === sh0; t++) g.tick();
+        const after = (g.wa.ka || []).map((a) => ({
+          x: a.pos.x,
+          y: a.pos.y,
+          key: a.pos.x + "," + a.pos.y,
+          half: a.pos.y < mid ? "top" : a.pos.y > mid ? "bot" : "mid",
+        }));
+        const otherAfter = after.map((a) => a.key).sort();
+        return {
+          beforeLen,
+          afterLen: after.length,
+          sh: g.Sh | 0,
+          eatenGone: !after.some(
+            (a) => a.x === eatenPos.x && a.y === eatenPos.y
+          ),
+          twinGone: !after.some((a) => a.x === twinPos.x && a.y === twinPos.y),
+          otherBefore,
+          otherAfter,
+          tops: after.filter((a) => a.half === "top").length,
+          bots: after.filter((a) => a.half === "bot").length,
+        };
+      });
+
+      assert.ok(probe.sh > 0, JSON.stringify(probe));
+      assert.equal(probe.beforeLen, 10, JSON.stringify(probe));
+      assert.equal(probe.afterLen, 8, JSON.stringify(probe));
+      assert.equal(probe.eatenGone, true, JSON.stringify(probe));
+      assert.equal(probe.twinGone, true, JSON.stringify(probe));
+      assert.deepEqual(probe.otherAfter, probe.otherBefore, JSON.stringify(probe));
+      assert.equal(probe.tops, probe.bots, JSON.stringify(probe));
+    } finally {
+      await h.close();
+    }
+  });
+
   it("mid-row walls kill; no extra wall spawns after first apple", async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 47, headless: true });
@@ -615,15 +799,29 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
         g.lj = false;
         const sh0 = g.Sh | 0;
         for (let t = 0; t < 12 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
-        g.tick();
+        // Park clear of the new mid-wall / packed bomb fruit.
+        for (let i = 0; i < g.oa.ka.length; i++) {
+          g.oa.ka[i].x = 1;
+          g.oa.ka[i].y = 1;
+        }
+        g.oa.direction = "RIGHT";
+        if (!g.nj) g.tick();
         const apples = (g.wa.ka || []).map((a) => ({
           y: a.pos.y,
           half: a.pos.y < mid ? "top" : a.pos.y > mid ? "bot" : "mid",
         }));
         let bad = 0;
+        const pairTypes = [];
         for (let i = 0; i < apples.length; i++) {
           const want = i % 2 === 0 ? "top" : "bot";
           if (apples[i].half !== want) bad++;
+        }
+        for (let i = 0; i + 1 < (g.wa.ka || []).length; i += 2) {
+          const a = g.wa.ka[i];
+          const b = g.wa.ka[i + 1];
+          if (!a || !b) continue;
+          pairTypes.push(a.type | 0);
+          if ((a.type | 0) !== (b.type | 0)) bad++;
         }
         return {
           sh: g.Sh | 0,
@@ -634,6 +832,9 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
           bots: apples.filter((a) => a.half === "bot").length,
           bad,
           wallDone: !!window.__mexicoWallDone,
+          kc: !!g.kc,
+          distinctPairs: new Set(pairTypes).size,
+          pairTypes: pairTypes.slice(0, 8),
         };
       });
 
@@ -645,8 +846,13 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(after.tops, after.bots, JSON.stringify(after));
       assert.equal(after.bad, 0, JSON.stringify(after));
       assert.equal(after.wallDone, true, JSON.stringify(after));
+      assert.equal(after.kc, true, JSON.stringify(after));
       // Full bomb on this board fits many pairs; must keep playing with fruit.
       assert.ok(after.len > 2, JSON.stringify(after));
+      assert.ok(
+        after.distinctPairs > 1,
+        "portal pairs must be visually distinct: " + JSON.stringify(after)
+      );
     } finally {
       await h.close();
     }

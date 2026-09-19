@@ -206,6 +206,7 @@ window.fear_reset_state = function fear_reset_state() {
   window.__fearAllowGhostRelocate = false;
   window.__fearWaveGhostFill = false;
   window.__fearBombWaveGhostDone = false;
+  window.__fearTallyGhostFillScheduled = false;
 };
 window.fear_reset_state();
 
@@ -1106,6 +1107,7 @@ window.fear_mark_new_as_ghosts = function fear_mark_new_as_ghosts(
     if (!fruit) continue;
     fruit.__fearGhost = true;
     fruit.Oka = false;
+    if (fruit.slotMode != null) delete fruit.slotMode;
     window.__fearSeenFruits.add(fruit);
     window.fear_sync_fruit_type(fruit);
     marked++;
@@ -1276,10 +1278,12 @@ window.fear_tally_wave_ghosts = function fear_tally_wave_ghosts(
   // No edible fruit → do not spawn ghosts (win path handles empty fruit).
   if (counts.fresh <= 0) return 0;
   window.fear_remove_all_ghosts(mgr);
-  // Ghosts are indexed 1..max sequenceNumber among edible fruit (not "match
-  // object count" — failed fruit seats leave a lower max, and that is fine).
+  // Ghosts are indexed 1..max sequenceNumber among edible fruit.
+  // Never attempt more ghosts than edible fruit on the board (a lone high
+  // index mid-t7E plant must not request ghosts 1..5 for one apple).
   let maxIdx = window.fear_tally_max_fruit_index(g);
   if (maxIdx <= 0) maxIdx = counts.fresh;
+  if (maxIdx > counts.fresh) maxIdx = counts.fresh;
   const spawn =
     typeof nativeTopUp === "function"
       ? nativeTopUp
@@ -1722,12 +1726,37 @@ window.fear_after_respawn = function fear_after_respawn(mgr) {
   if (window.fear_uses_ghost_pairs && window.fear_uses_ghost_pairs(g)) {
     if (window.fear_should_wave_ghost_fill(g)) {
       const ka = g.settings ? g.settings.ka | 0 : -1;
-      const counts = window.fear_board_counts(g);
-      // Tally: if the fruit wave planted nothing, win before attempting ghosts.
-      if (ka === 6 && counts.fresh <= 0) {
-        window.__fearWaveGhostFill = false;
-        window.fear_remove_all_ghosts(mgr);
-        window.fear_win_if_empty(g, mgr);
+      // Tally t7E pushes fruit via repeated f4E; each f4E calls after_respawn
+      // before the next index exists. Filling ghosts on the first plant left
+      // 1 fruit + stacked unindexed ghosts. Defer until t7E's stack clears.
+      if (ka === 6) {
+        if (!window.__fearTallyGhostFillScheduled) {
+          window.__fearTallyGhostFillScheduled = true;
+          const run = function fear_tally_deferred_ghost_fill() {
+            window.__fearTallyGhostFillScheduled = false;
+            if (!window.isFearActive || !window.isFearActive()) return;
+            const game = window.__remixGame;
+            const appleMgr = game && game.wa;
+            if (!appleMgr) return;
+            window.__fearWaveGhostFill = true;
+            const counts = window.fear_board_counts(game);
+            if (counts.fresh <= 0) {
+              window.__fearWaveGhostFill = false;
+              window.fear_remove_all_ghosts(appleMgr);
+              window.fear_win_if_empty(game, appleMgr);
+              return;
+            }
+            window.fear_wave_ghost_fill(appleMgr);
+            window.fear_rebuild_grid(game);
+            window.fear_win_if_empty(game, appleMgr);
+          };
+          if (typeof Promise !== "undefined" && Promise.resolve) {
+            Promise.resolve().then(run);
+          } else {
+            setTimeout(run, 0);
+          }
+        }
+        // Keep the wave flag so mid-plant poison top-up stays suppressed.
         return;
       }
       window.fear_wave_ghost_fill(mgr);

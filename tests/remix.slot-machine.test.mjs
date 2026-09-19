@@ -750,6 +750,40 @@ describe("Slot Machine mode (offline)", () => {
     assert.equal(w.slot_win_if_empty(g, { ka: [] }), false);
     g.__hasGoals = false;
     assert.equal(w.slot_win_if_empty(g, { ka: [] }), true);
+
+    // Fear badge: empty list is transient (awaiting ghost); ghosts-only wins.
+    w.FEAR_MODE = 30;
+    w.__slotActive = 30;
+    g.nj = false;
+    g.ub = false;
+    assert.equal(w.slot_win_if_empty(g, { ka: [] }), false);
+    assert.equal(
+      w.slot_board_has_playable_content(g, {
+        ka: [{ __slotFearGhost: true, slotMode: 1 }],
+      }),
+      false
+    );
+    assert.equal(
+      w.slot_win_if_empty(g, {
+        ka: [{ __slotFearGhost: true }],
+      }),
+      true
+    );
+    assert.equal(g.nj, true);
+    w.__slotActive = null;
+  });
+
+  it("SlotMachine never badges Fear ghosts", () => {
+    const init = fs.readFileSync(
+      path.join(ROOT, "src", "SlotMachineInit.js"),
+      "utf8"
+    );
+    assert.match(init, /Fear ghosts are hazards — never badge them/);
+    assert.match(init, /never show a Slot badge on them/);
+    assert.match(
+      init,
+      /f\.__slotFearGhost[\s\S]*?delete f\.slotMode[\s\S]*?continue/
+    );
   });
 
   it("builder / splice / Remix+Ultra wire SlotMachine after BombFruit", () => {

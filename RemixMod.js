@@ -15446,6 +15446,9 @@ window.MexicoMod.alterSnakeCode = function (code) {
   window.mexico_reset_state = function mexico_reset_state() {
     window.__mexicoWallDone = false;
     window.__mexicoLastSh = null;
+    window.__mexicoPortalTwinApple = null;
+    window.__mexicoPortalTwinKey = null;
+    window.__mexicoPortalNeedTwinClear = false;
   };
 
   window.mexico_trigger_win = function mexico_trigger_win(game) {
@@ -15489,6 +15492,80 @@ window.MexicoMod.alterSnakeCode = function (code) {
     return false;
   };
 
+  // Native Portal twin co-eat does not fire for Mexico (e7 bit-2 force is not
+  // enough once we take the Mexico eat branch). Note+clear the even/odd twin
+  // ourselves — same idea as Chess portal combo, without Chess respawn.
+  window.mexico_note_fruit_twin = function mexico_note_fruit_twin(
+    mgr,
+    eatenIndex
+  ) {
+    window.__mexicoPortalTwinApple = null;
+    window.__mexicoPortalTwinKey = null;
+    window.__mexicoPortalNeedTwinClear = false;
+    if (!mgr || !mgr.ka || eatenIndex == null) return;
+    const twin = eatenIndex % 2 === 0 ? eatenIndex + 1 : eatenIndex - 1;
+    if (twin < 0 || twin >= mgr.ka.length) return;
+    const el = mgr.ka[twin];
+    if (!el || !el.pos) return;
+    window.__mexicoPortalTwinApple = el;
+    window.__mexicoPortalTwinKey =
+      typeof window.chess_pos_key === "function"
+        ? window.chess_pos_key(el.pos)
+        : el.pos.x + "," + el.pos.y;
+    window.__mexicoPortalNeedTwinClear = true;
+  };
+
+  window.mexico_after_fruit_splice = function mexico_after_fruit_splice(
+    mgr,
+    game
+  ) {
+    if (!window.__mexicoPortalNeedTwinClear) return;
+    window.__mexicoPortalNeedTwinClear = false;
+    const key = window.__mexicoPortalTwinKey;
+    const twinApple = window.__mexicoPortalTwinApple;
+    window.__mexicoPortalTwinKey = null;
+    window.__mexicoPortalTwinApple = null;
+    if (!mgr || !mgr.ka) return;
+    let removed = false;
+    if (twinApple) {
+      const byRef = mgr.ka.indexOf(twinApple);
+      if (byRef >= 0) {
+        mgr.ka.splice(byRef, 1);
+        removed = true;
+      }
+    }
+    if (!removed && key != null) {
+      for (let i = mgr.ka.length - 1; i >= 0; i--) {
+        const el = mgr.ka[i];
+        if (!el || !el.pos) continue;
+        const k =
+          typeof window.chess_pos_key === "function"
+            ? window.chess_pos_key(el.pos)
+            : el.pos.x + "," + el.pos.y;
+        if (k === key) {
+          mgr.ka.splice(i, 1);
+          break;
+        }
+      }
+    }
+    window.appleArray = mgr.ka;
+    // Wave counts: empty after last pair → plant next wave immediately so we
+    // do not flash an empty board until the following tick.
+    const g = game || window.__remixGame;
+    if (
+      mgr.ka.length === 0 &&
+      window.mexico_is_wave_count &&
+      window.mexico_is_wave_count(g)
+    ) {
+      try {
+        window.mexico_refill_wave(mgr, g);
+      } catch (_e) {}
+      if (mgr.ka.length === 0) {
+        window.mexico_win_if_empty(g, mgr);
+      }
+    }
+  };
+
   window.mexico_spawn_n_pairs = function mexico_spawn_n_pairs(
     mgr,
     makeApple,
@@ -15518,9 +15595,80 @@ window.MexicoMod.alterSnakeCode = function (code) {
       }
       added += 2;
     }
+    if (added > 0) {
+      window.mexico_assign_portal_pair_types(
+        mgr,
+        mgr.ka.length - added,
+        pickType
+      );
+    }
     window.appleArray = mgr.ka;
     return added;
   };
+
+  /**
+   * Native portal typing (u7E): twins share a type; consecutive pairs use
+   * (prev+1)%24 so each exit looks distinct.
+   */
+  window.mexico_assign_portal_pair_types =
+    function mexico_assign_portal_pair_types(mgr, startIndex, pickType) {
+      if (!mgr || !mgr.ka || mgr.ka.length < 2) return;
+      let start = Math.max(0, startIndex | 0);
+      if (start % 2 !== 0) start -= 1;
+      const list = mgr.ka;
+      const pick =
+        typeof pickType === "function"
+          ? pickType
+          : typeof Q3E === "function"
+            ? Q3E
+            : typeof window.__chessPickType === "function"
+              ? window.__chessPickType
+              : null;
+
+      if (start <= 0) {
+        let base = 0;
+        if (typeof pick === "function") {
+          try {
+            base = pick(mgr) | 0;
+          } catch (_e) {
+            base = 0;
+          }
+        }
+        if (list[0]) list[0].type = base;
+        if (list[1]) list[1].type = base;
+        for (let i = 2; i + 1 < list.length; i += 2) {
+          const t = ((list[i - 2].type | 0) + 1) % 24;
+          list[i].type = t;
+          list[i + 1].type = t;
+        }
+        return;
+      }
+
+      const used = new Set();
+      for (let i = 0; i + 1 < start && i + 1 < list.length; i += 2) {
+        if (list[i]) used.add(list[i].type | 0);
+      }
+      for (let i = start; i + 1 < list.length; i += 2) {
+        let t = null;
+        if (typeof pick === "function") {
+          try {
+            t = pick(mgr) | 0;
+          } catch (_e) {}
+        }
+        if (t == null || used.has(t)) {
+          t = 0;
+          for (let n = 0; n < 24; n++) {
+            if (!used.has(n)) {
+              t = n;
+              break;
+            }
+          }
+        }
+        list[i].type = t;
+        list[i + 1].type = t;
+        used.add(t);
+      }
+    };
 
   /**
    * Empty-board refill for Tally/Dice/Bomb-first — same idea as Chess portal
@@ -15806,7 +15954,7 @@ window.MexicoMod.alterSnakeCode = function (code) {
       return 0;
     }
 
-    const mk = function (pos) {
+    const mk = function (pos, sharedType) {
       let dup = makeApple(mgr, 0, 0);
       if (typeof pos.clone === "function") {
         dup.pos = pos.clone();
@@ -15814,15 +15962,25 @@ window.MexicoMod.alterSnakeCode = function (code) {
         dup.pos.x = pos.x;
         dup.pos.y = pos.y;
       }
-      if (typeof pickType === "function") {
+      if (sharedType != null) {
+        dup.type = sharedType;
+      } else if (typeof pickType === "function") {
         try {
           dup.type = pickType(mgr);
         } catch (_e) {}
       }
       return dup;
     };
-    mgr.ka.push(mk(posTop));
-    mgr.ka.push(mk(posBot));
+    let sharedType = null;
+    if (typeof pickType === "function") {
+      try {
+        sharedType = pickType(mgr);
+      } catch (_e) {
+        sharedType = null;
+      }
+    }
+    mgr.ka.push(mk(posTop, sharedType));
+    mgr.ka.push(mk(posBot, sharedType));
     window.appleArray = mgr.ka;
     return 2;
   };
@@ -15904,6 +16062,31 @@ window.MexicoMod.alterSnakeCode = function (code) {
       }
       i++;
     }
+    // Twins must share a type (portal exit cue). Only fix mismatched new pairs;
+    // do not reshuffle types of fruit already on the board.
+    const pick =
+      typeof Q3E === "function"
+        ? Q3E
+        : typeof window.__chessPickType === "function"
+          ? window.__chessPickType
+          : null;
+    for (let i = start; i + 1 < mgr.ka.length; i += 2) {
+      const a = mgr.ka[i];
+      const b = mgr.ka[i + 1];
+      if (!a || !b) continue;
+      if ((a.type | 0) === (b.type | 0) && a.type != null) continue;
+      let t = a.type != null ? a.type | 0 : b.type != null ? b.type | 0 : null;
+      if (t == null && typeof pick === "function") {
+        try {
+          t = pick(mgr) | 0;
+        } catch (_e) {
+          t = 0;
+        }
+      }
+      if (t == null) t = 0;
+      a.type = t;
+      b.type = t;
+    }
   };
 
   window.mexico_tick_logic = function mexico_tick_logic(game) {
@@ -15965,12 +16148,20 @@ window.MexicoMod.alterSnakeCode = function (code) {
   );
 
   // Mexico uses native Portal twin respawn (j4E) for normal counts.
-  // Tally/Dice/Bomb-first: no mid-board pair top-up — existing fruit stay put;
-  // empty board after the last wave unit is refilled in mexico_tick_logic.
+  // Always note the even/odd twin so splice clears the pair (native portal
+  // co-eat does not run on the Mexico eat branch). Wave counts skip j4E —
+  // existing fruit stay; empty after last pair refills in after_fruit_splice/tick.
   mexicoReplace(
     "eat respawn mexico as portal",
     /e=!1;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{window\.__chessMakeApple=g7;window\.__chessFreePos=d4E;window\.__chessPickType=Q3E;e=!1;if\(window\.just_ate==='fruit'&&!\(e7\(a\.settings,8\)\|\|e7\(a\.settings,9\)\)\)\{if\(window\.chess_portal_combo&&window\.chess_portal_combo\(\)\)\{window\.chess_portal_note_fruit_twin\(a\.wa,k\);\}else if\(!\(a\.settings\.ka===4\|\|a\.settings\.ka===6\|\|\(a\.settings\.ka===5&&!a\.kc\)\)\)\{window\.chess_fruit_respawn\(a\.wa,g7,d4E,Q3E\);if\(window\.isBurgerActive&&window\.isBurgerActive\(\)&&window\.just_ate==='fruit'\)\{window\.burger_after_respawn\(a\);\}\}\}\}else e7\(a\.settings,2\)\?e=!0:/,
-    "e=!1;if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;e=!1;if(window.just_ate==='fruit'&&!(e7(a.settings,8)||e7(a.settings,9))){if(window.chess_portal_combo&&window.chess_portal_combo()){window.chess_portal_note_fruit_twin(a.wa,k);}else if(!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.kc))){window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);if(window.isBurgerActive&&window.isBurgerActive()&&window.just_ate==='fruit'){window.burger_after_respawn(a);}}}}else if(window.isMexicoActive&&window.isMexicoActive()){e=!1;if(window.just_ate==='fruit'&&!(e7(a.settings,8)||e7(a.settings,9))){if(!(window.mexico_is_wave_count&&window.mexico_is_wave_count(a))){e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a);}}}else e7(a.settings,2)?e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a):"
+    "e=!1;if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;e=!1;if(window.just_ate==='fruit'&&!(e7(a.settings,8)||e7(a.settings,9))){if(window.chess_portal_combo&&window.chess_portal_combo()){window.chess_portal_note_fruit_twin(a.wa,k);}else if(!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.kc))){window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);if(window.isBurgerActive&&window.isBurgerActive()&&window.just_ate==='fruit'){window.burger_after_respawn(a);}}}}else if(window.isMexicoActive&&window.isMexicoActive()){window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;e=!1;if(window.just_ate==='fruit'&&!(e7(a.settings,8)||e7(a.settings,9))){window.mexico_note_fruit_twin&&window.mexico_note_fruit_twin(a.wa,k);if(!(window.mexico_is_wave_count&&window.mexico_is_wave_count(a))){e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a);}}}else e7(a.settings,2)?e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a):"
+  );
+
+  // After Chess portal twin hook: also clear Mexico's noted twin.
+  mexicoReplace(
+    "eat splice mexico twin clear",
+    /\(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\)\)/,
+    "(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.wa,a),0))"
   );
 
   // j4E sits inside a ternary — must not insert `;` statements. Comma-op only.
@@ -17334,11 +17525,19 @@ window.BombFruitMod.alterSnakeCode = function (code) {
 
   // Classic Vm fail splices the eaten apple — board may be empty before
   // bomb/dice refill. Sync only; empty win is deferred to f4E / next tick.
-  bfReplace(
-    "splice empty win after chess portal",
-    /\(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\)\)/,
-    "(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
-  );
+  if (
+    !bfReplace(
+      "splice empty win after mexico twin",
+      /\(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&\(window\.mexico_after_fruit_splice\(a\.wa,a\),0\)\)/,
+      "(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.wa,a),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
+    )
+  ) {
+    bfReplace(
+      "splice empty win after chess portal",
+      /\(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\)\)/,
+      "(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
+    );
+  }
 
   // Tick after Mexico.
   if (
@@ -18379,6 +18578,7 @@ window.fear_reset_state = function fear_reset_state() {
   window.__fearAllowGhostRelocate = false;
   window.__fearWaveGhostFill = false;
   window.__fearBombWaveGhostDone = false;
+  window.__fearTallyGhostFillScheduled = false;
 };
 window.fear_reset_state();
 
@@ -19279,6 +19479,7 @@ window.fear_mark_new_as_ghosts = function fear_mark_new_as_ghosts(
     if (!fruit) continue;
     fruit.__fearGhost = true;
     fruit.Oka = false;
+    if (fruit.slotMode != null) delete fruit.slotMode;
     window.__fearSeenFruits.add(fruit);
     window.fear_sync_fruit_type(fruit);
     marked++;
@@ -19449,10 +19650,12 @@ window.fear_tally_wave_ghosts = function fear_tally_wave_ghosts(
   // No edible fruit → do not spawn ghosts (win path handles empty fruit).
   if (counts.fresh <= 0) return 0;
   window.fear_remove_all_ghosts(mgr);
-  // Ghosts are indexed 1..max sequenceNumber among edible fruit (not "match
-  // object count" — failed fruit seats leave a lower max, and that is fine).
+  // Ghosts are indexed 1..max sequenceNumber among edible fruit.
+  // Never attempt more ghosts than edible fruit on the board (a lone high
+  // index mid-t7E plant must not request ghosts 1..5 for one apple).
   let maxIdx = window.fear_tally_max_fruit_index(g);
   if (maxIdx <= 0) maxIdx = counts.fresh;
+  if (maxIdx > counts.fresh) maxIdx = counts.fresh;
   const spawn =
     typeof nativeTopUp === "function"
       ? nativeTopUp
@@ -19895,12 +20098,37 @@ window.fear_after_respawn = function fear_after_respawn(mgr) {
   if (window.fear_uses_ghost_pairs && window.fear_uses_ghost_pairs(g)) {
     if (window.fear_should_wave_ghost_fill(g)) {
       const ka = g.settings ? g.settings.ka | 0 : -1;
-      const counts = window.fear_board_counts(g);
-      // Tally: if the fruit wave planted nothing, win before attempting ghosts.
-      if (ka === 6 && counts.fresh <= 0) {
-        window.__fearWaveGhostFill = false;
-        window.fear_remove_all_ghosts(mgr);
-        window.fear_win_if_empty(g, mgr);
+      // Tally t7E pushes fruit via repeated f4E; each f4E calls after_respawn
+      // before the next index exists. Filling ghosts on the first plant left
+      // 1 fruit + stacked unindexed ghosts. Defer until t7E's stack clears.
+      if (ka === 6) {
+        if (!window.__fearTallyGhostFillScheduled) {
+          window.__fearTallyGhostFillScheduled = true;
+          const run = function fear_tally_deferred_ghost_fill() {
+            window.__fearTallyGhostFillScheduled = false;
+            if (!window.isFearActive || !window.isFearActive()) return;
+            const game = window.__remixGame;
+            const appleMgr = game && game.wa;
+            if (!appleMgr) return;
+            window.__fearWaveGhostFill = true;
+            const counts = window.fear_board_counts(game);
+            if (counts.fresh <= 0) {
+              window.__fearWaveGhostFill = false;
+              window.fear_remove_all_ghosts(appleMgr);
+              window.fear_win_if_empty(game, appleMgr);
+              return;
+            }
+            window.fear_wave_ghost_fill(appleMgr);
+            window.fear_rebuild_grid(game);
+            window.fear_win_if_empty(game, appleMgr);
+          };
+          if (typeof Promise !== "undefined" && Promise.resolve) {
+            Promise.resolve().then(run);
+          } else {
+            setTimeout(run, 0);
+          }
+        }
+        // Keep the wave flag so mid-plant poison top-up stays suppressed.
         return;
       }
       window.fear_wave_ghost_fill(mgr);
@@ -20681,6 +20909,15 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.assignSlotMode = function assignSlotMode(fruit, sharedMode) {
     if (!fruit || fruit.Oka) return null;
     if (fruit.isPiece) return null;
+    // Fear ghosts are hazards — never badge them.
+    if (
+      fruit.__slotFearGhost ||
+      fruit.__fearGhost ||
+      (window.fear_is_ghost && window.fear_is_ghost(fruit))
+    ) {
+      if (fruit.slotMode != null) delete fruit.slotMode;
+      return null;
+    }
     const portalPair = window.slot_is_portal_pair_fruit(fruit);
     const portalBan = portalPair ? window.slot_portal_pair_ban || [5] : [];
     let mode =
@@ -23379,17 +23616,25 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.slot_win_if_empty = function slot_win_if_empty(game, mgr) {
     // Playable board content blocks win: badged fruit, portal pairs, chess
     // pieces, keys/keyblocks, sokoboxes/goals. Poison (Oka) and other hazards
-    // (mines, arrows, walls, etc.) do NOT count — spawn-fail + empty playable
-    // board → win.
+    // (mines, arrows, walls, fear ghosts, etc.) do NOT count — spawn-fail +
+    // empty playable board → win.
     if (window.slot_board_has_playable_content(game, mgr)) return false;
-    // Poison badge eat intentionally leaves no refill — empty is not a win.
-    if ((window.__slotActive | 0) === 10) return false;
-    // Fear badge has the same transient empty phase before its special unit.
+    // Poison badge eat intentionally leaves no refill — empty is not a win
+    // until the board is stably empty of playable fruit (poison-only may win
+    // via the playable check above when Oka is the only leftover).
+    if ((window.__slotActive | 0) === 10) {
+      // Still block only the same-eat transient empty before poison plant.
+      const list = mgr && mgr.ka;
+      if (!list || list.length === 0) return false;
+    }
+    // Fear badge: same-eat transient empty before the Fear special unit.
+    // Once a ghost exists (or any apple remains), ghosts-only may win.
     if (
       window.FEAR_MODE != null &&
       (window.__slotActive | 0) === (window.FEAR_MODE | 0)
     ) {
-      return false;
+      const list = mgr && mgr.ka;
+      if (!list || list.length === 0) return false;
     }
     const g = game || window.__remixGame;
     window.slot_trigger_win(g);
@@ -26480,18 +26725,34 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     ) {
       /* upgraded prior slot splice hook */
     } else if (code.indexOf("slot_on_eating_fruit") < 0) {
+    const spliceReMexicoBomb =
+      /(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&\(window\.mexico_after_fruit_splice\(a\.wa,a\),0\),window\.isBombFruitActive&&window\.isBombFruitActive\(\)&&\(window\.bombFruit_after_respawn\(a\.wa,0,!1\),0\))/;
     const spliceRe2 =
       /(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\),window\.isBombFruitActive&&window\.isBombFruitActive\(\)&&\(window\.bombFruit_after_respawn\(a\.wa,0,!1\),0\))/;
-    if (code.match(spliceRe2)) {
+    if (code.match(spliceReMexicoBomb)) {
+      smReplace(
+        "slot eat before splice mexico+bomb",
+        spliceReMexicoBomb,
+          "(window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.wa.ka[k]),a.wa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.wa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.wa,a),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
+      );
+    } else if (code.match(spliceRe2)) {
       smReplace(
         "slot eat before splice",
         spliceRe2,
           "(window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.wa.ka[k]),a.wa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.wa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
       );
     } else {
+      const simpleMexico =
+        /(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&\(window\.mexico_after_fruit_splice\(a\.wa,a\),0\))/;
       const simple =
         /(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\))/;
-      if (code.match(simple)) {
+      if (code.match(simpleMexico)) {
+        smReplace(
+          "slot eat before splice mexico",
+          simpleMexico,
+            "(window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.wa.ka[k]),a.wa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.wa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.wa,a),0))"
+        );
+      } else if (code.match(simple)) {
         smReplace(
           "slot eat before splice simple",
           simple,
@@ -26685,6 +26946,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     for (let i = 0; i < mgr.ka.length; i++) {
       const f = mgr.ka[i];
       if (!f || f.Oka || f.isPiece) continue;
+      if (
+        f.__slotFearGhost ||
+        (window.fear_is_ghost && window.fear_is_ghost(f))
+      ) {
+        if (f.slotMode != null) delete f.slotMode;
+        continue;
+      }
       if (f.slotMode == null) window.assignSlotMode(f);
     }
   };
@@ -26697,6 +26965,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   ) {
     if (!window.isSlotMachineActive || !window.isSlotMachineActive()) return;
     if (!fruit || fruit.Oka || fruit.isPiece || fruit.slotMode == null) return;
+    // Fear ghosts are hazards — never show a Slot badge on them.
+    if (
+      fruit.__slotFearGhost ||
+      (window.fear_is_ghost && window.fear_is_ghost(fruit))
+    ) {
+      return;
+    }
     if (!renderer || !renderer.ka || typeof renderer.ka.drawImage !== "function")
       return;
     const url = window.slot_trophy_url_for_mode(fruit.slotMode);

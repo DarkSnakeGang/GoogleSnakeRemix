@@ -641,7 +641,7 @@ test("tally native top-up does not wave-fill mid-plant", () => {
   assert.equal(w.__fearWaveGhostFill, true, "flag stays for after_respawn");
 });
 
-test("tally after_respawn wins before ghosts when fruit wave planted nothing", () => {
+test("tally after_respawn wins before ghosts when fruit wave planted nothing", async () => {
   const w = loadFear();
   const leftovers = [1, 2, 3].map((n) => ({
     Oka: false,
@@ -670,10 +670,57 @@ test("tally after_respawn wins before ghosts when fruit wave planted nothing", (
     return true;
   };
   w.fear_after_respawn(g.wa);
+  // Tally wave fill is deferred until after t7E's synchronous plant stack.
+  assert.equal(g.nj, false, "must not win mid-defer");
+  await Promise.resolve();
   assert.equal(g.nj, true);
   assert.equal(spawned, 0, "ghosts must not spawn after empty fruit wave");
   assert.equal(g.wa.ka.filter((f) => w.fear_is_ghost(f)).length, 0);
   assert.equal(w.__fearWaveGhostFill, false);
+});
+
+test("tally deferred ghost fill waits until all wave fruit exist", async () => {
+  const w = loadFear();
+  const g = game([]);
+  g.settings = { ka: 6 };
+  w.__remixGame = g;
+  w.fear_mode_selected = () => true;
+  w.isFearActive = () => true;
+  w.fear_uses_ghost_pairs = () => true;
+  w.__fearWaveGhostFill = true;
+  let spawned = 0;
+  w.__fearE4E = (mgr) => {
+    spawned++;
+    mgr.ka.push({ Oka: true, pos: { x: 20 + spawned, y: 1 } });
+    return true;
+  };
+  // Simulate t7E: after_respawn after each of 5 fruit plants.
+  for (let n = 1; n <= 5; n++) {
+    const fruit = {
+      Oka: false,
+      sequenceNumber: n,
+      pos: { x: n, y: 1 },
+    };
+    g.wa.ka.push(fruit);
+    w.__fearSeenFruits.add(fruit);
+    w.__fearWaveGhostFill = true;
+    w.fear_after_respawn(g.wa);
+    assert.equal(
+      g.wa.ka.filter((f) => w.fear_is_ghost(f)).length,
+      0,
+      "no ghosts mid-t7E plant " + n
+    );
+  }
+  await Promise.resolve();
+  const fresh = g.wa.ka.filter((f) => !w.fear_is_ghost(f));
+  const ghosts = g.wa.ka.filter((f) => w.fear_is_ghost(f));
+  assert.equal(fresh.length, 5);
+  assert.equal(ghosts.length, 5);
+  assert.deepEqual(
+    ghosts.map((gh) => gh.sequenceNumber).sort((a, b) => a - b),
+    [1, 2, 3, 4, 5]
+  );
+  assert.equal(spawned, 5);
 });
 
 test("fear_stamp_ghost_tally_from_pairs copies sequenceNumber", () => {
@@ -1078,7 +1125,8 @@ test("Slot Machine includes dynamic bad Fear badge and special ghost unit", () =
   assert.match(slot, /m === \(window\.FEAR_MODE \| 0\)/);
   assert.match(slot, /if \(window\.fear_is_ghost && window\.fear_is_ghost\(f\)\) continue/);
   assert.match(slot, /if \(f\.__slotFearGhost\) continue/);
-  assert.match(slot, /same transient empty phase before its special unit/);
+  assert.match(slot, /same-eat transient empty before the Fear special unit/);
+  assert.match(slot, /ghosts-only may win/);
   assert.match(
     slot,
     /window\.FEAR_MODE == null \|\| em !== \(window\.FEAR_MODE \| 0\)/
@@ -1156,6 +1204,75 @@ test(
         ),
         []
       );
+    } finally {
+      await h.close();
+    }
+  }
+);
+
+test(
+  "Tally Fear: eating index 5 refills exactly fruit 1..5 and ghosts 1..5",
+  { skip: !runBrowser },
+  async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 55, headless: true });
+    try {
+      assert.ok(
+        await h.start({
+          mode: "fear",
+          count: COUNT.TALLY,
+          size: SIZE.NORMAL,
+        })
+      );
+      const result = await h.page.evaluate(async () => {
+        const g = window.__remixGame;
+        if (window.fear_initialize_layout) {
+          window.__fearLayoutReady = false;
+          window.fear_initialize_layout(g);
+        }
+        for (let want = 1; want <= 5; want++) {
+          const target = g.wa.ka.find(
+            (f) =>
+              f && !window.fear_is_ghost(f) && (f.sequenceNumber | 0) === want
+          );
+          if (!target) return { ok: false, reason: "missing " + want };
+          for (let i = 0; i < g.oa.ka.length; i++) {
+            g.oa.ka[i].x = target.pos.x - 1;
+            g.oa.ka[i].y = target.pos.y;
+          }
+          g.oa.direction = "RIGHT";
+          const sh0 = g.Sh | 0;
+          for (let t = 0; t < 16 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
+          for (let i = 0; i < g.oa.ka.length; i++) {
+            g.oa.ka[i].x = 1;
+            g.oa.ka[i].y = 1;
+          }
+          if (!g.nj) g.tick();
+        }
+        // Deferred tally ghost fill uses a microtask.
+        await Promise.resolve();
+        await Promise.resolve();
+        const fresh = g.wa.ka
+          .filter((f) => f && !window.fear_is_ghost(f))
+          .map((f) => f.sequenceNumber | 0)
+          .sort((a, b) => a - b);
+        const ghosts = g.wa.ka
+          .filter((f) => f && window.fear_is_ghost(f))
+          .map((f) => f.sequenceNumber | 0)
+          .sort((a, b) => a - b);
+        return {
+          ok: true,
+          total: g.wa.ka.length,
+          fresh,
+          ghosts,
+          nj: !!g.nj,
+        };
+      });
+      assert.equal(result.ok, true, JSON.stringify(result));
+      assert.equal(result.nj, false, JSON.stringify(result));
+      assert.equal(result.total, 10, JSON.stringify(result));
+      assert.deepEqual(result.fresh, [1, 2, 3, 4, 5], JSON.stringify(result));
+      assert.deepEqual(result.ghosts, [1, 2, 3, 4, 5], JSON.stringify(result));
     } finally {
       await h.close();
     }
@@ -1357,24 +1474,41 @@ test(
         g.wa.ka.splice(0, g.wa.ka.length);
         const planted = window.slot_plant_special_unit(window.FEAR_MODE, g);
         window.fear_rebuild_grid(g);
+        window.slot_ensure_badges(g);
+        const ghosts = g.wa.ka.filter((f) => f.__slotFearGhost);
+        const badgeFruit = g.wa.ka.filter(
+          (f) => !f.__slotFearGhost && !f.Oka && typeof f.slotMode === "number"
+        ).length;
+        const ghostModes = ghosts.map((f) => f.slotMode);
+        // Clearing playable fruit after Fear badge eat leaves ghosts only.
+        g.wa.ka.splice(0, g.wa.ka.length, ...ghosts);
+        for (let i = 0; i < g.wa.ka.length; i++) {
+          if (g.wa.ka[i].slotMode != null) delete g.wa.ka[i].slotMode;
+        }
+        window.__slotActive = window.FEAR_MODE;
+        g.nj = false;
+        g.ub = false;
+        const won = window.slot_win_if_empty(g, g.wa);
         return {
           planted,
-          ghosts: g.wa.ka.filter((f) => f.__slotFearGhost).length,
-          ghostTypes: g.wa.ka
-            .filter((f) => f.__slotFearGhost)
-            .map((f) => f.type),
+          ghosts: ghosts.length,
+          ghostTypes: ghosts.map((f) => f.type),
+          ghostModes,
           fearType: window.FEAR_GHOST_TYPE,
-          badgeFruit: g.wa.ka.filter(
-            (f) => !f.Oka && typeof f.slotMode === "number"
-          ).length,
+          badgeFruit,
           arrows: window.__fearGrid.size,
           active: window.isFearActive(),
+          ghostsOnlyWin: won,
+          nj: !!g.nj,
         };
       });
       assert.equal(result.planted, true, JSON.stringify(result));
       assert.equal(result.ghosts, 1, JSON.stringify(result));
       assert.deepEqual(result.ghostTypes, [result.fearType], JSON.stringify(result));
       assert.equal(result.badgeFruit, 1, JSON.stringify(result));
+      assert.deepEqual(result.ghostModes, [undefined], JSON.stringify(result));
+      assert.equal(result.ghostsOnlyWin, true, JSON.stringify(result));
+      assert.equal(result.nj, true, JSON.stringify(result));
       assert.ok(result.arrows >= 1, JSON.stringify(result));
       assert.equal(result.active, true, JSON.stringify(result));
       assert.deepEqual(
