@@ -34,10 +34,14 @@ describe("Custom fruit presets + validator (offline)", () => {
     for (const p of fruit) {
       assert.match(p.id, /^[a-z0-9-]+$/);
       assert.ok(p.label);
-      if (p.id === "cat") continue;
-      assert.match(p.normal, /^https:\/\//);
-      assert.match(p.pixel, /^https:\/\//);
-      assert.match(p.real, /^https:\/\//);
+      // Presets are embedded as data URLs (CSP-safe); remote URLs still allowed.
+      for (const key of ["normal", "pixel", "real"]) {
+        assert.match(
+          p[key],
+          /^(https:\/\/|data:image\/png;base64,)/,
+          p.id + "." + key
+        );
+      }
     }
     assert.equal(
       fruit.some((p) => /poison/.test(p.id)),
@@ -54,22 +58,19 @@ describe("Custom fruit presets + validator (offline)", () => {
       (id) => poison.find((p) => p.id === id + "-poison")
     );
     assert.equal(ghosts.filter(Boolean).length, 4);
-    const blinky = ghosts[0];
-    assert.match(blinky.poisonNormal, /poison-ghost\.png/);
-    assert.match(blinky.poisonPixel, /px-poison-ghost\.png/);
-    assert.match(blinky.poisonReal, /poison-ghost\.png/);
-    for (const g of ghosts.slice(1)) {
-      assert.match(g.poisonNormal, /^data:image\/png;base64,/);
-      assert.match(g.poisonPixel, /^data:image\/png;base64,/);
-      assert.match(g.poisonReal, /^data:image\/png;base64,/);
+    const embedded = /^data:image\/png;base64,/;
+    for (const g of ghosts) {
+      assert.match(g.poisonNormal, embedded, g.id);
+      assert.match(g.poisonPixel, embedded, g.id);
+      assert.match(g.poisonReal, embedded, g.id);
     }
     assert.ok(poison.some((p) => p.id === "skull-poison"));
     const jacko = poison.find((p) => p.id === "jack-o-lantern-poison");
     assert.ok(jacko, "Jack-o-lantern poison preset");
     assert.equal(jacko.label, "Jack-o-lantern");
-    assert.match(jacko.poisonNormal, /true-jacko\.png/);
-    assert.match(jacko.poisonPixel, /jacko-px\.png/);
-    assert.match(jacko.poisonReal, /jacko-real\.png/);
+    assert.match(jacko.poisonNormal, embedded);
+    assert.match(jacko.poisonPixel, embedded);
+    assert.match(jacko.poisonReal, embedded);
   });
 
   it("cat fruit preset PNGs are exact Normal/Pixel/Real sizes", () => {

@@ -1470,7 +1470,12 @@ describe("Ultra Selected Ham (offline)", () => {
     w.ultraSyncSelectedHamPanel();
     assert.equal(w.__ultraSelectedHam.walls, 11);
     assert.equal(w.__ultraSelectedHam.kind, "paths");
-    assert.equal(w.__ultraSelectedHam.file, null);
+    // Old file 1 is dropped; a wall count with a single file auto-locks it.
+    const files = fromVm(w.ultraSelectedHamFilesFor(11, "paths"));
+    assert.equal(
+      w.__ultraSelectedHam.file,
+      files.length === 1 ? files[0] : null
+    );
     assert.equal(w.__ultraSelectedHam.line, null);
     assert.equal(w.__ultraSelectedHam.code, null);
   });

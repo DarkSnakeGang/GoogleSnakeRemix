@@ -131,7 +131,7 @@ describe("Cat Mode (offline)", () => {
     assert.match(mx, /cat_allows_pair_spawn/);
     assert.match(
       mx,
-      /isMexicoActive&&window\.isMexicoActive\(\)\)\{e=!window\.cat_allows_pair_spawn\|\|window\.cat_allows_pair_spawn\(a\);\}/
+      /isMexicoActive&&window\.isMexicoActive\(\)\)\{[^]*?e=!window\.cat_allows_pair_spawn\|\|window\.cat_allows_pair_spawn\(a\);/
     );
   });
 });

@@ -12,11 +12,13 @@ const dest = process.argv[2]
   ? path.resolve(process.argv[2])
   : path.join(ROOT, "LevelEditorInit.js");
 
-let src = fs.readFileSync(dest, "utf8");
-let changed = false;
+// Upstream is sometimes served with CRLF; anchors below are LF-only.
+const raw = fs.readFileSync(dest, "utf8");
+let src = raw.replace(/\r\n/g, "\n");
+let changed = src !== raw;
 
 function once(label, find, insert) {
-  if (src.includes(insert.trim().slice(0, 40))) return;
+  if (src.includes(insert)) return;
   if (!src.includes(find)) {
     throw new Error("patch_level_editor_selected_ham: missing anchor for " + label);
   }

@@ -48,7 +48,10 @@ describe("Chess + Portal combo (offline)", () => {
     assert.match(mx, /__chessMakeApple=g7/);
     assert.match(mx, /chess_portal_note_fruit_twin/);
     assert.match(mx, /else if\(!\(a\.settings\.ka===4/);
-    assert.match(mx, /else if\(window\.isMexicoActive&&window\.isMexicoActive\(\)\)\{e=!window\.cat_allows_pair_spawn\|\|window\.cat_allows_pair_spawn\(a\);\}/);
+    assert.match(
+      mx,
+      /else if\(window\.isMexicoActive&&window\.isMexicoActive\(\)\)\{[^]*?mexico_note_fruit_twin[^]*?e=!window\.cat_allows_pair_spawn\|\|window\.cat_allows_pair_spawn\(a\);/
+    );
   });
 });
 
