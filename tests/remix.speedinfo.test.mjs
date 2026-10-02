@@ -287,6 +287,52 @@ describe("Remix SpeedInfo gate (browser)", { skip: !runBrowser }, () => {
     }
   });
 
+  it("Pudding FPS Counter switch lives on the Play page and toggles the label", async () => {
+    const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
+    const h = await launchHarness({ seed: 17, headless: true });
+    try {
+      await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
+      const probe = await h.page.evaluate(async () => {
+        const cb = document.getElementById("FpsCounter");
+        const play = document.getElementById("ultra-settings-page-play");
+        if (!cb || !play) return { ok: false, reason: "missing FpsCounter or play page" };
+        const defaultOff = window.pudding_settings.FpsCounter === false;
+        cb.checked = true;
+        cb.dispatchEvent(new Event("change"));
+        await new Promise((r) => setTimeout(r, 1200));
+        const el = document.getElementById("pudding-fps-counter");
+        const onText = el ? el.textContent : "";
+        const onDisplay = el ? el.style.display : "";
+        const saved = JSON.parse(localStorage.getItem("RemixSettings") || "{}").FpsCounter;
+        cb.checked = false;
+        cb.dispatchEvent(new Event("change"));
+        return {
+          ok: true,
+          onPlayPage: play.contains(cb),
+          hidden: !!cb.closest("#ultra-settings-hidden"),
+          defaultOff,
+          onText,
+          onDisplay,
+          saved,
+          offDisplay: el ? el.style.display : "",
+          settingAfterOff: window.pudding_settings.FpsCounter,
+        };
+      });
+      assert.equal(probe.ok, true, JSON.stringify(probe));
+      assert.equal(probe.onPlayPage, true, JSON.stringify(probe));
+      assert.equal(probe.hidden, false, JSON.stringify(probe));
+      assert.equal(probe.defaultOff, true, JSON.stringify(probe));
+      assert.match(probe.onText, /^\d+ FPS$/, JSON.stringify(probe));
+      assert.equal(probe.onDisplay, "block", JSON.stringify(probe));
+      assert.equal(probe.saved, true, JSON.stringify(probe));
+      assert.equal(probe.offDisplay, "none", JSON.stringify(probe));
+      assert.equal(probe.settingAfterOff, false, JSON.stringify(probe));
+      assert.deepEqual(h.modErrors(), [], "no mod errors");
+    } finally {
+      await h.close();
+    }
+  });
+
   it("Timer settings lists Candy, Chess and Burger modes", async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 14, headless: true });

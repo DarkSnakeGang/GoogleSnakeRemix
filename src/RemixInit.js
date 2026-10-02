@@ -904,6 +904,7 @@ window.remixOrganizeSettings = function remixOrganizeSettings() {
     "TopBarIcons",
     "AlwaysOnTimeKeeper",
     "BigPanelText",
+    "FpsCounter",
     "EatThemeRandomizer",
     "DisableRandom",
   ].forEach(function (id) {

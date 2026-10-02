@@ -10,7 +10,8 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
     try {
       await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
       const menu = await h.page.evaluate(() => {
-        const speed = [...document.querySelector("#speed").children].map(
+        const speedEls = [...document.querySelector("#speed").children];
+        const speed = speedEls.map(
           (c, i) => ({ i, alt: c.alt || "", src: (c.src || "").slice(-40) })
         );
         const count = [...document.querySelector("#count").children].map(
@@ -26,7 +27,10 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
             window.CAT_SPEED_INDEX === window.CUSTOM_SPEED_INDEX - 1,
           customLast:
             window.CUSTOM_SPEED_SWITCH_INDEX === speed.length - 1,
-          turtleStill3: speed[3]?.src?.includes("Turtle-Bunny"),
+          // MoreMenu icons (Turtle-Bunny first) are embedded as data URLs.
+          turtleStill3:
+            /^data:image\//.test(speedEls[3]?.src || "") &&
+            !/^data:image\//.test(speedEls[2]?.src || ""),
           blue: window.BLUE_DICE_COUNT,
           green: window.GREEN_DICE_COUNT,
           black: window.BLACK_DICE_COUNT,
@@ -568,7 +572,8 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
       assert.equal(probe.shown, true, JSON.stringify(probe));
       assert.equal(probe.labelShown, "Hide Visibility settings", JSON.stringify(probe));
       assert.equal(probe.hiddenAgain, true, JSON.stringify(probe));
-      assert.ok(probe.chooserH >= 34 && probe.chooserH <= 40, JSON.stringify(probe));
+      // Pudding-style chooser: 16px (12px compact) text, 1.3 line-height, 4px padding.
+      assert.ok(probe.chooserH >= 22 && probe.chooserH <= 32, JSON.stringify(probe));
       assert.ok(probe.visBtnW >= probe.setupW - 4, JSON.stringify(probe));
       assert.equal(probe.setupResetCount, 1, JSON.stringify(probe));
       assert.match(String(probe.resetBg), /rgb\(\s*17,\s*17,\s*17\s*\)/, JSON.stringify(probe));
