@@ -26347,20 +26347,24 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     );
   }
 
-  // Gate/bridge plant sites: Ultra may leave disable* true; also honor force flag
-  // even if `f` was rewritten by later wall-every-apple patching.
-  if (code.indexOf("disableGateMode=!1,h6E") < 0 && code.indexOf("disableGateMode=!1,h6E") < 0) {
+  // Gate/bridge plant sites: honor the force flag even if later wall-every-apple
+  // patching rewrote `f`. Do not clear disableGateMode/disableBridgeMode here.
+  // Outside Slot Machine those flags are the Ultra checkboxes (default off).
+  // Clearing them made bridge/gate mode spawn with the toggle off. While Slot
+  // is active, slot_sync_ultra_disables already owns the flags, and the
+  // UltraPlace early-returns allow the active roll through.
+  if (code.indexOf("slot_force_entity_spawn())&&h6E(a.Qa") < 0) {
     smReplace(
       "slot force gate plant",
       /e7\(a\.settings,19\)&&f&&h6E\(a\.Qa,a\.oa\.ka\)/,
-      "e7(a.settings,19)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===19)&&(f||window.slot_force_entity_spawn&&window.slot_force_entity_spawn())&&(window.disableGateMode=!1,h6E(a.Qa,a.oa.ka))"
+      "e7(a.settings,19)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===19)&&(f||window.slot_force_entity_spawn&&window.slot_force_entity_spawn())&&h6E(a.Qa,a.oa.ka)"
     );
   }
-  if (code.indexOf("disableBridgeMode=!1,m5E") < 0) {
+  if (code.indexOf("slot_ensure_bridge_planted(a))") < 0) {
     smReplace(
       "slot force bridge plant",
       /e7\(a\.settings,20\)&&f&&\(m5E\(a\.Ga\),e7\(a\.settings,9\)&&n7E\(a\)\)/,
-      "e7(a.settings,20)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===20)&&(f||window.slot_force_entity_spawn&&window.slot_force_entity_spawn())&&(window.disableBridgeMode=!1,m5E(a.Ga),e7(a.settings,9)&&n7E(a),window.slot_ensure_bridge_planted&&window.slot_ensure_bridge_planted(a))"
+      "e7(a.settings,20)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===20)&&(f||window.slot_force_entity_spawn&&window.slot_force_entity_spawn())&&(m5E(a.Ga),e7(a.settings,9)&&n7E(a),window.slot_ensure_bridge_planted&&window.slot_ensure_bridge_planted(a))"
     );
   }
 
@@ -26728,26 +26732,21 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     }
   }
 
-  // Upgrade older gate/bridge plant sites that lacked the active-roll gate.
-  if (
-    code.indexOf("(__slotActive|0)===19)&&(") < 0 &&
-    code.indexOf("disableGateMode=!1,h6E") >= 0
-  ) {
+  // Upgrade older gate/bridge plant sites that forced the Ultra disable flags
+  // off (that spawned gates/bridges in normal mode with the checkbox off).
+  if (code.indexOf("disableGateMode=!1,h6E") >= 0) {
     smReplace(
-      "slot gate plant active-roll upgrade",
-      /e7\(a\.settings,19\)&&\(f\|\|window\.slot_force_entity_spawn&&window\.slot_force_entity_spawn\(\)\)&&\(window\.disableGateMode=!1,h6E\(a\.Qa,a\.oa\.ka\)\)/,
-      "e7(a.settings,19)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===19)&&(f||window.slot_force_entity_spawn&&window.slot_force_entity_spawn())&&(window.disableGateMode=!1,h6E(a.Qa,a.oa.ka))",
+      "slot gate plant keep ultra disable",
+      /e7\(a\.settings,19\)&&(?:\(\!\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)\)\|\|\(window\.__slotActive\|0\)===19\)&&)?\(f\|\|window\.slot_force_entity_spawn&&window\.slot_force_entity_spawn\(\)\)&&\(window\.disableGateMode=!1,h6E\(a\.Qa,a\.oa\.ka\)\)/,
+      "e7(a.settings,19)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===19)&&(f||window.slot_force_entity_spawn&&window.slot_force_entity_spawn())&&h6E(a.Qa,a.oa.ka)",
       true
     );
   }
-  if (
-    code.indexOf("(__slotActive|0)===20)&&(") < 0 &&
-    code.indexOf("disableBridgeMode=!1,m5E") >= 0
-  ) {
+  if (code.indexOf("disableBridgeMode=!1,m5E") >= 0) {
     smReplace(
-      "slot bridge plant active-roll upgrade",
-      /e7\(a\.settings,20\)&&\(f\|\|window\.slot_force_entity_spawn&&window\.slot_force_entity_spawn\(\)\)&&\(window\.disableBridgeMode=!1,m5E\(a\.Ga\),e7\(a\.settings,9\)&&n7E\(a\),window\.slot_ensure_bridge_planted&&window\.slot_ensure_bridge_planted\(a\)\)/,
-      "e7(a.settings,20)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===20)&&(f||window.slot_force_entity_spawn&&window.slot_force_entity_spawn())&&(window.disableBridgeMode=!1,m5E(a.Ga),e7(a.settings,9)&&n7E(a),window.slot_ensure_bridge_planted&&window.slot_ensure_bridge_planted(a))",
+      "slot bridge plant keep ultra disable",
+      /e7\(a\.settings,20\)&&(?:\(\!\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)\)\|\|\(window\.__slotActive\|0\)===20\)&&)?\(f\|\|window\.slot_force_entity_spawn&&window\.slot_force_entity_spawn\(\)\)&&\(window\.disableBridgeMode=!1,m5E\(a\.Ga\),e7\(a\.settings,9\)&&n7E\(a\),window\.slot_ensure_bridge_planted&&window\.slot_ensure_bridge_planted\(a\)\)/,
+      "e7(a.settings,20)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===20)&&(f||window.slot_force_entity_spawn&&window.slot_force_entity_spawn())&&(m5E(a.Ga),e7(a.settings,9)&&n7E(a),window.slot_ensure_bridge_planted&&window.slot_ensure_bridge_planted(a))",
       true
     );
   }
