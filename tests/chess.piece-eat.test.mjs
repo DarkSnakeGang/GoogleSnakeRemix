@@ -301,6 +301,50 @@ describe("chess double-eat law (offline)", () => {
     assert.equal(w.__opened, "rook", "carry+peaceful still runs unlock rays");
     assert.ok(piece.nba && piece.nba.size === 4, "tick keeps locks while carrying");
   });
+
+  it("unit: rook open ignores fruit on the file and still opens the bishop", () => {
+    const start = chess.indexOf("function chessRayPiece");
+    const end = chess.indexOf("window.getRandomPiece");
+    assert.ok(start > 0 && end > start, "rook/bishop open block missing");
+    const block = chess.slice(start, end);
+    const capture = chess.match(
+      /window\.capture_attempt = function capture_attempt[\s\S]*?\n  \};/
+    );
+    assert.ok(capture, "capture_attempt missing");
+    const sandbox = { window: {}, Math, Object, Set, console };
+    const src = `
+      window.shield_empty_all = function(){ window.__shieldEmpty = (window.__shieldEmpty|0)+1; };
+      window.selectedFruit = 1;
+      window.muted = true;
+      ${capture[0]}
+      ${block}
+    `;
+    const fn = new Function("window", "Math", "Object", "Set", src);
+    fn(sandbox.window, Math, Object, Set);
+    const w = sandbox.window;
+    w.head_state = "rook";
+    w.head_color = "b";
+    const fruit = {
+      isPiece: false,
+      ChessColor: "w",
+      type: 1,
+      pos: { x: 0, y: 0 },
+    };
+    const bishop = {
+      isPiece: true,
+      ChessPiece: "bishop",
+      ChessColor: "w",
+      type: 90,
+      pos: { x: 0, y: 9 },
+    };
+    w.appleArray = [fruit, bishop];
+    const opened = w.rook_open({ x: 0, y: 8 });
+    assert.equal(opened, true);
+    assert.equal(bishop.isPiece, false, "bishop below the rook becomes fruit");
+    assert.equal(fruit.isPiece, false);
+    assert.equal(fruit.type, 1, "apple above the rook is not captured");
+    assert.equal(w.head_state, "OPEN");
+  });
 });
 
 /**

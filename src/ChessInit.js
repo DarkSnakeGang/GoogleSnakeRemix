@@ -567,6 +567,12 @@ window.ChessMod.alterSnakeCode = function (code) {
     ]);
   };
 
+  // Fruit keeps ChessColor after an unlock. A ray that treats fruit as a
+  // piece will try to capture it, fail, and never reach the real target.
+  function chessRayPiece(piece) {
+    return !!(piece && piece.isPiece && !piece.Oka && piece.pos);
+  }
+
   function getClosestPiecesToRook(rookPos, pieces) {
     const closestPieces = {
       up: { piece: null, distance: Infinity },
@@ -576,6 +582,7 @@ window.ChessMod.alterSnakeCode = function (code) {
     };
 
     pieces.forEach(function (piece) {
+      if (!chessRayPiece(piece)) return;
       const distance =
         Math.abs(piece.pos.x - rookPos.x) + Math.abs(piece.pos.y - rookPos.y);
 
@@ -619,8 +626,9 @@ window.ChessMod.alterSnakeCode = function (code) {
     let closestPieces = getClosestPiecesToRook(headPos, window.appleArray);
     for (let index = 0; index < closestPieces.length; index++) {
       let element = closestPieces[index];
+      if (!chessRayPiece(element)) continue;
       if (element.ChessColor != window.head_color) {
-        return window.capture_attempt(element.pos.x, element.pos.y);
+        if (window.capture_attempt(element.pos.x, element.pos.y)) return true;
       }
     }
     return false;
@@ -634,6 +642,7 @@ window.ChessMod.alterSnakeCode = function (code) {
     const closestPieces = {};
 
     pieces.forEach(function (piece) {
+      if (!chessRayPiece(piece)) return;
       const dx = piece.pos.x - bishopPos.x;
       const dy = piece.pos.y - bishopPos.y;
 
@@ -666,8 +675,9 @@ window.ChessMod.alterSnakeCode = function (code) {
     let closestPieces = getClosestPiecesToBishop(headPos, window.appleArray);
     for (let index = 0; index < closestPieces.length; index++) {
       let element = closestPieces[index];
+      if (!chessRayPiece(element)) continue;
       if (element.ChessColor != window.head_color) {
-        return window.capture_attempt(element.pos.x, element.pos.y);
+        if (window.capture_attempt(element.pos.x, element.pos.y)) return true;
       }
     }
     return false;
