@@ -53,6 +53,7 @@ REMIX_PARTS = [
     "src/CspMenuIcons.js",
     "src/PauseInit.js",
     "src/RemixInit.js",
+    "src/ShuffleModdedInit.js",
 ]
 
 ULTRA_PARTS = [
