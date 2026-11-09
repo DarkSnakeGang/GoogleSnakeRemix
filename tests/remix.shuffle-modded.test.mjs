@@ -135,223 +135,231 @@ describe("shuffle incl. modded modes (pools)", () => {
     assert.equal(logic.controlDisabled({ text: " Disabled " }), true);
   });
 
-  it("is concatenated into both committed bundles", () => {
+  it("replaces the native shuffle function and leaves the following function intact", () => {
+    const patch = loadPatch();
+    const sample =
+      'a8E=function(a){if(a.visible){if(a.oa===\n"settings"){var b=Math.floor(Math.random()*24);b+=b>=a.settings.Fb?1:0;}_.Ow(a.qc)}},b8E=function(a){return a}';
+    const patched = patch(sample);
+    assert.match(
+      patched,
+      /a8E=function\(a\)\{if\(a\.visible\)\{window\._puddingSnakeMenu=a;if\(typeof window\.remixShuffleModdedRun==="function"\)window\.remixShuffleModdedRun\(\);_\.Ow\(a\.qc\)\}\},b8E=function/
+    );
+    assert.equal(patch(patched), patched);
+  });
+
+  it("is concatenated into both committed bundles and adds no extra button", () => {
     for (const name of ["RemixMod.js", "RemixUltraMod.js"]) {
       const text = fs.readFileSync(path.join(ROOT, name), "utf8");
-      const at = text.indexOf('btn.id = "remix-shuffle-modded"');
-      assert.ok(at > 0, name);
-      assert.ok(text.includes("Shuffle incl. modded modes"));
+      assert.ok(text.includes("window.remixPatchNativeShuffle(code)"), name);
+      assert.ok(text.includes("window.remixShuffleModdedRun()"), name);
+      assert.equal(text.includes("remix-shuffle-modded"), false, name);
+      assert.equal(text.includes("Shuffle incl. modded modes"), false, name);
     }
-    const ultra = fs.readFileSync(path.join(ROOT, "RemixUltraMod.js"), "utf8");
-    const buttonAt = ultra.indexOf("remix-shuffle-modded");
-    const levelAt = ultra.indexOf("window.levelEditorMod = {}");
-    assert.ok(buttonAt < levelAt);
   });
 });
 
-describe("shuffle incl. modded modes (browser)", { skip: !runBrowser }, () => {
-  it("adds the button, reaches a modded mode, and disables it with shuffle", async () => {
+function loadPatch() {
+  const code = fs.readFileSync(
+    path.join(ROOT, "src/ShuffleModdedInit.js"),
+    "utf8"
+  );
+  const sandbox = { window: {}, console, Math, Set, Object, Number };
+  sandbox.window = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(code, sandbox);
+  return sandbox.remixPatchNativeShuffle;
+}
+
+describe("regular shuffle includes modded modes (browser)", { skip: !runBrowser }, () => {
+  it("Remix Shuffle reaches a modded mode and still disables", async () => {
     const { launchHarness } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 7, headless: true });
     try {
-      await openSettings(h.page);
-      const shots = path.join("/opt/cursor/artifacts");
-      fs.mkdirSync(shots, { recursive: true });
-      await shotToolbar(h.page, path.join(shots, "shuffle-modded-enabled.png"));
-
-      const info = await h.page.evaluate(() => {
-        const orig = document.querySelector('[jsname="qycu7d"]');
-        const extra = document.getElementById("remix-shuffle-modded");
-        const trophy = document.getElementById("trophy");
-        return {
-          origAction: orig && orig.getAttribute("jsaction"),
-          origLabel: orig && orig.getAttribute("aria-label"),
-          extraLabel: extra && extra.getAttribute("aria-label"),
-          extraTitle: extra && extra.getAttribute("title"),
-          nextToOrig: orig && extra && orig.nextElementSibling === extra,
-          sameClass: extra && extra.classList.contains("FL0z2d"),
-          hidden: extra && extra.classList.contains("LaTyvd"),
-          hasSvg: !!(extra && extra.querySelector("svg")),
-          modes: window.remixShuffleModdedLogic.trophyPool(trophy.children.length),
-          candy: window.CANDY_MODE,
-          slot: window.SLOT_MACHINE_MODE,
-          menu: !!(window._puddingSnakeMenu && window._puddingSnakeP7),
-        };
-      });
-      assert.equal(info.origAction, "Km979c");
-      assert.equal(info.origLabel, "Shuffle");
-      assert.equal(info.extraLabel, "Shuffle incl. modded modes");
-      assert.equal(info.extraTitle, "Shuffle incl. modded modes");
-      assert.equal(info.nextToOrig, true);
-      assert.equal(info.sameClass, true);
-      assert.equal(info.hidden, false);
-      assert.equal(info.hasSvg, true);
-      assert.equal(info.menu, true);
-      assert.ok(info.candy >= 23);
-      assert.ok(info.modes.includes(info.candy));
-      assert.ok(info.modes.includes(info.slot));
-      assert.equal(info.modes.includes(21), false);
-      assert.equal(info.modes.includes(22), false);
-
-      const forced = await h.page.evaluate(() => {
-        const menu = window._puddingSnakeMenu;
-        const pool = window.remixShuffleModdedLogic.trophyPool(
-          document.getElementById("trophy").children.length
-        );
-        const choices = pool.filter((i) => i !== menu.settings.ob);
-        let call = 0;
-        const ok = window.remixShuffleModdedRun(() => {
-          call += 1;
-          return call === 5 ? 0.999999 : 0;
-        });
-        return {
-          ok,
-          ob: menu.settings.ob,
-          expected: choices[choices.length - 1],
-          daily: !!menu.settings.Ga,
-        };
-      });
-      assert.equal(forced.daily, false);
-      assert.equal(forced.ok, true);
-      assert.equal(forced.ob, forced.expected);
-      assert.ok(forced.ob >= 23, "modded mode " + forced.ob);
-
-      await h.page.click('[jsname="qycu7d"]');
-      const native = await h.page.evaluate(() => ({
-        action: document.querySelector('[jsname="qycu7d"]').getAttribute("jsaction"),
-        ob: window._puddingSnakeMenu.settings.ob,
-      }));
-      assert.equal(native.action, "Km979c");
-      assert.ok(native.ob <= 20, "native shuffle stayed vanilla: " + native.ob);
-
-      await h.page.evaluate(() => window.ToggleRandom());
-      await shotToolbar(h.page, path.join(shots, "shuffle-modded-disabled.png"));
-      const disabled = await h.page.evaluate(() => {
-        const orig = document.querySelector('[jsname="qycu7d"]');
-        const extra = document.getElementById("remix-shuffle-modded");
-        const ob = window._puddingSnakeMenu.settings.ob;
-        const ran = window.remixShuffleModdedRun(() => 0);
-        extra.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-        return {
-          flag: window.pudding_settings.DisableRandom,
-          origText: orig.textContent,
-          extraText: extra.textContent,
-          origPe: orig.style.pointerEvents,
-          extraPe: extra.style.pointerEvents,
-          origColor: orig.style.color,
-          extraColor: extra.style.color,
-          ran,
-          ob,
-          after: window._puddingSnakeMenu.settings.ob,
-        };
-      });
-      assert.equal(disabled.flag, true);
-      assert.equal(disabled.origText, "Disabled");
-      assert.equal(disabled.extraText, "Disabled");
-      assert.equal(disabled.origPe, "none");
-      assert.equal(disabled.extraPe, "none");
-      assert.equal(disabled.origColor, "grey");
-      assert.equal(disabled.extraColor, "grey");
-      assert.equal(disabled.ran, false);
-      assert.equal(disabled.after, disabled.ob);
-
-      await h.page.evaluate(() => window.ToggleRandom());
-      const enabled = await h.page.evaluate(() => {
-        const orig = document.querySelector('[jsname="qycu7d"]');
-        const extra = document.getElementById("remix-shuffle-modded");
-        return {
-          flag: window.pudding_settings.DisableRandom,
-          origSvg: !!orig.querySelector("svg"),
-          extraSvg: !!extra.querySelector("svg"),
-          extraLabel: extra.getAttribute("aria-label"),
-          extraPe: extra.style.pointerEvents,
-        };
-      });
-      assert.equal(enabled.flag, false);
-      assert.equal(enabled.origSvg, true);
-      assert.equal(enabled.extraSvg, true);
-      assert.equal(enabled.extraLabel, "Shuffle incl. modded modes");
-      assert.equal(enabled.extraPe, "auto");
-      await h.page.evaluate(() => {
-        document.querySelector('[jsname="qycu7d"]').classList.add("LaTyvd");
-      });
-      await h.page.waitForFunction(() =>
-        document.getElementById("remix-shuffle-modded").classList.contains("LaTyvd")
-      );
-      await h.page.evaluate(() => {
-        document.querySelector('[jsname="qycu7d"]').classList.remove("LaTyvd");
-      });
-      await h.page.waitForFunction(
-        () =>
-          !document
-            .getElementById("remix-shuffle-modded")
-            .classList.contains("LaTyvd")
-      );
-
-      const blend = await h.page.evaluate(() => {
-        const menu = window._puddingSnakeMenu;
-        menu.oa = "combo";
-        window.candy_blending = false;
-        window.fear_blending = false;
-        const ok = window.remixShuffleModdedRun(() => 0);
-        const wall = menu.settings.Ua && menu.settings.Ua.get(1);
-        const peaceful = menu.settings.Ua && menu.settings.Ua.get(21);
-        return {
-          ok,
-          candy: window.candy_blending,
-          fear: window.fear_blending,
-          candyBtn: document.getElementById("remix-candy-blend")?.className || "",
-          wallOn: !!(wall && wall.classList.contains("lH9Ipd")),
-          peacefulOn: !!(peaceful && peaceful.classList.contains("lH9Ipd")),
-        };
-      });
-      assert.equal(blend.ok, true);
-      assert.equal(blend.candy, true);
-      assert.equal(blend.fear, true);
-      assert.match(blend.candyBtn, /lH9Ipd/);
-      assert.equal(blend.wallOn, true);
-      assert.equal(blend.peacefulOn, false);
+      await exerciseShuffle(h, "remix");
       assert.deepEqual(h.modErrors(), []);
     } finally {
       await h.close();
     }
   });
 
-  it("installs the same button in Ultra Remix, including the animated color", async () => {
+  it("Ultra Remix Shuffle reaches a modded mode and still disables", async () => {
     const { launchHarness, ultraHarnessOpts } = await import("../tools/harness.mjs");
     const h = await launchHarness(ultraHarnessOpts({ seed: 9, headless: true }));
     try {
-      await openSettings(h.page);
-      const shots = path.join("/opt/cursor/artifacts");
-      fs.mkdirSync(shots, { recursive: true });
-      await shotToolbar(h.page, path.join(shots, "shuffle-modded-ultra.png"));
-      const info = await h.page.evaluate(() => {
-        const extra = document.getElementById("remix-shuffle-modded");
-        const orig = document.querySelector('[jsname="qycu7d"]');
-        const colorN = document.getElementById("color").children.length;
-        window.ToggleRandom();
-        const disabled = extra.textContent === "Disabled" && orig.textContent === "Disabled";
-        window.ToggleRandom();
-        return {
-          label: extra && extra.getAttribute("aria-label"),
-          beside: orig && extra && orig.nextElementSibling === extra,
-          animated: window.ANIMATED_COLOR_INDEX,
-          colorN,
-          disabled,
-          restored: !!extra.querySelector("svg"),
-        };
-      });
-      assert.equal(info.label, "Shuffle incl. modded modes");
-      assert.equal(info.beside, true);
-      assert.ok(info.animated >= 0 && info.animated < info.colorN);
-      assert.equal(info.disabled, true);
-      assert.equal(info.restored, true);
+      await exerciseShuffle(h, "ultra");
+      const animated = await h.page.evaluate(() => ({
+        index: window.ANIMATED_COLOR_INDEX,
+        colorN: document.getElementById("color").children.length,
+      }));
+      assert.ok(animated.index >= 0 && animated.index < animated.colorN);
       assert.deepEqual(h.modErrors(), []);
     } finally {
       await h.close();
     }
   });
 });
+
+async function exerciseShuffle(h, name) {
+  const page = h.page;
+  await openSettings(page);
+  const shots = path.join("/opt/cursor/artifacts");
+  fs.mkdirSync(shots, { recursive: true });
+  await page.screenshot({ path: path.join(shots, `${name}_shuffle_menu.png`) });
+
+  const info = await page.evaluate(() => {
+    const buttons = [...document.querySelectorAll('[jsname="qycu7d"]')];
+    const orig = buttons[0];
+    const trophy = document.getElementById("trophy");
+    return {
+      count: buttons.length,
+      extra: !!document.getElementById("remix-shuffle-modded"),
+      action: orig && orig.getAttribute("jsaction"),
+      label: orig && orig.getAttribute("aria-label"),
+      text: orig && orig.textContent.trim(),
+      candy: window.CANDY_MODE,
+      slot: window.SLOT_MACHINE_MODE,
+      modes: window.remixShuffleModdedLogic.trophyPool(trophy.children.length),
+      menu: !!(window._puddingSnakeMenu && window._puddingSnakeP7),
+    };
+  });
+  assert.equal(info.count, 1, name);
+  assert.equal(info.extra, false, name);
+  assert.equal(info.action, "Km979c", name);
+  assert.equal(info.label, "Shuffle", name);
+  assert.equal(info.text, "Shuffle", name);
+  assert.equal(info.menu, true, name);
+  assert.ok(info.candy >= 23, name);
+  assert.ok(info.modes.includes(info.candy), name);
+  assert.ok(info.modes.includes(info.slot), name);
+  assert.equal(info.modes.includes(21), false, name);
+  assert.equal(info.modes.includes(22), false, name);
+
+  let landed = null;
+  for (let i = 0; i < 40 && !(landed && landed.ob >= 23); i++) {
+    await page.click('[jsname="qycu7d"]');
+    landed = await page.evaluate(() => {
+      const menu = window._puddingSnakeMenu;
+      const trophy = document.getElementById("trophy");
+      const selected = [...trophy.children].findIndex((el) =>
+        el.classList.contains("tuJOWd")
+      );
+      return {
+        ob: menu.settings.ob,
+        selected,
+        name: window.modeToTxt?.[menu.settings.ob]?.name || "",
+      };
+    });
+  }
+  assert.ok(landed && landed.ob >= 23, name + " " + JSON.stringify(landed));
+  assert.equal(landed.selected, landed.ob, name);
+  console.log(name + " shuffle landed on", landed);
+  await page.evaluate(() => {
+    const trophy = document.getElementById("trophy");
+    const selected = trophy.children[window._puddingSnakeMenu.settings.ob];
+    if (selected && selected.scrollIntoView) {
+      selected.scrollIntoView({ inline: "center", block: "nearest" });
+    }
+  });
+  await page.screenshot({
+    path: path.join(shots, `${name}_shuffle_modded_mode.png`),
+  });
+  const clip = await page.evaluate(() => {
+    const row = document.getElementById("trophy");
+    let vis = row.parentElement;
+    while (vis && vis.clientWidth > 0 && vis.scrollWidth <= vis.clientWidth + 2) {
+      vis = vis.parentElement;
+    }
+    const r = (vis || row).getBoundingClientRect();
+    return {
+      x: Math.max(0, r.x),
+      y: Math.max(0, r.y),
+      width: Math.min(r.width, 900),
+      height: Math.max(r.height, 48),
+    };
+  });
+  await page.screenshot({
+    path: path.join(shots, `${name}_shuffle_mode_row.png`),
+    clip,
+  });
+
+  const daily = await page.evaluate(() => {
+    const menu = window._puddingSnakeMenu;
+    const before = menu.settings.ob;
+    menu.settings.Ga = true;
+    const ran = window.remixShuffleModdedRun(() => 0.2);
+    const after = menu.settings.ob;
+    menu.settings.Ga = false;
+    return { ran, before, after };
+  });
+  assert.equal(daily.ran, true, name);
+  assert.equal(daily.after, daily.before, name);
+
+  await page.evaluate(() => window.ToggleRandom());
+  await page.screenshot({
+    path: path.join(shots, `${name}_shuffle_disabled.png`),
+  });
+  const disabled = await page.evaluate(() => {
+    const orig = document.querySelector('[jsname="qycu7d"]');
+    const ob = window._puddingSnakeMenu.settings.ob;
+    orig.click();
+    const ran = window.remixShuffleModdedRun(() => 0);
+    return {
+      flag: window.pudding_settings.DisableRandom,
+      text: orig.textContent.trim(),
+      pe: orig.style.pointerEvents,
+      color: orig.style.color,
+      ran,
+      ob,
+      after: window._puddingSnakeMenu.settings.ob,
+      buttons: document.querySelectorAll('[jsname="qycu7d"]').length,
+    };
+  });
+  assert.equal(disabled.flag, true, name);
+  assert.equal(disabled.text, "Disabled", name);
+  assert.equal(disabled.pe, "none", name);
+  assert.equal(disabled.color, "grey", name);
+  assert.equal(disabled.ran, false, name);
+  assert.equal(disabled.after, disabled.ob, name);
+  assert.equal(disabled.buttons, 1, name);
+
+  await page.evaluate(() => window.ToggleRandom());
+  const restored = await page.evaluate(() => {
+    const orig = document.querySelector('[jsname="qycu7d"]');
+    return {
+      flag: window.pudding_settings.DisableRandom,
+      text: orig.textContent.trim(),
+      label: orig.getAttribute("aria-label"),
+    };
+  });
+  assert.equal(restored.flag, false, name);
+  assert.equal(restored.text, "Shuffle", name);
+  assert.equal(restored.label, "Shuffle", name);
+
+  const blend = await page.evaluate(() => {
+    const menu = window._puddingSnakeMenu;
+    menu.oa = "combo";
+    window.candy_blending = false;
+    window.fear_blending = false;
+    const ok = window.remixShuffleModdedRun(() => 0);
+    const wall = menu.settings.Ua && menu.settings.Ua.get(1);
+    const peaceful = menu.settings.Ua && menu.settings.Ua.get(21);
+    menu.oa = "settings";
+    return {
+      ok,
+      candy: window.candy_blending,
+      fear: window.fear_blending,
+      candyBtn: document.getElementById("remix-candy-blend")?.className || "",
+      wallOn: !!(wall && wall.classList.contains("lH9Ipd")),
+      peacefulOn: !!(peaceful && peaceful.classList.contains("lH9Ipd")),
+    };
+  });
+  assert.equal(blend.ok, true, name);
+  assert.equal(blend.candy, true, name);
+  assert.equal(blend.fear, true, name);
+  assert.match(blend.candyBtn, /lH9Ipd/);
+  assert.equal(blend.wallOn, true, name);
+  assert.equal(blend.peacefulOn, false, name);
+}
 
 async function openSettings(page) {
   await page.waitForSelector('[jsname="iyH4Cb"]', { timeout: 60000 });
@@ -359,11 +367,10 @@ async function openSettings(page) {
   await page.waitForFunction(
     () => {
       const shuffle = document.querySelector('[jsname="qycu7d"]');
-      const extra = document.getElementById("remix-shuffle-modded");
       return (
         shuffle &&
-        extra &&
         !shuffle.classList.contains("LaTyvd") &&
+        !document.getElementById("remix-shuffle-modded") &&
         window._puddingSnakeMenu &&
         window._puddingSnakeMenu.oa === "settings"
       );
@@ -371,10 +378,4 @@ async function openSettings(page) {
     null,
     { timeout: 30000 }
   );
-}
-
-async function shotToolbar(page, file) {
-  const extra = page.locator("#remix-shuffle-modded");
-  const parent = extra.locator("xpath=..");
-  await parent.screenshot({ path: file });
 }

@@ -34958,6 +34958,9 @@ window.RemixMod.alterSnakeCode = function (code) {
   // After MoreMenu: skip if the tick is already gated.
   code = window.PauseMod.alterSnakeCode(code);
   code = window.remixPatchWallEveryApple(code);
+  if (typeof window.remixPatchNativeShuffle === "function") {
+    code = window.remixPatchNativeShuffle(code);
+  }
   return code;
 };
 
@@ -35016,17 +35019,15 @@ window.RemixMod.runCodeAfter = function () {
   }
 };
 
-// Extra toolbar button beside Google's shuffle (jsname qycu7d).
-// The original button and a8E are left alone. This one draws from the same
-// rows, plus the modes and options Remix appends, and it is disabled whenever
-// the original shuffle control is disabled.
+// The regular Shuffle button (jsname qycu7d) rolls vanilla options plus the
+// modes and menu rows Remix adds. Disable Randomizer still disables that
+// button, and a daily challenge still locks mode, count, speed, and size.
 
 window.remixShuffleModdedLogic = (function () {
   const VANILLA_MODE_LAST = 20;
   const PEACEFUL_MODE = 21;
   const BLENDER_MODE = 22;
   const TALLY_COUNT = 6;
-  const LABEL = "Shuffle incl. modded modes";
 
   // Blender ingredients Remix adds. Slot Machine has a trophy but no toggle.
   const BLEND_TOGGLES = [
@@ -35181,7 +35182,6 @@ window.remixShuffleModdedLogic = (function () {
   }
 
   return {
-    LABEL: LABEL,
     VANILLA_MODE_LAST: VANILLA_MODE_LAST,
     PEACEFUL_MODE: PEACEFUL_MODE,
     BLENDER_MODE: BLENDER_MODE,
@@ -35200,25 +35200,6 @@ window.remixShuffleModdedLogic = (function () {
 
 (function () {
   const logic = window.remixShuffleModdedLogic;
-  const LABEL = logic.LABEL;
-  // 5-pip die in the same viewBox and stroke as Google's 3-pip shuffle icon.
-  const ICON_PATH =
-    "M323.122-266.924q23.416 0 39.762-16.391t16.346-39.807q0-23.417-16.391-39.763-16.391-16.346-39.807-16.346-23.417 0-39.763 16.392-16.346 16.391-16.346 39.807 0 23.416 16.392 39.762 16.391 16.346 39.807 16.346Z" +
-    "M636.968-266.924q23.416 0 39.762-16.391t16.346-39.807q0-23.417-16.391-39.763-16.391-16.346-39.807-16.346-23.417 0-39.763 16.392-16.346 16.391-16.346 39.807 0 23.416 16.392 39.762 16.391 16.346 39.807 16.346Z" +
-    "M480.045-423.846q23.416 0 39.762-16.392 16.347-16.391 16.347-39.807 0-23.416-16.392-39.762-16.391-16.347-39.807-16.347-23.416 0-39.762 16.392-16.347 16.391-16.347 39.807 0 23.416 16.392 39.762 16.391 16.347 39.807 16.347Z" +
-    "M323.122-580.769q23.417 0 39.763-16.392 16.346-16.391 16.346-39.807 0-23.416-16.392-39.762-16.391-16.346-39.807-16.346-23.416 0-39.762 16.391t-16.346 39.807q0 23.417 16.391 39.763 16.391 16.346 39.807 16.346Z" +
-    "M636.968-580.769q23.417 0 39.763-16.392 16.346-16.391 16.346-39.807 0-23.416-16.392-39.762-16.391-16.346-39.807-16.346-23.416 0-39.762 16.391t-16.346 39.807q0 23.417 16.391 39.763 16.391 16.346 39.807 16.346Z" +
-    "M212.309-140.001q-30.308 0-51.308-21t-21-51.308v-535.382q0-30.308 21-51.308t51.308-21h535.382q30.308 0 51.308 21t21 51.308v535.382q0 30.308-21 51.308t-51.308 21H212.309Z";
-
-  function buttonHtml() {
-    return (
-      '<div class="DwxlBd"><svg aria-hidden="true" height="100%" viewBox="0 -960 960 960" xmlns="http://www.w3.org/2000/svg"><path d="' +
-      ICON_PATH +
-      '" fill="#FFFFFF"></path></svg></div><div class="l3ryBd">' +
-      LABEL +
-      "</div>"
-    );
-  }
 
   function originalButton() {
     const cached = window.random_button;
@@ -35338,144 +35319,21 @@ window.remixShuffleModdedLogic = (function () {
     return true;
   };
 
-  function syncButton() {
-    const orig = originalButton();
-    const btn = document.getElementById("remix-shuffle-modded");
-    if (!orig || !btn) return;
-    btn.classList.toggle("LaTyvd", orig.classList.contains("LaTyvd"));
-    if (window.remixShuffleModdedIsDisabled()) {
-      btn.style.pointerEvents = "none";
-      btn.textContent = "Disabled";
-      btn.style.color = (orig.style && orig.style.color) || "grey";
-      btn.setAttribute("aria-disabled", "true");
-      btn.dataset.remixDisabled = "1";
-      return;
+  // Replace Google's a8E so the existing Shuffle button uses these pools.
+  window.remixPatchNativeShuffle = function remixPatchNativeShuffle(code) {
+    if (typeof code !== "string") return code;
+    if (code.indexOf("window.remixShuffleModdedRun()") !== -1) return code;
+    const re =
+      /([a-zA-Z0-9_$]{1,8})=function\(a\)\{if\(a\.visible\)\{if\(a\.oa===\s*"settings"\)\{var b=Math\.floor\(Math\.random\(\)\*24\);[\s\S]*?_\.Ow\(a\.qc\)\}\}/;
+    if (!re.test(code)) {
+      console.error("ShuffleModded: could not find the native shuffle function");
+      return code;
     }
-    btn.style.pointerEvents = "auto";
-    if (btn.dataset.remixDisabled === "1" || !btn.querySelector("svg")) {
-      btn.innerHTML = btn.__remixHtml || buttonHtml();
-    }
-    btn.style.color = (orig.style && orig.style.color) || "";
-    btn.setAttribute("aria-disabled", "false");
-    delete btn.dataset.remixDisabled;
-  }
-
-  window.remixSyncShuffleModdedButton = syncButton;
-
-  function onClick(ev) {
-    if (ev) {
-      ev.preventDefault();
-      ev.stopPropagation();
-    }
-    window.remixShuffleModdedRun();
-  }
-
-  function ensureButton(orig) {
-    let btn = document.getElementById("remix-shuffle-modded");
-    if (btn) {
-      if (!btn.__remixHtml) btn.__remixHtml = buttonHtml();
-      return btn;
-    }
-    btn = document.createElement("div");
-    btn.id = "remix-shuffle-modded";
-    btn.className = orig.className || "FL0z2d LaTyvd";
-    if (!btn.classList.contains("FL0z2d")) btn.classList.add("FL0z2d");
-    btn.setAttribute("role", "button");
-    btn.setAttribute("tabindex", "0");
-    btn.setAttribute("aria-label", LABEL);
-    btn.setAttribute("title", LABEL);
-    btn.__remixHtml = buttonHtml();
-    btn.innerHTML = btn.__remixHtml;
-    orig.insertAdjacentElement("afterend", btn);
-    btn.addEventListener("click", onClick);
-    btn.addEventListener("keydown", function (ev) {
-      if (ev.key === "Enter" || ev.key === " ") onClick(ev);
-    });
-    return btn;
-  }
-
-  function observeOriginal(orig) {
-    if (!orig || orig.__remixShuffleObserved || typeof MutationObserver !== "function") {
-      return;
-    }
-    orig.__remixShuffleObserved = true;
-    const observer = new MutationObserver(function () {
-      syncButton();
-    });
-    observer.observe(orig, {
-      attributes: true,
-      attributeFilter: ["class", "style"],
-      childList: true,
-      characterData: true,
-      subtree: true,
-    });
-  }
-
-  function hookRandomState() {
-    const fn = window.applyRandomButtonState;
-    if (typeof fn !== "function" || fn.__remixWrapped) return;
-    const wrapped = function () {
-      const result = fn.apply(this, arguments);
-      syncButton();
-      return result;
-    };
-    wrapped.__remixWrapped = true;
-    window.applyRandomButtonState = wrapped;
-  }
-
-  function hookHostAfter() {
-    // Look the Ultra host up by name. A dotted property here would mark the
-    // Remix bundle as an Ultra build.
-    const host = window["RemixUltraMod"];
-    if (
-      !host ||
-      host.__shuffleModdedAfter ||
-      typeof host.runCodeAfter !== "function"
-    ) {
-      return;
-    }
-    const prev = host.runCodeAfter;
-    host.runCodeAfter = function () {
-      const result = prev.apply(this, arguments);
-      window.remixInstallShuffleModdedButton();
-      return result;
-    };
-    host.__shuffleModdedAfter = true;
-  }
-
-  window.remixInstallShuffleModdedButton =
-    function remixInstallShuffleModdedButton() {
-      if (typeof document === "undefined") return;
-      hookHostAfter();
-      hookRandomState();
-      const orig = originalButton();
-      if (!orig) {
-        const tries = window.remixInstallShuffleModdedButton._tries || 0;
-        if (tries < 20) {
-          window.remixInstallShuffleModdedButton._tries = tries + 1;
-          setTimeout(window.remixInstallShuffleModdedButton, 250);
-        }
-        return;
-      }
-      window.remixInstallShuffleModdedButton._tries = 0;
-      ensureButton(orig);
-      observeOriginal(orig);
-      syncButton();
-    };
-
-  if (window.RemixMod && !window.RemixMod.__shuffleModdedWrapped) {
-    const before = window.RemixMod.runCodeBefore;
-    const after = window.RemixMod.runCodeAfter;
-    window.RemixMod.runCodeBefore = function () {
-      if (typeof before === "function") before.apply(this, arguments);
-      window.remixInstallShuffleModdedButton();
-    };
-    window.RemixMod.runCodeAfter = function () {
-      if (typeof after === "function") after.apply(this, arguments);
-      window.remixInstallShuffleModdedButton();
-    };
-    window.RemixMod.__shuffleModdedWrapped = true;
-  }
+    return code.replace(
+      re,
+      '$1=function(a){if(a.visible){window._puddingSnakeMenu=a;if(typeof window.remixShuffleModdedRun==="function")window.remixShuffleModdedRun();_.Ow(a.qc)}}'
+    );
+  };
 })();
 
 window.levelEditorMod = {};
@@ -43400,6 +43258,9 @@ window.RemixUltraMod.alterSnakeCode = function (code) {
     code = window.ultraPatchChallengeSpeedrunWin(code);
     if (typeof window.remixPatchWallEveryApple === "function") {
       code = window.remixPatchWallEveryApple(code);
+    }
+    if (typeof window.remixPatchNativeShuffle === "function") {
+      code = window.remixPatchNativeShuffle(code);
     }
     return code;
   });

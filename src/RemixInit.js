@@ -1236,6 +1236,9 @@ window.RemixMod.alterSnakeCode = function (code) {
   // After MoreMenu: skip if the tick is already gated.
   code = window.PauseMod.alterSnakeCode(code);
   code = window.remixPatchWallEveryApple(code);
+  if (typeof window.remixPatchNativeShuffle === "function") {
+    code = window.remixPatchNativeShuffle(code);
+  }
   return code;
 };
 

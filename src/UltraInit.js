@@ -3172,6 +3172,9 @@ window.RemixUltraMod.alterSnakeCode = function (code) {
     if (typeof window.remixPatchWallEveryApple === "function") {
       code = window.remixPatchWallEveryApple(code);
     }
+    if (typeof window.remixPatchNativeShuffle === "function") {
+      code = window.remixPatchNativeShuffle(code);
+    }
     return code;
   });
 };
