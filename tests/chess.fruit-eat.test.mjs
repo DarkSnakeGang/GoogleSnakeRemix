@@ -10,11 +10,11 @@ const runBrowser = process.env.RUN_BROWSER_TESTS === "1";
 async function eatAheadOfHead(page, asFruit) {
   return page.evaluate((asFruit) => {
     const g = window.__remixGame;
-    const apples = g.wa.ka;
+    const apples = g.oa.ka;
     if (!apples.length) return { ok: false, reason: "no apples" };
 
-    const head = g.oa.ka[0];
-    const dir = g.oa.direction || "RIGHT";
+    const head = g.Yc.ka[0];
+    const dir = g.Yc.direction || "RIGHT";
     const next = { x: head.x, y: head.y };
     if (dir === "RIGHT") next.x += 1;
     else if (dir === "LEFT") next.x -= 1;
@@ -36,15 +36,15 @@ async function eatAheadOfHead(page, asFruit) {
     // Head must be OPEN with shields cleared for the eat to register.
     window.head_state = "OPEN";
     window.shield_empty_all && window.shield_empty_all();
-    apples.forEach((a) => (a.Oba = undefined));
+    apples.forEach((a) => (a.h7 = undefined));
 
     const before = apples.length;
-    const beforeScore = g.Sh;
+    const beforeScore = g.Bi;
     const beforeKeys = apples.map((a) => `${a.pos.x},${a.pos.y}`);
 
     g.tick();
 
-    const after = g.wa.ka;
+    const after = g.oa.ka;
     const afterKeys = after.map((a) => `${a.pos.x},${a.pos.y}`);
     const fresh = after.filter((a) => !beforeKeys.includes(`${a.pos.x},${a.pos.y}`));
     return {
@@ -52,13 +52,13 @@ async function eatAheadOfHead(page, asFruit) {
       before,
       after: after.length,
       added: fresh.length,
-      freshAnimated: fresh.every((a) => a.wm === true),
+      freshAnimated: fresh.every((a) => a.Rm === true),
       allPieces: after.every((a) => !!a.isPiece),
       scoreBefore: beforeScore,
-      scoreAfter: g.Sh,
+      scoreAfter: g.Bi,
       head_state: window.head_state,
       just_ate: window.just_ate,
-      won: !!(g.ub && g.lj),
+      won: !!(g.Za && g.lj),
       duplicates: afterKeys.length - new Set(afterKeys).size,
     };
   }, asFruit);
@@ -81,7 +81,7 @@ describe("chess fruit eat (browser)", { skip: !runBrowser }, () => {
       assert.equal(fruit.just_ate, "fruit");
       assert.equal(fruit.added, 2, "exactly 2 pieces spawn: " + JSON.stringify(fruit));
       assert.equal(fruit.after, 2, "board is back to its 1a count of 2");
-      assert.equal(fruit.freshAnimated, true, "new pieces carry the wm spawn animation");
+      assert.equal(fruit.freshAnimated, true, "new pieces carry the Rm spawn animation");
       assert.equal(fruit.allPieces, true, "spawns are chess pieces");
       assert.equal(fruit.scoreAfter, fruit.scoreBefore + 1, "fruit scores");
       assert.equal(fruit.duplicates, 0, "no overlapping cells");

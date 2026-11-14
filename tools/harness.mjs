@@ -78,7 +78,7 @@ export function ultraHarnessOpts(extra = {}) {
   return {
     modFile: "RemixUltraMod.js",
     customModName: "RemixUltraMod",
-    indicator: "Remix Ultra v13",
+    indicator: "Remix Ultra v14",
     ...extra,
   };
 }
@@ -92,7 +92,7 @@ export async function launchHarness(opts = {}) {
   const modFile = opts.modFile || DEFAULT_MOD_FILE;
   const modPath = resolveModPath(opts);
   const customModName = opts.customModName || "RemixMod";
-  const indicator = opts.indicator || "Remix Mod v13";
+  const indicator = opts.indicator || "Remix Mod v14";
 
   if (!fs.existsSync(modPath)) {
     throw new Error(`${modFile} missing — run: python RemixBuilder.py`);
@@ -101,6 +101,24 @@ export async function launchHarness(opts = {}) {
   const { server, customUrl } = await startModServer(modPath, modFile);
   const browser = await chromium.launch({ headless });
   const context = await browser.newContext();
+  // v14 site loader: with any mod selected it sync-XHRs a google.com/xjs script
+  // that isn't in v14's urlMap and CORS blocks it, so snake.js never loads.
+  // Until the site is fixed, answer those requests with CORS headers here.
+  await context.route(
+    (url) => url.href.includes("www.google.com/xjs/"),
+    async (route) => {
+      // The page can close mid-request when a test ends; ignore that.
+      try {
+        const resp = await route.fetch();
+        await route.fulfill({
+          response: resp,
+          headers: { ...resp.headers(), "access-control-allow-origin": "*" },
+        });
+      } catch (_e) {
+        await route.abort().catch(() => {});
+      }
+    }
+  );
   const page = await context.newPage();
 
   // Attached before navigation so mod-time patch failures are not missed.
@@ -252,20 +270,23 @@ export async function launchHarness(opts = {}) {
 
           const g = window.__remixGame;
           window.CurrentModeNum = modeId;
-          g.settings.ob = modeId;
+          // Game v14 settings: menu mode/count/speed/size = wb/Ca/Ra/Ua,
+          // gameplay mode/count/speed/size = yb/ka/Lb/Aa.
+          g.settings.wb = modeId;
           g.settings.Ca = count;
-          g.settings.Na = speed;
-          g.settings.Sa = size;
-          g.settings.ub = modeId;
+          g.settings.Ra = speed;
+          g.settings.Ua = size;
+          g.settings.yb = modeId;
           g.settings.ka = count;
-          g.settings.yb = speed;
+          g.settings.Lb = speed;
           g.settings.Aa = size;
 
-          g.wa.reset();
+          // v14: apple manager is g.oa, snake is g.Yc.
+          g.oa.reset();
           // Ensure a playable heading — reset can leave direction NONE until
           // the first key, which breaks eat-placement tests.
-          if (g.oa && (g.oa.direction == null || g.oa.direction === "NONE")) {
-            g.oa.direction = "RIGHT";
+          if (g.Yc && (g.Yc.direction == null || g.Yc.direction === "NONE")) {
+            g.Yc.direction = "RIGHT";
           }
           // Native play-start also runs l4E/uaF when mode 10 is active. Burger
           // gates it; calling the live binding here keeps Burger harness
@@ -279,18 +300,29 @@ export async function launchHarness(opts = {}) {
               typeof window.__uaF === "function"
                 ? window.__uaF
                 : window.__l4E;
-            if (typeof pair === "function") pair(g.wa);
+            if (typeof pair === "function") pair(g.oa);
           }
-          window.appleArray = g.wa.ka;
+          // The reset above re-arms Burger's "sanitize on first tick". Whether a
+          // live game tick runs before the test edits timers is a race, so do
+          // that first-tick sanitize here.
+          if (
+            window.isBurgerActive &&
+            window.isBurgerActive() &&
+            typeof window.burger_sanitize_start === "function"
+          ) {
+            window.burger_sanitize_start(g.oa, g);
+            window.__burgerStartOk = true;
+          }
+          window.appleArray = g.oa.ka;
 
           return {
             modeId,
             chessMode: window.CHESS_MODE,
             candyMode: window.CANDY_MODE,
             burgerMode: window.BURGER_MODE,
-            apples: g.wa.ka.length,
-            pieces: g.wa.ka.filter((a) => a.isPiece).length,
-            poisons: g.wa.ka.filter((a) => a.Oka || a.nla).length,
+            apples: g.oa.ka.length,
+            pieces: g.oa.ka.filter((a) => a.isPiece).length,
+            poisons: g.oa.ka.filter((a) => a.Bea || a.nla).length,
           };
         },
         { mode, count, speed, size }
@@ -328,35 +360,35 @@ export async function launchHarness(opts = {}) {
     async state() {
       return page.evaluate(() => {
         const g = window.__remixGame;
-        const list = g?.wa?.ka || window.appleArray || [];
+        const list = g?.oa?.ka || window.appleArray || [];
         const apples = list.map((a, i) => ({
           i,
           x: a.pos?.x,
           y: a.pos?.y,
           type: a.type,
           isPiece: !!a.isPiece,
-          Oka: !!(a.Oka || a.nla),
-          nla: !!(a.Oka || a.nla),
+          Oka: !!(a.Bea || a.nla),
+          nla: !!(a.Bea || a.nla),
           burgerTimer: a.burgerTimer,
           burgerTimerMax: a.burgerTimerMax,
           ChessColor: a.ChessColor,
           ChessPiece: a.ChessPiece,
           sequenceNumber: a.sequenceNumber,
-          shields: a.Oba ? [...a.Oba] : null,
+          shields: a.h7 ? [...a.h7] : null,
         }));
-        const head = g?.oa?.ka?.[0] || window.head_pos?.[0];
-        const snake = (g?.oa?.ka || []).map((s) => ({ x: s.x, y: s.y }));
-        const boardObj = g?.wa?.oa?.oa || g?.oa?.oa || g?.ka?.oa;
+        const head = g?.Yc?.ka?.[0] || window.head_pos?.[0];
+        const snake = (g?.Yc?.ka || []).map((s) => ({ x: s.x, y: s.y }));
+        const boardObj = g?.oa?.oa?.oa || g?.ka?.oa;
         return {
           apples,
           snake,
           head: head ? { x: head.x, y: head.y } : null,
           head_state: window.head_state,
           head_color: window.head_color,
-          score: g?.Sh ?? g?.Oh,
-          length: g?.oa?.Ta,
-          ja: g?.oa?.Ja,
-          nj: !!g?.nj,
+          score: g?.Bi,
+          length: g?.Yc?.ka?.length,
+          ja: g?.Yc?.Ca,
+          nj: !!g?.uj,
           mode: window.CurrentModeNum,
           chessMode: window.CHESS_MODE,
           candyMode: window.CANDY_MODE,
@@ -367,7 +399,7 @@ export async function launchHarness(opts = {}) {
             : null,
           settings: g?.settings
             ? {
-                ub: g.settings.ub,
+                ub: g.settings.yb,
                 ka: g.settings.ka,
                 Aa: g.settings.Aa,
                 isMobile: g.settings.isMobile,

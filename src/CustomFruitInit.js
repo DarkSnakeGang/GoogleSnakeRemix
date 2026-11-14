@@ -504,7 +504,7 @@ window.remixSyncCustomFruitEntryFromSettings = function remixSyncCustomFruitEntr
 window.remixReloadFruitSprite = function remixReloadFruitSprite(sprite, url) {
   if (!sprite || !url) return;
   sprite.path = url;
-  const img = sprite.jB || sprite.Hr;
+  const img = sprite.hR || sprite.jB || sprite.Hr;
   if (!img) return;
   const paint = function () {
     sprite.loaded = true;
@@ -562,7 +562,7 @@ window.remixPatchCustomFruitAtlas = function remixPatchCustomFruitAtlas() {
         img.crossOrigin = "Anonymous";
         const color = document.createElement("canvas").getContext("2d");
         const grey = document.createElement("canvas").getContext("2d");
-        sprite = { path: "", jB: img, oa: color, ka: grey, loaded: false };
+        sprite = { path: "", hR: img, oa: color, ka: grey, loaded: false };
         window.__remixCustomPoisonAtlas[slot] = sprite;
       }
       window.remixReloadFruitSprite(sprite, poison[key]);
@@ -1079,8 +1079,9 @@ window.CustomFruit.alterSnakeCode = function (code) {
     window.injectCustomFruit();
   }
 
+  // v14 build strips newlines, so bound the statement with [^;] instead of `.`.
   const getAppleStuff = new RegExp(
-    /(?:let|const|var).*[a-zA-Z0-9_$]{1,8}\.canvas\:.*\([a-zA-Z0-9_$]{1,8}\.[a-zA-Z0-9_$]{1,8}\);/
+    /(?:let|const|var) [^;]*?[a-zA-Z0-9_$]{1,8}\.canvas\:[^;]*\([a-zA-Z0-9_$]{1,8}\.[a-zA-Z0-9_$]{1,8}\);/
   );
   if (getAppleStuff.test(code)) {
     const poisonDefault = code.match(getAppleStuff)[0];
@@ -1152,13 +1153,13 @@ window.CustomFruit.alterSnakeCode = function (code) {
   }
 
   // Poison apples with Custom Poison Fruit: draw poison atlas instead of greyed fruit.
-  // Live build: f=b.Oka?E3E(this.oa[e],b.xsa).ka.canvas:this.oa[e].uH(b.xsa)
+  // Live build (v14): f=b.Bea?WnF(this.oa[e],b.ota).ka.canvas:this.oa[e].lJ(b.ota)
   const poisonDrawRe =
-    /([a-zA-Z0-9_$])=([a-zA-Z0-9_$])\.Oka\?E3E\(this\.([a-zA-Z0-9_$]{1,8})\[([a-zA-Z0-9_$])\],\2\.([a-zA-Z0-9_$]{1,8})\)\.ka\.canvas:this\.\3\[\4\]\.uH\(\2\.\5\)/;
+    /([a-zA-Z0-9_$])=([a-zA-Z0-9_$])\.Bea\?WnF\(this\.([a-zA-Z0-9_$]{1,8})\[([a-zA-Z0-9_$])\],\2\.([a-zA-Z0-9_$]{1,8})\)\.ka\.canvas:this\.\3\[\4\]\.lJ\(\2\.\5\)/;
   if (!code.includes("remixCustomPoisonAtlasCanvas") && poisonDrawRe.test(code)) {
     code = code.assertReplace(
       poisonDrawRe,
-      "$1=($2.Oka&&window.pudding_settings.CustomPoison&&window.pudding_settings.CustomPoisonApplied&&typeof window.remixCustomPoisonAtlasCanvas==='function'&&window.remixCustomPoisonAtlasCanvas($2.$5))||($2.Oka?E3E(this.$3[$4],$2.$5).ka.canvas:this.$3[$4].uH($2.$5))"
+      "$1=($2.Bea&&window.pudding_settings.CustomPoison&&window.pudding_settings.CustomPoisonApplied&&typeof window.remixCustomPoisonAtlasCanvas==='function'&&window.remixCustomPoisonAtlasCanvas($2.$5))||($2.Bea?WnF(this.$3[$4],$2.$5).ka.canvas:this.$3[$4].lJ($2.$5))"
     );
   }
 
@@ -1174,14 +1175,19 @@ window.CustomFruit.alterSnakeCode = function (code) {
     );
   }
 
+  // v14 a7/N7 sprite recolor: v13 statement `(f=a.Ca)==null||D3E(f,b,c,-1)`
+  // is now the comma-expression tail `a.Ca?.Aa(b,c,-1)`, so the grey bypass
+  // must stay an expression (a ternary) instead of an if/else block.
   const disableRealGrey = new RegExp(
-    /\(f=[a-zA-Z0-9_$]{1,8}.[a-zA-Z0-9_$]{1,8}\)==null\|\|[a-zA-Z0-9_$]{1,8}\(f,b,c,-1\)/
+    /([a-zA-Z0-9_$]{1,8}\.[a-zA-Z0-9_$]{1,8})\?\.([a-zA-Z0-9_$]{1,8})\(b,c,-1\)/
   );
   if (disableRealGrey.test(code)) {
-    const realGrey = code.match(disableRealGrey)[0];
-    const realGreyPath = realGrey.split(")")[0].split("=")[1];
+    const m = code.match(disableRealGrey);
+    const realGrey = m[0];
+    const realGreyPath = m[1];
+    const greyCall = realGreyPath + "." + m[2] + "(b,c,0)";
     const customGrey =
-      "if(window.pudding_settings.CustomPoison && window.pudding_settings.CustomPoisonApplied && window.__remixCustomPoison && " +
+      "((window.pudding_settings.CustomPoison && window.pudding_settings.CustomPoisonApplied && window.__remixCustomPoison && " +
       realGreyPath +
       " && ((" +
       realGreyPath +
@@ -1195,18 +1201,18 @@ window.CustomFruit.alterSnakeCode = function (code) {
       realGreyPath +
       '.path||"").indexOf("trophy_10")>=0 || (' +
       realGreyPath +
-      '.path||"").indexOf("modloader-icon")>=0)){ ' +
-      realGrey.slice(0, -1).slice(0, -1).slice(0, -1) +
-      "0) } else if (" +
+      '.path||"").indexOf("modloader-icon")>=0))?' +
+      greyCall +
+      ":(" +
       realGreyPath +
       " && " +
       realGreyPath +
-      '.path.includes("poison-skull")) { ' +
-      realGrey.slice(0, -1).slice(0, -1).slice(0, -1) +
-      "0) } else { " +
+      '.path.includes("poison-skull"))?' +
+      greyCall +
+      ":" +
       realGrey +
-      " }";
-    code = code.assertReplace(disableRealGrey, customGrey);
+      ")";
+    code = code.assertReplace(disableRealGrey, () => customGrey);
   }
 
   return code;

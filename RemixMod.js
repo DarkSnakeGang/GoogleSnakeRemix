@@ -519,7 +519,7 @@ window.Theme.alterCode = function (code) {
   else{window.randomTheme = true;window.setTheme(window.getRandomThemeName());};
   `)
 
-  reset_regex = new RegExp(/;this\.reset\(\)\}\}/)
+  reset_regex = new RegExp(/;[a-z]\.reset\(\);return!0\}/)
 
   set_on_reset = `;
   if(window.randomTheme){window.setTheme(window.getRandomThemeName());}
@@ -570,11 +570,11 @@ window.DistinctVisual.make = function () {
 
 window.DistinctVisual.alterCode = function (code) {
 
-    realism_draw = new RegExp(/function\(a,b\){switch.*{d/);
+    realism_draw = new RegExp(/function\(a,b\){switch\(b!==void 0\?b:a\.settings\.[a-zA-Z0-9_$]{1,8}\){d/);
     catchError(realism_draw, code);
     realism_switch = code.match(realism_draw)[0];
 
-    realism_path = new RegExp(/function\(a,b\){switch.*}}/);
+    realism_path = new RegExp(/function\(a,b\){switch\(b!==void 0\?b:a\.settings\.[a-zA-Z0-9_$]{1,8}\){default:[^}]*}}/);
     catchError(realism_path, code);
     last_path = code.match(realism_path)[0].split('.')[9].split('}')[0]
 
@@ -582,7 +582,7 @@ window.DistinctVisual.alterCode = function (code) {
 
     window.drawing_apple = true;
 
-    get_apple_stuff = new RegExp(/(?:let|const|var).*[a-zA-Z0-9_$]{1,8}\.canvas\:.*\([a-zA-Z0-9_$]{1,8}\.[a-zA-Z0-9_$]{1,8}\);/)
+    get_apple_stuff = new RegExp(/(?:let|const|var) [^;]*?[a-zA-Z0-9_$]{1,8}\.canvas\:[^;]*\([a-zA-Z0-9_$]{1,8}\.[a-zA-Z0-9_$]{1,8}\);/)
     catchError(get_apple_stuff, code);
     poison_default = code.match(get_apple_stuff)[0]
     b_graphics = poison_default.split('(')[2].split(')')[0]
@@ -596,19 +596,12 @@ window.DistinctVisual.alterCode = function (code) {
 
     code = code.assertReplace(get_apple_stuff, get_apple_code)
 
-    disable_real_grey = new RegExp(/\(f=[a-zA-Z0-9_$]{1,8}.[a-zA-Z0-9_$]{1,8}\)==null\|\|[a-zA-Z0-9_$]{1,8}\(f,b,c,-1\)/)
+    disable_real_grey = new RegExp(/[a-zA-Z0-9_$]{1,8}\.[a-zA-Z0-9_$]{1,8}\?\.[a-zA-Z0-9_$]{1,8}\(b,c,-1\)/)
     catchError(disable_real_grey, code);
     real_grey = code.match(disable_real_grey)[0]
-    real_grey_path = real_grey.split(')')[0].split('=')[1]
+    real_grey_path = real_grey.split('?.')[0]
 
-    new_grey_code = `
-    if (${real_grey_path} && ${real_grey_path}.path.includes("poison-skull")) {
-        ${real_grey.slice(0, -1).slice(0, -1).slice(0, -1)}0)
-    }
-    else {
-        ${real_grey}
-    }
-    `
+    new_grey_code = `(${real_grey_path}&&${real_grey_path}.path&&${real_grey_path}.path.includes("poison-skull")?${real_grey.slice(0, -3)}0):${real_grey})`
 
     code = code.assertReplace(disable_real_grey, new_grey_code)
 
@@ -627,7 +620,7 @@ window.DistinctVisual.alterCode = function (code) {
 
     code = code.assertReplace(sokondeez, sokondeez_nuts)
 
-    reset_regex = new RegExp(/;this\.reset\(\)\}\}/)
+    reset_regex = new RegExp(/;[a-z]\.reset\(\);return!0\}/)
 
     set_on_reset = `;
     if (window.pudding_settings.SokoGoals) {
@@ -883,7 +876,7 @@ window.Counter.make = function () {
 
 window.Counter.alterCode = function (code) {
 
-    reset_regex = new RegExp(/;this\.reset\(\)\}\}/)
+    reset_regex = new RegExp(/;[a-z]\.reset\(\);return!0\}/)
     window.wallCoords = [];
 
     counter_reset_code = `;stats.inputs.game = 0;
@@ -2231,7 +2224,7 @@ window.TimeKeeper.alterCode = function (code) {
     // v12: this.header=c;this.Oh=this.Eb=this.ticks=this.ob=0
     // v13: this.header=c;this.Sh=this.Fb=this.ticks=this.ob=0
     const scoreCtor = code.match(
-        /this\.header=[a-zA-Z0-9_$];this\.([a-zA-Z0-9_$]{1,8})=this\.([a-zA-Z0-9_$]{1,8})=this\.ticks=/
+        /this\.header=[a-zA-Z0-9_$];(?:this\.[a-zA-Z0-9_$]{1,8}=[a-zA-Z0-9_$];)?this\.([a-zA-Z0-9_$]{1,8})=this\.([a-zA-Z0-9_$]{1,8})=this\.ticks=/
     );
     let scoreFunc;
     let timeFunc;
@@ -2298,8 +2291,8 @@ window.TimeKeeper.alterCode = function (code) {
     // Count attempts / clear runStarted on reset (SpeedrunMod has no Counter.js hook).
     // Safe to call twice: second addAttempt no-ops when runStarted is already false.
     code = code.assertReplace(
-        /;this\.reset\(\)\}\}/,
-        `;window.timeKeeper.addAttempt();this.reset()}}`
+        /;[a-z]\.reset\(\);return!0\}/,
+        `;window.timeKeeper.addAttempt()$&`
     );
 
     return code;
@@ -2924,7 +2917,7 @@ window.TopBar.alterCode = function (code) {
     }
   }
 
-  reset_regex = new RegExp(/;this\.reset\(\)\}\}/)
+  reset_regex = new RegExp(/;[a-z]\.reset\(\);return!0\}/)
 
   set_on_reset = `;
   if (window.pudding_settings.TopBar && !window.daily_challenge) {
@@ -3177,13 +3170,13 @@ try{
 
     }
 
-    random_color_super_regex = new RegExp(/else{[a-zA-Z0-9_$]{1,8}=[a-zA-Z0-9_$]{1,8}\.[a-zA-Z0-9_$]{1,8};var c=a.[a-zA-Z0-9_$]{1,8}.[a-zA-Z0-9_$]{1,8}.[a-zA-Z0-9_$]{1,8};/)
+    random_color_super_regex = new RegExp(/else{[a-zA-Z0-9_$]{1,8}=[a-zA-Z0-9_$]{1,8}\.[a-zA-Z0-9_$]{1,8};var ([a-z])=[a-z]\.[a-zA-Z0-9_$]{1,8}\.[a-zA-Z0-9_$]{1,8}\.[a-zA-Z0-9_$]{1,8};/)
 
     random_color_super_reset = `$&
     if(window.randomColor){window.isRainbow = window.getRandomBoolean() ? window.getRandomBoolean() : false;}
     if(window.randomColor&&window.isRainbow){
         window.snakeRainbowOverride = getRandomInt(0, Object.keys(window.rainbowAlts).length-1);
-        c = window.rainbowAlts[window.snakeRainbowOverride].set[0];
+        $1 = window.rainbowAlts[window.snakeRainbowOverride].set[0];
     }`
 
     catchError(random_color_super_regex, code)
@@ -3663,7 +3656,7 @@ window.SettingsSaver.make = function () {
             const menu = window._puddingSnakeMenu;
             const ready =
                 menu &&
-                menu.oa === "settings" &&
+                menu.wa === "settings" &&
                 typeof window._puddingSnakeP7 === "function";
 
             if (!ready) {
@@ -3722,7 +3715,7 @@ window.SettingsSaver.make = function () {
 }
 
 window.SettingsSaver.alterCode = function (code) {
-    reset_regex = new RegExp(/;this\.reset\(\)\}\}/)
+    reset_regex = new RegExp(/;[a-z]\.reset\(\);return!0\}/)
 
     settings_reset_code = `
     saveSettings();
@@ -3747,11 +3740,11 @@ window.SettingsSaver.alterCode = function (code) {
     );
 
     // Capture menu when native settings open (Ec).
-    const openSettingsRegex = /([a-zA-Z0-9_$]{1,8})\(\)\{var a=this\.menu;a\.oa="settings";/;
+    const openSettingsRegex = /([a-zA-Z0-9_$]{1,8})\(\)\{var a=this\.menu;a\.wa="settings";/;
     catchError(openSettingsRegex, code);
     code = code.assertReplace(
         openSettingsRegex,
-        `$1(){var a=this.menu;window._puddingSnakeMenu=a;a.oa="settings";`
+        `$1(){var a=this.menu;window._puddingSnakeMenu=a;a.wa="settings";`
     );
 
     return code;
@@ -6082,7 +6075,7 @@ window.SpeedInfo.make = function () {
 
 window.SpeedInfo.alterCode = function (code) {
     
-    reset_regex = new RegExp(/;this\.reset\(\)\}\}/)
+    reset_regex = new RegExp(/;[a-z]\.reset\(\);return!0\}/)
 
     speedinfo_reset = `;window.SpeedInfoUpdate().catch(e=>console.error('SpeedInfoUpdate error:',e));
     if(window.first_time_call){window.getAllSrc().catch(e=>console.error('getAllSrc error:',e));window.first_time_call=false;}
@@ -7200,10 +7193,10 @@ window.Timer = {
       ticks = 'c'
       dt = 'd'
       const scoreCtor = code.match(
-        /this\.header=[a-zA-Z0-9_$];this\.([a-zA-Z0-9_$]{1,8})=this\.([a-zA-Z0-9_$]{1,8})=this\.ticks=/
+        /this\.header=[a-zA-Z0-9_$];(?:this\.[a-zA-Z0-9_$]{1,8}=[a-zA-Z0-9_$];)?this\.([a-zA-Z0-9_$]{1,8})=this\.([a-zA-Z0-9_$]{1,8})=this\.ticks=/
       )
       winTicks = 'this.ticks'
-      winDt = scoreCtor ? ('this.' + scoreCtor[2]) : 'this.Fb'
+      winDt = scoreCtor ? ('this.' + scoreCtor[2]) : 'this.hb'
     }
 
 
@@ -8771,10 +8764,10 @@ window.ResetKey.make = function (){
 window.ResetKey.alterCode = function(code){
   if (window.SpeedrunMod) {
     const keyHandler =
-      /([a-zA-Z0-9_$]{1,8})\(a\)\{if\(!this\.closed\)\{var b=\s*a\.VTa\?a\.Qh:void 0/;
+      /([a-zA-Z0-9_$]{1,8})\(a\)\{if\(!this\.closed\)\{var b=\s*a\.Fna\?a\.Ei:void 0/;
     code = code.assertReplace(
       keyHandler,
-      "$1(a){if(!this.closed){var _ae=document.activeElement;if(_ae&&(_ae.tagName==='INPUT'||_ae.tagName==='TEXTAREA'||_ae.tagName==='SELECT'||_ae.isContentEditable))return;var b= a.VTa?a.Qh:void 0"
+      "$1(a){if(!this.closed){var _ae=document.activeElement;if(_ae&&(_ae.tagName==='INPUT'||_ae.tagName==='TEXTAREA'||_ae.tagName==='SELECT'||_ae.isContentEditable))return;var b= a.Fna?a.Ei:void 0"
     );
   }
 
@@ -9069,9 +9062,9 @@ window.CustomBowl.make = function () {
             if (!apple) continue;
             const t = Number(apple.type);
             if (isNaN(t) || t < 0) continue;
-            if (ctx.lh !== undefined && !!apple.Lh !== ctx.lh) continue;
-            if (ctx.oka !== undefined && !!apple.Oka !== ctx.oka) continue;
-            if (ctx.pairOka && ctx.pairOka.indexOf(!!apple.Oka) < 0) continue;
+            if (ctx.lh !== undefined && !!apple.Xg !== ctx.lh) continue;
+            if (ctx.oka !== undefined && !!apple.Bea !== ctx.oka) continue;
+            if (ctx.pairOka && ctx.pairOka.indexOf(!!apple.Bea) < 0) continue;
             showing.add(t);
         }
         return showing;
@@ -9095,14 +9088,14 @@ window.CustomBowl.make = function () {
         const ctx = {};
         if (opts.pairOka) {
             ctx.pairOka = opts.pairOka;
-        } else if (pending && pending.Oka !== undefined &&
+        } else if (pending && pending.Bea !== undefined &&
             window.__bowlIsMode && window.__bowlIsMode(settings, 10)) {
-            ctx.oka = !!pending.Oka;
+            ctx.oka = !!pending.Bea;
         }
         if (opts.lh !== undefined) {
             ctx.lh = !!opts.lh;
         } else if (pending && window.__bowlIsMode && window.__bowlIsMode(settings, 9)) {
-            ctx.lh = !!pending.Lh;
+            ctx.lh = !!pending.Xg;
         }
         return ctx;
     }
@@ -9136,8 +9129,8 @@ window.CustomBowl.make = function () {
         if (!apples || apples.length < 2) return;
         for (let b = 0; b + 1 < apples.length; b += 2) {
             const c = Math.random() < 0.5;
-            apples[b].Oka = c;
-            apples[b + 1].Oka = !c;
+            apples[b].Bea = c;
+            apples[b + 1].Bea = !c;
         }
     };
 
@@ -9153,9 +9146,9 @@ window.CustomBowl.make = function () {
                 if (!apple) continue;
                 const t = Number(apple.type);
                 if (!counts.has(t)) continue;
-                if (ctx.lh !== undefined && !!apple.Lh !== ctx.lh) continue;
-                if (ctx.oka !== undefined && !!apple.Oka !== ctx.oka) continue;
-                if (ctx.pairOka && ctx.pairOka.indexOf(!!apple.Oka) < 0) continue;
+                if (ctx.lh !== undefined && !!apple.Xg !== ctx.lh) continue;
+                if (ctx.oka !== undefined && !!apple.Bea !== ctx.oka) continue;
+                if (ctx.pairOka && ctx.pairOka.indexOf(!!apple.Bea) < 0) continue;
                 counts.set(t, counts.get(t) + 1);
             }
         }
@@ -9239,9 +9232,9 @@ window.CustomBowl.make = function () {
             const a1 = apples[i + 1];
             const opts = {};
             if (window.__bowlIsMode && window.__bowlIsMode(appleManager.settings, 10)) {
-                opts.pairOka = [!!a0.Oka, a1 ? !!a1.Oka : !!a0.Oka];
+                opts.pairOka = [!!a0.Bea, a1 ? !!a1.Bea : !!a0.Bea];
             } else if (window.__bowlIsMode && window.__bowlIsMode(appleManager.settings, 9)) {
-                opts.lh = !!a0.Lh;
+                opts.lh = !!a0.Xg;
             }
             const t = window.pickCustomPortalType(appleManager, true, opts);
             apples[i].type = t;
@@ -9268,7 +9261,7 @@ window.CustomBowl.make = function () {
                 if (a1) a1.type = -1;
                 const opts = {};
                 if (window.__bowlIsMode && window.__bowlIsMode(appleManager.settings, 9)) {
-                    opts.lh = !!a0.Lh;
+                    opts.lh = !!a0.Xg;
                 }
                 t = window.pickCustomPortalType(appleManager, true, opts);
                 if (a0) a0.type = t;
@@ -9591,7 +9584,7 @@ window.CustomBowl.make = function () {
 };
 
 window.CustomBowl.alterCode = function (code) {
-    const reset_regex = new RegExp(/;this\.reset\(\)\}\}/);
+    const reset_regex = new RegExp(/;[a-z]\.reset\(\);return!0\}/);
     catchError(reset_regex, code);
     code = code.assertReplace(reset_regex, `window.custom_pair_call_counter=0;$&`);
 
@@ -9639,24 +9632,24 @@ window.CustomBowl.alterCode = function (code) {
     // v12: Ni&&(this.wa.ka[vd].type=aaF(this.wa),this.wa.ka[Ok].type=this.wa.ka[vd].type)
     // v13: e&&(a.wa.ka[k].type=Q3E(a.wa),a.wa.ka[d].type=a.wa.ka[k].type)
     const inplace_regex = new RegExp(
-        `([a-zA-Z0-9_$]{1,8})&&\\(([a-zA-Z0-9_$]{1,8}\\.)wa\\.ka\\[([a-zA-Z0-9_$]{1,8})\\]\\.type=${aaf_name}\\(\\2wa\\),\\2wa\\.ka\\[([a-zA-Z0-9_$]{1,8})\\]\\.type=\\2wa\\.ka\\[\\3\\]\\.type\\)`
+        `([a-zA-Z0-9_$]{1,8})&&\\(([a-zA-Z0-9_$]{1,8}\\.)oa\\.ka\\[([a-zA-Z0-9_$]{1,8})\\]\\.type=${aaf_name}\\(\\2oa\\),\\2oa\\.ka\\[([a-zA-Z0-9_$]{1,8})\\]\\.type=\\2oa\\.ka\\[\\3\\]\\.type\\)`
     );
     catchError(inplace_regex, code);
     const inplace_match = code.match(inplace_regex);
     code = code.assertReplace(
         inplace_regex,
-        `${inplace_match[1]}&&(${inplace_match[2]}wa.ka[${inplace_match[3]}].type=-1,${inplace_match[2]}wa.ka[${inplace_match[4]}].type=-1,${inplace_match[2]}wa.ka[${inplace_match[3]}].type=${aaf_name}(${inplace_match[2]}wa),${inplace_match[2]}wa.ka[${inplace_match[4]}].type=${inplace_match[2]}wa.ka[${inplace_match[3]}].type)`
+        `${inplace_match[1]}&&(${inplace_match[2]}oa.ka[${inplace_match[3]}].type=-1,${inplace_match[2]}oa.ka[${inplace_match[4]}].type=-1,${inplace_match[2]}oa.ka[${inplace_match[3]}].type=${aaf_name}(${inplace_match[2]}oa),${inplace_match[2]}oa.ka[${inplace_match[4]}].type=${inplace_match[2]}oa.ka[${inplace_match[3]}].type)`
     );
 
     // Non-portal eat/respawn (3a/5a/10a): clear the reused slot first, same as
     // tally's type:-1 new apple, so the eaten type leaves "showing" and can re-roll.
     const eat_retype_regex = new RegExp(
-        `:([a-zA-Z0-9_$]{1,8})&&\\(([a-zA-Z0-9_$]{1,8})\\.type=${aaf_name}\\(([a-zA-Z0-9_$]{1,8})\\.wa\\)\\)`
+        `:([a-zA-Z0-9_$]{1,8})&&\\(([a-zA-Z0-9_$]{1,8})\\.type=${aaf_name}\\(([a-zA-Z0-9_$]{1,8})\\.oa\\)\\)`
     );
     catchError(eat_retype_regex, code);
     code = code.assertReplace(
         eat_retype_regex,
-        `:$1&&($2.type=-1,$2.type=${aaf_name}($3.wa))`
+        `:$1&&($2.type=-1,$2.type=${aaf_name}($3.oa))`
     );
 
     // Non-portal start-of-game fill: stage every slot as -1, then pick sequentially
@@ -9823,6 +9816,9 @@ window.PuddingMod.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.PuddingMod.alterSnakeCode = function (code) {
+  // Game v14 wraps snake.js lines at different spots than v13; patches here target one-line code.
+  // Only the first mod in a chain flattens (later mods' inserted code may rely on its own line breaks).
+  if (!window.__snakeV14Flattened) { window.__snakeV14Flattened = true; code = code.replace(/([\w$]?)\n(?!\/\/)(?=([\w$]?))/g, (m, a, b) => (a && b ? a + " " : a)); }
   if (window.NepDebug) {
     console.log(code)
   }
@@ -9872,6 +9868,8 @@ window.PuddingMod.runCodeAfter = function () {
   }
 };
 
+;
+
 window.moreMenu = {
   runCodeBefore: () => {
     window.uiImage = src => {
@@ -9919,6 +9917,9 @@ window.moreMenu = {
     ]) document.querySelector('#count').appendChild(uiImage(src))
   },
   alterSnakeCode: code => {
+    // Game v14 wraps snake.js lines at different spots than v13; patches here target one-line code.
+    // Only the first mod in a chain flattens (later mods' inserted code may rely on its own line breaks).
+    if (!window.__snakeV14Flattened) { window.__snakeV14Flattened = true; code = code.replace(/([\w$]?)\n(?!\/\/)(?=([\w$]?))/g, (m, a, b) => (a && b ? a + " " : a)); }
     const resetFunction = code.match(
       /reset\n?\(\n?\)\n?{\n?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?=\n?\[\];[^]*?!1\n?\)\n?}/
     )[0]
@@ -10090,23 +10091,33 @@ window.moreMenu = {
       /d\n?\.\n?[a-zA-Z0-9_$]{1,8}/
     )[0].replace('d', 'this.settings')
   
-    const tickFunction = code.match(
-      /tick\n?\(\n?\)\n?{\n?[^]*?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\.\n?keys\n?,\n?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?,\n?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\)\n?}\n?}\n?}\n?}/
+    // const tickFunction = code.match(
+    //   /tick\n?\(\n?\)\n?{\n?[^]*?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\.\n?keys\n?,\n?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?,\n?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\)\n?}\n?}\n?}\n?}/
+    // )[0]
+    // const replacePoint = tickFunction.match(
+    //   /\.5\n?:\n?1\.25\n?\);\n?[a-zA-Z0-9_$]{1,8}\n?\.\n?[a-zA-Z0-9_$]{1,8}\+\+;/
+    // )[0]
+
+    const speedFunction = code.match(
+      /[a-zA-Z0-9_$]{1,8}\n?=\n?function\n?\(\n?a\n?\)\n?{\n?var(\n| )b\n?=\n?!1\n?;\n?a\n?\.\n?settings[^]*?if\n?\(\n?b\n?\)\n?break\n?}\n?}\n?}/
     )[0]
-    const replacePoint = tickFunction.match(
-      // Legacy this.Sh++; current a.Sh++ after light+=...?.5:1.25)
-      /\.5\n?:\n?1\.25\n?\);\n?(?:this\n?\.\n?)?[a-zA-Z0-9_$]{1,8}\n?(?:\.\n?[a-zA-Z0-9_$]{1,8}\n?)?\+\+;/
-    )
-    // __remixMoreMenuSpeedPatched
+    const replacePoint = speedFunction.match(
+      /\.5\n?:\n?1\.25\n?\);\n?[a-zA-Z0-9_$]{1,8}\n?\.\n?[a-zA-Z0-9_$]{1,8}\+\+;/
+    )[0]
   
     window.bunnyTurtleSpeed = 1.33
     window.lightningSnailSpeed = 1.85
-
-    const speedMultiplierBlock = `
+  
+    
+    code = code.assertReplace(speedFunction,
+      speedFunction.assertReplace(
+        replacePoint,
+        replacePoint
+         + `
           window.bunnyTurtleSpeed = Math.random() < .5 ? .66 : 1.33
           window.lightningSnailSpeed = Math.random() < .5 ? .45 : 1.85
           let speedMultiplier
-          switch(${selectedSpeed}) {
+          switch(${selectedSpeed.replace('this', 'a')}) {
             case 1:
               speedMultiplier = .66
               break
@@ -10150,30 +10161,71 @@ window.moreMenu = {
               speedMultiplier = 1
               break
           }
-          ${tileLengthSetLine.replace(/\*\n?a/, '* speedMultiplier').replace(/d\.isMobile/g, 'this.settings.isMobile')}
+          ${tileLengthSetLine.replace('this.', 'a.').replace(/\*\n?a/, ' * speedMultiplier').replace('d.isMobile', 'a.settings.isMobile')}
         `
+      )
+    )
 
-    if (replacePoint) {
-      code = code.assertReplace(tickFunction,
-        tickFunction.replaceAll(
-          '&&', ' && '
-        ).replace(
-          replacePoint[0],
-          replacePoint[0] + speedMultiplierBlock
-        )
-      )
-    } else {
-      const tickAnchor = tickFunction.match(
-        /\}else if\(!window\.timeKeeper\.runStarted\)\{window\.timeKeeper\.start\(\);\}/
-      )
-      if (!tickAnchor) {
-        throw new Error('More Menu: could not find tick speed injection point')
-      }
-      code = code.assertReplace(
-        tickFunction,
-        tickFunction.assertReplace(tickAnchor[0], tickAnchor[0] + speedMultiplierBlock)
-      )
-    }
+
+    // code = code.assertReplace(tickFunction,
+    //   tickFunction.replaceAll(
+    //     '&&', ' && '
+    //   ).replace(
+    //     replacePoint,
+    //     replacePoint
+    //      + `
+    //       window.bunnyTurtleSpeed = Math.random() < .5 ? .66 : 1.33
+    //       window.lightningSnailSpeed = Math.random() < .5 ? .45 : 1.85
+    //       let speedMultiplier
+    //       switch(${selectedSpeed}) {
+    //         case 1:
+    //           speedMultiplier = .66
+    //           break
+    //         case 2:
+    //           speedMultiplier = 1.33
+    //           break
+    //         case 3:
+    //           speedMultiplier = window.bunnyTurtleSpeed
+    //           break
+    //         case 4:
+    //           speedMultiplier = .45
+    //           break
+    //         case 5:
+    //           speedMultiplier = 1.85
+    //           break
+    //         case 6:
+    //           speedMultiplier = window.lightningSnailSpeed
+    //           break
+    //         case 7:
+    //           speedMultiplier = 18.5
+    //           break
+    //         case 8:
+    //           speedMultiplier = .35
+    //           break
+    //         case 9:
+    //           speedMultiplier = .25
+    //           break
+    //         case 10:
+    //           speedMultiplier = .15
+    //           break
+    //         case 11:
+    //           speedMultiplier = .05
+    //           break
+    //         case 12:
+    //           speedMultiplier = 26640
+    //           break
+    //         case 13:
+    //           speedMultiplier = .00001
+    //           break
+    //         default:
+    //           speedMultiplier = 1
+    //           break
+    //       }
+    //       ${tileLengthSetLine.replace(/\*\n?a/, '* speedMultiplier').replace('d.isMobile', 'this.settings.isMobile')}
+    //     `
+    //   )
+    // )
+  
     const resetFunction1 = code.match(
       /reset\n?\(\n?\)\n?{\n?this\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?=\n?null[^]*?\.66[^]*?!0\n?\)\n?\)\n?}/
     )[0]
@@ -10389,21 +10441,9 @@ window.moreMenu = {
     )
   
   
-    const pixelIssueFunction = code.match(
-      /[a-zA-Z0-9_$]{1,8}\n?=\n?function\n?\(\n?a\n?\)\n?{\n?var(\n| )b\n?=\n?a\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?;\n?if[^]*?10\n?}\n?}\n?}/
-    )[0]
-    const pixelIssueB = pixelIssueFunction.match(
-      /var(\n| )b\n?=\n?a\n?\.\n?[a-zA-Z0-9_$]{1,8}/
-    )[0].replace(/var(\n| )b\n?=\n?/, '')
-    const boardDimensions = pixelIssueFunction.match(
-      /b\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\.\n?height/
-    )[0].replace('b', pixelIssueB).replace(/\n?\.\n?height/, '')
-    const boardThing = pixelIssueFunction.match(
-      /b\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\.\n?[a-zA-Z0-9_$]{1,8}\n?\[\n?d\n?\.\n?y\n?\]\n?\[\n?d\n?\.\n?x\n?\]/
-    )[0].replace(/\n?\[\n?d\n?\.\n?y\n?\]\n?\[\n?d\n?\.\n?x\n?\]/, '')
     code = code.assertReplaceAll(
-      RegExp(`${boardThing}\\n?\\[\\n?c\\n?\\.\\n?y\\n?\\]\\n?\\[\\n?c\\n?\\.\\n?x\\n?\\]\\n?=\\n?e`, 'g'),
-      `c.y >= 0 && c.y < ${boardDimensions}.height && c.x >= 0 && c.x < ${boardDimensions}.width && (${boardThing}[c.y][c.x] = e)`
+      /([a-z])\.oa\.wa\[c\.y\]\[c\.x\]=b(?=\))/g,
+      `c.y >= 0 && c.y < $1.oa.oa.height && c.x >= 0 && c.x < $1.oa.oa.width && ($1.oa.wa[c.y][c.x] = b)`
     )
   
   
@@ -10482,6 +10522,7 @@ window.moreMenu = {
     })
   }
 }
+;
 window.VisibilityModCode = {};
 
 ////////////////////////////////////////////////////////////////////
@@ -11095,6 +11136,9 @@ window.VisibilityModCode.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.VisibilityModCode.alterSnakeCode = function (code) {
+  // Game v14 wraps snake.js lines at different spots than v13; patches here target one-line code.
+  // Only the first mod in a chain flattens (later mods' inserted code may rely on its own line breaks).
+  if (!window.__snakeV14Flattened) { window.__snakeV14Flattened = true; code = code.replace(/([\w$]?)\n(?!\/\/)(?=([\w$]?))/g, (m, a, b) => (a && b ? a + " " : a)); }
 
   //code = window.PuddingMod.alterSnakeCode(code);
   let deleteModDebug = false;
@@ -11209,17 +11253,17 @@ Same as replace, but throws an error if nothing is changed
 
   //Function for body parts
   //let rightEyeRegex = /(\([a-z]\?[a-z]\.[$a-zA-Z0-9_]{0,6}:[a-z]\.[$a-zA-Z0-9_]{0,6}\)\.render\([a-z],\n?[a-z],\n?[a-z],\n?[a-z]\.[$a-zA-Z0-9_]{0,6},\n?[a-z])(\),)/;
-  let rightEyeRegex = /(\([a-z]\?[a-z]\.[$a-zA-Z0-9_]{0,6}:[a-z]\.[$a-zA-Z0-9_]{0,6}\)\.render\([a-z],\n?[a-z],\n?[a-z],\n?[a-z],\n?[a-z]\*[a-z])(\),)/;
+  let rightEyeRegex = /(\([a-z]\?[a-z]\.[$a-zA-Z0-9_]{0,6}:[a-z]\.[$a-zA-Z0-9_]{0,6}\)\.render\([a-zA-Z],[a-zA-Z],[a-zA-Z],[a-zA-Z],[a-zA-Z]\*[a-zA-Z])(,void 0,[a-zA-Z]{1,3}\);)/;
 
   if (deleteModDebug) {
     console.log(code)
   }
 
-  let funcWithBodyParts_Origin = findFunctionInCode(code, /[$a-zA-Z0-9_]{0,6}=function\(a,b,c,d,e\)$/,
+  let funcWithBodyParts_Origin = findFunctionInCode(code, /[$a-zA-Z0-9_]{0,6}=function\(a,b,c,d,e=!1,f=!1\)$/,
     rightEyeRegex,
     deleteModDebug);
 
-  let funcWithBodyParts = findFunctionInCode(code, /[$a-zA-Z0-9_]{0,6}=function\(a,b,c,d,e\)$/,
+  let funcWithBodyParts = findFunctionInCode(code, /[$a-zA-Z0-9_]{0,6}=function\(a,b,c,d,e=!1,f=!1\)$/,
     rightEyeRegex,
     deleteModDebug);
 
@@ -11311,11 +11355,11 @@ Same as replace, but throws an error if nothing is changed
 
   //Regular fruit vs poison fruit. `nla` was the v12 poison marker; `Oka` is the v13 one.
   funcWithFruit = assertReplace(funcWithFruit, fruitRegex,
-    '(window.visiFullPass || ((b.nla||b.Oka) ? window.checkboxes.checkboxStatuses.poison : window.checkboxes.checkboxStatuses.fruit)) && $&');
+    '(window.visiFullPass || ((b.nla||b.Bea) ? window.checkboxes.checkboxStatuses.poison : window.checkboxes.checkboxStatuses.fruit)) && $&');
 
   //Mirrored copy (in twin/infinity layouts), using the same poison marker.
   funcWithFruit = assertReplace(funcWithFruit, /this\.[$a-zA-Z0-9_]{0,6}\.drawImage\([$a-zA-Z0-9_]{0,6},0,0,[$a-zA-Z0-9_]{0,6},[$a-zA-Z0-9_]{0,6},-\([$a-zA-Z0-9_]{0,6}\/2\),-\([$a-zA-Z0-9_]{0,6}\/2\),[$a-zA-Z0-9_]{0,6},[$a-zA-Z0-9_]{0,6}\)/,
-    '(window.visiFullPass || ((b.nla||b.Oka) ? window.checkboxes.checkboxStatuses.poison : window.checkboxes.checkboxStatuses.fruit)) && $&');
+    '(window.visiFullPass || ((b.nla||b.Bea) ? window.checkboxes.checkboxStatuses.poison : window.checkboxes.checkboxStatuses.fruit)) && $&');
 
   //For compatitibilty, also change this code for animatedSnakeColours
   /*
@@ -11327,7 +11371,7 @@ Same as replace, but throws an error if nothing is changed
 
 
   // Walls / locks (ES6 class render(a) over Ca.Aa values)
-  let wallInsideRegex = /this\.[$a-zA-Z0-9_]{0,6}\.Ca\.Aa\.values\(\)/;
+  let wallInsideRegex = /(?<=render\([a-z]\)\{)for\(let [a-z] of this\.[$a-zA-Z0-9_]{0,6}\.(?:Ca\.Aa|Tw\.wa)\.values\(\)\)/;
 
   let funcWithRenderWall_Origin = findFunctionInCode(code, /render\([$a-zA-Z0-9_]{0,6}\)$/,
     wallInsideRegex,
@@ -11339,7 +11383,7 @@ Same as replace, but throws an error if nothing is changed
 
   //for walls / locks / hotdog walls (same renderer; v12 uses ez/XNa, v13 uses ty/yNa)
   funcWithRenderWall = assertReplace(funcWithRenderWall, /this\.[$a-zA-Z0-9_]{0,6}\.fillRect\([$a-zA-Z0-9_]{0,6},[$a-zA-Z0-9_]{0,6},[$a-zA-Z0-9_]{0,6},[$a-zA-Z0-9_]{0,6}\)/,
-    '((k.ez||k.ty)?window.checkboxes.checkboxStatuses.hotdogWalls:(((k.XNa!==void 0&&k.XNa>=0)||(k.yNa!==void 0&&k.yNa>=0))?window.checkboxes.checkboxStatuses.locks:window.checkboxes.checkboxStatuses.walls))&&$&');
+    '((k.ez||k.ty||k.wv)?window.checkboxes.checkboxStatuses.hotdogWalls:(((k.XNa!==void 0&&k.XNa>=0)||(k.yNa!==void 0&&k.yNa>=0)||(k.oOa!==void 0&&k.oOa>=0))?window.checkboxes.checkboxStatuses.locks:window.checkboxes.checkboxStatuses.walls))&&$&');
 
   //lock icon on wall
   funcWithRenderWall = assertReplace(funcWithRenderWall, /this\.[$a-zA-Z0-9_]{0,6}\.drawImage\([$a-zA-Z0-9_]{0,6}\(this\.[$a-zA-Z0-9_]{0,6}\)\.[$a-zA-Z0-9_]{0,6}\.canvas,[$a-zA-Z0-9_]{0,6}\.[$a-zA-Z0-9_]{0,6}\*128,0,128,128,[$a-zA-Z0-9_]{0,6}\.[$a-zA-Z0-9_]{0,6}-[$a-zA-Z0-9_]{0,6}\/2,[$a-zA-Z0-9_]{0,6}\.[$a-zA-Z0-9_]{0,6}-[$a-zA-Z0-9_]{0,6}\/2,[$a-zA-Z0-9_]{0,6},[$a-zA-Z0-9_]{0,6}\)/,
@@ -11441,13 +11485,13 @@ Same as replace, but throws an error if nothing is changed
   funcWithMiscRendering = assertReplaceAll(funcWithMiscRendering, lightSnakeCallRegex,
     'window.checkboxes.checkboxStatuses.lightSnake&&$&');
 
-  funcWithMiscRendering = assertReplace(funcWithMiscRendering, /(for\(let [$a-zA-Z0-9_]{1,6} of [$a-zA-Z0-9_]{1,6}\.wb\.wa\.ka\)\{)/,
+  funcWithMiscRendering = assertReplace(funcWithMiscRendering, /(for\(let [$a-zA-Z0-9_]{1,6} of [$a-zA-Z0-9_]{1,6}\.(?:wb\.wa|ub\.oa)\.ka\)\{)/,
     'if(window.checkboxes.checkboxStatuses.lightFruit)$1');
 
   //Inline active bridges/gates drawn in the compositor (not only via helper functions)
-  funcWithMiscRendering = assertReplaceAll(funcWithMiscRendering, /[ef]7\(this\.settings,20\)/g,
+  funcWithMiscRendering = assertReplaceAll(funcWithMiscRendering, /[efM]7\(this\.settings,20\)/g,
     '$&&&window.checkboxes.checkboxStatuses.bridges');
-  funcWithMiscRendering = assertReplaceAll(funcWithMiscRendering, /[ef]7\(this\.settings,19\)/g,
+  funcWithMiscRendering = assertReplaceAll(funcWithMiscRendering, /[efM]7\(this\.settings,19\)/g,
     '$&&&window.checkboxes.checkboxStatuses.gates');
 
   //Snake, fruit, keys and boxes are drawn into the sprite layer, and the shadow is taken straight
@@ -11458,7 +11502,7 @@ Same as replace, but throws an error if nothing is changed
   let shadowFnName = funcWithShadow_Origin.match(/^([$a-zA-Z0-9_]{1,6})=function/)[1];
   let sceneRegionRegex = new RegExp(
     '(this\\.[$a-zA-Z0-9_]{1,6}\\.render\\(a,b,[$a-zA-Z0-9_]{1,6}\\(this\\)\\);[\\s\\S]*?)' +
-    '([ef]7\\(this\\.settings,4\\)\\|\\|' + shadowFnName.replace(/\$/g, '\\$') + '\\(this\\);)');
+    '([efM]7\\(this\\.settings,4\\)\\|\\|' + shadowFnName.replace(/\$/g, '\\$') + '\\(this\\);)');
 
   funcWithMiscRendering = assertReplace(funcWithMiscRendering, sceneRegionRegex,
     'window.visiBeginShadowPass(this,this.ka.canvas.width!==this.context.canvas.width||this.ka.canvas.height!==this.context.canvas.height);$1$2if(window.visiEndShadowPass(this)){$1}');
@@ -11466,11 +11510,11 @@ Same as replace, but throws an error if nothing is changed
   //eval(funcWithMiscRendering);
 
   let funcWithLockRendering_Origin = findFunctionInCode(code, /render\(\)$/,
-    /this\.[$a-zA-Z0-9_]{0,6}\.hb\.particles/,
+    /this\.[$a-zA-Z0-9_]{0,6}\.Ua\.particles/,
     false);
 
   let funcWithLockRendering = findFunctionInCode(code, /render\(\)$/,
-    /this\.[$a-zA-Z0-9_]{0,6}\.hb\.particles/,
+    /this\.[$a-zA-Z0-9_]{0,6}\.Ua\.particles/,
     false);
 
   //background for falling lock piece
@@ -11593,7 +11637,7 @@ if(window.NepDebug){
     shieldsFnName + '=function($1){if(!window.checkboxes.checkboxStatuses.shields)return;');
 
   //Gates (mode 19): BbF dashed rectangles
-  let gatesFnMatch = code.match(/([$a-zA-Z0-9_]{1,6})=function\(([$a-zA-Z0-9_]{1,6}),([$a-zA-Z0-9_]{1,6})\)\{for\(let [$a-zA-Z0-9_]{1,6} of [$a-zA-Z0-9_.]{1,20}\.(?:Yfa|pfa)\)/);
+  let gatesFnMatch = code.match(/([$a-zA-Z0-9_]{1,6})=function\(([$a-zA-Z0-9_]{1,6}),([$a-zA-Z0-9_]{1,6})\)\{for\(let [$a-zA-Z0-9_]{1,6} of [$a-zA-Z0-9_.]{1,20}\.(?:Yfa|pfa|gga)\)/);
   if (!gatesFnMatch) {
     throw new Error('Visibility mod: could not find gate drawer (BbF)');
   }
@@ -11612,8 +11656,8 @@ if(window.NepDebug){
 
   //Border chrome CSS background-color (same palette index as the canvas border fill)
   code = assertReplaceAll(code,
-    /_\.(?:on|pn)\(([$a-zA-Z0-9_.()]{1,40}),"background-color",([$a-zA-Z0-9_]{1,6}\([$a-zA-Z0-9_.]{1,30},[$a-zA-Z0-9_.]{1,30},3\))\)/g,
-    '($1&&window.visiBorderEls.push($1),window.visiBorderColor=$2,_.pn($1,"background-color",window.checkboxes.checkboxStatuses.border?$2:"transparent"))'
+    /_\.(?:on|pn|gn)\(([$a-zA-Z0-9_.()]{1,40}),"background-color",([$a-zA-Z0-9_]{1,6}\([$a-zA-Z0-9_.]{1,30},[$a-zA-Z0-9_.]{1,30},3\))\)/g,
+    '($1&&window.visiBorderEls.push($1),window.visiBorderColor=$2,_.gn($1,"background-color",window.checkboxes.checkboxStatuses.border?$2:"transparent"))'
   );
 
     // Mines
@@ -11704,7 +11748,9 @@ if(window.NepDebug){
 
 window.VisibilityModCode.runCodeAfter = function () {
 
-};window.MorePudding = {};
+};
+;
+window.MorePudding = {};
 
 ////////////////////////////////////////////////////////////////////
 //RUNCODEBEFORE
@@ -11762,6 +11808,8 @@ window.MorePudding.runCodeAfter = function() {
   }
 };
 
+;
+
 window.CandyMod = {};
 
 ////////////////////////////////////////////////////////////////////
@@ -11772,7 +11820,7 @@ window.CandyMod.runCodeBefore = function () {
   // MoreMenu intentionally omitted until it supports v12.
   // Future: window.moreMenu.runCodeBefore();
 
-  console.log("Adding Candy Mode (v13)");
+  console.log("Adding Candy Mode (v14)");
 
   window.CANDY_ICON = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAACXBIWXMAANHsAADR7AH41yZLAAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAAIABJREFUeNrtXXd8U1eylm3ydve93f2lbAmEZEmjGeNCr+70EjAtdAjE9G7c5UpNSF1I22zapvdGSCgBkpAQAiSEassVU0IH2xQXnTffnHOvruQmYxls1n/cn2RZlmTNnG/aNzOmxMREU61eCQmmBLpNjje7mxMTG81/dIUpJS7e9M6oh7puCxjy9AG/3t9leAXvyfAM/HFnl35vrBs4ZtRTcxf9X+SyVNOiFUvx9/9Df9sIr5FAr4XXq/XP/F90XRPhJ5oTTHEpyaYlsbGmj4eOG76ry4AN6W1DTlm8gossXiHWjLbBVkvbECv9XEKPF+z3633g26Cwp1+ePLO9OTHBFEt/m2Q2e+iv16AE9UMBdOEnJ7mtWhj5f3u6DHgz7/4eIsszUNCpFxltQ+hSt14h6jZYZLYJFrktA0ROy4CSn7oNfO2ZGfOaRS9JodcyN2pQgvqiAAquCfbdUmLjPfZ07PdxTkt/ccg7tIhOezEJWp16IAALn34OtqrHS9O9Q4oJDazZrQNEduvAE++NnPxAfFISzEADEtQbE2A2u+PkkvDGHG7eU6R5h1whmNcFrm7LXFAKKAeUgZSgKJ1QIo/+/ssBox+OTyJkMUslaBBgHVYAOGx0ueF2d5cBX2W1DiRhBhezgCsRvqMiwCTQbWmad2jJETIf74+aPDhqSSorVwMK1GUEMJth+02rFkT80eIVdNzCggwudVb4uhLw8/lvySQEW0mRzqyeNf8OcgzdGoRfVxWABJNkTnCLTk0xvThlZifYfoLy0gwb/FfvUkiQRuYgp1WA+LHHoDeUP8AI0yDIuokAHrD/nw4ZNye3hT8Jj+Df6yqEb7sQJsI5LKHooJQUywsKRu/TgAR1TQGU/XeHw7a9x+A3slsFWNO9Qoozqgn/jgqAi1DgSi6hwObQYY/FpCYDbdwbBFnXEIDsPyB6aVRMowO+vdIy2wSJdK/gkhoIX7/odTiEpNc9uCw6plGcNAUNwqxbCpDgFpOSbHpmxrwW2a0CixH6Ab5doADIG5TCnyBUKXlu+tyWygw0CLPOKABOI8XpsP8fjJg0+nALdgCLM7xqBP92DiGFhEXwK95+cPIQhIRJDWagzpkAd+TvtwYPXZ3bMoDsdnCRRUv5usIMeIdeIcWyrh08ZlHU0lRZJ2gQZt1QgASZ/jUlx8Wb9nTstyPLM1A6gK5CADIDhChXEA5u7jV8TWxKknQEG/yAumICzFy9e2rOwtuzWgcWaAkgV51+XGlewUVZngFiZ7eBnyHSQMWwQZh1QQFkAojz/2+MndL7cIuesP8lV50AqjASIERpE2Q94NP3l+WL40xxSQ0p4eurAIbqXFK8uRHF5+5fDhidCDst7b/rhK8UoATIkt42+PjKiKg/xyYlmxIaIoFrpAAyyaOXe+lyo1PvQZ64BymBG+AfIeCurgO+QCnXxfZfWFRxCKViMjHFz4XPuU+Ggg0IUDsKYKy9K4hPkuVYD3NSkimWvvxo8sRZCPHxpkciom5+Y+zDwXQ6T1pUbd9VglcVQvYpKBQszmsZIF6eMtM/it6bFNCtQaCuUACHE24QuHt8cpIpBgKn2BsnfUlMrOmfs+c3e2Pcww9s6jNyxc+d+m2ik3kCHjqXcdvW/ORbvILt74Mx5E2RgHdoUdo9Xa1vDh47FQqI0LNBoDVVAPvT7oFyLoQNpw6p3RWR0b974eFZbT4YPnHSNyHDXtjXrvduCvMuHm7pzxSuLM8gFlC6d0ipInRctRKo6MHufqZMBYuf7+8utt7V4crmm1uLt/wHPhq7bInzJBEHRNMVHQgiL7vHb3TOQZkvhr4IFjZO+KMLI//8yqTp3dcOGj1/e8/B7x707WWh012C7B4KMlltgiBgCLwEFC66X2JRZV8leGvN4N4meIsm+DvaifV/97aub+xT9PVtXmJt24C3zMnJJnNColulSGbwVYBm5qREN5gw7QKy4X82PqbyCx78d2a+73ajKYUDe9fshlO/PCrmpq9DhydTqHUkl043BJ7TOpDJmrrA22oC13l81hpW+/i1yxP+PvoM3zZtD8GLDbf7iE2NfcXGJr7FX//FS3zeuud2/A/m8s2Xna+CrCEEDYZyaly8aVl0zE1LY2L/tCwq5tbnps/725q5C/+yJCbulqXRsX9YFh1LSpDISsE+zhIoSAoUQ1Mk9xtBGQzsXRJ+UpL7isVRf9jXvs86cPAsCs7V6cZVarEXtku9+wyD8LXbHfd0ERv+7kOXNwuehU9KsLGxTwke//oOv/QVixY3glBRFFIn1T2OUAFCg0KTQBs9N31Oy/dGTRqxvv+DKdsCh7y9p2O/bYRoaQf8eh+n23M5rQIvZLcJvkA/n6Yrhx77+cceg7/cGjJszSdhE2a/NnFawNOz5v41NTbWFEOvC0VixJRK5manfPVKAbQPbTazzf82OOwpJHAOgcBpB+euTeZUBPnpZFZw6g9QCPlNU4Z7FrgueHV/w+2+JRtvp981aXdm+cLFt9HJ9AAKaP7KYwsibnt31OThJOwX9/v1PkSmqzivhfRV4KTCXwGiaZeGPihda49lE+rhuWzyCIWyWgec3teu16av+o+OfiF8ji8aXCQySF4CzIydf1FvTAB50IjdXwif3YpsO7h3JeqkC1eecqfsvXeo2NOih9h0e9lTr93nnxv7lLI5aOJXuDQi8vbFK5bSSY8x/Wd8eNAPPYe8RK91jE0XCdDOdEm6ue6vaFeGYiIbHsPvi/n58sJj5PcECzi9eN297fv8uHbQmIVPzVnYFIcnRilColKE+oAI8kOaOXtn2tJr+HKcEC7fXifh77qvW4Wn3t4EEALQ89Y38buwas6Cxu+OnjKCTvo2CD1bhaFsvjTTpWjmFolkVuc/o+pdkH/LiqFMIqMIytIUCZ3+Jjhs9eqZ81sBDRgRzPXDR2C7CY94abTZtK9dvx+RY0eLlsXrGguf7v9E9n793+yF7yh47T6dfusGeu62uzsXkuD3QRDMPJIntdgV0UjFCgHHl9FCVwY2K60DC7eEDFu9Zvb8pjHKFIEcm6D5WXVQEdC06RFL8PXEvIhbMjyDT1gkBfuaC3/H3Z355FcI+ZpSNPbh5yEc3Eu+Cv42g2A5TYWhLHQ+sbWrwNzPqCMDO8pF3MlEipDjGXjyy0GjF6TExLkZzEKdVALS0PhGcUnJ5DQtusfiFXSZhdLWteVb+1DPKHzp8MHTd0b4G9gv8GGkgJKq/IBVCl6ddJ9eVscMYm0qMb2fyPAOtVpU0kspAiPCAd/QLS89NL0tWEuok9RFJQCb5qY46TXfb5GES+Gq/H0FlC6bt+8dUq7Nt7P16mc85+smvvqpN2YKOXwkQVhgAghJLMhIao/XouAtrfxF+j86CUvzHkIpnlX9vhRtcEAmCi/zPxsybipyCnAUySTUKSUgExBPJiDZ9Pj8RU3J/ufXpglQ6KKHer+St48TXZHwtfsQ/jdN24tDnoEyHYwMpJY3IMcRFwuefj6a9LjIHjxZpEMotSF8ei/8D2l3dRBZwSPF8ceeFznDHhZp/+jICgFF0FvayBdJI2XII6X9LmjIP5dEx7jLVndDuFgHEMAdzsrKxVG/O+QTmp3hFeRyBo/x5KR7ydN5kOJ8O9teifC/x5erBG536n3pFLbsKdLv7y7y5iWIcwctouBKEQsmnb5015kt9fnp1Kc3787veXTJUyL/5BlxUQhRcPGSOPnWxyIzcLhIb9aZTQJfypwe8g69gu4oChvXroiI+iOSSPS91wkl0Js4cLuz64B1somTU7y1gwAswGDx7Z3tdbvvaPO1x776W1vxQ7NOtiSRIVuIk4hTlxX6oDi94VtRSIKAMM7uOaj7F64wATbIx/t14vc7891P/H5QtoL8i6Lg0hX+Of+3U+Ko+VFWSEuLHgoN+DNbySRcpu9W/Nqh7zcrFkfdjLC7LiiBlgVsFE0faO3gsYsOcxuXngdwqeAB3Vlk93fei3CvbaUO33oH4Rshn209nbQjkUtE/plz8ss/XyAKS0rFmW93uAz+9WiFPjMg//CMGJF/Wr1ffiGd/Mui8HIRKwArwpVi/t3p9d+IzO5D2CxVoATbVkZE/UkiwfX1CbRMIIcra2bMvZvCmMvpspHD6spcAISP2wPkHWvOXTnZPb7Fyd92V8eywqdTyI4XmY8T//lAwi996QUFF0U+XRetVnF63RaRfl9XFppLhA8SKn0WQH5hqVV/PwheFz4QAPdJIaAYUIILecdEzuiZ/Lf0uWWE4sXh6mWkmMkcbFq5KLIRHMPE66gEtro3U7rIDHQbiF4+IXv5g2ucDdQEqH2h393ZQU/xlmf3NYdPRw1d+GTvYdf9+ogzW7ez8CF0/RTSCcQXf+rzTSLt3q6EFC6IViB8MjPHVj0vla3wEl+Ogtd+1u6zEhSX8mN5C5IYPThUtCkB09p3d+z7KljU5sREW57gelUD4QxGp6a4vTIpvMXh5j0vsx/gonqA5vXvad5DCr+c089x/t/lY/D2M4zePrx8eNgd+4uzO3+VwgcEaycPwtAQgOA3nULLjLahNTv9sPk4+cmPS+Eblc0gbONlhwYFl+R9Qo0jcSulEiBUlIqN7qbLOfQ/bQl9MAJlZh54wYfxevEBuH5u9kCY8lW/0QtREUQ/fkYNlMDu9NOFk20s8DjG+zj9CA0zHYRvIcjP8O0tzu74xWZ/HU4en0z63ZkfdtcoAtC9fbLfh8Oj2K/gk1+F8PXLqAQaYpBi5kWkKnOgKwHnCsjnKnln5MTu3OJ2HZzC8viAHknxZtPOLgNf4r5+byjB1dO7jDG/lvApD/ph93+kL91O+Jr3T8hxeuN38uRfKCzzResKQF/0ubQsVhY4ilcbBaRTmJcZMExcIK+ePX0D7FcqfAc0kJ/rMitPQVGxyJ28kCMJTQm4UIWZB21D0lYtWPzH2JQkt2vNbi7LlSMtjE9K9FgSE+uxq+vAVzDcKV2WSdVkr2DhrHNoZ/sJAteXc/ol9HuLLXf4iTQleIvB7qdTJPDbC28o4RfIk+8gfLa7+JLJQcs/e+Gq8wAqncsm5PRXWxXaXKy28B2VIB/mgBQp/9QZDiMRJmp5Asw7AH3++55hT5oTk+kAaqYg4TohgPQHoATudGv6asDoRTkt/fMRvqR7c2NmEfLddvw/XSFsGUQt7MtQ5I7yPH8j9MM/sDv9EP49XUTerDg62crhM9j8cu0vTirZ3MNTIvhvLd7V8AOUuUm7m95zjlm+pxbjX4XwNSXlC0oA5CqlMHX7z4Qw/oxQajgmTEERTMHLk2e0B8EkSRuAdd1o4ZLqhFtOXf5r6szWO7oNfoWUIF8yYwI12jcUolQqhVQMjHXTlIOEaQWFe+e9Xa0U11tJ6FbH0w/hAx3KMIGR8+/+gLhw9IQ8PVXAsIzFCwkprOL4U//WoLZ62T5WvhBxbl8a2f6SKt+zIieQLyASTj6USDmEeAxI9tuLb4n0e1lBrWroRRHK8L907LcxJTaOZyteK1ZR1a1e5gQPJCzM5J2unjn/3k+HjJtHoeIn6T6hGRltgi+CQIJLY8lkeyryqIQ3Kz2v+Jt/dCz6qrFv0YYmfkUbm/iqy49/3nC7t3Vfq56y61chBqMHKcCpj7+yhXtOCAJfNE4uO4Jkxy3VKQgh0mjWWeQtTJJZPk1oVb1nGaFflEhUVMKfXbsKLl5hZT53KJOdWZgp5DQUCiBJVAzH+91RD/WJlg7hNUGBygc92NAAGukem5ps4tJmUqLpkcjom56ct6jpyw/N6PjGuPBhXwwau2BLyPDVO7sO/Hxvh757SKuPg4eXdX8PsfXWNmLLLa3FFrr9+q9t+dr8Fy/x9c2txTY6/Zn4Egz234Iw0K+3OJ+RS/G08yeRBcCKcFFk9x/PzqPFSfhnBKDnn9m2k51J7T0rFbzB9HByiCIGCJsTQcdPitObtonf1rzKZix7wESR2W2wVHBENYhuDMqJ0TeZhAJ72/f5LiUm1g0ocC18AScbKey59QmqSwhMXK1xBJRrMHFBzETH0KOLIm95ccqM+/89aXroa31HhL8ZNOSxd7oPeH6tp/87dH34qXfQ62/1GLBmn2fAiUwv/gJK7U7jvV1F7vi5dJKKnQ7D8Lt8NgNCHH/8BZsZqAIF2JQ1785VRF2JLl2u2Ncw5B74c6lTfiH3qDjx5sfi8LQoEvYD7OyhXMz+CEVBFjKdFgfms5YXAFWNELMkl1Dg1Ynh/mo2svv1Q4AKG0MTy3TUgCOvtY+B+AAevq4cpBjo3IldvtQUtxTokcSvFU2PPTt7fuOc1gEF6ZJuXmrHFCLBIXlydPnqchM/FSkBn1w6iectOcKCcNAzqGpyCN4LGb9Hn9VNjqPjp78nC/4SQzoED4RCZjJvUYrI6NCPoxYWOHiJ3oow4hNaYbubwwCsIkQEO7sOeSvBnKQX6erVfACHtis35ulDOaDNSkHoZ5BQ3baEhD2GMilCofIoXJyKJbt88vWPbGFgVZGAOpkQzpHIpToKVKgEUDZEN3RaT5Mg4UMUGODfMdevJZwKSMlOfbZB5Dw4U550EjxOOAtbRR/VYSVZJMWM+y6yWwflPz17YWNFLq1VM3DtK1AJPD7etCIi6nck+Axl98uUn3U0QOWP4Fl3CJ1AAg0Fzh3MUN59cKW+ANvkLoPEhWMn+e+QU7DLNWhKVVwqs41bfhA5o2ZwthCmSqeG1ZyKBjNQDDPwcdj48ChpBjzqDwI4O0KW/rE3J4Z3PywzjdoEEWuFDBxyCuHVn3x/bdkiUDlQzb4AagP03KPL/qmlYMsXDvyN+7qJnBHTGM6NXr2xzsCO3eFjFCUkyxPPBadQ3ZmzuHD6CTgZu7oMWJdoGLh94yAARshSWLmh36iUXA3+naFhAQlIUMgKMgRflra4vMqcMSJA/T4zaITMDDp43lIByP7TSc5bkCyVq/CSPeQrssepTzeIjK6DWZksSnFcKXjjOFy8LpmBc/+cFfGXGAzBqsXpJ9dU+HKCGBedTLs7998iJ4jJyZ/O1uYBu0dilnPSp1Cr0hlNgqYMCgWYoLHxO1Yei8G3sDmAhABwAB95lsM/rdbPkQcikCtF4mjKk3ziZVGqlz01zfWsaWZk8RzEMVP7RXFmsPamoF3r02/CWLcn5kXcRl/iaSyCcJaBbGTjImGDkO3c7r0yyaJi/0IjbGthoTIFqOlzSRaRgVF4eD1SgN/+9aYq+6oKHnyBM+dF7uQFGqmjfASpBdY0sqnkHFs3h45OiUmtXT/gmiqAZv9fnjy9a07LALb/luq1aelkUObdkVk4vuo5jg60bJuGCMZyMfsLJNDDM2M53EOSSYdvb1n6PUnxu15tpOeiEpg9dApFIZ1YadTOArsW9lpDAEJF+AE/d+q7NjnOkBqu9woQn+AeuTTV9OGwCVPJ08WYlytXyzPQTiMTNfuMEac+/EIK3YAIuqOoKoUF+QUid8xsDi2hBBkq34C4/dR7a6UJIN8i//RZFj5z+lj40lTwfb56qYYQe1PCj2vPuYpQ0KDoJRltgq0HfXulL42KuQl5ldqagnZNI4BEVVfY0HfUSkAcJn5aasrW9ZVUMQgxO2wqKcI6HRGYw8dp2kvSH0Ba+ewFkQMlABJAUD7SCTz57ufiYqkkf+SOnyeF36Gf3nCCNDGHfaQ8emZPS1/jFvR08hP4OehRaKGIqeo9qqMMelKsTVDB03MW2PIB9d8JNLujC2l7zwfeAjESEz9dwTnk0+YjwzkIJ6v3GHF89SvifHoWJ3ZYGVSChwkepCCHZ8eLtDs7SAQgwZ147X1xCWFj6lOyyUMxjznc69hf5AwPF0eil4nfnnudI4Iz3+0QZ3ftFef2HBTnft4nzny/S5z+4mv2JY5ELxc5hCCavyIpas7nChRJxEpm0vrs9Ll+0bU4Be2aIgCiACjAD/4PbIICpLuIfm5xUARGBGQACR1yp0SIE69/SMqQzQhQaKjQHX/6JeYaHrqlNefwz+7YIw7d6skCQ7UO0capzzeK8zlHKCKwr+5VdcGUnDuUIU68+p7IHTdHspmbdda5DpVFEtxj2Da4BGHyqxOnhao5iO71XgHi6RZDHPb79d6ZgRPm6v4DO0VQvYKAZeXI5YycJo4teYqZwxAOlAG1/+yBE8XRhFUib24Cc//RaAI/QFMWmBIjx09eiuplvAy/53yEVVYGC0us4uxPe5ghzIpAKKX5EOUrgex2zmve0/pR2MQRPBE9PsGjfisAtojR6V8eGW066BO6V3nUJbXfvWtQBpgIVOcA6+QEwlSAp3c06TFxJGqpOLZijbiQd9wmeKaCX7aLLKriCMjnGfgBhYbCETqXdv4qcifO5+iC8wrlZCglAoAf4C8+GD5xYrSWC6j3CJCUaFoWFeNO3u2B2kAAp1q52/XVWb9pTduLnNGzGKaPxK6UxSPyC7IHTRLHlj4tzvywi5NBrAxkAjjzaMw1OEkWcSwkAVHQS4jPwsro28u+21mOs+GZRh8On8SDMLnaeiOYAFIAEynA3muhAGVQADUFlGvJR0CC58ymbez4wbnL6vUgZxezQkaxE8jePD0PkQW6kJAU0pNODtVCZ6liOktYKcJ5MkPZDzxkR1+z2HYiMAKQAky6MRDAYAIO+YTurg0T4Jjh0+BVg/6MTgOYn392+89slyF82Pu0O9pxLkGmjb+VXrtfH3kS7+/OcI3OX3D5tNYvHdqdRIMynAK8DiKTfIpIZsXaagzaTgTvkBL2AYZNfPDG8AFUFIDrp+6DtmQZogCHaRtVEifKq+hpAucEEVrbyNHiGj39nDOGYP6ld8T53KM2206CuHDiNHv7YAJn9RrNOQL8Lm8OhYj3dLZ9Hh/Vho5u5H7jdMo4J5c0NKiGEth1D6GhlKIT+CDceq6mniAKwLj9t0dP6SPZQfUdAVTPAYZRUBj4fnYrPQ8ghe0ZJBMsIHOCHGoUKi5fw31DXh6OlAXlWU7SdJJs4p5hTMv67eV3mYQJm2tMDGmnmPv2eKJIoMgMfVDkn7vAz0H+wKLQwy6yUClofE5jZ3KBIq1Wl0EsewZkwQoNLfgc2oQRUO2RLn92+txO0RgqcSPkAaDFvEwqNOyJHCyTBIUcfDgSIijgeTNjuXEC8ItMmp5Zg92GXcatImFwLYCEgr/DhA5QspCEAakTgxvsPHmNuInuXVUcQm4gTeUK8F4wAQWq5ZuLR+ARNOtkq/4Zegbxvml3tmfUOLt7n2wgqaJvoUI0KJAdTdzTqJpa9ZJwq4BLz0yfe1fMjZIJhB1DLeDjsAmzD9tqAZyMyewxhHv84SSdz8gRZ7/fxUmYk298xPB94oU3xYmX3+GiDR7HkIZzBywin2DckYLN/XwaL//i5TKnDQkfTt8qpIEyZQ95SDp4qB8QJCMczOjQX57KclPQvWUbeptg/jwXyytNO6ME+bKpFTwH9gMk8shagE9ozrLI6N9hgktiva8FyGog7xN6ZeL0IOYCeocUax3I6XQKwefnE+tk1k2SMkvtvOuCwkt2HTl2zaME7xeOHBeZ/mFyiATMCPiAYCCPnS1NhOL2M5so5Uk7FChvZAzQC04jEOWiAxIUOhEmakoJphG/l3eoVbGCxO4uAzbx7IBaZAVdcz4AD6KYs6BJtmdQfnpbtVFUMYDhZeM0MPnTmHUrMFzGx9XprihJYyd80L3O53NYx1CrJWDQBg5GEDl+GiMon5QJbVzwHyyVMH+MVUmYphNvKPJqvnONLPna50cfAzmXmhOIPUsolm3qM+JxxQeoNXr4NWcEIRmUGhtn2tu+z09qp3AxWqRg35GGdWT5XO1l16INb51+RtYvXZ1oO4IJ+RdHU59UjCBbGxd+Pjw92pa6rUoJyJScWrtJIYETrWwKlc7tOWBzABEBUAiIptwPh00ZEbX0RmIE2W0VHfakcgSlH0AmIbPrIHHh+CnVDXT5qpWgjPAvXxGHwyN1OLdbQwMEoMdPUMRgpIQxs1hYWaDp93Rl21xRg4mRt2jx7iXO/bzfjl5eIXtZNbH89tx/ZHlazhNiajiZgItrZiy4K1aNwb+BWMFm9gPeHDu1Hw+hMPoBJIhTn6yXDlX+xasSvF2MDWfwQiF3C5cnfJlDQLKnmzi9+XvbGBjNrJAvkn/qLM8K4AklTkwVgS+T1Xcs5xR0p7Ki/gWeG1AiewvulXONYP8zPYOsezv23ZYcH8+dVjcaK5inaT8xd8GfM9oEHUtXfQHs/PBUjkh5EgsvOZ1hKzuj56Len8f8fY3W5WjLuQ+RIoF2fcT5zFzdCbQL0ZAqjlomS7lVdBuzEvj15vAS4+KMLOMy8wwU/COM5FyGNkmsbXAxCKFfDXgwqrb5gNdFAdR4enfMyfs2OOxFmAE1ikYPudDQwaTMKho0y0C+QWjnfj0ohzHAfvv2rtCR457AgRNtffwOLWBQRqCS7gc40WfISIBG0293qNkGZTuNtKFWUBRZC+B5wxoR5MoLD89uoRTA7cbqDFIZQZiB1yaE91DhIA+kAgrwYKbEx2zedCUoYBzeoKdV6e9OvreW+wI51KtE+Nx/iJbwiNSyPQEI0YAGyAzmHGF6mEUNr6py0ISPzBii2UQvDRv+D44yyM8xvq5FdQgzGbTzgPVJ8TL8S6xXvYHOZgTVhnGKBtxBDkFbNEcD3KYVKCE5O8+uNbzSMqvq0EXFDnQsTilDWJX1BGrTP8k8MCPY4ACWOa1FxUwJU6NdnCtKQQFBNv10vfxsBocQii27lp5Wzl+ogn/ZFvb+iEkjCSE9kuLjb5J9lfbr7Fw5SOq6IICaRcTO4MdhEyYoZ5AnkjEK0JdyJGaFfWLFsWXr4hW9rIrngY/Hs4Ga2Yo4lQpfI3PSLTKKciZA2cgjX5kUhupmzk8dQXTBKDBqumxx14Svdy9ny+5lfSgGZjAFiTSfvj8tjU0wRa5YJruq1RVH5iA+Odmklk+4J8lp5mKqAAAPe0lEQVQdRe5qe5nb1SrH9TEB6sPGJyW6LYuK+T32EWYwCnBEIGPqVgG2sXDaydQ8Z47RpeBB6cqbESO9aLR/KRp3lcRLrSdw2MOSKFpee5nBDwBphFk8Gk3cib0I/B70mUAY1YZO5CulxdAIOUo2VBuIWYpBGTvu6/Hru536/PO1XsOeeDNk6OLnRk0KWzN+WudHZy1quiwy6g9ATsxmQIk4itfZpfIWM57NoHYdJlVjXc11G1KsDadE69NHwyaMy7NDgRCrnp9XQmclUDaenbz96eJI7Ao9C6dVCZ3u11MzATBIokwK16gEJLCLqiNYSx872+GDsBNZRj0iUHT1kx99aRtiZT9My4o9SJtv9RRbb1EX7t/aRmz6u8/lTXd1yP2xy4CtP/YY/MoXA0Yv+Txs/ORXJ88IeXba3BaPRETevCQ2jpAimRUDSuLMppLrN6rc5gu4L4mO9djbvs8PmZIlVKS6f6w4ceDp2fh5l0gQ34u8uWbpNGFZg7K31eTd66Nozv5yoNKRMFpG8NyBDD0t7OzcIYuacAq2EXMN0HEEx6/zAMkHtF+bY8VY/PV/9y7l+Ul3qKuJXzFdpRimte3ODiKHwlaM8kWoiLlMh1vyriJED7/t7dD3x++Dw555e/RDg1dGRP0v2MRxUhHcEivYW3RdZ9UnGCKCVydO60T/VIlKDPGKNr7oC0QVEBRuOfdH1uP1pour6b5RI2gwzJkbQB38izJmoJgEd+wEz/hJV4JzdvQcK0HLnuLsT7+KixRRcF7CEFLqgzSblxmkaZW3PtZNt/tYoRh7WvRAvqQYPArbZLZQrLTjRBoOULbac3jIOzRjQ58R0SsXy6nkiWq3sqMSXN+NFdq2TaSHeWnl0EdzW/rbTIFqGmFKF3fb9FTkkN5XP4yB28Hk7H+9H7DgYqWDpwq1AZR0kkFYqdYcYi50deRC0bFVz4m0pu3s+gLkPMVgsaVJu3LH6NoGabYT6ba/sWqXthlNrcaDMhSlkVLg9YESFu+QA29NCA/AgK+EhLJKcH0VwG5qSLL78sVRvz/gG/pzpqcijHqpaeVaz51PaI2ncFi0UbA9hzJxBKlYI2egspGvSBjxfiDvkGrPHwTfQZ9UYtifgNOPvQjrK5igrg3S3E2HwHGMbjnKbTXsci4B3wLvTf5V8ZcDR0+JS8Z3bfaoOwjgMJ0UDuG/ps5sQzCWr+bolhgXWNa0K1er4fNAqMeeL8PkqSrZlDNkCilA9zJDn6pMDDHlLVBXHKPwsRF9fQUT1DcaxuimG8foVv1/6qPp9b1FpLjrBowfH8OTyeM9tBF0dQYBjFHBx2HjRmL4JHbt6P6ACxZZ6Ymmjv15pFtBcUm5xZoKFWDoFOYfVksBjJxCpRCa8PeTf2Mcn1vR/gQoifH0O+3sshLwbSknmVoGXPrP+Fm+UAJtEGXdUAD7yAB7C0ybQ4dG5fES69DL2gSRmmwwsai5ArDHx9UCCO30V4kAyhdAw0h1TYAjcmkhH3YibG7ix7sQKxM+dis5jtGt7rwBtJph6ghM636/PjuWxMTcxEsqzAl1SwE05wQfLjk+zvRDwJCVcAqhBNomM0sNuolBF2fbf+K09P6rOP12TuD5fCaOsiNaDSewPOFjKjqcunI3pzS235mMFTvGv71K5NM2lRAK9BSfDR43DpFBclz87+ocAiTobWRJ7igd/+A/ZJXcWwBzwNPJlVZfxRII5P3f/tQpxk6ZMPD4STn9sxphYEXCx9rbijam2ZZmeYtdFKpioXZ1ob+SAVTFyLju9+tLKBDnnpBgvqluKYDd3gKpBFhesS10WGKO3GpeovYDC2eXQhtHz6MdrLDY4PU708ihEkHcK+Dby+lFFHYLL5TNP0iwv8VJ4ZdZmlVz/4ejA0xlzWnlX/rvKTN9wdCuewrggASYjwO4+vyBsVPJHFyxyLXwcpVNVVtMtH1DmM/vq4ZPlzrHM9CTQ2oTCa+ja6FSwV7OLcnQYnwIfx85fF8ru17pfmR4/U3k8owMh9dyRfuc3E3QkyKCMYsXrFxWRxXAQQkS2DFMNr02cVp3grBMzNNFssMZNLCorqPT6zbbxs3C+VNj3Svs8y+QE8Bh+8EJOPHWx3K2kG8vpyDfqAiI4Tfc7l2uzXdcjr3pdl9esJFp2LLquqFU3HKGecTW7T0GvVN3EaC82cPmBA4RH5+38LYd3Qe9jnSnhgZqc4nmG1jtUr7kteeMnC7OZx3WJ37a9RZY1QCIEqu8VUMdjL0HXLuPf8RWaq7i1KvcvkgjxeP8/t/KX47tuDoX196WPW0hX61sbw0pziJT9Eunft+DlVW3FcCoBCpPAD4hSqIfjJg0IqNNcAaWVMhVNlIRpABC9EWN2rxhfJnZAydwPyDmB5365Csu06KcjMni57Py2EScP5jBeXs0gJ546W1xxPwo5++5Xa1NsFMnHu/7C8Xu2HZu3JNUmfCxMo83phmcvtpomUfTKRB0d+f+v6IGU/cVoEKTQGgwf/Gt3wUMWpbT0v9cjlx2yTuNLLadh1aLnkMItk36UlNCLNpWkfZ9OTnEU8Hg6OG17u8mexFxYcpomyBDujVES7eWau8FhUNFbx/5G9vUgiybgCuHfdznnUneDhvTagEB4EgrBfi5fimAnRJINMBOgrikRNOz02c1+94/7LGs1sEnctFniLKy2mWk9hdJRMCOHqxsM7SS68wgzyCdIVROy7mGKIaiSyj2I4kspRj7SfCAe3maqzj1BocPtwz73mqquYudvvJCQYzo/aVT3/X1wwRUsspGyxwiSohPSjE9OXdR4w19xy7Y79dnZ47aZZQpt3MJVTaFQhQbN55l2BxI22VfYSvhZViy9MppaexFgidNX+Rvu9r3/mHbne2tG2TJ1upYyCnv1GtZPuT4dYePvf6Q2hS+Nn2siNCy9LvAIU9ELEuthwrgOHACvkGC2mlEiBCTmoqVNW4U53ba0Hdk6t72fbeToC7BaczlpVYqjpcOJK5StGIZLiCHVavacY29daCQy7H8RUabwLyfuj3w3rr+ox96at6C21aPm9pn882trRsa+xaRYEsrtvU2ew/hAy2MS7K06WC1KXyVDSyB8r4zekrfRSuW1mMFcOQUqFU2pAwe4MbBvgEZQJNaPWv+fe+OemjExr4jV+zsOvCzg7699lEYeZoUgpc4O170eGmmZ1DhIZ9euXs79N3+Q+CQV9cNHjsfM46fnDv/T/z6KSmmiEeWm9aMmzp0661trOub+F0h4VrLW4lrrOvjdrc2ONIxzveqvfnD+mIOr+DSgz6hacsjo39PznSj+q8AFa27k4xZVobYVLnUCuRJ7DxaFh3rtmpR5K3/Cp9z7/PT5rR7IXxOd7oC6b4/XZ3/FT7bk5TmjuVRMf/LPDt9OVaqCYueExLptePMN8XSaz4zbmo/8PZIAYq0vYiOCLBBnXo4hwcV5Fu8at3eQ6GMDmvJIZ+QK3nNe4r3R04agQOSHBf/PzeWAlS8v4i3nUEhsLMIAxdAmgRClHvRlwNB43nmpESNaeuhd+lKFpNbDCnAmgnhvltvawMTULJRmQDjNnQIfmvTduzllwfzLhQ+b3CVl9FZDZGUMXIwj97fQ3wbFPaI6jd0rzt8gGuvEPYbz8peblVy7TH1jJBh5fyIpiTsywz3pACajcepx7Z05AO0xFB5CaMaevRyba/OAGJhlzA/kF47h3wXJo4yNSzYsq7/+GlJcTyuz037v/57FKA25h4SiixfFPmHDU38crH9nIReghr/9madOLRjwXuXFfbVcRlDjMIuLSNwOuE5ihDK/ZbeoRnbewx+//PBYxf+Z8K0rqsWR/0esJ9gEP5/FwLUggIwlCYmmDZ6B3+/u1kn695W/kVa5c944i01hHsDvQsRC9/PomjGtrLX/9IBv94/E7w///6ISQ89Fz6n7cqIKJ4tpC32hLKW1zDSIMiaEVjc4kkBdnYb8FpuG94/WKSg2W7EXM3tvCx4ISRVNZBTe9v32rw5dPiKN8c8/MAz02ffjQmsscpZ5bxIclIZ38XOBNYZUmg9RgC6PHC61vcbmYzTiA1oFgPd2yUOnix7g85l3UMhKYWi3VYtWHxbSlwcC5ojEyz3lm1hHsrZ1Z1VfdNrXWsNuxEuSWJNNX0UNmFSbgt/q2ItWV09Ah9Do/D6XwwcE7lw5TIVnSTBgdUE7qYJu7oLpxsEWRMFoC8eCvDypOlBirZWTOGW1bWxvGTxoG387Qcnh0SnpoAl5WGXAKt3AyJuIDMAGH4+fHbzrFYBxelq8aOLB2BziTvTM/DcU3MW/tXVQ6MahFgTJ1BNQH9kUeTN6W2Df7NIDr4rJ6DLoZFcvev/XXK82eVDoxoEWdOWNlKAFYsj3Q76hPzKcA3mrQvtP6p35GBavw0a8pjaHubSoZENQqzhZeYLoeDAL0C1csUmNAf7z2tkPxg+Ybg+Nr4BAepWJxM6m78JCVutDb60uA4BtKGRl9fMnH+PnBpudmtAgLoYCg6bMO2wamDJcE0oCHNSgtU6B31D9i2LivaojanhDUJ0xQDs1GSKBOZ4ZbcKwKSOUu5gcsH6G1IApnD/2H3gKzAzqOC5empogwBdMPgSfkBKbJz7vvZ9ftFH3tUcBXhqKFDlk6Hjw5Hxq42poQ1CdA0KcEp47eCx82RCiGsCNe1mhj9hzW3pb31x6iy5Ptbs+sGRDcJzEUmV8wERUX8moeWq5I3dcIurUIAStUA67/F5C/+AXUu1MTW8QYCuHHxJpxR0Kx0F1BT06jqFQA4kgGD/d3UZ+JnK8dfK1pAGAbqSqs5OWqJpR7ehq43TTxXD2Oos8YObONuiidNfrBv4YJyM/831fG/gfwMKSIfQY0l0rPuuLgPeAAEzXbJ3Sp1paZe/D9bWx5fkNQ8oeWHqvBZojE00187g6AbhuX7OEYYzui2NiTV9HxK2IpcbSIK4/0B1Mxvb2q02MqdtuheGOh25v4fY3GtkXHxS8g20NOq/RgnkmBtkCN8c+3Cf/e16/4QdQDmtApn7D1oXTrjdxQoSzE0oQI6tIcNSoEw8y8fQINugAPWJfWw2N0KSaElM7E3vjpo8fEf3QZ9kegaegn+g8fkOq44j2PtMz6CzO7sMfP/1ceHdmfRhFH4DAtTTBhVy3pAoYmImCfXp2fP+9vr4qYGfDx49dUPfUTF0xX8+eOzM18dN67NmxqLGyPjxaNeE8ke7NihAPW1iJUVoBKFqXUZoPjFe0dyMkqx4feZrIvwGBbimiKCaUczoUjJDyI3KXgnu10rwDQrQcPH1/08K2YZZF1xmAAAAAElFTkSuQmCC";
 
@@ -11846,7 +11894,7 @@ window.CandyMod.alterSnakeCode = function (code) {
   // MoreMenu intentionally omitted until it supports v12.
   // Future: code = window.moreMenu.alterSnakeCode(code);
 
-  console.log("Coding Candy Mode into the game (v13)");
+  console.log("Coding Candy Mode into the game (v14)");
 
   window.updateCandyTrophySRC = function updateCandyTrophySRC() {
     if (window.trophy_src) {
@@ -11865,43 +11913,43 @@ window.CandyMod.alterSnakeCode = function (code) {
   let deathscreen_trophy = new RegExp(
     /a\.settings\.Zb=`https:\/\/www\.google\.com\/logos\/fnbx\/\$\{a\.settings\.Ba===1\?`snake_arcade\/pixel\/v22\/px_trophy_\$\{b\}\.png`:`snake_arcade\/v22\/trophy_\$\{b\}\.png`\}`/
   );
-  // `b` here is j$E(a.settings.ob) — a zero-padded string, so compare against the
+  // `b` here is MmF(a.settings.wb) — a zero-padded string, so compare against the
   // raw numeric mode id instead.
   if (code.match(deathscreen_trophy)) {
     code = code.assertReplace(
       deathscreen_trophy,
-      `a.settings.Zb=(a.settings.ob===window.CANDY_MODE)?window.CANDY_ICON:(a.settings.ob===window.CHESS_MODE)?window.CHESS_ICON:\`https://www.google.com/logos/fnbx/\${a.settings.Ba===1?\`snake_arcade/pixel/v22/px_trophy_\${b}.png\`:\`snake_arcade/v22/trophy_\${b}.png\`}\``
+      `a.settings.Zb=(a.settings.wb===window.CANDY_MODE)?window.CANDY_ICON:(a.settings.wb===window.CHESS_MODE)?window.CHESS_ICON:\`https://www.google.com/logos/fnbx/\${a.settings.Ba===1?\`snake_arcade/pixel/v22/px_trophy_\${b}.png\`:\`snake_arcade/v22/trophy_\${b}.png\`}\``
     );
   }
 
   // Blender's mode summary strip builds trophy_NN.png per selected mode; custom
   // modes have no such file, so point them at their own icons.
   let blender_mode_icons = new RegExp(
-    /b3E\(d,`https:\/\/www\.google\.com\/logos\/fnbx\/\$\{`snake_arcade\/v22\/trophy_\$\{Z2E\(c\)\}\.png`\}`\)/
+    /PmF\(d,`https:\/\/www\.google\.com\/logos\/fnbx\/\$\{`snake_arcade\/v22\/trophy_\$\{MmF\(c\)\}\.png`\}`\)/
   );
   if (code.match(blender_mode_icons)) {
     code = code.assertReplace(
       blender_mode_icons,
-      `b3E(d,(c===window.CANDY_MODE)?window.CANDY_ICON:(c===window.CHESS_MODE)?window.CHESS_ICON:\`https://www.google.com/logos/fnbx/\${\`snake_arcade/v22/trophy_\${Z2E(c)}.png\`}\`)`
+      `PmF(d,(c===window.CANDY_MODE)?window.CANDY_ICON:(c===window.CHESS_MODE)?window.CHESS_ICON:\`https://www.google.com/logos/fnbx/\${\`snake_arcade/v22/trophy_\${MmF(c)}.png\`}\`)`
     );
   }
 
   // Refresh topbar trophy when starting a candy game
-  let reset_regex = new RegExp(/a\.ub=a\.ob;a\.ka=a\.Ca;/);
+  let reset_regex = new RegExp(/c\.yb=c\.wb;c\.ka=c\.Ca;/);
   if (code.match(reset_regex)) {
     code = code.assertReplace(
       reset_regex,
-      `a.ub=a.ob;a.ka=a.Ca;if(window.CurrentModeNum===window.CANDY_MODE){window.updateCandyTrophySRC();}`
+      `c.yb=c.wb;c.ka=c.Ca;if(window.CurrentModeNum===window.CANDY_MODE){window.updateCandyTrophySRC();}`
     );
   }
 
   // +1..+6 extra length on candy (and blender with candy toggle)
   let candy_logic = new RegExp(
-    /e7\(a\.settings,3\)\?a\.oa\.Ua\+=2:a\.oa\.Ua\+=1;/
+    /M7\(a\.settings,3\)\?a\.Yc\.Ra\+=2:a\.Yc\.Ra\+=1;/
   );
   let candy_match = code.match(candy_logic);
   if (candy_match) {
-    let snake_length = "a.oa.Ua";
+    let snake_length = "a.Yc.Ra";
     let candy_logic_set = `${candy_match[0]}
     if(window.isCandyActive && window.isCandyActive()) {
         ${snake_length} += Math.floor(Math.random() * 6);
@@ -11914,12 +11962,12 @@ window.CandyMod.alterSnakeCode = function (code) {
 
   // Inject candy/chess into blender mode set builder
   let blender_foreach = new RegExp(
-    /a\.Ua\.forEach\(\(c,d\)=>\{_\.zm\(c,"lH9Ipd"\)&&b\.push\(d\)\}\)/
+    /a\.Za\.forEach\(\(c,d\)=>\{_\.Gd\(c,"lH9Ipd"\)&&b\.push\(d\)\}\)/
   );
   if (code.match(blender_foreach)) {
     code = code.assertReplace(
       blender_foreach,
-      `a.Ua.forEach((c,d)=>{_.zm(c,"lH9Ipd")&&b.push(d)});if(window.candy_blending&&window.CANDY_MODE!=null)b.push(window.CANDY_MODE);if(window.chess_blending&&window.CHESS_MODE!=null)b.push(window.CHESS_MODE)`
+      `a.Za.forEach((c,d)=>{_.Gd(c,"lH9Ipd")&&b.push(d)});if(window.candy_blending&&window.CANDY_MODE!=null)b.push(window.CANDY_MODE);if(window.chess_blending&&window.CHESS_MODE!=null)b.push(window.CHESS_MODE)`
     );
   } else {
     console.error("CandyMod: failed to find blender forEach regex");
@@ -11928,12 +11976,12 @@ window.CandyMod.alterSnakeCode = function (code) {
   // Map custom blender panel icons into Ta with correct mode ids.
   // Must stay an expression (ternary false-branch) — a bare {let ...} block is a SyntaxError.
   let ta_fallback = new RegExp(
-    /this\.Ua\.set\(22,e\),this\.Uk\.set\(e,22\)/
+    /this\.Za\.set\(22,d\),this\.Hl\.set\(d,22\)/
   );
   if (code.match(ta_fallback)) {
     code = code.assertReplace(
       ta_fallback,
-      `((function(el){var s=el.children[0]&&el.children[0].src||"",m=22;if(window.CANDY_MODE!=null&&s.indexOf("rsSFx6gg")>=0)m=window.CANDY_MODE;else if(window.CHESS_MODE!=null&&s.indexOf("ZqK0CB95")>=0)m=window.CHESS_MODE;this.Ua.set(m,el);this.Uk.set(el,m);}).call(this,e))`
+      `((function(el){var s=el.children[0]&&el.children[0].src||"",m=22;if(window.CANDY_MODE!=null&&s.indexOf("rsSFx6gg")>=0)m=window.CANDY_MODE;else if(window.CHESS_MODE!=null&&s.indexOf("ZqK0CB95")>=0)m=window.CHESS_MODE;this.Za.set(m,el);this.Hl.set(el,m);}).call(this,d))`
     );
   }
 
@@ -11955,7 +12003,7 @@ window.ChessMod = {};
 ////////////////////////////////////////////////////////////////////
 
 window.ChessMod.runCodeBefore = function () {
-  console.log("Adding Chess Mode (v13, independent mode)");
+  console.log("Adding Chess Mode (v14, independent mode)");
 
   window.CHESS_ICON = "data:image/png;base64,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";
 
@@ -12168,7 +12216,7 @@ window.ChessMod.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.ChessMod.alterSnakeCode = function (code) {
-  console.log("Coding Chess Mode into the game (v13)");
+  console.log("Coding Chess Mode into the game (v14)");
 
   // Ensure fruits exist if alter runs in odd order
   if (window.new_fruit && !window._chessFruitsInjected) {
@@ -12178,11 +12226,19 @@ window.ChessMod.alterSnakeCode = function (code) {
   // Visibility gates fruit drawing on one checkbox for everything that is not
   // poison. Split pieces out of that branch so the Chess Pieces row applies.
   // Both the normal and the twin/infinity mirrored draw carry the same guard.
-  // MorePudding currently marks poison as (b.nla||b.Oka); older builds used b.Oka.
+  // MorePudding marked poison as (b.nla||b.Oka) on v13 (Oka is Bea on v14);
+  // older builds used b.Oka. Try the v14 spellings first.
   const fruit = "window.checkboxes.checkboxStatuses.fruit";
   const pieces =
     "(b.isPiece ? window.checkboxes.checkboxStatuses.chessPieces : window.checkboxes.checkboxStatuses.fruit)";
-  const poisonMarks = ["(b.nla||b.Oka)", "b.Oka"];
+  const poisonMarks = [
+    "(b.nla||b.Oka||b.Bea)",
+    "(b.nla||b.Bea)",
+    "(b.Oka||b.Bea)",
+    "b.Bea",
+    "(b.nla||b.Oka)",
+    "b.Oka",
+  ];
   let fruitGatePatched = false;
   for (let i = 0; i < poisonMarks.length; i++) {
     const from =
@@ -12235,17 +12291,17 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (window.CHESS_MODE == null) return false;
     if (window.CurrentModeNum === window.CHESS_MODE) return true;
     if (window.CurrentModeNum === 22 && window.chess_blending) return true;
-    // Chess may be in blender rSa via the mode grid without chess_blending.
-    // Match e7(...,15) so eat/respawn/unlock stay on the Chess path.
+    // Chess may be in blender NSa via the mode grid without chess_blending.
+    // Match M7(...,15) so eat/respawn/unlock stay on the Chess path.
     const g = window.__remixGame;
     const s = g && g.settings;
     if (!s) return false;
-    if (s.ub === window.CHESS_MODE || s.ob === window.CHESS_MODE) return true;
+    if (s.yb === window.CHESS_MODE || s.wb === window.CHESS_MODE) return true;
     if (
-      (s.ub === 22 || window.CurrentModeNum === 22) &&
-      s.rSa &&
-      typeof s.rSa.has === "function" &&
-      s.rSa.has(window.CHESS_MODE)
+      (s.yb === 22 || window.CurrentModeNum === 22) &&
+      s.NSa &&
+      typeof s.NSa.has === "function" &&
+      s.NSa.has(window.CHESS_MODE)
     ) {
       return true;
     }
@@ -12253,18 +12309,18 @@ window.ChessMod.alterSnakeCode = function (code) {
   };
 
   // Chess trophy + Portal physics (mode or blender). Solo Chess / solo Portal stay off.
-  // Do not call e7() here — it lives in the game closure, not on window.
+  // Do not call M7() here — it lives in the game closure, not on window.
   window.chess_portal_combo = function chess_portal_combo() {
     if (!window.isChessActive || !window.isChessActive()) return false;
     const g = window.__remixGame;
     if (!g || !g.settings) return false;
     const s = g.settings;
-    if (s.ub === 2 || s.ob === 2) return true;
+    if (s.yb === 2 || s.wb === 2) return true;
     if (
-      (s.ub === 22 || window.CurrentModeNum === 22 || s.ob === 22) &&
-      s.rSa &&
-      typeof s.rSa.has === "function" &&
-      s.rSa.has(2)
+      (s.yb === 22 || window.CurrentModeNum === 22 || s.wb === 22) &&
+      s.NSa &&
+      typeof s.NSa.has === "function" &&
+      s.NSa.has(2)
     ) {
       return true;
     }
@@ -12285,10 +12341,10 @@ window.ChessMod.alterSnakeCode = function (code) {
   window.__chessPortalTwinKey = null;
   window.__chessPortalTwinApple = null;
 
-  // Shield field name on apple objects in v12
-  window.chess_shield_field = "nba";
+  // Shield field name on apple objects in v14 (v13: nba)
+  window.chess_shield_field = "h7";
 
-  // Native Peaceful (e7 21) makes P3E return an empty shield set — fruit stay
+  // Native Peaceful (M7 21) makes goF return an empty shield set — fruit stay
   // edible. Chess lock via shield_all must match that: while Peaceful / Cat
   // grace / Slot Peaceful-roll is on, do not keep 4-way locks (otherwise the
   // snake skips Sc death and walks through locked pieces without eating).
@@ -12306,12 +12362,12 @@ window.ChessMod.alterSnakeCode = function (code) {
     const g = game || window.__remixGame;
     if (!g || !g.settings) return false;
     const s = g.settings;
-    if ((s.ub | 0) === 21) return true;
-    if ((s.ub | 0) === 22) {
-      if (s.rSa && typeof s.rSa.has === "function" && s.rSa.has(21)) return true;
-      if (g.rSa && typeof g.rSa.has === "function" && g.rSa.has(21)) return true;
+    if ((s.yb | 0) === 21) return true;
+    if ((s.yb | 0) === 22) {
+      if (s.NSa && typeof s.NSa.has === "function" && s.NSa.has(21)) return true;
+      if (g.NSa && typeof g.NSa.has === "function" && g.NSa.has(21)) return true;
     }
-    if (s.Qa && s.Lc && typeof s.Lc.has === "function" && s.Lc.has(21)) {
+    if (s.La && s.jd && typeof s.jd.has === "function" && s.jd.has(21)) {
       return true;
     }
     return false;
@@ -12365,7 +12421,7 @@ window.ChessMod.alterSnakeCode = function (code) {
       window.chess_peaceful_active &&
       window.chess_peaceful_active(game)
     ) {
-      fruit[window.chess_shield_field || "nba"] = undefined;
+      fruit[window.chess_shield_field || "h7"] = undefined;
       return true;
     }
     if (
@@ -12374,7 +12430,7 @@ window.ChessMod.alterSnakeCode = function (code) {
       window.isCatActive() &&
       ((window.cat_peaceful_ticks | 0) > 0 || (window.cat_lives | 0) > 0)
     ) {
-      fruit[window.chess_shield_field || "nba"] = undefined;
+      fruit[window.chess_shield_field || "h7"] = undefined;
       if (
         (window.cat_peaceful_ticks | 0) <= 0 &&
         typeof window.cat_try_spend_life === "function"
@@ -12439,7 +12495,7 @@ window.ChessMod.alterSnakeCode = function (code) {
       let apple = window.appleArray[index];
       if (
         apple.isPiece &&
-        !apple.Oka &&
+        !apple.Bea &&
         apple.pos.x == x &&
         apple.pos.y == y &&
         window.head_color != apple.ChessColor
@@ -12520,7 +12576,7 @@ window.ChessMod.alterSnakeCode = function (code) {
   // Fruit keeps ChessColor after an unlock. A ray that treats fruit as a
   // piece will try to capture it, fail, and never reach the real target.
   function chessRayPiece(piece) {
-    return !!(piece && piece.isPiece && !piece.Oka && piece.pos);
+    return !!(piece && piece.isPiece && !piece.Bea && piece.pos);
   }
 
   function getClosestPiecesToRook(rookPos, pieces) {
@@ -12703,9 +12759,9 @@ window.ChessMod.alterSnakeCode = function (code) {
       skipIndexes instanceof Set
         ? skipIndexes
         : new Set(skipIndexes || []);
-    if (game && game.oa && Array.isArray(game.oa.ka)) {
-      for (let i = 0; i < game.oa.ka.length; i++) {
-        const seg = game.oa.ka[i];
+    if (game && game.Yc && Array.isArray(game.Yc.ka)) {
+      for (let i = 0; i < game.Yc.ka.length; i++) {
+        const seg = game.Yc.ka[i];
         const k = window.chess_pos_key(seg);
         if (k != null) keys.add(k);
       }
@@ -12734,10 +12790,10 @@ window.ChessMod.alterSnakeCode = function (code) {
     return k == null || !occupiedKeys.has(k);
   };
 
-  // Bridge tiles (game.Ga.oa[y][x]) are not free cells for piece/fruit spawn.
+  // Bridge tiles (game.wa.oa[y][x]) are not free cells for piece/fruit spawn.
   window.chess_pos_on_bridge = function chess_pos_on_bridge(game, posOrX, y) {
     const g = game || window.__remixGame;
-    const grid = g && g.Ga && g.Ga.oa;
+    const grid = g && g.wa && g.wa.oa;
     if (!grid || !grid.length) return false;
     let xi;
     let yi;
@@ -12751,16 +12807,16 @@ window.ChessMod.alterSnakeCode = function (code) {
     return !!(grid[yi] && grid[yi][xi]);
   };
 
-  // Native Tb bans cells with l7(board, head, cell) <= 3 when portal/shield
+  // Native Lb bans cells with yoF(board, head, cell) <= 3 when portal/shield
   // spawn (b===2). Chess enables shield via f7(..., 15), so new piece spawns
   // must keep the same head radius. Start-layout (iaF) positions are exempt.
   window.chess_spawn_radius = 3;
 
   window.chess_spawn_dist = function chess_spawn_dist(board, from, to) {
     if (!from || !to) return Infinity;
-    if (typeof l7 === "function" && board) {
+    if (typeof yoF === "function" && board) {
       try {
-        return l7(board, from, to);
+        return yoF(board, from, to);
       } catch (_e) {}
     }
     return Math.abs(from.x - to.x) + Math.abs(from.y - to.y);
@@ -12774,22 +12830,22 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (!pos || pos.x == null || pos.y == null) return false;
     const limit =
       maxDist == null ? window.chess_spawn_radius : maxDist;
-    const snake = game && game.oa;
+    const snake = game && game.Yc;
     const head = snake && snake.ka && snake.ka[0];
     if (!head) return true;
-    const board = game.ka || (game.wa && game.wa.oa) || null;
+    const board = game.ka || (game.oa && game.oa.oa) || null;
     if (window.chess_spawn_dist(board, head, pos) <= limit) return false;
     // Twin snake: also ban the head-radius mirror, matching Tb.
     if (
       snake &&
       snake.settings &&
-      typeof e7 === "function" &&
-      e7(snake.settings, 7) &&
-      typeof k7 === "function" &&
+      typeof M7 === "function" &&
+      M7(snake.settings, 7) &&
+      typeof V7 === "function" &&
       board
     ) {
       try {
-        const twin = k7(board, pos);
+        const twin = V7(board, pos);
         if (
           twin &&
           window.chess_spawn_dist(board, head, twin) <= limit
@@ -12801,9 +12857,14 @@ window.ChessMod.alterSnakeCode = function (code) {
     return true;
   };
 
+  // Native board free-cell picker (v13 d4E; inlined on v14 as board.Ba(pos,n,void 0)).
+  window.chess_native_free_pos = function chess_native_free_pos(board, pos, n) {
+    return board.Ba(pos, n, void 0);
+  };
+
   window.chess_make_pos = function chess_make_pos(x, y) {
-    if (typeof _ !== "undefined" && _ && typeof _.Od === "function") {
-      return new _.Od(x, y);
+    if (typeof _ !== "undefined" && _ && typeof _.Yd === "function") {
+      return new _.Yd(x, y);
     }
     if (typeof _ !== "undefined" && _ && typeof _.Sd === "function") {
       return new _.Sd(x, y);
@@ -12834,8 +12895,8 @@ window.ChessMod.alterSnakeCode = function (code) {
       }
     }
     const nativeFree =
-      game && typeof game.Rb === "function"
-        ? game.Rb.bind(game)
+      game && typeof game.Lb === "function"
+        ? game.Lb.bind(game)
         : game && typeof game.Tb === "function"
           ? game.Tb.bind(game)
           : null;
@@ -12864,7 +12925,7 @@ window.ChessMod.alterSnakeCode = function (code) {
     el.ChessColor = window.color_turn;
     el.isPiece = true;
     el.type = window[window.color_turn + el.ChessPiece];
-    el.nba = undefined;
+    el.h7 = undefined;
     window.SwitchTurn();
   };
 
@@ -12915,8 +12976,8 @@ window.ChessMod.alterSnakeCode = function (code) {
       const freePos =
         typeof window.__chessFreePos === "function"
           ? window.__chessFreePos
-          : typeof d4E === "function"
-            ? d4E
+          : typeof window.chess_native_free_pos === "function"
+            ? window.chess_native_free_pos
             : null;
       const occ = window.chess_occupied_keys(game, mgr.ka, new Set());
       // Also ban the eaten cell explicitly (still in ka until native splice).
@@ -12943,7 +13004,7 @@ window.ChessMod.alterSnakeCode = function (code) {
       if (snapshot && typeof snapshot === "object") {
         for (const key in snapshot) {
           if (!Object.prototype.hasOwnProperty.call(snapshot, key)) continue;
-          if (key === "pos" || key === "nba" || key === "Oba") continue;
+          if (key === "pos" || key === "h7" || key === "Oba") continue;
           try {
             dup[key] = snapshot[key];
           } catch (_e2) {}
@@ -12963,11 +13024,11 @@ window.ChessMod.alterSnakeCode = function (code) {
         ? snapshot.type
         : window[color + piece];
     if (typeId != null) dup.type = typeId;
-    dup.nba = undefined;
+    dup.h7 = undefined;
     dup.Oba = undefined;
-    dup.wm = true;
-    dup.cM = 0;
-    dup.nD = 0;
+    dup.Rm = true;
+    dup.gM = 0;
+    dup.aD = 0;
     // Not a Slot badge fruit.
     try {
       delete dup.slotMode;
@@ -12990,7 +13051,7 @@ window.ChessMod.alterSnakeCode = function (code) {
     const opposites = [];
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
-      if (!f || !f.isPiece || f.Oka) continue;
+      if (!f || !f.isPiece || f.Bea) continue;
       if (f.ChessColor && f.ChessColor !== color) opposites.push(i);
     }
     if (!opposites.length) return false;
@@ -13011,7 +13072,7 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (window.head_state === "OPEN") return;
 
     const game = window.__remixGame;
-    const mgr = (game && game.wa) || null;
+    const mgr = (game && game.oa) || null;
     const snapshot = {
       ChessPiece: eaten.ChessPiece,
       ChessColor: eaten.ChessColor,
@@ -13142,10 +13203,10 @@ window.ChessMod.alterSnakeCode = function (code) {
         dup.pos.y = pos.y;
       }
       if (typeof pickType === "function") dup.type = pickType(mgr);
-      // wm is the game's spawn-in animation flag (cleared by manager refresh()).
-      dup.wm = true;
-      dup.cM = 0;
-      dup.nD = 0;
+      // Rm is the game's spawn-in animation flag (cleared by manager refresh()).
+      dup.Rm = true;
+      dup.gM = 0;
+      dup.aD = 0;
       window.chess_assign_piece(dup);
       return dup;
     };
@@ -13174,12 +13235,12 @@ window.ChessMod.alterSnakeCode = function (code) {
     return 2;
   };
 
-  // Build a non-piece twin apple for Chess+Portal unlock (clone when g7 is not exposed).
+  // Build a non-piece twin apple for Chess+Portal unlock (clone when S7 is not exposed).
   window.chess_clone_as_fruit = function chess_clone_as_fruit(src, pos) {
     if (!src) return null;
     const make = window.__chessMakeApple;
     const game = window.__remixGame;
-    const mgr = game && game.wa;
+    const mgr = game && game.oa;
     let dup = null;
     if (typeof make === "function" && mgr) {
       try {
@@ -13217,10 +13278,10 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (src.sequenceNumber !== undefined) {
       dup.sequenceNumber = src.sequenceNumber;
     }
-    dup.nba = undefined;
-    dup.wm = true;
-    dup.cM = 0;
-    dup.nD = 0;
+    dup.h7 = undefined;
+    dup.Rm = true;
+    dup.gM = 0;
+    dup.aD = 0;
     return dup;
   };
 
@@ -13232,16 +13293,16 @@ window.ChessMod.alterSnakeCode = function (code) {
     unlockedIndex
   ) {
     const game = window.__remixGame;
-    if (!game || !game.wa || !unlockedApple) return null;
-    const mgr = game.wa;
+    if (!game || !game.oa || !unlockedApple) return null;
+    const mgr = game.oa;
     const board = mgr.oa;
     window.appleArray = mgr.ka;
     const occ = window.chess_occupied_keys(game, mgr.ka, new Set());
     const freePos =
       typeof window.__chessFreePos === "function"
         ? window.__chessFreePos
-        : typeof d4E === "function"
-          ? d4E
+        : typeof window.chess_native_free_pos === "function"
+          ? window.chess_native_free_pos
           : null;
     const pos = window.chess_find_legal_spawn(board, freePos, occ, null);
     if (!pos) return null;
@@ -13339,7 +13400,7 @@ window.ChessMod.alterSnakeCode = function (code) {
     const empty = mgr.ka.length === 0;
 
     // Bomb: first fruit → 24 pairs (48 pieces), then normal +2.
-    if (ka === 5 && game && !game.kc) {
+    if (ka === 5 && game && !game.Qb) {
       const n = window.chess_spawn_n_pairs(
         mgr,
         makeApple,
@@ -13348,7 +13409,7 @@ window.ChessMod.alterSnakeCode = function (code) {
         24,
         null
       );
-      game.kc = true;
+      game.Qb = true;
       return n;
     }
 
@@ -13432,20 +13493,20 @@ window.ChessMod.alterSnakeCode = function (code) {
     const make =
       typeof window.__chessMakeApple === "function"
         ? window.__chessMakeApple
-        : typeof g7 === "function"
-          ? g7
+        : typeof S7 === "function"
+          ? S7
           : null;
     const freePos =
       typeof window.__chessFreePos === "function"
         ? window.__chessFreePos
-        : typeof d4E === "function"
-          ? d4E
+        : typeof window.chess_native_free_pos === "function"
+          ? window.chess_native_free_pos
           : null;
     const pickType =
       typeof window.__chessPickType === "function"
         ? window.__chessPickType
-        : typeof Q3E === "function"
-          ? Q3E
+        : typeof hoF === "function"
+          ? hoF
           : null;
     if (typeof make === "function") {
       window.chess_portal_combo_respawn(mgr, game, make, freePos, pickType);
@@ -13471,11 +13532,11 @@ window.ChessMod.alterSnakeCode = function (code) {
     for (let i = start; i < mgr.ka.length; i++) {
       window.chess_assign_piece(mgr.ka[i]);
     }
-    // Prefer native freePos via game.Tb when sanitizing qaF results.
+    // Prefer native freePos via game.Lb when sanitizing qaF results.
     const freePos =
-      window.__remixGame && typeof window.__remixGame.Rb === "function"
+      window.__remixGame && typeof window.__remixGame.Lb === "function"
         ? function (board, excl, radius) {
-            return window.__remixGame.Rb(excl, radius);
+            return window.__remixGame.Lb(excl, radius);
           }
         : window.__remixGame && typeof window.__remixGame.Tb === "function"
         ? function (board, excl, radius) {
@@ -13492,46 +13553,46 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (!window.isChessActive || !window.isChessActive()) return false;
     if (!window.head_pos || !window.appleArray) return false;
     let apple = window.findApple(window.head_pos[0], window.appleArray);
-    return !!(apple && apple.isPiece && !apple.Oka);
+    return !!(apple && apple.isPiece && !apple.Bea);
   };
 
-  // --- Code patches for v13 ---
+  // --- Code patches for v14 ---
 
-  // Make Chess activate Shield physics via e7(..., 15)
+  // Make Chess activate Shield physics via M7(..., 15)
   let f7_regex = new RegExp(
-    /e7=function\(a,b\)\{return a\.Qa\?a\.Lc\.has\(b\):a\.ub===22&&a\.rSa\.has\(b\)\?!0:a\.ub===b\}/
+    /M7=function\(a,b\)\{return a\.La\?a\.jd\.has\(b\):a\.yb===22&&a\.NSa\.has\(b\)\?!0:a\.yb===b\}/
   );
   if (code.match(f7_regex)) {
     code = code.assertReplace(
       f7_regex,
-      `e7=function(a,b){var r=a.Qa?a.Lc.has(b):a.ub===22&&a.rSa.has(b)?!0:a.ub===b;if(!r&&b===15&&window.CHESS_MODE!=null){if(a.ub===window.CHESS_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.CHESS_MODE))return!0;}return r}`
+      `M7=function(a,b){var r=a.La?a.jd.has(b):a.yb===22&&a.NSa.has(b)?!0:a.yb===b;if(!r&&b===15&&window.CHESS_MODE!=null){if(a.yb===window.CHESS_MODE)return!0;if(a.yb===22&&a.NSa&&a.NSa.has(window.CHESS_MODE))return!0;}return r}`
     );
   } else {
-    console.error("ChessMod: failed to patch e7");
+    console.error("ChessMod: failed to patch M7");
   }
 
-  // Shield bars on chess locks: under Peaceful/Cat absorb the hit (clear nba)
-  // instead of Oa, so the same-tick head move can eat the piece.
+  // Shield bars on chess locks: under Peaceful/Cat absorb the hit (clear h7)
+  // instead of Ka (death), so the same-tick head move can eat the piece.
   if (
     code.match(
-      /\(\(g=f\.nba\)==null\?0:g\.has\(d\)\)&&this\.Oa\(\);/
+      /f\.h7\?\.has\(d\)&&this\.Ka\(\)/
     )
   ) {
     code = code.assertReplace(
-      /\(\(g=f\.nba\)==null\?0:g\.has\(d\)\)&&this\.Oa\(\);/,
-      `((g=f.nba)==null?0:g.has(d))&&(window.chess_shield_hit_absorb&&window.chess_shield_hit_absorb(this,f)?0:this.Oa());`
+      /f\.h7\?\.has\(d\)&&this\.Ka\(\)/,
+      `f.h7?.has(d)&&(window.chess_shield_hit_absorb&&window.chess_shield_hit_absorb(this,f)?0:this.Ka())`
     );
   } else {
-    console.error("ChessMod: failed to patch Sc shield hit absorb");
+    console.error("ChessMod: failed to patch Hl shield hit absorb");
   }
   if (
     code.match(
-      /\(\(h=f\.nba\)==null\?0:h\.has\(this\.oa\.direction\)\)&&this\.Oa\(\)/
+      /f\.h7\?\.has\(this\.Yc\.direction\)&&this\.Ka\(\)/
     )
   ) {
     code = code.assertReplace(
-      /\(\(h=f\.nba\)==null\?0:h\.has\(this\.oa\.direction\)\)&&this\.Oa\(\)/,
-      `((h=f.nba)==null?0:h.has(this.oa.direction))&&(window.chess_shield_hit_absorb&&window.chess_shield_hit_absorb(this,f)?0:this.Oa())`
+      /f\.h7\?\.has\(this\.Yc\.direction\)&&this\.Ka\(\)/,
+      `f.h7?.has(this.Yc.direction)&&(window.chess_shield_hit_absorb&&window.chess_shield_hit_absorb(this,f)?0:this.Ka())`
     );
   }
 
@@ -13539,45 +13600,45 @@ window.ChessMod.alterSnakeCode = function (code) {
   // Visibility may have already patched this tick(); keep the matcher loose.
   // Also expose __remixGame for the Playwright harness.
   let tick_regex = /\}tick\(\)\{/;
-  if (code.match(/\}tick\(\)\{var a=this\.Aa,b=this\.nj;/)) {
+  if (code.match(/\}tick\(\)\{var a=this\.Oy,b=this\.uj;/)) {
     code = code.assertReplace(
-      /\}tick\(\)\{var a=this\.Aa,b=this\.nj;/,
-      `}tick(){window.__remixGame=this;if(window.isChessActive&&window.isChessActive()){try{window.head_pos=this.oa.ka;window.head_dir=this.oa.direction;window.appleArray=this.wa.ka;window.chess_tick_logic();}catch(_ce){console.error("ChessMod: tick failed",_ce);}}var a=this.Aa,b=this.nj;`
+      /\}tick\(\)\{var a=this\.Oy,b=this\.uj;/,
+      `}tick(){window.__remixGame=this;if(window.isChessActive&&window.isChessActive()){try{window.head_pos=this.Yc.ka;window.head_dir=this.Yc.direction;window.appleArray=this.oa.ka;window.chess_tick_logic();}catch(_ce){console.error("ChessMod: tick failed",_ce);}}var a=this.Oy,b=this.uj;`
     );
   } else if (code.match(tick_regex)) {
     code = code.assertReplace(
       tick_regex,
-      `}tick(){window.__remixGame=this;if(window.isChessActive&&window.isChessActive()){try{window.head_pos=this.oa.ka;window.head_dir=this.oa.direction;window.appleArray=this.wa.ka;window.chess_tick_logic();}catch(_e){}}`
+      `}tick(){window.__remixGame=this;if(window.isChessActive&&window.isChessActive()){try{window.head_pos=this.Yc.ka;window.head_dir=this.Yc.direction;window.appleArray=this.oa.ka;window.chess_tick_logic();}catch(_e){}}`
     );
   } else {
     console.error("ChessMod: failed to find tick()");
   }
 
-  // On apple manager reset: chess state + Portal pair layout (Y3E force).
+  // On apple manager reset: chess state + Portal pair layout (ooF force).
   // Pudding prepends timer code to reset(){ so we must NOT match reset(){this.ka=[] —
-  // only the inner this.ka=[] / Y3E line that still exists after Pudding.
-  if (code.match(/this\.ka=\s*\[\];var a=Y3E\(this\.settings\)/)) {
+  // only the inner this.ka=[] / ooF line that still exists after Pudding.
+  if (code.match(/this\.ka=\s*\[\];var a=ooF\(this\.settings\)/)) {
     code = code.assertReplace(
-      /this\.ka=\s*\[\];var a=Y3E\(this\.settings\)/,
-      `this.ka=[];window.appleArray=this.ka;window.head_dir="RIGHT";window.head_state="OPEN";window.head_color="NONE";window.color_turn="w";window.just_ate="fruit";var a=Y3E(this.settings)||!!(window.isChessActive&&window.isChessActive())`
+      /this\.ka=\s*\[\];var a=ooF\(this\.settings\)/,
+      `this.ka=[];window.appleArray=this.ka;window.head_dir="RIGHT";window.head_state="OPEN";window.head_color="NONE";window.color_turn="w";window.just_ate="fruit";var a=ooF(this.settings)||!!(window.isChessActive&&window.isChessActive())`
     );
-  } else if (code.match(/var a=Y3E\(this\.settings\)/)) {
+  } else if (code.match(/var a=ooF\(this\.settings\)/)) {
     code = code.assertReplace(
-      /var a=Y3E\(this\.settings\)/,
-      `var a=Y3E(this.settings)||!!(window.isChessActive&&window.isChessActive())`
+      /var a=ooF\(this\.settings\)/,
+      `var a=ooF(this.settings)||!!(window.isChessActive&&window.isChessActive())`
     );
   } else {
-    console.error("ChessMod: failed to find Y3E apple-layout flag");
+    console.error("ChessMod: failed to find ooF apple-layout flag");
   }
 
-  // After shield nba init on reset: turn the apples into alternating pieces, start OPEN
+  // After shield h7 init on reset: turn the apples into alternating pieces, start OPEN
   let after_shield_init = new RegExp(
-    /if\(e7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.nba=\s*P3E\(this,q\.pos\);/
+    /if\(M7\(this\.settings,15\)\)for\(let r of this\.ka\)r\.h7=\s*goF\(this,r\.pos\);/
   );
   if (code.match(after_shield_init)) {
     code = code.assertReplace(
       after_shield_init,
-      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}`
+      `if(M7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let r of this.ka)r.h7=goF(this,r.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}`
     );
   } else {
     console.error("ChessMod: failed to find shield init on reset");
@@ -13585,41 +13646,41 @@ window.ChessMod.alterSnakeCode = function (code) {
 
   // Collision cleanup: remove doomed apples in pairs while chess (keep even count)
   let pair_splice = new RegExp(
-    /e7\(this\.settings,2\)\?n%2===0\?\(this\.ka\.splice\(n,2\),n--\):\(this\.ka\.splice\(n-\s*1,2\),n-=2\)/
+    /M7\(this\.settings,2\)\?c%2===0\?\(this\.ka\.splice\(c,2\),c--\):\(this\.ka\.splice\(c-\s*1,2\),c-=2\)/
   );
   if (code.match(pair_splice)) {
     code = code.assertReplace(
       pair_splice,
-      `(e7(this.settings,2)||(window.isChessActive&&window.isChessActive()))?n%2===0?(this.ka.splice(n,2),n--):(this.ka.splice(n-1,2),n-=2)`
+      `(M7(this.settings,2)||(window.isChessActive&&window.isChessActive()))?c%2===0?(this.ka.splice(c,2),c--):(this.ka.splice(c-1,2),c-=2)`
     );
   } else {
     console.error("ChessMod: failed to find pair-splice on reset");
   }
 
-  // Portal pair-spawn in f4E: include chess so fruit eats / dice / bomb double via all-or-nothing pairs
+  // Portal pair-spawn in voF (v13 f4E): include chess so fruit eats / dice / bomb double via all-or-nothing pairs
   let qaf_pair = new RegExp(
-    /e7\(a\.settings,\s*2\)&&!f\?/
+    /M7\(a\.settings,\s*2\)&&!f\?/
   );
   if (code.match(qaf_pair)) {
     code = code.assertReplace(
       qaf_pair,
-      `(e7(a.settings,2)||(window.isChessActive&&window.isChessActive()))&&!f?`
+      `(M7(a.settings,2)||(window.isChessActive&&window.isChessActive()))&&!f?`
     );
   } else {
-    console.error("ChessMod: failed to find f4E portal pair condition");
+    console.error("ChessMod: failed to find voF portal pair condition");
   }
 
-  // After f4E adds apples (+ optional shields), convert new ones to chess pieces
+  // After voF adds apples (+ optional shields), convert new ones to chess pieces
   let qaf_after_oba = new RegExp(
-    /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(e7\(a\.settings,15\)\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.nba=P3E\(a,c\.pos\);/
+    /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(M7\(a\.settings,15\)\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.h7=goF\(a,c\.pos\);/
   );
   if (code.match(qaf_after_oba)) {
     code = code.assertReplace(
       qaf_after_oba,
-      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(e7(a.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.nba=P3E(a,c.pos);if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(g>0&&window.ultraShouldSpawnFruitShields&&!window.ultraShouldSpawnFruitShields()){for(e=0;e<g;e++){c=a.ka[a.ka.length-1-e];if(!c.isPiece)c.nba=void 0;}}`
+      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(M7(a.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.h7=goF(a,c.pos);if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(g>0&&window.ultraShouldSpawnFruitShields&&!window.ultraShouldSpawnFruitShields()){for(e=0;e<g;e++){c=a.ka[a.ka.length-1-e];if(!c.isPiece)c.h7=void 0;}}`
     );
   } else {
-    console.error("ChessMod: failed to find f4E trailing convert hook");
+    console.error("ChessMod: failed to find voF trailing convert hook");
   }
 
   // Track selected fruit
@@ -13642,13 +13703,13 @@ window.ChessMod.alterSnakeCode = function (code) {
 
   // Do NOT multiply dice roll by 2 — Portal pairing already doubles (R apples -> 2R pieces).
 
-  // Score / eat: pieces never score; fruit scores. Eat helper uses a.Sh++.
+  // Score / eat: pieces never score; fruit scores. Eat helper uses a.Bi++.
   // Second piece eat while carrying → chess_on_second_piece_eat law (Chess+Slot).
-  let score_regex = new RegExp(/a\.Sh\+\+;/);
+  let score_regex = new RegExp(/a\.Bi\+\+;/);
   if (code.match(score_regex)) {
     code = code.assertReplace(
       score_regex,
-      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';a.Sh++;}else if(_ae&&_ae.isPiece){window.just_ate='piece';if(window.head_state!=='OPEN'&&window.chess_on_second_piece_eat){window.chess_on_second_piece_eat(_ae);}else{window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}}else{window.just_ate='fruit';a.Sh++;}}else{a.Sh++;}`
+      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';a.Bi++;}else if(_ae&&_ae.isPiece){window.just_ate='piece';if(window.head_state!=='OPEN'&&window.chess_on_second_piece_eat){window.chess_on_second_piece_eat(_ae);}else{window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}}else{window.just_ate='fruit';a.Bi++;}}else{a.Bi++;}`
     );
   } else {
     console.error("ChessMod: failed to find score increment");
@@ -13658,11 +13719,11 @@ window.ChessMod.alterSnakeCode = function (code) {
   // even when Chess deliberately leaves the score unchanged. Do not repeat a
   // milestone split when the collided object was a scoreless chess piece.
   const nativeMilestoneSplit =
-    /q7E\(a\.header,a\.Sh,a\.ticks,a\.Fb\)/;
+    /msF\(a\.header,a\.Bi,a\.ticks,a\.hb\)/;
   if (code.match(nativeMilestoneSplit)) {
     code = code.assertReplace(
       nativeMilestoneSplit,
-      "window.just_ate!=='piece'&&q7E(a.header,a.Sh,a.ticks,a.Fb)"
+      "window.just_ate!=='piece'&&msF(a.header,a.Bi,a.ticks,a.hb)"
     );
   } else {
     console.error("ChessMod: failed to gate native 25/50/100 split");
@@ -13671,80 +13732,80 @@ window.ChessMod.alterSnakeCode = function (code) {
   // Don't grow when eating a chess piece. This runs before the score hook, so the
   // piece is still in appleArray and can be detected live.
   let snakeLength = new RegExp(
-    /e7\(a\.settings,3\)\?a\.oa\.Ua\+=2:a\.oa\.Ua\+=1;/
+    /M7\(a\.settings,3\)\?a\.Yc\.Ra\+=2:a\.Yc\.Ra\+=1;/
   );
   if (code.match(snakeLength)) {
     code = code.assertReplace(
       snakeLength,
-      `e7(a.settings,3)?a.oa.Ua+=2:a.oa.Ua+=1;if(window.chess_eating_piece&&window.chess_eating_piece()){a.oa.Ua-=e7(a.settings,3)?2:1;}`
+      `M7(a.settings,3)?a.Yc.Ra+=2:a.Yc.Ra+=1;if(window.chess_eating_piece&&window.chess_eating_piece()){a.Yc.Ra-=M7(a.settings,3)?2:1;}`
     );
   }
 
   // Also block Candy's random length bonus on chess piece pickup
   let candy_len_bonus = new RegExp(
-    /if\(window\.isCandyActive && window\.isCandyActive\(\)\) \{\s*a\.oa\.Ua \+= Math\.floor\(Math\.random\(\) \* 6\);\s*\}/
+    /if\(window\.isCandyActive && window\.isCandyActive\(\)\) \{\s*a\.Yc\.Ra \+= Math\.floor\(Math\.random\(\) \* 6\);\s*\}/
   );
   if (code.match(candy_len_bonus)) {
     code = code.assertReplace(
       candy_len_bonus,
-      `if(window.isCandyActive && window.isCandyActive() && !(window.chess_eating_piece&&window.chess_eating_piece())) {a.oa.Ua += Math.floor(Math.random() * 6);}`
+      `if(window.isCandyActive && window.isCandyActive() && !(window.chess_eating_piece&&window.chess_eating_piece())) {a.Yc.Ra += Math.floor(Math.random() * 6);}`
     );
   }
 
   // Prevent native shield clear from fighting chess shields:
   let shield_clear = new RegExp(
-    /e7\(a\.settings,15\)&&\(b4E\(a\.wa,([a-zA-Z0-9_$]+)\),/
+    /M7\(a\.settings,15\)&&\(soF\(a\.oa,([a-zA-Z0-9_$]+)\),/
   );
   if (code.match(shield_clear)) {
     code = code.assertReplace(
       shield_clear,
-      `e7(a.settings,15)&&!(window.isChessActive&&window.isChessActive())&&(b4E(a.wa,$1),`
+      `M7(a.settings,15)&&!(window.isChessActive&&window.isChessActive())&&(soF(a.oa,$1),`
     );
   }
 
   // Gate Portal teleport / odd wipe for Chess+Portal:
-  // - piece eats: skip entire portal branch (no P6E)
+  // - piece eats: skip entire portal branch (no MrF)
   // - while Chess active: never wipe the board on odd apple count
-  // - only call P6E when the even/odd twin apple exists (odd Chess boards
-  //   after piece eats / unlock can leave a lone apple; native P6E crashes on .pos)
+  // - only call MrF when the even/odd twin apple exists (odd Chess boards
+  //   after piece eats / unlock can leave a lone apple; native MrF crashes on .pos)
   let portal_teleport = new RegExp(
-    /if\(e7\(a\.settings,2\)\)if\(a\.wa\.ka\.length%2!==0\)\{a\.wa\.ka\.splice\(0,a\.wa\.ka\.length\);break\}else b=!0,P6E\(a\.Sa,k,f,e,g\),f&&e7\(a\.settings,20\)&&p5E\(a\.Ga\);/
+    /if\(M7\(a\.settings,2\)\)if\(a\.oa\.ka\.length%2!==0\)\{a\.oa\.ka\.splice\(0,a\.oa\.ka\.length\);break\}else b=!0,MrF\(a\.La,k,f,e,g\),f&&M7\(a\.settings,20\)&&jqF\(a\.wa\);/
   );
   if (code.match(portal_teleport)) {
     code = code.assertReplace(
       portal_teleport,
-      `if(e7(a.settings,2)&&!(window.isChessActive&&window.isChessActive()&&window.just_ate==='piece'))if(a.wa.ka.length%2!==0&&!(window.isChessActive&&window.isChessActive())){a.wa.ka.splice(0,a.wa.ka.length);break}else{let _ti=k%2===0?k+1:k-1;if(_ti>=0&&_ti<a.wa.ka.length&&a.wa.ka[_ti])b=!0,P6E(a.Sa,k,f,e,g),f&&e7(a.settings,20)&&p5E(a.Ga);}`
+      `if(M7(a.settings,2)&&!(window.isChessActive&&window.isChessActive()&&window.just_ate==='piece'))if(a.oa.ka.length%2!==0&&!(window.isChessActive&&window.isChessActive())){a.oa.ka.splice(0,a.oa.ka.length);break}else{let _ti=k%2===0?k+1:k-1;if(_ti>=0&&_ti<a.oa.ka.length&&a.oa.ka[_ti])b=!0,MrF(a.La,k,f,e,g),f&&M7(a.settings,20)&&jqF(a.wa);}`
     );
   } else {
-    console.error("ChessMod: failed to find portal P6E teleport gate");
+    console.error("ChessMod: failed to find portal MrF teleport gate");
   }
 
-  // Chess never uses native Vm reposition: e=!1 splices the eaten apple, so a
+  // Chess never uses native Kc reposition: e=!1 splices the eaten apple, so a
   // piece eat removes only that piece and a fruit eat spawns exactly 2 fresh
   // pieces through chess_fruit_respawn.
   // Chess+Portal fruit (incl. Dice/Tally/Bomb): note twin, splice clears it, then
   // 2-piece respawn. Solo Chess still leaves Dice/Tally/pre-bomb to native refill.
   // Key/Soko stay excluded for now.
   let spawn = new RegExp(
-    /e=!1;e7\(a\.settings,2\)\?e=!0:e7\(a\.settings,10\)&&d\.Oka\?e=!1:\(e=a\.settings\.ka!==6&&\(d7\(a\.settings\)\|\|e7\(a\.settings,7\)\),e=a\.Vm\(k,\s*!e,null\)\);/
+    /e=!1;M7\(a\.settings,2\)\?e=!0:M7\(a\.settings,10\)&&d\.Bea\?e=!1:\(e=a\.settings\.ka!==6&&\(Q7\(a\.settings\)\|\|M7\(a\.settings,7\)\),e=a\.Kc\(k,\s*!e,null\)\);/
   );
   if (code.match(spawn)) {
     code = code.assertReplace(
       spawn,
-      `e=!1;if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;e=!1;if(window.just_ate==='fruit'&&!(e7(a.settings,8)||e7(a.settings,9))){if(window.chess_portal_combo&&window.chess_portal_combo()){window.chess_portal_note_fruit_twin(a.wa,k);}else if(!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.kc))){window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);}}}else e7(a.settings,2)?e=!0:e7(a.settings,10)&&d.Oka?e=!1:(e=a.settings.ka!==6&&(d7(a.settings)||e7(a.settings,7)),e=a.Vm(k,!e,null));`
+      `e=!1;if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=S7;window.__chessFreePos=window.chess_native_free_pos;window.__chessPickType=hoF;e=!1;if(window.just_ate==='fruit'&&!(M7(a.settings,8)||M7(a.settings,9))){if(window.chess_portal_combo&&window.chess_portal_combo()){window.chess_portal_note_fruit_twin(a.oa,k);}else if(!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.Qb))){window.chess_fruit_respawn(a.oa,S7,window.__chessFreePos,hoF);}}}else M7(a.settings,2)?e=!0:M7(a.settings,10)&&d.Bea?e=!1:(e=a.settings.ka!==6&&(Q7(a.settings)||M7(a.settings,7)),e=a.Kc(k,!e,null));`
     );
   } else {
-    console.error("ChessMod: failed to find Vm respawn path");
+    console.error("ChessMod: failed to find Kc respawn path");
   }
 
   // After non-portal splice of eaten apple: Chess+Portal clears twin + respawns 2 pieces.
   let eat_splice = new RegExp(
-    /\(a\.wa\.ka\.splice\(k,1\),k--\)/
+    /\(a\.oa\.ka\.splice\(k,1\),k--\)/
   );
   if (code.match(eat_splice)) {
     code = code.assertReplace(
       eat_splice,
-      `(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a))`
+      `(a.oa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.oa,a))`
     );
   } else {
     console.error("ChessMod: failed to find eat splice for portal twin clear");
@@ -13752,12 +13813,12 @@ window.ChessMod.alterSnakeCode = function (code) {
 
   // Tally wave refill spawns 5 slots; Chess needs 10 pieces per wave.
   let tally_wave = new RegExp(
-    /var b=e7\(a\.settings,11\)\?10:5;/
+    /var b=M7\(a\.settings,11\)\?10:5;/
   );
   if (code.match(tally_wave)) {
     code = code.assertReplace(
       tally_wave,
-      `var b=(e7(a.settings,11)||(window.isChessActive&&window.isChessActive()))?10:5;`
+      `var b=(M7(a.settings,11)||(window.isChessActive&&window.isChessActive()))?10:5;`
     );
   } else {
     console.error("ChessMod: failed to find tally wave size");
@@ -13766,7 +13827,7 @@ window.ChessMod.alterSnakeCode = function (code) {
   // New piece placement after fruit eaten — handled by qaF pair spawn + chess_convert_new_apples
 
   // On play start with chess: set trophy icon (dice_doubler unused; pairing doubles)
-  let play_start = new RegExp(/a\.ub=a\.ob;a\.ka=a\.Ca;/);
+  let play_start = new RegExp(/c\.yb=c\.wb;c\.ka=c\.Ca;/);
   if (code.indexOf("updateCandyTrophySRC") >= 0) {
     code = code.assertReplace(
       /if\(window\.CurrentModeNum===window\.CANDY_MODE\)\{window\.updateCandyTrophySRC\(\);\}/,
@@ -13775,7 +13836,7 @@ window.ChessMod.alterSnakeCode = function (code) {
   } else if (code.match(play_start)) {
     code = code.assertReplace(
       play_start,
-      `a.ub=a.ob;a.ka=a.Ca;if(window.CurrentModeNum===window.CHESS_MODE){window.updateTrophySRC();}`
+      `c.yb=c.wb;c.ka=c.Ca;if(window.CurrentModeNum===window.CHESS_MODE){window.updateTrophySRC();}`
     );
   }
 
@@ -13797,7 +13858,7 @@ window.BurgerMod = {};
 ////////////////////////////////////////////////////////////////////
 
 window.BurgerMod.runCodeBefore = function () {
-  console.log("Adding Burger Mode (v13)");
+  console.log("Adding Burger Mode (v14)");
 
   window.BURGER_ICON = "data:image/png;base64,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";
 
@@ -13868,33 +13929,33 @@ window.BurgerMod.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.BurgerMod.alterSnakeCode = function (code) {
-  console.log("Coding Burger Mode into the game (v13)");
+  console.log("Coding Burger Mode into the game (v14)");
 
-  // Live settings check — same object e7(...,10) sees. Must stay false for Fear
+  // Live settings check — same object M7(...,10) sees. Must stay false for Fear
   // / native Poison / other modes (narrow Burger ids only).
   window.isBurgerSettings = function isBurgerSettings(s) {
     if (!s || window.BURGER_MODE == null) return false;
-    if (s.ub === window.BURGER_MODE || s.ob === window.BURGER_MODE) return true;
-    if (s.ub === "burger" || s.ob === "burger") return true;
+    if (s.yb === window.BURGER_MODE || s.wb === window.BURGER_MODE) return true;
+    if (s.yb === "burger" || s.wb === "burger") return true;
     if (
-      (s.ub === 22 || s.ub === "blender") &&
-      s.rSa &&
-      typeof s.rSa.has === "function" &&
-      s.rSa.has(window.BURGER_MODE)
+      (s.yb === 22 || s.yb === "blender") &&
+      s.NSa &&
+      typeof s.NSa.has === "function" &&
+      s.NSa.has(window.BURGER_MODE)
     ) {
       return true;
     }
     if (
-      (s.ub === 22 || s.ub === "blender") &&
+      (s.yb === 22 || s.yb === "blender") &&
       window.burger_blending
     ) {
       return true;
     }
     if (
-      s.Qa &&
-      s.Lc &&
-      typeof s.Lc.has === "function" &&
-      (s.Lc.has(window.BURGER_MODE) || s.Lc.has("burger"))
+      s.La &&
+      s.jd &&
+      typeof s.jd.has === "function" &&
+      (s.jd.has(window.BURGER_MODE) || s.jd.has("burger"))
     ) {
       return true;
     }
@@ -13921,7 +13982,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
     ) {
       return true;
     }
-    // Match e7(...,10): layout may pair Okas (l4E) while settings.ub is already
+    // Match M7(...,10): layout may pair Beas (BoF) while settings.yb is already
     // Burger but CurrentModeNum has not flipped yet — that half-poisoned the start.
     if (window.isBurgerSettings(window.__burgerSettingsRef)) return true;
     const g = window.__remixGame;
@@ -13930,7 +13991,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   };
 
   /**
-   * Play-start safety net: native Poison l4E can pair Okas before Burger gates
+   * Play-start safety net: native Poison BoF can pair Beas before Burger gates
    * see live settings, and timer hooks can miss the same race. Strip unpaired
    * native skulls (no burger lifetime) and arm every fresh fruit.
    * Does not touch Fear ghosts or Burger-expired poisons (those keep burgerTimerMax).
@@ -13950,15 +14011,15 @@ window.BurgerMod.alterSnakeCode = function (code) {
     let stripped = 0;
     for (let i = 0; i < list.length; i++) {
       const a = list[i];
-      if (!a || !a.Oka) continue;
+      if (!a || !a.Bea) continue;
       // Burger-expired poisons always get a lifetime via burger_make_poison.
       if ((a.burgerTimerMax | 0) > 0 || (a.burgerTimer | 0) > 0) continue;
       if (a.__fearGhost || a.__slotFearGhost) continue;
-      a.Oka = false;
+      a.Bea = false;
       stripped++;
     }
     window.burger_fruits_eaten = 0;
-    window.burger_assign_timers_all(list, g || { settings: settings, wa: mgr });
+    window.burger_assign_timers_all(list, g || { settings: settings, oa: mgr });
     return stripped > 0;
   };
 
@@ -13977,8 +14038,8 @@ window.BurgerMod.alterSnakeCode = function (code) {
     if (!g) return null;
     const box =
       (g.ka && g.ka.oa) ||
-      (g.wa && g.wa.oa && g.wa.oa.oa) ||
-      (g.oa && g.oa.oa);
+      (g.oa && g.oa.oa && g.oa.oa.oa) ||
+      (g.Yc && g.Yc.oa && g.Yc.oa.oa);
     if (!box) return null;
     return { width: box.width | 0, height: box.height | 0 };
   };
@@ -13986,9 +14047,8 @@ window.BurgerMod.alterSnakeCode = function (code) {
   // Body-segment count (not Ta growth queue). Used by timers and late-game.
   window.burger_snake_length = function burger_snake_length(game) {
     const g = game || window.__remixGame;
-    if (g && g.oa && g.oa.ka) return g.oa.ka.length | 0;
-    // Apple manager uses .Aa for the snake reference.
-    if (g && g.Aa && g.Aa.ka) return g.Aa.ka.length | 0;
+    // Game and apple manager both hold the snake as .Yc on v14.
+    if (g && g.Yc && g.Yc.ka) return g.Yc.ka.length | 0;
     return 0;
   };
 
@@ -14005,7 +14065,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   };
 
   window.burger_assign_timer = function burger_assign_timer(apple, game) {
-    if (!apple || apple.Oka) return;
+    if (!apple || apple.Bea) return;
     const t = window.burger_timer_roll(game);
     apple.burgerTimer = t;
     apple.burgerTimerMax = t;
@@ -14025,7 +14085,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   // Cache greyscale on the apple (updated from tick, every 3 ticks). Draw
   // reads apple.burgerGrey only — no per-frame math or canvas.filter.
   window.burger_update_grey = function burger_update_grey(apple) {
-    if (!apple || apple.Oka || !(apple.burgerTimerMax > 0)) {
+    if (!apple || apple.Bea || !(apple.burgerTimerMax > 0)) {
       if (apple) apple.burgerGrey = 0;
       return;
     }
@@ -14044,7 +14104,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
     let n = 0;
     if (!apples) return 0;
     for (let i = 0; i < apples.length; i++) {
-      if (apples[i] && !apples[i].Oka) n++;
+      if (apples[i] && !apples[i].Bea) n++;
     }
     return n;
   };
@@ -14059,7 +14119,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
     const limit = beforeIndex == null ? mgr.ka.length : beforeIndex;
     let removedBefore = 0;
     for (let i = mgr.ka.length - 1; i >= 0; i--) {
-      if (mgr.ka[i] && mgr.ka[i].Oka) {
+      if (mgr.ka[i] && mgr.ka[i].Bea) {
         mgr.ka.splice(i, 1);
         if (i < limit) removedBefore++;
       }
@@ -14069,7 +14129,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
 
   window.burger_head_neighbor_keys = function burger_head_neighbor_keys(game) {
     const keys = new Set();
-    const head = game && game.oa && game.oa.ka && game.oa.ka[0];
+    const head = game && game.Yc && game.Yc.ka && game.Yc.ka[0];
     if (!head) return keys;
     const pts = [
       [head.x, head.y - 1],
@@ -14102,8 +14162,8 @@ window.BurgerMod.alterSnakeCode = function (code) {
       return (p.x << 16) | (p.y & 65535);
     };
     // Prefer native free-cell picker (spawn radius / occupancy), then filter.
-    // v13: game.Rb; v12: game.Tb.
-    const free = game.Rb || game.Tb;
+    // v14: game.Lb; v13: game.Rb; v12: game.Tb.
+    const free = game.Lb;
     if (typeof free === "function") {
       for (let attempt = 0; attempt < 24; attempt++) {
         const p = free.call(game, null, 2);
@@ -14121,15 +14181,15 @@ window.BurgerMod.alterSnakeCode = function (code) {
     }
     // Exhaustive scan fallback (still respect late-game ban).
     const occupied = new Set();
-    if (game.oa && game.oa.ka) {
-      for (let i = 0; i < game.oa.ka.length; i++) {
-        const s = game.oa.ka[i];
+    if (game.Yc && game.Yc.ka) {
+      for (let i = 0; i < game.Yc.ka.length; i++) {
+        const s = game.Yc.ka[i];
         if (s) occupied.add(keyOf(s));
       }
     }
-    if (game.wa && game.wa.ka) {
-      for (let i = 0; i < game.wa.ka.length; i++) {
-        const a = game.wa.ka[i];
+    if (game.oa && game.oa.ka) {
+      for (let i = 0; i < game.oa.ka.length; i++) {
+        const a = game.oa.ka[i];
         if (a && a.pos) occupied.add(keyOf(a.pos));
       }
     }
@@ -14140,8 +14200,8 @@ window.BurgerMod.alterSnakeCode = function (code) {
         if (occupied.has(k)) continue;
         if (banned && banned.has(k)) continue;
         candidates.push(
-          typeof _ !== "undefined" && _.Od
-            ? new _.Od(x, y)
+          typeof _ !== "undefined" && _.Yd
+            ? new _.Yd(x, y)
             : typeof _ !== "undefined" && _.Sd
               ? new _.Sd(x, y)
               : { x: x, y: y }
@@ -14153,22 +14213,20 @@ window.BurgerMod.alterSnakeCode = function (code) {
   };
 
   window.burger_ended = function burger_ended(game) {
-    return !!(game && (game.nj || game.lj));
+    return !!(game && game.uj);
   };
 
   window.burger_trigger_win = function burger_trigger_win(game) {
     if (!game || window.burger_ended(game)) return;
     try {
-      if (typeof Q4E !== "undefined" && Q4E.rWd && Q4E.rWd.play) Q4E.rWd.play();
-      else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
+      if (typeof mqF !== "undefined" && mqF.WIN && mqF.WIN.play) mqF.WIN.play();
     } catch (_e) {}
-    // v13 ended flag is nj; lj is the v12 name. Never set game.ub — that is the mode id.
-    game.nj = true;
-    game.lj = true;
+    // v14: game over is uj (v13 nj), win is Za (v13 ub), as in the native win.
+    game.Za = true;
+    game.uj = true;
     try {
-      const score = game.Sh != null ? game.Sh : game.Oh;
-      if (typeof A7E === "function") A7E(game.menu, 1400, score);
-      else if (typeof vdF === "function") vdF(game.menu, 1400, score);
+      const score = game.Bi;
+      if (typeof wsF === "function") wsF(game.menu, 1400, score);
     } catch (_e2) {}
   };
 
@@ -14199,7 +14257,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
     if (!apple) return;
     // Poison keeps the fruit's original max as its lifetime — no grey indicator.
     const life = apple.burgerTimerMax | 0;
-    apple.Oka = true;
+    apple.Bea = true;
     apple.burgerGrey = 0;
     // Burger+Chess blender: expired pieces are plain poisons — not unlockable.
     apple.isPiece = false;
@@ -14213,7 +14271,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
       apple.burgerTimer = t;
       apple.burgerTimerMax = t;
     }
-    // nla alone only greys the fruit out, and Pudding's skull swap is behind a
+    // Bea alone only greys the fruit out, and Pudding's skull swap is behind a
     // user setting. Burger always wants the skull, so set the type directly.
     const skull = window.burger_skull_type();
     if (skull != null) apple.type = skull;
@@ -14223,7 +14281,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   window.burger_spawn_fresh = function burger_spawn_fresh(game, sequenceNumber) {
     const pos = window.burger_find_spawn_pos(game);
     if (!pos) return false;
-    const mgr = game.wa;
+    const mgr = game.oa;
     if (!mgr) return false;
     // Prefer native qaF (sets Cm animation, type, etc.) with no-pairing flag.
     // Pass sequenceNumber through so Tally replacements stay on the open index.
@@ -14232,7 +14290,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
       window.__qaF(mgr, pos, void 0, true, sequenceNumber, true);
       if (mgr.ka.length > before) {
         const last = mgr.ka[mgr.ka.length - 1];
-        last.Oka = false;
+        last.Bea = false;
         if (sequenceNumber !== undefined) last.sequenceNumber = sequenceNumber;
         window.burger_assign_timer(last, game);
         return true;
@@ -14245,9 +14303,9 @@ window.BurgerMod.alterSnakeCode = function (code) {
         apple.pos.x = pos.x;
         apple.pos.y = pos.y;
       }
-      apple.wm = true;
+      apple.Rm = true;
       apple.Cm = true;
-      apple.Oka = false;
+      apple.Bea = false;
       apple.Gh = true;
       if (sequenceNumber !== undefined) apple.sequenceNumber = sequenceNumber;
       if (typeof window.__aaF === "function") apple.type = window.__aaF(mgr);
@@ -14263,7 +14321,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
     const seq = apple && apple.sequenceNumber;
     window.burger_make_poison(apple, game);
     const spawned = window.burger_spawn_fresh(game, seq);
-    const freshLeft = window.burger_fresh_count(game.wa.ka);
+    const freshLeft = window.burger_fresh_count(game.oa.ka);
     if (!spawned && freshLeft === 0) {
       window.burger_trigger_win(game);
     }
@@ -14271,9 +14329,9 @@ window.BurgerMod.alterSnakeCode = function (code) {
 
   // Poison timer ran out — just remove it (no replacement, no indicator).
   window.burger_despawn_poison = function burger_despawn_poison(game, apple) {
-    if (!game || !game.wa || !game.wa.ka || !apple) return;
-    const i = game.wa.ka.indexOf(apple);
-    if (i >= 0) game.wa.ka.splice(i, 1);
+    if (!game || !game.oa || !game.oa.ka || !apple) return;
+    const i = game.oa.ka.indexOf(apple);
+    if (i >= 0) game.oa.ka.splice(i, 1);
   };
 
   window.burger_apple_timer_eligible = function burger_apple_timer_eligible(
@@ -14282,10 +14340,10 @@ window.BurgerMod.alterSnakeCode = function (code) {
   ) {
     if (!apple) return false;
     // Poisons always count down (no tally gate, no grey overlay).
-    if (apple.Oka) return true;
+    if (apple.Bea) return true;
     // Tally: only the current index ages for fresh fruit.
     if (game.settings && game.settings.ka === 6) {
-      const cur = game.wa ? game.wa.wa : 1;
+      const cur = game.oa ? game.oa.wa : 1;
       if (apple.sequenceNumber !== undefined && apple.sequenceNumber !== cur) {
         return false;
       }
@@ -14296,19 +14354,19 @@ window.BurgerMod.alterSnakeCode = function (code) {
   window.burger_tick_logic = function burger_tick_logic() {
     if (!window.isBurgerActive || !window.isBurgerActive()) return;
     const game = window.__remixGame;
-    if (!game || !game.wa || !game.wa.ka || window.burger_ended(game)) return;
-    // Heal play-start race: native l4E pairs + missed timer hooks.
+    if (!game || !game.oa || !game.oa.ka || window.burger_ended(game)) return;
+    // Heal play-start race: native BoF pairs + missed timer hooks.
     if (!window.__burgerStartOk) {
-      window.burger_sanitize_start(game.wa, game);
+      window.burger_sanitize_start(game.oa, game);
       window.__burgerStartOk = true;
     }
-    const apples = game.wa.ka;
+    const apples = game.oa.ka;
     const toExpire = [];
     for (let i = 0; i < apples.length; i++) {
       const a = apples[i];
       if (!window.burger_apple_timer_eligible(game, a)) continue;
       if (a.burgerTimer == null) {
-        if (a.Oka) {
+        if (a.Bea) {
           const t = window.burger_timer_roll(game);
           a.burgerTimer = t;
           a.burgerTimerMax = t;
@@ -14325,9 +14383,9 @@ window.BurgerMod.alterSnakeCode = function (code) {
       a.burgerTimer = (a.burgerTimer | 0) - 1;
       if (a.burgerTimer <= 0) {
         a.burgerTimer = 0;
-        if (!a.Oka) a.burgerGrey = 100;
+        if (!a.Bea) a.burgerGrey = 100;
         toExpire.push(a);
-      } else if (!a.Oka && (a.burgerTimerMax - a.burgerTimer) % 3 === 0) {
+      } else if (!a.Bea && (a.burgerTimerMax - a.burgerTimer) % 3 === 0) {
         // Only refresh the cached overlay every 3 ticks (fresh fruit only).
         window.burger_update_grey(a);
       }
@@ -14336,7 +14394,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
       if (window.burger_ended(game)) break;
       const a = toExpire[i];
       if (apples.indexOf(a) < 0) continue;
-      if (a.Oka) window.burger_despawn_poison(game, a);
+      if (a.Bea) window.burger_despawn_poison(game, a);
       else window.burger_expire_apple(game, a);
     }
   };
@@ -14347,24 +14405,24 @@ window.BurgerMod.alterSnakeCode = function (code) {
     game,
     eatenIndex
   ) {
-    if (!game || !game.wa) return eatenIndex;
+    if (!game || !game.oa) return eatenIndex;
     window.just_ate = "fruit";
     window.burger_fruits_eaten = (window.burger_fruits_eaten | 0) + 1;
     let eaten =
       eatenIndex != null && eatenIndex !== ""
-        ? game.wa.ka[eatenIndex | 0]
+        ? game.oa.ka[eatenIndex | 0]
         : null;
     // Index can be stale after poison splices; fall back to the apple under head.
     if (
-      (!eaten || eaten.Oka) &&
+      (!eaten || eaten.Bea) &&
       typeof window.findApple === "function" &&
       window.head_pos &&
       window.head_pos[0]
     ) {
-      const under = window.findApple(window.head_pos[0], game.wa.ka);
-      if (under && !under.Oka && !under.isPiece) eaten = under;
+      const under = window.findApple(window.head_pos[0], game.oa.ka);
+      if (under && !under.Bea && !under.isPiece) eaten = under;
     }
-    if (eaten && !eaten.Oka) {
+    if (eaten && !eaten.Bea) {
       eaten.burgerTimer = null;
       eaten.burgerTimerMax = null;
       eaten.burgerGrey = 0;
@@ -14374,12 +14432,12 @@ window.BurgerMod.alterSnakeCode = function (code) {
   };
 
   window.burger_after_respawn = function burger_after_respawn(game) {
-    if (!game || !game.wa) return;
+    if (!game || !game.oa) return;
     // Mn reuses the eaten apple in place (moves pos). Re-roll any slot that
     // was cleared on eat, or still lacks a timer (brand-new spawn).
-    for (let i = 0; i < game.wa.ka.length; i++) {
-      const a = game.wa.ka[i];
-      if (!a || a.Oka) continue;
+    for (let i = 0; i < game.oa.ka.length; i++) {
+      const a = game.oa.ka[i];
+      if (!a || a.Bea) continue;
       if (a.__burgerNeedsRoll || a.burgerTimer == null) {
         window.burger_assign_timer(a, game);
         delete a.__burgerNeedsRoll;
@@ -14393,116 +14451,116 @@ window.BurgerMod.alterSnakeCode = function (code) {
   // it helps to see the exact text it was matched against.
   if (window.RemixDebug) window.__remixPreBurgerCode = code;
 
-  // Extend Chess-patched e7 (or raw) so Burger activates Poison mode (10).
+  // Extend Chess-patched M7 (or raw) so Burger activates Poison mode (10).
   if (
     code.match(
-      /e7=function\(a,b\)\{var r=a\.Qa\?a\.Lc\.has\(b\):a\.ub===22&&a\.rSa\.has\(b\)\?!0:a\.ub===b;if\(!r&&b===15&&window\.CHESS_MODE!=null\)/
+      /M7=function\(a,b\)\{var r=a\.La\?a\.jd\.has\(b\):a\.yb===22&&a\.NSa\.has\(b\)\?!0:a\.yb===b;if\(!r&&b===15&&window\.CHESS_MODE!=null\)/
     )
   ) {
     code = code.assertReplace(
-      /e7=function\(a,b\)\{var r=a\.Qa\?a\.Lc\.has\(b\):a\.ub===22&&a\.rSa\.has\(b\)\?!0:a\.ub===b;if\(!r&&b===15&&window\.CHESS_MODE!=null\)\{if\(a\.ub===window\.CHESS_MODE\)return!0;if\(a\.ub===22&&a\.rSa&&a\.rSa\.has\(window\.CHESS_MODE\)\)return!0;\}return r\}/,
-      `e7=function(a,b){var r=a.Qa?a.Lc.has(b):a.ub===22&&a.rSa.has(b)?!0:a.ub===b;if(!r&&b===15&&window.CHESS_MODE!=null){if(a.ub===window.CHESS_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.CHESS_MODE))return!0;}if(!r&&b===10&&window.BURGER_MODE!=null){if(a.ub===window.BURGER_MODE||a.ub==='burger'||a.ob==='burger')return!0;if((a.ub===22||a.ub==='blender')&&a.rSa&&a.rSa.has(window.BURGER_MODE))return!0;if(a.Qa&&a.Lc&&(a.Lc.has(window.BURGER_MODE)||a.Lc.has('burger')))return!0;}return r}`
+      /M7=function\(a,b\)\{var r=a\.La\?a\.jd\.has\(b\):a\.yb===22&&a\.NSa\.has\(b\)\?!0:a\.yb===b;if\(!r&&b===15&&window\.CHESS_MODE!=null\)\{if\(a\.yb===window\.CHESS_MODE\)return!0;if\(a\.yb===22&&a\.NSa&&a\.NSa\.has\(window\.CHESS_MODE\)\)return!0;\}return r\}/,
+      `M7=function(a,b){var r=a.La?a.jd.has(b):a.yb===22&&a.NSa.has(b)?!0:a.yb===b;if(!r&&b===15&&window.CHESS_MODE!=null){if(a.yb===window.CHESS_MODE)return!0;if(a.yb===22&&a.NSa&&a.NSa.has(window.CHESS_MODE))return!0;}if(!r&&b===10&&window.BURGER_MODE!=null){if(a.yb===window.BURGER_MODE||a.yb==='burger'||a.wb==='burger')return!0;if((a.yb===22||a.yb==='blender')&&a.NSa&&a.NSa.has(window.BURGER_MODE))return!0;if(a.La&&a.jd&&(a.jd.has(window.BURGER_MODE)||a.jd.has('burger')))return!0;}return r}`
     );
   } else if (
     code.match(
-      /e7=function\(a,b\)\{return a\.Qa\?a\.Lc\.has\(b\):a\.ub===22&&a\.rSa\.has\(b\)\?!0:a\.ub===b\}/
+      /M7=function\(a,b\)\{return a\.La\?a\.jd\.has\(b\):a\.yb===22&&a\.NSa\.has\(b\)\?!0:a\.yb===b\}/
     )
   ) {
     code = code.assertReplace(
-      /e7=function\(a,b\)\{return a\.Qa\?a\.Lc\.has\(b\):a\.ub===22&&a\.rSa\.has\(b\)\?!0:a\.ub===b\}/,
-      `e7=function(a,b){var r=a.Qa?a.Lc.has(b):a.ub===22&&a.rSa.has(b)?!0:a.ub===b;if(!r&&b===10&&window.BURGER_MODE!=null){if(a.ub===window.BURGER_MODE||a.ub==='burger'||a.ob==='burger')return!0;if((a.ub===22||a.ub==='blender')&&a.rSa&&a.rSa.has(window.BURGER_MODE))return!0;if(a.Qa&&a.Lc&&(a.Lc.has(window.BURGER_MODE)||a.Lc.has('burger')))return!0;}return r}`
+      /M7=function\(a,b\)\{return a\.La\?a\.jd\.has\(b\):a\.yb===22&&a\.NSa\.has\(b\)\?!0:a\.yb===b\}/,
+      `M7=function(a,b){var r=a.La?a.jd.has(b):a.yb===22&&a.NSa.has(b)?!0:a.yb===b;if(!r&&b===10&&window.BURGER_MODE!=null){if(a.yb===window.BURGER_MODE||a.yb==='burger'||a.wb==='burger')return!0;if((a.yb===22||a.yb==='blender')&&a.NSa&&a.NSa.has(window.BURGER_MODE))return!0;if(a.La&&a.jd&&(a.jd.has(window.BURGER_MODE)||a.jd.has('burger')))return!0;}return r}`
     );
   } else {
-    console.error("BurgerMod: failed to patch e7 for poison mode");
+    console.error("BurgerMod: failed to patch M7 for poison mode");
   }
 
-  // Classic layout: Y3E must ignore Burger's e7(10). `a` here is settings.
-  if (code.match(/Y3E=function\(a\)\{return e7\(a,2\)\|\|e7\(a,8\)\|\|e7\(a,9\)\|\|e7\(a,10\)\}/)) {
+  // Classic layout: ooF must ignore Burger's M7(10). `a` here is settings.
+  if (code.match(/ooF=function\(a\)\{return M7\(a,2\)\|\|M7\(a,8\)\|\|M7\(a,9\)\|\|M7\(a,10\)\}/)) {
     code = code.assertReplace(
-      /Y3E=function\(a\)\{return e7\(a,2\)\|\|e7\(a,8\)\|\|e7\(a,9\)\|\|e7\(a,10\)\}/,
-      `Y3E=function(a){return e7(a,2)||e7(a,8)||e7(a,9)||(e7(a,10)&&!(window.isBurgerSettings&&window.isBurgerSettings(a)))}`
+      /ooF=function\(a\)\{return M7\(a,2\)\|\|M7\(a,8\)\|\|M7\(a,9\)\|\|M7\(a,10\)\}/,
+      `ooF=function(a){return M7(a,2)||M7(a,8)||M7(a,9)||(M7(a,10)&&!(window.isBurgerSettings&&window.isBurgerSettings(a)))}`
     );
   } else {
-    console.error("BurgerMod: failed to patch Y3E");
+    console.error("BurgerMod: failed to patch ooF");
   }
 
-  // Suppress Poison's e4E auto-poison twin spawn for Burger.
-  if (code.match(/e7\(a\.settings,10\)&&!f&&e4E\(a\)/)) {
+  // Suppress Poison's uoF auto-poison twin spawn for Burger.
+  if (code.match(/M7\(a\.settings,10\)&&!f&&uoF\(a\)/)) {
     code = code.assertReplace(
-      /e7\(a\.settings,10\)&&!f&&e4E\(a\)/,
-      `e7(a.settings,10)&&!f&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&e4E(a)`
+      /M7\(a\.settings,10\)&&!f&&uoF\(a\)/,
+      `M7(a.settings,10)&&!f&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&uoF(a)`
     );
   } else {
-    console.error("BurgerMod: failed to patch e4E gate");
+    console.error("BurgerMod: failed to patch uoF gate");
   }
 
   // Native Poison pairs every other apple as poison at game start / after some
-  // spawns (l4E). That is exactly the "5a starts with 2 poisons" bug. Gate every
+  // spawns (BoF). That is exactly the "5a starts with 2 poisons" bug. Gate every
   // call site and the function itself. Set __remixGame so tick helpers stay warm.
   {
     const l4ECalls = code.match(
-      /e7\((?:this|a)\.settings,10\)\s*&&\s*l4E\((?:this|a)\.wa\)/g
+      /M7\((?:this|a)\.settings,10\)\s*&&\s*BoF\((?:this|a)\.oa\)/g
     );
     if (l4ECalls && l4ECalls.length) {
       code = code.replace(
-        /e7\((this|a)\.settings,10\)\s*&&\s*l4E\(\1\.wa\)/g,
-        `window.__remixGame=$1,window.burger_settings_snapshot&&window.burger_settings_snapshot($1.settings),e7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&l4E($1.wa)`
+        /M7\((this|a)\.settings,10\)\s*&&\s*BoF\(\1\.oa\)/g,
+        `window.__remixGame=$1,window.burger_settings_snapshot&&window.burger_settings_snapshot($1.settings),M7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&BoF($1.oa)`
       );
     } else {
-      console.error("BurgerMod: failed to patch l4E call sites");
+      console.error("BurgerMod: failed to patch BoF call sites");
     }
   }
   if (
     code.match(
-      /l4E=function\(a\)\{for\(let b=0;b\+1<a\.ka\.length;b\+=2\)\{let c=Math\.random\(\)<\.5;\s*a\.ka\[b\]\.Oka=c;a\.ka\[b\+1\]\.Oka=!c\}\}/
+      /BoF=function\(a\)\{for\(let b=0;b\+1<a\.ka\.length;b\+=2\)\{let c=Math\.random\(\)<\.5;\s*a\.ka\[b\]\.Bea=c;a\.ka\[b\+1\]\.Bea=!c\}\}/
     )
   ) {
     code = code.assertReplace(
-      /l4E=function\(a\)\{for\(let b=0;b\+1<a\.ka\.length;b\+=2\)\{let c=Math\.random\(\)<\.5;\s*a\.ka\[b\]\.Oka=c;a\.ka\[b\+1\]\.Oka=!c\}\}/,
-      `l4E=function(a){var _bs=(a&&a.settings)||(window.__remixGame&&window.__remixGame.settings)||window.__burgerSettingsRef;if(window.isBurgerSettings&&window.isBurgerSettings(_bs))return;for(let b=0;b+1<a.ka.length;b+=2){let c=Math.random()<.5;a.ka[b].Oka=c;a.ka[b+1].Oka=!c}};window.__l4E=l4E;window.__uaF=l4E`
+      /BoF=function\(a\)\{for\(let b=0;b\+1<a\.ka\.length;b\+=2\)\{let c=Math\.random\(\)<\.5;\s*a\.ka\[b\]\.Bea=c;a\.ka\[b\+1\]\.Bea=!c\}\}/,
+      `BoF=function(a){var _bs=(a&&a.settings)||(window.__remixGame&&window.__remixGame.settings)||window.__burgerSettingsRef;if(window.isBurgerSettings&&window.isBurgerSettings(_bs))return;for(let b=0;b+1<a.ka.length;b+=2){let c=Math.random()<.5;a.ka[b].Bea=c;a.ka[b+1].Bea=!c}},__burgerBoFExpose=(window.__l4E=BoF,window.__uaF=BoF)`
     );
   } else {
-    console.error("BurgerMod: failed to patch l4E function");
+    console.error("BurgerMod: failed to patch BoF function");
   }
 
-  // Portal-pair path inside qaF also flips nla on the new pair under Poison.
+  // Portal-pair path inside voF also flips Bea on the new pair under Poison.
   if (
     code.match(
-      /e7\(a\.settings,10\)&&\(c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.Oka=c,a\.ka\[a\.ka\.length-2\]\.Oka=!c\)/
+      /M7\(a\.settings,10\)&&\(c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.Bea=c,a\.ka\[a\.ka\.length-2\]\.Bea=!c\)/
     )
   ) {
     code = code.assertReplace(
-      /e7\(a\.settings,10\)&&\(c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.Oka=c,a\.ka\[a\.ka\.length-2\]\.Oka=!c\)/,
-      `e7(a.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&(c=Math.random()<.5,a.ka[a.ka.length-1].Oka=c,a.ka[a.ka.length-2].Oka=!c)`
+      /M7\(a\.settings,10\)&&\(c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.Bea=c,a\.ka\[a\.ka\.length-2\]\.Bea=!c\)/,
+      `M7(a.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&(c=Math.random()<.5,a.ka[a.ka.length-1].Bea=c,a.ka[a.ka.length-2].Bea=!c)`
     );
   } else {
-    console.error("BurgerMod: failed to patch qaF nla pair");
+    console.error("BurgerMod: failed to patch voF Bea pair");
   }
 
   // Native Poison also top-ups poisons after a fresh eat (keep ≥ half poisoned).
   // Burger piles poisons only via timers, so disable that refill.
-  // Only the e4E call is rewritten: MoreMenu respaces the operators in this
+  // Only the uoF call is rewritten: MoreMenu respaces the operators in this
   // statement, so matching the whole `if` verbatim is too brittle.
   const poisonTopUp =
-    /(for\(let c of a\.ka\)c\.Oka&&b\+\+;b<a\.ka\.length\/2&&\s*)e4E\(a\)/;
+    /(for\(let c of a\.ka\)c\.Bea&&b\+\+;b<a\.ka\.length\/2&&\s*)uoF\(a\)/;
   if (code.match(poisonTopUp)) {
     code = code.assertReplace(
       poisonTopUp,
-      `$1!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&e4E(a)`
+      `$1!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&uoF(a)`
     );
   } else {
-    console.error("BurgerMod: failed to patch poison top-up e4E");
+    console.error("BurgerMod: failed to patch poison top-up uoF");
   }
 
   // Tick: run burger aging after chess hook (match Chess-injected tick).
   if (
     code.match(
-      /\}tick\(\)\{window\.__remixGame=this;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{try\{window\.head_pos=this\.oa\.ka;window\.head_dir=this\.oa\.direction;window\.appleArray=this\.wa\.ka;window\.chess_tick_logic\(\);\}catch\(_ce\)\{console\.error\("ChessMod: tick failed",_ce\);\}\}var a=this\.Aa,b=this\.nj;/
+      /\}tick\(\)\{window\.__remixGame=this;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{try\{window\.head_pos=this\.Yc\.ka;window\.head_dir=this\.Yc\.direction;window\.appleArray=this\.oa\.ka;window\.chess_tick_logic\(\);\}catch\(_ce\)\{console\.error\("ChessMod: tick failed",_ce\);\}\}var a=this\.Oy,b=this\.uj;/
     )
   ) {
     code = code.assertReplace(
-      /\}tick\(\)\{window\.__remixGame=this;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{try\{window\.head_pos=this\.oa\.ka;window\.head_dir=this\.oa\.direction;window\.appleArray=this\.wa\.ka;window\.chess_tick_logic\(\);\}catch\(_ce\)\{console\.error\("ChessMod: tick failed",_ce\);\}\}var a=this\.Aa,b=this\.nj;/,
-      `}tick(){window.__remixGame=this;if(window.isChessActive&&window.isChessActive()){try{window.head_pos=this.oa.ka;window.head_dir=this.oa.direction;window.appleArray=this.wa.ka;window.chess_tick_logic();}catch(_ce){console.error("ChessMod: tick failed",_ce);}}if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_tick_logic();}catch(_be){console.error("BurgerMod: tick failed",_be);}}var a=this.Aa,b=this.nj;`
+      /\}tick\(\)\{window\.__remixGame=this;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{try\{window\.head_pos=this\.Yc\.ka;window\.head_dir=this\.Yc\.direction;window\.appleArray=this\.oa\.ka;window\.chess_tick_logic\(\);\}catch\(_ce\)\{console\.error\("ChessMod: tick failed",_ce\);\}\}var a=this\.Oy,b=this\.uj;/,
+      `}tick(){window.__remixGame=this;if(window.isChessActive&&window.isChessActive()){try{window.head_pos=this.Yc.ka;window.head_dir=this.Yc.direction;window.appleArray=this.oa.ka;window.chess_tick_logic();}catch(_ce){console.error("ChessMod: tick failed",_ce);}}if(window.isBurgerActive&&window.isBurgerActive()){try{window.burger_tick_logic();}catch(_be){console.error("BurgerMod: tick failed",_be);}}var a=this.Oy,b=this.uj;`
     );
   } else if (code.match(/\}tick\(\)\{window\.__remixGame=this;/)) {
     code = code.assertReplace(
@@ -14515,21 +14573,21 @@ window.BurgerMod.alterSnakeCode = function (code) {
 
   // After apple reset / shield init (Chess may have already appended): assign burger timers.
   // Hook the end of apple manager reset via shield init line (post-Pudding doubleDE).
-  // Chess may gate P3E behind ultraShouldSpawnFruitShields (Remix Ultra).
-  // Gate on live this.settings — same object e7 sees; do not wait for __remixGame.
+  // Chess may gate goF behind ultraShouldSpawnFruitShields (Remix Ultra).
+  // Gate on live this.settings — same object M7 sees; do not wait for __remixGame.
   const burgerShieldInit =
-    /if\(e7\(this\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);/;
+    /if\(M7\(this\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(let r of this\.ka\)r\.h7=goF\(this,r\.pos\);/;
   const burgerShieldInitChess =
-    /if\(e7\(this\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(let q of this\.ka\)q\.nba=P3E\(this,q\.pos\);if\(window\.isChessActive&&window\.isChessActive\(\)\)\{try\{window\.appleArray=this\.ka;window\.randomize_pieces\(\);window\.shield_empty_all\(\);\}catch\(_ce\)\{console\.error\("ChessMod: reset failed",_ce\);\}\}/;
+    /if\(M7\(this\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(let r of this\.ka\)r\.h7=goF\(this,r\.pos\);if\(window\.isChessActive&&window\.isChessActive\(\)\)\{try\{window\.appleArray=this\.ka;window\.randomize_pieces\(\);window\.shield_empty_all\(\);\}catch\(_ce\)\{console\.error\("ChessMod: reset failed",_ce\);\}\}/;
   if (code.match(burgerShieldInitChess)) {
     code = code.assertReplace(
       burgerShieldInitChess,
-      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}`
+      `if(M7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let r of this.ka)r.h7=goF(this,r.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){console.error("BurgerMod: reset failed",_be);}}`
     );
   } else if (code.match(burgerShieldInit)) {
     code = code.assertReplace(
       burgerShieldInit,
-      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){}}`
+      `if(M7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let r of this.ka)r.h7=goF(this,r.pos);window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){}}`
     );
   } else {
     console.error("BurgerMod: failed to find reset timer hook");
@@ -14537,14 +14595,14 @@ window.BurgerMod.alterSnakeCode = function (code) {
 
   // Also assign timers when no shield mode (classic reset without Oba loop).
   // After settings.ka===6 tally init on reset:
-  if (code.match(/this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\)\}/)) {
+  if (code.match(/this\.settings\.ka===6&&\(qoF\(this\),this\.Ba=!1\)\}/)) {
     code = code.assertReplace(
-      /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\)\}/,
-      `this.settings.ka===6&&($3E(this),this.Ca=!1);window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){}}}`
+      /this\.settings\.ka===6&&\(qoF\(this\),this\.Ba=!1\)\}/,
+      `this.settings.ka===6&&(qoF(this),this.Ba=!1);window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){}}}`
     );
   }
 
-  // After qaF adds apples: assign timers to new non-poison ones.
+  // After voF adds apples: assign timers to new non-poison ones.
   // Chess may have appended chess_convert; match either form.
   if (
     code.match(
@@ -14553,26 +14611,26 @@ window.BurgerMod.alterSnakeCode = function (code) {
   ) {
     code = code.assertReplace(
       /if\(window\.isChessActive&&window\.isChessActive\(\)&&g>0\)\{window\.chess_convert_new_apples\(a,g\);\}/,
-      `if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(window.isBurgerSettings&&window.isBurgerSettings(a.settings)&&g>0){for(let _bi=a.ka.length-g;_bi<a.ka.length;_bi++){if(a.ka[_bi]&&!a.ka[_bi].Oka)window.burger_assign_timer(a.ka[_bi]);}}`
+      `if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(window.isBurgerSettings&&window.isBurgerSettings(a.settings)&&g>0){for(let _bi=a.ka.length-g;_bi<a.ka.length;_bi++){if(a.ka[_bi]&&!a.ka[_bi].Bea)window.burger_assign_timer(a.ka[_bi]);}}`
     );
   } else if (
     code.match(
-      /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(e7\(a\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.nba=P3E\(a,c\.pos\);/
+      /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(M7\(a\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.h7=goF\(a,c\.pos\);/
     )
   ) {
     code = code.assertReplace(
-      /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(e7\(a\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.nba=P3E\(a,c\.pos\);/,
-      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(e7(a.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.nba=P3E(a,c.pos);if(window.isBurgerSettings&&window.isBurgerSettings(a.settings)&&g>0){for(let _bi=a.ka.length-g;_bi<a.ka.length;_bi++){if(a.ka[_bi]&&!a.ka[_bi].Oka)window.burger_assign_timer(a.ka[_bi]);}}`
+      /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(M7\(a\.settings,15\)(?:&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\))?\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.h7=goF\(a,c\.pos\);/,
+      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(M7(a.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.h7=goF(a,c.pos);if(window.isBurgerSettings&&window.isBurgerSettings(a.settings)&&g>0){for(let _bi=a.ka.length-g;_bi<a.ka.length;_bi++){if(a.ka[_bi]&&!a.ka[_bi].Bea)window.burger_assign_timer(a.ka[_bi]);}}`
     );
   } else {
-    console.error("BurgerMod: failed to find qaF trailing hook");
+    console.error("BurgerMod: failed to find voF trailing hook");
   }
 
   // Fresh eat: clear timer on the eaten apple BEFORE Mn reuses/moves it.
-  // Chess's Sh++ site has grown (second-piece eat); match current + fall back
-  // to every a.Sh++; that is not already Burger-hooked.
+  // Chess's Bi++ site has grown (second-piece eat); match current + fall back
+  // to every a.Bi++; that is not already Burger-hooked.
   const appleIndexMatch = code.match(
-    /e7\(a\.settings,10\)\s*&&\s*i4E\(a\.wa,([a-zA-Z0-9_$]{1,6}),[a-zA-Z0-9_$]{1,6},a\.Lc\.bind\(a\)\)\s*&&\s*\1--/
+    /M7\(a\.settings,10\)\s*&&\s*zoF\(a\.oa,([a-zA-Z0-9_$]{1,6}),[a-zA-Z0-9_$]{1,6},a\.Cc\.bind\(a\)\)\s*&&\s*\1--/
   );
   const idx = appleIndexMatch && appleIndexMatch[1];
   if (!idx) {
@@ -14583,53 +14641,53 @@ window.BurgerMod.alterSnakeCode = function (code) {
     : `if(window.isBurgerActive&&window.isBurgerActive())window.burger_on_fresh_eaten(a);`;
 
   const chessScoreWithSecond =
-    /if\(window\.isChessActive&&window\.isChessActive\(\)\)\{let _ae=window\.findApple\(window\.head_pos\[0\],window\.appleArray\);if\(_ae&&!_ae\.isPiece\)\{window\.just_ate='fruit';a\.Sh\+\+;\}else if\(_ae&&_ae\.isPiece\)\{window\.just_ate='piece';if\(window\.head_state!=='OPEN'&&window\.chess_on_second_piece_eat\)\{window\.chess_on_second_piece_eat\(_ae\);\}else\{window\.head_state=_ae\.ChessPiece;window\.updateTrophySRC\(_ae\.type\);window\.head_color=_ae\.ChessColor;window\.shield_all\(\);\}\}else\{window\.just_ate='fruit';a\.Sh\+\+;\}\}else\{a\.Sh\+\+;\}/;
+    /if\(window\.isChessActive&&window\.isChessActive\(\)\)\{let _ae=window\.findApple\(window\.head_pos\[0\],window\.appleArray\);if\(_ae&&!_ae\.isPiece\)\{window\.just_ate='fruit';a\.Bi\+\+;\}else if\(_ae&&_ae\.isPiece\)\{window\.just_ate='piece';if\(window\.head_state!=='OPEN'&&window\.chess_on_second_piece_eat\)\{window\.chess_on_second_piece_eat\(_ae\);\}else\{window\.head_state=_ae\.ChessPiece;window\.updateTrophySRC\(_ae\.type\);window\.head_color=_ae\.ChessColor;window\.shield_all\(\);\}\}else\{window\.just_ate='fruit';a\.Bi\+\+;\}\}else\{a\.Bi\+\+;\}/;
   const chessScoreLegacy =
-    /if\(window\.isChessActive&&window\.isChessActive\(\)\)\{let _ae=window\.findApple\(window\.head_pos\[0\],window\.appleArray\);if\(_ae&&!_ae\.isPiece\)\{window\.just_ate='fruit';a\.Sh\+\+;\}else if\(_ae&&_ae\.isPiece\)\{window\.just_ate='piece';window\.head_state=_ae\.ChessPiece;window\.updateTrophySRC\(_ae\.type\);window\.head_color=_ae\.ChessColor;window\.shield_all\(\);\}else\{window\.just_ate='fruit';a\.Sh\+\+;\}\}else\{a\.Sh\+\+;\}/;
+    /if\(window\.isChessActive&&window\.isChessActive\(\)\)\{let _ae=window\.findApple\(window\.head_pos\[0\],window\.appleArray\);if\(_ae&&!_ae\.isPiece\)\{window\.just_ate='fruit';a\.Bi\+\+;\}else if\(_ae&&_ae\.isPiece\)\{window\.just_ate='piece';window\.head_state=_ae\.ChessPiece;window\.updateTrophySRC\(_ae\.type\);window\.head_color=_ae\.ChessColor;window\.shield_all\(\);\}else\{window\.just_ate='fruit';a\.Bi\+\+;\}\}else\{a\.Bi\+\+;\}/;
 
   if (code.match(chessScoreWithSecond)) {
     code = code.assertReplace(
       chessScoreWithSecond,
-      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';a.Sh++;${onFreshEaten}}else if(_ae&&_ae.isPiece){window.just_ate='piece';if(window.head_state!=='OPEN'&&window.chess_on_second_piece_eat){window.chess_on_second_piece_eat(_ae);}else{window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}}else{window.just_ate='fruit';a.Sh++;${onFreshEaten}}}else{a.Sh++;${onFreshEaten}}`
+      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';a.Bi++;${onFreshEaten}}else if(_ae&&_ae.isPiece){window.just_ate='piece';if(window.head_state!=='OPEN'&&window.chess_on_second_piece_eat){window.chess_on_second_piece_eat(_ae);}else{window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}}else{window.just_ate='fruit';a.Bi++;${onFreshEaten}}}else{a.Bi++;${onFreshEaten}}`
     );
   } else if (code.match(chessScoreLegacy)) {
     code = code.assertReplace(
       chessScoreLegacy,
-      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';a.Sh++;${onFreshEaten}}else if(_ae&&_ae.isPiece){window.just_ate='piece';window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}else{window.just_ate='fruit';a.Sh++;${onFreshEaten}}}else{a.Sh++;${onFreshEaten}}`
+      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';a.Bi++;${onFreshEaten}}else if(_ae&&_ae.isPiece){window.just_ate='piece';window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}else{window.just_ate='fruit';a.Bi++;${onFreshEaten}}}else{a.Bi++;${onFreshEaten}}`
     );
-  } else if (code.match(/a\.Sh\+\+;/)) {
+  } else if (code.match(/a\.Bi\+\+;/)) {
     // Last resort: hook every score bump that is not already Burger-aware.
-    code = code.replace(/a\.Sh\+\+;/g, function (m, offset, full) {
+    code = code.replace(/a\.Bi\+\+;/g, function (m, offset, full) {
       const next = full.slice(offset, offset + 160);
       if (next.indexOf("burger_on_fresh_eaten") >= 0) return m;
-      return `a.Sh++;${onFreshEaten}`;
+      return `a.Bi++;${onFreshEaten}`;
     });
   } else {
     console.error("BurgerMod: failed to find score hook");
   }
 
-  // After chess fruit respawn AND native Vm, re-assign timers on new apples.
+  // After chess fruit respawn AND native Kc, re-assign timers on new apples.
   const afterRespawn =
     `if(window.isBurgerActive&&window.isBurgerActive()&&window.just_ate==='fruit'){window.burger_after_respawn(a);}`;
   if (
     code.match(
-      /window\.chess_fruit_respawn\(a\.wa,g7,d4E,Q3E\);/
+      /window\.chess_fruit_respawn\(a\.oa,S7,window\.__chessFreePos,hoF\);/
     )
   ) {
     code = code.assertReplace(
-      /window\.chess_fruit_respawn\(a\.wa,g7,d4E,Q3E\);/,
-      `window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);${afterRespawn}`
+      /window\.chess_fruit_respawn\(a\.oa,S7,window\.__chessFreePos,hoF\);/,
+      `window.chess_fruit_respawn(a.oa,S7,window.__chessFreePos,hoF);${afterRespawn}`
     );
   }
-  // Burger-only eats go through native Vm (BombFruit may drop the `e=` assign).
-  if (!/a\.Vm\(k,\s*!e,null\)\);if\(window\.isBurgerActive&&window\.isBurgerActive\(\)&&window\.just_ate===/.test(code)) {
-    if (code.match(/(?:e=)?a\.Vm\(k,\s*!e,null\)\);/)) {
+  // Burger-only eats go through native Kc (BombFruit may drop the `e=` assign).
+  if (!/a\.Kc\(k,\s*!e,null\)\);if\(window\.isBurgerActive&&window\.isBurgerActive\(\)&&window\.just_ate===/.test(code)) {
+    if (code.match(/(?:e=)?a\.Kc\(k,\s*!e,null\)\);/)) {
       code = code.replace(
-        /((?:e=)?a\.Vm\(k,\s*!e,null\)\);)/,
+        /((?:e=)?a\.Kc\(k,\s*!e,null\)\);)/,
         `$1${afterRespawn}`
       );
     } else {
-      console.error("BurgerMod: failed to find native Vm respawn for after_respawn");
+      console.error("BurgerMod: failed to find native Kc respawn for after_respawn");
     }
   }
 
@@ -14640,7 +14698,7 @@ window.BurgerMod.alterSnakeCode = function (code) {
   if (code.match(/this\.ka\.drawImage\(f,0,0,g,g,-d\/2,-d\/2,d,d\);/)) {
     code = code.assertReplace(
       /this\.ka\.drawImage\(f,0,0,g,g,-d\/2,-d\/2,d,d\);/,
-      `(this.ka.drawImage(f,0,0,g,g,-d/2,-d/2,d,d),b&&!b.Oka&&b.burgerGrey>0&&(this.ka.globalAlpha=Math.min(.85,b.burgerGrey/110),this.ka.fillStyle="#1a1a1a",this.ka.beginPath(),this.ka.arc(0,0,d*.32,0,6.283185307179586),this.ka.fill(),this.ka.globalAlpha=1));`
+      `(this.ka.drawImage(f,0,0,g,g,-d/2,-d/2,d,d),b&&!b.Bea&&b.burgerGrey>0&&(this.ka.globalAlpha=Math.min(.85,b.burgerGrey/110),this.ka.fillStyle="#1a1a1a",this.ka.beginPath(),this.ka.arc(0,0,d*.32,0,6.283185307179586),this.ka.fill(),this.ka.globalAlpha=1));`
     );
   } else {
     console.error("BurgerMod: failed to find fruit drawImage for greyscale");
@@ -14650,8 +14708,8 @@ window.BurgerMod.alterSnakeCode = function (code) {
   if (code.indexOf("window.BURGER_MODE)?window.BURGER_ICON") < 0) {
     if (code.indexOf("window.CHESS_MODE)?window.CHESS_ICON") >= 0) {
       code = code.assertReplace(
-        /\(a\.settings\.ob===window\.CANDY_MODE\)\?window\.CANDY_ICON:\(a\.settings\.ob===window\.CHESS_MODE\)\?window\.CHESS_ICON:/,
-        `(a.settings.ob===window.CANDY_MODE)?window.CANDY_ICON:(a.settings.ob===window.CHESS_MODE)?window.CHESS_ICON:(a.settings.ob===window.BURGER_MODE)?window.BURGER_ICON:`
+        /\(a\.settings\.wb===window\.CANDY_MODE\)\?window\.CANDY_ICON:\(a\.settings\.wb===window\.CHESS_MODE\)\?window\.CHESS_ICON:/,
+        `(a.settings.wb===window.CANDY_MODE)?window.CANDY_ICON:(a.settings.wb===window.CHESS_MODE)?window.CHESS_ICON:(a.settings.wb===window.BURGER_MODE)?window.BURGER_ICON:`
       );
       code = code.assertReplace(
         /\(c===window\.CANDY_MODE\)\?window\.CANDY_ICON:\(c===window\.CHESS_MODE\)\?window\.CHESS_ICON:/,
@@ -14699,13 +14757,13 @@ window.BurgerMod.alterSnakeCode = function (code) {
   }
 
   // Expose apple helpers after their definitions complete (assignment form).
-  if (code.match(/g7=function\(a,b,c\)\{b=new _\.Od/)) {
+  if (code.match(/S7=function\(a,b,c\)\{b=new _\.Yd/)) {
     code = code.assertReplace(
-      /g7=function\(a,b,c\)\{b=new _\.Od/,
-      `g7=function(a,b,c){window.__h7=g7;window.__aaF=Q3E;window.__qaF=f4E;b=new _.Od`
+      /S7=function\(a,b,c\)\{b=new _\.Yd/,
+      `S7=function(a,b,c){window.__h7=S7;window.__aaF=hoF;window.__qaF=voF;b=new _.Yd`
     );
   } else {
-    console.error("BurgerMod: failed to expose g7/f4E");
+    console.error("BurgerMod: failed to expose S7/voF");
   }
 
   return code;
@@ -14726,7 +14784,7 @@ window.CatMod = {};
 ////////////////////////////////////////////////////////////////////
 
 window.CatMod.runCodeBefore = function () {
-  console.log("Adding Cat Mode (v13)");
+  console.log("Adding Cat Mode (v14)");
 
   window.CAT_PEACEFUL_ALPHA = 0.75;
   window.CAT_LIFE_EVERY = 5;
@@ -14878,7 +14936,7 @@ window.CatMod.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.CatMod.alterSnakeCode = function (code) {
-  console.log("Coding Cat Mode into the game (v13)");
+  console.log("Coding Cat Mode into the game (v14)");
 
   // Never abort the whole Ultra/Remix alter chain on a missed optional patch.
   function catReplace(label, re, replacement) {
@@ -14902,9 +14960,9 @@ window.CatMod.alterSnakeCode = function (code) {
     const g = window.__remixGame;
     const mode =
       g && g.settings
-        ? g.settings.ub != null
-          ? g.settings.ub
-          : g.settings.ob
+        ? g.settings.yb != null
+          ? g.settings.yb
+          : g.settings.wb
         : null;
     if (mode === window.CAT_MODE) return true;
     if (mode === 22 && window.cat_blending) return true;
@@ -14926,10 +14984,10 @@ window.CatMod.alterSnakeCode = function (code) {
 
   window.cat_on_apple_eaten = function cat_on_apple_eaten(game) {
     if (!window.isCatActive || !window.isCatActive()) return;
-    const sh = (game && game.Sh) | 0;
+    const sh = (game && game.Bi) | 0;
     const every = window.CAT_LIFE_EVERY | 5;
     const max = window.CAT_MAX_LIVES | 9;
-    // +1 life every 5 apples (not floor(Sh/5) — spending must stick).
+    // +1 life every 5 apples (not floor(Bi/5) — spending must stick).
     if (sh > 0 && sh % every === 0) {
       window.cat_lives = Math.min(max, (window.cat_lives | 0) + 1);
     }
@@ -14939,8 +14997,8 @@ window.CatMod.alterSnakeCode = function (code) {
   };
 
   // Spend a life instead of dying. Returns true if death should be cancelled.
-  // Oa() runs after the fatal cell is already applied, so border hits land
-  // off-board (e.g. x=-1) before e7(21) can wrap. Re-apply Peaceful wrap
+  // Ka() runs after the fatal cell is already applied, so border hits land
+  // off-board (e.g. x=-1) before M7(21) can wrap. Re-apply Peaceful wrap
   // immediately so the same tick teleports like native Peaceful.
   window.cat_board_size = function cat_board_size(game) {
     const g = game || window.__remixGame;
@@ -14951,14 +15009,14 @@ window.CatMod.alterSnakeCode = function (code) {
         height: g.ka.oa.height | 0,
       };
     }
-    if (g && g.Ca && Array.isArray(g.Ca.wa) && g.Ca.wa.length) {
+    if (g && g.Tw && Array.isArray(g.Tw.oa) && g.Tw.oa.length) {
       return {
-        width: g.Ca.wa[0] ? g.Ca.wa[0].length : 0,
-        height: g.Ca.wa.length,
+        width: g.Tw.oa[0] ? g.Tw.oa[0].length : 0,
+        height: g.Tw.oa.length,
       };
     }
     if (typeof window.chess_board_size === "function" && g) {
-      const board = g.ka || g.wa || g;
+      const board = g.ka || g.oa || g;
       return window.chess_board_size(board) || { width: 0, height: 0 };
     }
     return { width: 0, height: 0 };
@@ -14978,7 +15036,7 @@ window.CatMod.alterSnakeCode = function (code) {
     const g = game || window.__remixGame;
     if (!g) return false;
     try {
-      if (typeof e7 === "function" && g.settings && e7(g.settings, 2)) return true;
+      if (typeof M7 === "function" && g.settings && M7(g.settings, 2)) return true;
     } catch (_e) {}
     if (window.isChessActive && window.isChessActive()) return true;
     if (window.isMexicoActive && window.isMexicoActive()) return true;
@@ -14998,7 +15056,7 @@ window.CatMod.alterSnakeCode = function (code) {
     if (!g) return 0;
     const cap = window.cat_max_score(g) | 0;
     if (!cap) return 0;
-    const score = (g.Sh != null ? g.Sh : g.Oh) | 0;
+    const score = g.Bi | 0;
     return Math.max(0, cap - score);
   };
 
@@ -15021,7 +15079,7 @@ window.CatMod.alterSnakeCode = function (code) {
     const g = game || window.__remixGame;
     if (!g) return 0;
     const max = window.cat_max_apples_on_board(g);
-    const cur = (g.wa && g.wa.ka && g.wa.ka.length) | 0;
+    const cur = (g.oa && g.oa.ka && g.oa.ka.length) | 0;
     const rem = aboutToRemove == null ? 1 : aboutToRemove | 0;
     const after = Math.max(0, cur - rem);
     return Math.max(0, max - after);
@@ -15046,30 +15104,30 @@ window.CatMod.alterSnakeCode = function (code) {
   window.cat_enforce_fruit_cap = function cat_enforce_fruit_cap(game) {
     if (!window.isCatActive || !window.isCatActive()) return 0;
     const g = game || window.__remixGame;
-    if (!g || !g.wa || !Array.isArray(g.wa.ka)) return 0;
+    if (!g || !g.oa || !Array.isArray(g.oa.ka)) return 0;
     const paired = window.cat_pair_scoring(g);
     let max = window.cat_max_apples_on_board(g);
     if (paired) max -= max % 2;
     let removed = 0;
-    while (g.wa.ka.length > max) {
-      if (paired && g.wa.ka.length >= 2) {
-        g.wa.ka.pop();
-        g.wa.ka.pop();
+    while (g.oa.ka.length > max) {
+      if (paired && g.oa.ka.length >= 2) {
+        g.oa.ka.pop();
+        g.oa.ka.pop();
         removed += 2;
       } else {
-        g.wa.ka.pop();
+        g.oa.ka.pop();
         removed++;
       }
     }
-    window.appleArray = g.wa.ka;
+    window.appleArray = g.oa.ka;
     return removed;
   };
 
   window.cat_trigger_win = function cat_trigger_win(game) {
     if (!game) return;
-    if (game.nj || game.lj) return;
+    if (game.uj) return;
     // Slot Machine: same board-fill win, but use Slot's native-style path
-    // (gotAll + ub/nj + end menu). Plain nj+lj never opens the win screen.
+    // (gotAll Za + uj + end menu). Plain uj never opens the win screen.
     if (
       window.isSlotMachineActive &&
       window.isSlotMachineActive() &&
@@ -15079,15 +15137,14 @@ window.CatMod.alterSnakeCode = function (code) {
       return;
     }
     try {
-      if (typeof Q4E !== "undefined" && Q4E.rWd && Q4E.rWd.play) Q4E.rWd.play();
-      else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
+      if (typeof mqF !== "undefined" && mqF.WIN && mqF.WIN.play) mqF.WIN.play();
     } catch (_e) {}
-    game.nj = true;
-    game.lj = true;
+    // v14: game over is uj (v13 nj), win is Za (v13 ub), as in the native win.
+    game.Za = true;
+    game.uj = true;
     try {
-      const score = game.Sh != null ? game.Sh : game.Oh;
-      if (typeof A7E === "function") A7E(game.menu, 1400, score);
-      else if (typeof vdF === "function") vdF(game.menu, 1400, score);
+      const score = game.Bi;
+      if (typeof wsF === "function") wsF(game.menu, 1400, score);
       else if (typeof window.__slotShowEndMenu === "function")
         window.__slotShowEndMenu(game.menu, 1400, score);
     } catch (_e2) {}
@@ -15097,13 +15154,12 @@ window.CatMod.alterSnakeCode = function (code) {
   window.cat_check_score_win = function cat_check_score_win(game) {
     if (!window.isCatActive || !window.isCatActive()) return false;
     const g = game || window.__remixGame;
-    if (!g || g.nj || g.lj) return false;
+    if (!g || g.uj) return false;
     const cap = window.cat_max_score(g);
     if (!cap) return false;
-    let score = (g.Sh != null ? g.Sh : g.Oh) | 0;
+    let score = g.Bi | 0;
     if (score > cap) {
-      if (g.Sh != null) g.Sh = cap;
-      if (g.Oh != null) g.Oh = cap;
+      if (g.Bi != null) g.Bi = cap;
       score = cap;
     }
     if (score < cap) return false;
@@ -15156,8 +15212,8 @@ window.CatMod.alterSnakeCode = function (code) {
 
   window.cat_wrap_head_if_needed = function cat_wrap_head_if_needed(game) {
     const g = game || window.__remixGame;
-    if (!g || !g.oa || !Array.isArray(g.oa.ka) || !g.oa.ka.length) return false;
-    const head = g.oa.ka[0];
+    if (!g || !g.Yc || !Array.isArray(g.Yc.ka) || !g.Yc.ka.length) return false;
+    const head = g.Yc.ka[0];
     if (!head || head.x == null || head.y == null) return false;
     const sz = window.cat_board_size(g);
     const w = sz.width | 0;
@@ -15188,7 +15244,7 @@ window.CatMod.alterSnakeCode = function (code) {
     }
     if ((window.cat_lives | 0) <= 0) return false;
     window.cat_lives = (window.cat_lives | 0) - 1;
-    const sh = (game && game.Sh) | 0;
+    const sh = (game && game.Bi) | 0;
     // Half of (score + extra), rounded up.
     const grace = Math.ceil((sh + (window.CAT_GRACE_EXTRA | 3)) / 2);
     window.cat_peaceful_ticks = Math.max(window.cat_peaceful_ticks | 0, grace);
@@ -15204,10 +15260,10 @@ window.CatMod.alterSnakeCode = function (code) {
     }
     const g = game || window.__remixGame;
     if (!g) return;
-    if (window.__catLastSh != null && g.Sh > window.__catLastSh) {
+    if (window.__catLastSh != null && g.Bi > window.__catLastSh) {
       window.cat_on_apple_eaten(g);
     }
-    window.__catLastSh = g.Sh;
+    window.__catLastSh = g.Bi;
     if ((window.cat_peaceful_ticks | 0) > 0) {
       window.cat_peaceful_ticks = (window.cat_peaceful_ticks | 0) - 1;
     }
@@ -15234,35 +15290,35 @@ window.CatMod.alterSnakeCode = function (code) {
   };
 
   // --- Border wrap on life-spend (same tick as Peaceful) ---
-  // Sc(a) checks m7 then Oa; the off-board cell `a` is applied after Oa returns,
+  // Hl(a) checks X7 then Ka; the off-board cell `a` is applied after Ka returns,
   // so cancelling death alone leaves the head at x=-1 until the next tick.
-  // When Cat can absorb the hit, wrap `a` via native i7 before the m7/Oa check.
+  // When Cat can absorb the hit, wrap `a` via native U7 before the X7/Ka check.
   catReplace(
-    "Sc border wrap on life",
-    /Sc\(a\)\{m7\(this\.ka,a\)\|\|this\.Oa\(\);/,
-    `Sc(a){if(window.isCatActive&&window.isCatActive()&&!m7(this.ka,a)&&((window.cat_peaceful_ticks|0)>0||(window.cat_lives|0)>0)){if((window.cat_peaceful_ticks|0)<=0){window.cat_try_spend_life(this);}i7(this.ka,a);}m7(this.ka,a)||this.Oa();`
+    "Hl border wrap on life",
+    /Hl\(a\)\{X7\(this\.ka,a\)\|\|this\.Ka\(\);/,
+    `Hl(a){if(window.isCatActive&&window.isCatActive()&&!X7(this.ka,a)&&((window.cat_peaceful_ticks|0)>0||(window.cat_lives|0)>0)){if((window.cat_peaceful_ticks|0)<=0){window.cat_try_spend_life(this);}U7(this.ka,a);}X7(this.ka,a)||this.Ka();`
   );
 
-  // --- e7: temporary Peaceful (mode 21) while grace ticks remain ---
+  // --- M7: temporary Peaceful (mode 21) while grace ticks remain ---
   catReplace(
-    "e7 temporary Peaceful",
-    /if\(!r&&b===10&&window\.BURGER_MODE!=null\)\{if\(a\.ub===window\.BURGER_MODE\|\|a\.ub==='burger'\|\|a\.ob==='burger'\)return!0;if\(\(a\.ub===22\|\|a\.ub==='blender'\)&&a\.rSa&&a\.rSa\.has\(window\.BURGER_MODE\)\)return!0;if\(a\.Qa&&a\.Lc&&\(a\.Lc\.has\(window\.BURGER_MODE\)\|\|a\.Lc\.has\('burger'\)\)\)return!0;\}return r\}/,
-    `if(!r&&b===10&&window.BURGER_MODE!=null){if(a.ub===window.BURGER_MODE||a.ub==='burger'||a.ob==='burger')return!0;if((a.ub===22||a.ub==='blender')&&a.rSa&&a.rSa.has(window.BURGER_MODE))return!0;if(a.Qa&&a.Lc&&(a.Lc.has(window.BURGER_MODE)||a.Lc.has('burger')))return!0;}if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;return r}`
+    "M7 temporary Peaceful",
+    /if\(!r&&b===10&&window\.BURGER_MODE!=null\)\{if\(a\.yb===window\.BURGER_MODE\|\|a\.yb==='burger'\|\|a\.wb==='burger'\)return!0;if\(\(a\.yb===22\|\|a\.yb==='blender'\)&&a\.NSa&&a\.NSa\.has\(window\.BURGER_MODE\)\)return!0;if\(a\.La&&a\.jd&&\(a\.jd\.has\(window\.BURGER_MODE\)\|\|a\.jd\.has\('burger'\)\)\)return!0;\}return r\}/,
+    `if(!r&&b===10&&window.BURGER_MODE!=null){if(a.yb===window.BURGER_MODE||a.yb==='burger'||a.wb==='burger')return!0;if((a.yb===22||a.yb==='blender')&&a.NSa&&a.NSa.has(window.BURGER_MODE))return!0;if(a.La&&a.jd&&(a.jd.has(window.BURGER_MODE)||a.jd.has('burger')))return!0;}if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;return r}`
   );
 
-  // --- Death intercept: Oa() is the real kill path (wall/self/poison crash) ---
+  // --- Death intercept: Ka() is the real kill path (wall/self/poison crash) ---
   catReplace(
-    "Oa() death entry",
-    /Oa\(\)\{if\(!this\.nj\)\{/,
-    `Oa(){if(window.isCatActive&&window.isCatActive()&&window.cat_try_spend_life(this))return;if(!this.nj){`
+    "Ka() death entry",
+    /Ka\(\)\{if\(!this\.uj\)\{/,
+    `Ka(){if(window.isCatActive&&window.isCatActive()&&window.cat_try_spend_life(this))return;if(!this.uj){`
   );
 
-  // Minesweeper A6E kills via Ub+Dc — never calls Oa(). Treat Cat life/grace
+  // Minesweeper urF kills directly — never calls Ka(). Treat Cat life/grace
   // like Peaceful so the mine arms instead of ending the run.
   catReplace(
-    "A6E mine death respects cat life",
-    /g!==0&&\(c\|\|!f\|\|g!==1\|\|e7\(a\.settings,21\)\?b\.X1a===-1&&\(b\.X1a=3\):\(h=!0,s5E\.Ktc\.play\(\),d\(\),y6E\(a\.Ca\),a\.Ca\.Ka=0,e\(\)\)\)/,
-    "g!==0&&(c||!f||g!==1||e7(a.settings,21)||window.isCatActive&&window.isCatActive()&&window.cat_try_spend_life(window.__remixGame||a.wb)?b.X1a===-1&&(b.X1a=3):(h=!0,s5E.Ktc.play(),d(),y6E(a.Ca),a.Ca.Ka=0,e()))"
+    "urF mine death respects cat life",
+    /g!==0&&\(c\|\|!f\|\|g!==1\|\|M7\(a\.settings,21\)\?b\.nLa===-1&&\(b\.nLa=3\):\(h=!0,mqF\.Nuc\.play\(\),d\(\),srF\(a\.Yc\),a\.Yc\.Ga=0,e\(\)\)\)/,
+    "g!==0&&(c||!f||g!==1||M7(a.settings,21)||window.isCatActive&&window.isCatActive()&&window.cat_try_spend_life(window.__remixGame||a.wb)?b.nLa===-1&&(b.nLa=3):(h=!0,mqF.Nuc.play(),d(),srF(a.Yc),a.Yc.Ga=0,e()))"
   );
 
   // --- Tick: cat logic (always run so HUD hides when Cat is off) ---
@@ -15281,12 +15337,12 @@ window.CatMod.alterSnakeCode = function (code) {
     );
   }
 
-  // Cap classic Vm respawn: no new fruit once score room is exhausted / within reach.
-  // Mexico replaces the chess/portal prefix but leaves this Vm suffix intact.
+  // Cap classic Kc respawn: no new fruit once score room is exhausted / within reach.
+  // Mexico replaces the chess/portal prefix but leaves this Kc suffix intact.
   catReplace(
-    "Vm score-cap gate",
-    /e=a\.settings\.ka!==6&&\(d7\(a\.settings\)\|\|e7\(a\.settings,7\)\),e=a\.Vm\(k,!e,null\)\);/,
-    `e=a.settings.ka!==6&&(d7(a.settings)||e7(a.settings,7)),e=window.isCatActive&&window.isCatActive()&&window.cat_allows_fruit_spawn&&!window.cat_allows_fruit_spawn(a,1,1)?!1:a.Vm(k,!e,null));`
+    "Kc score-cap gate",
+    /e=a\.settings\.ka!==6&&\(Q7\(a\.settings\)\|\|M7\(a\.settings,7\)\),e=a\.Kc\(k,!e,null\)\);/,
+    `e=a.settings.ka!==6&&(Q7(a.settings)||M7(a.settings,7)),e=window.isCatActive&&window.isCatActive()&&window.cat_allows_fruit_spawn&&!window.cat_allows_fruit_spawn(a,1,1)?!1:a.Kc(k,!e,null));`
   );
 
   // --- Reset state (burger shield-init + tally paths) ---
@@ -15337,19 +15393,19 @@ window.CatMod.alterSnakeCode = function (code) {
   // Match quietly — missing Burger inject is expected when its patch drifts.
   {
     const tallyBurger =
-      /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\);(?:window\.burger_settings_snapshot&&window\.burger_settings_snapshot\(this\.settings\);window\.__burgerStartOk=!1;)?if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;(?:window\.burger_sanitize_start\?window\.burger_sanitize_start\(this\):)?window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/;
-    const tallyRaw = /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\)\}/;
+      /this\.settings\.ka===6&&\(qoF\(this\),this\.Ba=!1\);(?:window\.burger_settings_snapshot&&window\.burger_settings_snapshot\(this\.settings\);window\.__burgerStartOk=!1;)?if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;(?:window\.burger_sanitize_start\?window\.burger_sanitize_start\(this\):)?window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/;
+    const tallyRaw = /this\.settings\.ka===6&&\(qoF\(this\),this\.Ba=!1\)\}/;
     if (code.match(tallyBurger)) {
       catReplace(
         "tally reset after burger",
         tallyBurger,
-        `this.settings.ka===6&&($3E(this),this.Ca=!1);window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
+        `this.settings.ka===6&&(qoF(this),this.Ba=!1);window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
       );
     } else if (code.match(tallyRaw)) {
       catReplace(
         "tally reset raw",
         tallyRaw,
-        `this.settings.ka===6&&($3E(this),this.Ca=!1);if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}}`
+        `this.settings.ka===6&&(qoF(this),this.Ba=!1);if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}}`
       );
     }
   }
@@ -15358,14 +15414,14 @@ window.CatMod.alterSnakeCode = function (code) {
   if (
     catReplace(
       "snake render alpha",
-      /render\(a,b,c\)\{var d=a,e=Math\.pow\(d,\.2\);this\.wb\.nj&&/,
-      `render(a,b,c){var _catGa=this.ka.globalAlpha;if(window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)this.ka.globalAlpha=_catGa*(window.CAT_PEACEFUL_ALPHA||.75);var d=a,e=Math.pow(d,.2);this.wb.nj&&`
+      /render\(a,b,c\)\{var d=a,e=Math\.pow\(d,\.2\);this\.ub\.uj&&/,
+      `render(a,b,c){var _catGa=this.ka.globalAlpha;if(window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)this.ka.globalAlpha=_catGa*(window.CAT_PEACEFUL_ALPHA||.75);var d=a,e=Math.pow(d,.2);this.ub.uj&&`
     )
   ) {
     catReplace(
       "snake render alpha restore",
-      /J5E\(this,f,d,!1,!1\)\}/,
-      `J5E(this,f,d,!1,!1);this.ka.globalAlpha=_catGa;}`
+      /CqF\(this,f,d,!1\)\}/,
+      `CqF(this,f,d,!1);this.ka.globalAlpha=_catGa;}`
     );
   }
 
@@ -15373,11 +15429,11 @@ window.CatMod.alterSnakeCode = function (code) {
   if (code.indexOf("window.CAT_MODE)?window.CAT_ICON") < 0) {
     catReplace(
       "deathscreen Zb cat icon",
-      /\(a\.settings\.ob===window\.BURGER_MODE\)\?window\.BURGER_ICON:/,
-      `(a.settings.ob===window.BURGER_MODE)?window.BURGER_ICON:(a.settings.ob===window.CAT_MODE)?window.CAT_ICON:`
+      /\(a\.settings\.wb===window\.BURGER_MODE\)\?window\.BURGER_ICON:/,
+      `(a.settings.wb===window.BURGER_MODE)?window.BURGER_ICON:(a.settings.wb===window.CAT_MODE)?window.CAT_ICON:`
     );
     catReplace(
-      "blender b3E cat icon",
+      "blender PmF cat icon",
       /\(c===window\.BURGER_MODE\)\?window\.BURGER_ICON:/,
       `(c===window.BURGER_MODE)?window.BURGER_ICON:(c===window.CAT_MODE)?window.CAT_ICON:`
     );
@@ -15443,7 +15499,7 @@ window.MexicoMod = {};
 ////////////////////////////////////////////////////////////////////
 
 window.MexicoMod.runCodeBefore = function () {
-  console.log("Adding Mexico Mode (v13)");
+  console.log("Adding Mexico Mode (v14)");
 
   window.MEXICO_ICON = "data:image/png;base64,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";
 
@@ -15523,7 +15579,7 @@ window.MexicoMod.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.MexicoMod.alterSnakeCode = function (code) {
-  console.log("Coding Mexico Mode into the game (v13)");
+  console.log("Coding Mexico Mode into the game (v14)");
   // Soft-fail debug stash for harness probes (no behavior change).
   if (window.RemixDebug) window.__remixPreMexicoCode = code;
 
@@ -15548,9 +15604,9 @@ window.MexicoMod.alterSnakeCode = function (code) {
     const g = window.__remixGame;
     const mode =
       g && g.settings
-        ? g.settings.ub != null
-          ? g.settings.ub
-          : g.settings.ob
+        ? g.settings.yb != null
+          ? g.settings.yb
+          : g.settings.wb
         : null;
     if (mode === window.MEXICO_MODE) return true;
     if (mode === 22 && window.mexico_blending) return true;
@@ -15573,17 +15629,16 @@ window.MexicoMod.alterSnakeCode = function (code) {
 
   window.mexico_trigger_win = function mexico_trigger_win(game) {
     if (!game) return;
-    if (game.nj || game.lj) return;
+    if (game.uj) return;
     try {
-      if (typeof Q4E !== "undefined" && Q4E.rWd && Q4E.rWd.play) Q4E.rWd.play();
-      else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
+      if (typeof mqF !== "undefined" && mqF.WIN && mqF.WIN.play) mqF.WIN.play();
     } catch (_e) {}
-    game.nj = true;
-    game.lj = true;
+    // v14: game over is uj (v13 nj), win is Za (v13 ub), as in the native win.
+    game.Za = true;
+    game.uj = true;
     try {
-      const score = game.Sh != null ? game.Sh : game.Oh;
-      if (typeof A7E === "function") A7E(game.menu, 1400, score);
-      else if (typeof vdF === "function") vdF(game.menu, 1400, score);
+      const score = game.Bi;
+      if (typeof wsF === "function") wsF(game.menu, 1400, score);
     } catch (_e2) {}
   };
 
@@ -15603,7 +15658,7 @@ window.MexicoMod.alterSnakeCode = function (code) {
     const ka = g.settings.ka | 0;
     if (ka === 6) return true;
     if (ka === 4) return true;
-    if (ka === 5 && !g.kc) return true;
+    if (ka === 5 && !g.Qb) return true;
     if (typeof window.remixIsDiceLike === "function") {
       try {
         if (window.remixIsDiceLike(ka)) return true;
@@ -15612,7 +15667,7 @@ window.MexicoMod.alterSnakeCode = function (code) {
     return false;
   };
 
-  // Native Portal twin co-eat does not fire for Mexico (e7 bit-2 force is not
+  // Native Portal twin co-eat does not fire for Mexico (M7 bit-2 force is not
   // enough once we take the Mexico eat branch). Note+clear the even/odd twin
   // ourselves — same idea as Chess portal combo, without Chess respawn.
   window.mexico_note_fruit_twin = function mexico_note_fruit_twin(
@@ -15739,8 +15794,8 @@ window.MexicoMod.alterSnakeCode = function (code) {
       const pick =
         typeof pickType === "function"
           ? pickType
-          : typeof Q3E === "function"
-            ? Q3E
+          : typeof hoF === "function"
+            ? hoF
             : typeof window.__chessPickType === "function"
               ? window.__chessPickType
               : null;
@@ -15800,20 +15855,20 @@ window.MexicoMod.alterSnakeCode = function (code) {
     if (!mgr || !mgr.ka || mgr.ka.length > 0) return 0;
     if (!window.mexico_is_wave_count(g)) return 0;
     const make =
-      typeof g7 === "function"
-        ? g7
+      typeof S7 === "function"
+        ? S7
         : typeof window.__chessMakeApple === "function"
           ? window.__chessMakeApple
           : null;
     const freePos =
-      typeof d4E === "function"
-        ? d4E
+      typeof window.chess_native_free_pos === "function"
+        ? window.chess_native_free_pos
         : typeof window.__chessFreePos === "function"
           ? window.__chessFreePos
           : null;
     const pickType =
-      typeof Q3E === "function"
-        ? Q3E
+      typeof hoF === "function"
+        ? hoF
         : typeof window.__chessPickType === "function"
           ? window.__chessPickType
           : null;
@@ -15827,7 +15882,7 @@ window.MexicoMod.alterSnakeCode = function (code) {
     };
     let added = 0;
     try {
-      if (ka === 5 && !g.kc) {
+      if (ka === 5 && !g.Qb) {
         added = window.mexico_spawn_n_pairs(
           mgr,
           make,
@@ -15836,7 +15891,7 @@ window.MexicoMod.alterSnakeCode = function (code) {
           24,
           null
         );
-        if (added > 0) g.kc = true;
+        if (added > 0) g.Qb = true;
       } else if (
         (window.remixIsDiceLike && window.remixIsDiceLike(ka)) ||
         ka === 4
@@ -15905,8 +15960,8 @@ window.MexicoMod.alterSnakeCode = function (code) {
     }
     if (!h) {
       const g = window.__remixGame;
-      if (g && g.Ca && Array.isArray(g.Ca.wa) && g.Ca.wa.length) {
-        h = g.Ca.wa.length;
+      if (g && g.Tw && Array.isArray(g.Tw.oa) && g.Tw.oa.length) {
+        h = g.Tw.oa.length;
       }
     }
     return Math.floor((h | 0) / 2);
@@ -15927,30 +15982,30 @@ window.MexicoMod.alterSnakeCode = function (code) {
   // True if pos sits on a wall cell (incl. Mexico mid-row walls).
   window.mexico_pos_on_wall = function mexico_pos_on_wall(game, pos) {
     if (!pos || pos.x == null || pos.y == null) return false;
-    const walls = game && game.Ca;
-    if (!walls || !Array.isArray(walls.wa) || !walls.wa[pos.y]) return false;
-    return (walls.wa[pos.y][pos.x] | 0) > 0;
+    const walls = game && game.Tw;
+    if (!walls || !Array.isArray(walls.oa) || !walls.oa[pos.y]) return false;
+    return (walls.oa[pos.y][pos.x] | 0) > 0;
   };
 
-  // One-shot middle row — never enables Wall Mode spawn (e7 bit 1).
+  // One-shot middle row — never enables Wall Mode spawn (M7 bit 1).
   window.mexico_place_mid_walls = function mexico_place_mid_walls(game) {
     if (!game || window.__mexicoWallDone) return;
-    const walls = game.Ca;
-    if (!walls || !walls.Aa || !Array.isArray(walls.wa) || !walls.wa.length) {
+    const walls = game.Tw;
+    if (!walls || !walls.wa || !Array.isArray(walls.oa) || !walls.oa.length) {
       console.error("MexicoMod: wall manager missing");
       return;
     }
-    const h = walls.wa.length;
-    const w = walls.wa[0] ? walls.wa[0].length : 0;
+    const h = walls.oa.length;
+    const w = walls.oa[0] ? walls.oa[0].length : 0;
     if (!w) return;
     const mid = Math.floor(h / 2);
     for (let x = 0; x < w; x++) {
-      if (walls.wa[mid] && walls.wa[mid][x] > 0) continue;
+      if (walls.oa[mid] && walls.oa[mid][x] > 0) continue;
       const pos = window.mexico_make_pos(x, mid);
-      const obj = { pos: pos, wm: false, m0: false, Lh: true };
+      const obj = { pos: pos, Rm: false, e9: false, Xg: true };
       try {
-        walls.Aa.set(window.mexico_serial_coord(pos), obj);
-        if (walls.wa[mid]) walls.wa[mid][x]++;
+        walls.wa.set(window.mexico_serial_coord(pos), obj);
+        if (walls.oa[mid]) walls.oa[mid][x]++;
       } catch (_e) {}
     }
     window.__mexicoWallDone = true;
@@ -15963,7 +16018,7 @@ window.MexicoMod.alterSnakeCode = function (code) {
     half
   ) {
     const game = window.__remixGame;
-    const mid = window.mexico_mid_y(board || (game && game.Ca));
+    const mid = window.mexico_mid_y(board || (game && game.Tw));
     const ok = function (p) {
       if (!p || p.y == null) return false;
       if (p.y === mid) return false;
@@ -15994,8 +16049,8 @@ window.MexicoMod.alterSnakeCode = function (code) {
       }
     }
     const nativeFree =
-      game && typeof game.Rb === "function"
-        ? game.Rb.bind(game)
+      game && typeof game.Lb === "function"
+        ? game.Lb.bind(game)
         : game && typeof game.Tb === "function"
           ? game.Tb.bind(game)
           : null;
@@ -16014,9 +16069,9 @@ window.MexicoMod.alterSnakeCode = function (code) {
         height = sz.height | 0;
       }
     }
-    if ((!width || !height) && game && game.Ca && game.Ca.wa) {
-      height = game.Ca.wa.length;
-      width = game.Ca.wa[0] ? game.Ca.wa[0].length : 0;
+    if ((!width || !height) && game && game.Tw && game.Tw.oa) {
+      height = game.Tw.oa.length;
+      width = game.Tw.oa[0] ? game.Tw.oa[0].length : 0;
     }
     if (!width || !height) return null;
     const y0 = half === "top" ? 0 : mid + 1;
@@ -16047,7 +16102,7 @@ window.MexicoMod.alterSnakeCode = function (code) {
     if (!mgr || !mgr.ka) return 0;
     if (typeof makeApple !== "function") return 0;
     const game = window.__remixGame;
-    if (game && (game.Sh | 0) >= 1 && !window.__mexicoWallDone) {
+    if (game && (game.Bi | 0) >= 1 && !window.__mexicoWallDone) {
       window.mexico_place_mid_walls(game);
     }
     const board = mgr.oa;
@@ -16112,12 +16167,12 @@ window.MexicoMod.alterSnakeCode = function (code) {
     if (!mgr || !mgr.ka) return;
     if (!window.isMexicoActive || !window.isMexicoActive()) return;
     const game = window.__remixGame;
-    if (game && (game.Sh | 0) >= 1 && !window.__mexicoWallDone) {
+    if (game && (game.Bi | 0) >= 1 && !window.__mexicoWallDone) {
       window.mexico_place_mid_walls(game);
     }
     // Native portal may leave a singleton when the twin half fails — drop it.
     // Win only if that leaves the board empty (not on a transient empty between
-    // j4E clearing the eaten pair and bomb/dice f4E pushing new pairs).
+    // AoF clearing the eaten pair and bomb/dice voF pushing new pairs).
     if (mgr.ka.length % 2 !== 0) {
       mgr.ka.pop();
       window.appleArray = mgr.ka;
@@ -16126,11 +16181,14 @@ window.MexicoMod.alterSnakeCode = function (code) {
     if (!mgr.ka.length) return;
     if (!count || count < 1) return;
     const board = mgr.oa;
-    const mid = window.mexico_mid_y(board || (game && game.Ca));
+    const mid = window.mexico_mid_y(board || (game && game.Tw));
     let start = Math.max(0, mgr.ka.length - count);
     // Keep start on a pair boundary so we never orphan a twin.
     if (start % 2 !== 0) start -= 1;
-    const freePos = typeof d4E === "function" ? d4E : null;
+    const freePos =
+      typeof window.chess_native_free_pos === "function"
+        ? window.chess_native_free_pos
+        : null;
 
     // Portal pairs are consecutive even/odd indices: even → top, odd → bottom.
     // Relocate when wrong half OR illegal (snake / other fruit / wall). If a
@@ -16185,8 +16243,8 @@ window.MexicoMod.alterSnakeCode = function (code) {
     // Twins must share a type (portal exit cue). Only fix mismatched new pairs;
     // do not reshuffle types of fruit already on the board.
     const pick =
-      typeof Q3E === "function"
-        ? Q3E
+      typeof hoF === "function"
+        ? hoF
         : typeof window.__chessPickType === "function"
           ? window.__chessPickType
           : null;
@@ -16213,98 +16271,98 @@ window.MexicoMod.alterSnakeCode = function (code) {
     if (!window.isMexicoActive || !window.isMexicoActive()) return;
     const g = game || window.__remixGame;
     if (!g) return;
-    if (window.__mexicoLastSh != null && g.Sh > window.__mexicoLastSh) {
-      if ((g.Sh | 0) >= 1 && !window.__mexicoWallDone) {
+    if (window.__mexicoLastSh != null && g.Bi > window.__mexicoLastSh) {
+      if ((g.Bi | 0) >= 1 && !window.__mexicoWallDone) {
         window.mexico_place_mid_walls(g);
       }
       // Do NOT re-constrain the whole board here — that relocates existing fruit.
-      // New apples are half-placed in f4E via mexico_constrain_new_apples(a, g)
+      // New apples are half-placed in voF via mexico_constrain_new_apples(a, g)
       // for the newly added count only.
       // Tally/Dice/Bomb-first: empty after last wave unit → plant a new wave.
       // Win only if the board is still empty after that attempt.
-      if (g.wa && g.wa.ka && g.wa.ka.length === 0) {
+      if (g.oa && g.oa.ka && g.oa.ka.length === 0) {
         try {
           if (window.mexico_is_wave_count(g)) {
-            window.mexico_refill_wave(g.wa, g);
+            window.mexico_refill_wave(g.oa, g);
           }
-          if (g.wa.ka.length === 0) {
-            window.mexico_win_if_empty(g, g.wa);
+          if (g.oa.ka.length === 0) {
+            window.mexico_win_if_empty(g, g.oa);
           }
         } catch (_e) {}
       }
     }
-    window.__mexicoLastSh = g.Sh;
+    window.__mexicoLastSh = g.Bi;
   };
 
   // Force Portal physics. Also force Wall Mode bit for collision with the
   // one-shot mid-row walls — spawn is gated off separately (see RemixInit
   // remixPatchWallEveryApple / remixMexicoBlocksWallSpawn).
   mexicoReplace(
-    "e7 portal + wall collide",
+    "M7 portal + wall collide",
     /if\(!r&&b===21&&window\.isCatActive&&window\.isCatActive\(\)&&\(window\.cat_peaceful_ticks\|0\)>0\)return!0;return r\}/,
     "if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;if(!r&&b===2&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===1&&window.isMexicoActive&&window.isMexicoActive())return!0;return r}"
   );
 
   mexicoReplace(
-    "Y3E mexico",
-    /Y3E\(this\.settings\)\|\|!!\(window\.isChessActive&&window\.isChessActive\(\)\)/,
-    "Y3E(this.settings)||!!(window.isChessActive&&window.isChessActive())||!!(window.isMexicoActive&&window.isMexicoActive())"
+    "ooF mexico",
+    /ooF\(this\.settings\)\|\|!!\(window\.isChessActive&&window\.isChessActive\(\)\)/,
+    "ooF(this.settings)||!!(window.isChessActive&&window.isChessActive())||!!(window.isMexicoActive&&window.isMexicoActive())"
   );
   mexicoReplace(
     "pair-splice mexico",
-    /\(e7\(this\.settings,2\)\|\|\(window\.isChessActive&&window\.isChessActive\(\)\)\)/,
-    "(e7(this.settings,2)||(window.isChessActive&&window.isChessActive())||(window.isMexicoActive&&window.isMexicoActive()))"
+    /\(M7\(this\.settings,2\)\|\|\(window\.isChessActive&&window\.isChessActive\(\)\)\)/,
+    "(M7(this.settings,2)||(window.isChessActive&&window.isChessActive())||(window.isMexicoActive&&window.isMexicoActive()))"
   );
   mexicoReplace(
-    "f4E portal pair mexico",
-    /\(e7\(a\.settings,2\)\|\|\(window\.isChessActive&&window\.isChessActive\(\)\)\)&&!f\?/,
-    "(e7(a.settings,2)||(window.isChessActive&&window.isChessActive())||(window.isMexicoActive&&window.isMexicoActive()))&&!f?"
+    "voF portal pair mexico",
+    /\(M7\(a\.settings,2\)\|\|\(window\.isChessActive&&window\.isChessActive\(\)\)\)&&!f\?/,
+    "(M7(a.settings,2)||(window.isChessActive&&window.isChessActive())||(window.isMexicoActive&&window.isMexicoActive()))&&!f?"
   );
 
   mexicoReplace(
-    "f4E mexico constrain",
+    "voF mexico constrain",
     /if\(window\.isChessActive&&window\.isChessActive\(\)&&g>0\)\{window\.chess_convert_new_apples\(a,g\);\}/,
     "if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(window.isMexicoActive&&window.isMexicoActive()&&g>0){try{window.mexico_constrain_new_apples(a,g);}catch(_mx){}}"
   );
 
-  // Mexico uses native Portal twin respawn (j4E) for normal counts.
+  // Mexico uses native Portal twin respawn (AoF) for normal counts.
   // Always note the even/odd twin so splice clears the pair (native portal
-  // co-eat does not run on the Mexico eat branch). Wave counts skip j4E —
+  // co-eat does not run on the Mexico eat branch). Wave counts skip AoF —
   // existing fruit stay; empty after last pair refills in after_fruit_splice/tick.
   mexicoReplace(
     "eat respawn mexico as portal",
-    /e=!1;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{window\.__chessMakeApple=g7;window\.__chessFreePos=d4E;window\.__chessPickType=Q3E;e=!1;if\(window\.just_ate==='fruit'&&!\(e7\(a\.settings,8\)\|\|e7\(a\.settings,9\)\)\)\{if\(window\.chess_portal_combo&&window\.chess_portal_combo\(\)\)\{window\.chess_portal_note_fruit_twin\(a\.wa,k\);\}else if\(!\(a\.settings\.ka===4\|\|a\.settings\.ka===6\|\|\(a\.settings\.ka===5&&!a\.kc\)\)\)\{window\.chess_fruit_respawn\(a\.wa,g7,d4E,Q3E\);if\(window\.isBurgerActive&&window\.isBurgerActive\(\)&&window\.just_ate==='fruit'\)\{window\.burger_after_respawn\(a\);\}\}\}\}else e7\(a\.settings,2\)\?e=!0:/,
-    "e=!1;if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;e=!1;if(window.just_ate==='fruit'&&!(e7(a.settings,8)||e7(a.settings,9))){if(window.chess_portal_combo&&window.chess_portal_combo()){window.chess_portal_note_fruit_twin(a.wa,k);}else if(!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.kc))){window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);if(window.isBurgerActive&&window.isBurgerActive()&&window.just_ate==='fruit'){window.burger_after_respawn(a);}}}}else if(window.isMexicoActive&&window.isMexicoActive()){window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;e=!1;if(window.just_ate==='fruit'&&!(e7(a.settings,8)||e7(a.settings,9))){window.mexico_note_fruit_twin&&window.mexico_note_fruit_twin(a.wa,k);if(!(window.mexico_is_wave_count&&window.mexico_is_wave_count(a))){e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a);}}}else e7(a.settings,2)?e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a):"
+    /e=!1;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{window\.__chessMakeApple=S7;window\.__chessFreePos=window\.chess_native_free_pos;window\.__chessPickType=hoF;e=!1;if\(window\.just_ate==='fruit'&&!\(M7\(a\.settings,8\)\|\|M7\(a\.settings,9\)\)\)\{if\(window\.chess_portal_combo&&window\.chess_portal_combo\(\)\)\{window\.chess_portal_note_fruit_twin\(a\.oa,k\);\}else if\(!\(a\.settings\.ka===4\|\|a\.settings\.ka===6\|\|\(a\.settings\.ka===5&&!a\.Qb\)\)\)\{window\.chess_fruit_respawn\(a\.oa,S7,window\.__chessFreePos,hoF\);if\(window\.isBurgerActive&&window\.isBurgerActive\(\)&&window\.just_ate==='fruit'\)\{window\.burger_after_respawn\(a\);\}\}\}\}else M7\(a\.settings,2\)\?e=!0:/,
+    "e=!1;if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=S7;window.__chessFreePos=window.chess_native_free_pos;window.__chessPickType=hoF;e=!1;if(window.just_ate==='fruit'&&!(M7(a.settings,8)||M7(a.settings,9))){if(window.chess_portal_combo&&window.chess_portal_combo()){window.chess_portal_note_fruit_twin(a.oa,k);}else if(!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.Qb))){window.chess_fruit_respawn(a.oa,S7,window.__chessFreePos,hoF);if(window.isBurgerActive&&window.isBurgerActive()&&window.just_ate==='fruit'){window.burger_after_respawn(a);}}}}else if(window.isMexicoActive&&window.isMexicoActive()){window.__chessMakeApple=S7;window.__chessFreePos=window.chess_native_free_pos;window.__chessPickType=hoF;e=!1;if(window.just_ate==='fruit'&&!(M7(a.settings,8)||M7(a.settings,9))){window.mexico_note_fruit_twin&&window.mexico_note_fruit_twin(a.oa,k);if(!(window.mexico_is_wave_count&&window.mexico_is_wave_count(a))){e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a);}}}else M7(a.settings,2)?e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a):"
   );
 
   // After Chess portal twin hook: also clear Mexico's noted twin.
   mexicoReplace(
     "eat splice mexico twin clear",
-    /\(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\)\)/,
-    "(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.wa,a),0))"
+    /\(a\.oa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.oa,a\)\)/,
+    "(a.oa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.oa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.oa,a),0))"
   );
 
-  // j4E sits inside a ternary — must not insert `;` statements. Comma-op only.
+  // AoF sits inside a ternary — must not insert `;` statements. Comma-op only.
   // Constrain only the board after a successful pair plant — never relocate the
   // whole board, and never invent a wave refill here (tick handles empty).
   mexicoReplace(
-    "j4E mexico constrain pair",
-    /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\)/,
-    "j4E(a.wa,k,d,a.Vm.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.wa.ka.length>0&&(window.mexico_constrain_new_apples(a.wa,2),0)"
+    "AoF mexico constrain pair",
+    /AoF\(a\.oa,k,d,a\.Kc\.bind\(a\)\)/,
+    "AoF(a.oa,k,d,a.Kc.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.oa.ka.length>0&&(window.mexico_constrain_new_apples(a.oa,2),0)"
   );
 
   // Tally wave: 5 portal units = 10 apples (match Chess), so pairs stay even.
   if (
     !mexicoReplace(
       "tally wave size mexico after chess",
-      /var b=\(e7\(a\.settings,11\)\|\|\(window\.isChessActive&&window\.isChessActive\(\)\)\)\?10:5;/,
-      "var b=(e7(a.settings,11)||(window.isChessActive&&window.isChessActive())||(window.isMexicoActive&&window.isMexicoActive()))?10:5;"
+      /var b=\(M7\(a\.settings,11\)\|\|\(window\.isChessActive&&window\.isChessActive\(\)\)\)\?10:5;/,
+      "var b=(M7(a.settings,11)||(window.isChessActive&&window.isChessActive())||(window.isMexicoActive&&window.isMexicoActive()))?10:5;"
     )
   ) {
     mexicoReplace(
       "tally wave size mexico",
-      /var b=e7\(a\.settings,11\)\?10:5;/,
-      "var b=(e7(a.settings,11)||(window.isMexicoActive&&window.isMexicoActive()))?10:5;"
+      /var b=M7\(a\.settings,11\)\?10:5;/,
+      "var b=(M7(a.settings,11)||(window.isMexicoActive&&window.isMexicoActive()))?10:5;"
     );
   }
 
@@ -16357,11 +16415,11 @@ window.MexicoMod.alterSnakeCode = function (code) {
   if (code.indexOf("window.MEXICO_MODE)?window.MEXICO_ICON") < 0) {
     mexicoReplace(
       "deathscreen Zb mexico icon",
-      /\(a\.settings\.ob===window\.CAT_MODE\)\?window\.CAT_ICON:/,
-      "(a.settings.ob===window.CAT_MODE)?window.CAT_ICON:(a.settings.ob===window.MEXICO_MODE)?window.MEXICO_ICON:"
+      /\(a\.settings\.wb===window\.CAT_MODE\)\?window\.CAT_ICON:/,
+      "(a.settings.wb===window.CAT_MODE)?window.CAT_ICON:(a.settings.wb===window.MEXICO_MODE)?window.MEXICO_ICON:"
     );
     mexicoReplace(
-      "blender b3E mexico icon",
+      "blender PmF mexico icon",
       /\(c===window\.CAT_MODE\)\?window\.CAT_ICON:/,
       "(c===window.CAT_MODE)?window.CAT_ICON:(c===window.MEXICO_MODE)?window.MEXICO_ICON:"
     );
@@ -16422,7 +16480,7 @@ window.BombFruitMod = {};
 ////////////////////////////////////////////////////////////////////
 
 window.BombFruitMod.runCodeBefore = function () {
-  console.log("Adding Bomb Fruit Mode (v13)");
+  console.log("Adding Bomb Fruit Mode (v14)");
 
   window.BOMB_FRUIT_ICON =
     "https://www.google.com/logos/fnbx/snake_arcade/v18/count_05.png";
@@ -16502,7 +16560,7 @@ window.BombFruitMod.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.BombFruitMod.alterSnakeCode = function (code) {
-  console.log("Coding Bomb Fruit Mode into the game (v13)");
+  console.log("Coding Bomb Fruit Mode into the game (v14)");
 
   function bfReplace(label, re, replacement) {
     if (!code.match(re)) {
@@ -16525,9 +16583,9 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     const g = window.__remixGame;
     const mode =
       g && g.settings
-        ? g.settings.ub != null
-          ? g.settings.ub
-          : g.settings.ob
+        ? g.settings.yb != null
+          ? g.settings.yb
+          : g.settings.wb
         : null;
     if (mode === window.BOMB_FRUIT_MODE) return true;
     if (mode === 22 && window.bomb_fruit_blending) return true;
@@ -16605,9 +16663,9 @@ window.BombFruitMod.alterSnakeCode = function (code) {
 
   window.bombFruit_chebyshev = function bombFruit_chebyshev(a, b) {
     if (!a || !b) return Infinity;
-    if (typeof T2E === "function") {
+    if (typeof GmF === "function") {
       try {
-        return T2E(a.x, a.y, b.x, b.y);
+        return GmF(a.x, a.y, b.x, b.y);
       } catch (_e) {}
     }
     return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
@@ -16850,7 +16908,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     const list = (mgr && mgr.ka) || window.appleArray;
     if (!list) return;
     for (let i = 0; i < list.length; i++) {
-      if (list[i]) list[i].nba = undefined;
+      if (list[i]) list[i].h7 = undefined;
     }
   };
 
@@ -16859,21 +16917,21 @@ window.BombFruitMod.alterSnakeCode = function (code) {
    */
   window.bombFruit_trigger_win = function bombFruit_trigger_win(game) {
     if (!game) return;
-    if (game.nj) return;
+    if (game.uj) return;
     try {
       const winBank =
-        (typeof s5E !== "undefined" && s5E) || window.__bombFruitS5E;
+        (typeof mqF !== "undefined" && mqF) || window.__bombFruitS5E;
       if (winBank && winBank.WIN && winBank.WIN.play) winBank.WIN.play();
-      else if (typeof Q4E !== "undefined" && Q4E.rWd && Q4E.rWd.play)
-        Q4E.rWd.play();
+      else if (typeof KpF !== "undefined" && KpF.vZd && KpF.vZd.play)
+        KpF.vZd.play();
       else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
     } catch (_e) {}
     // Match native r7E===0 win: ub + nj (not lj / not nj-only death).
-    game.ub = true;
-    game.nj = true;
+    game.Za = true;
+    game.uj = true;
     try {
-      const score = game.Sh != null ? game.Sh : game.Oh;
-      if (typeof A7E === "function") A7E(game.menu, 1400, score);
+      const score = game.Bi != null ? game.Bi : game.Oh;
+      if (typeof wsF === "function") wsF(game.menu, 1400, score);
       else if (typeof vdF === "function") vdF(game.menu, 1400, score);
     } catch (_e2) {}
   };
@@ -16884,10 +16942,15 @@ window.BombFruitMod.alterSnakeCode = function (code) {
    * Spawn failure alone while siblings exist is not a win — keep playing.
    */
   window.bombFruit_win_if_empty = function bombFruit_win_if_empty(game, mgr) {
-    if (!game || game.nj) return false;
+    if (!game || game.uj) return false;
     if (!mgr || !mgr.ka || mgr.ka.length > 0) return false;
     window.bombFruit_trigger_win(game);
     return true;
+  };
+
+  // v14 inlined v13's d4E(board,b,c) as board.Ba(b,c,void 0).
+  window.bombFruit_nativeFreePos = function bombFruit_nativeFreePos(board, b, c) {
+    return board && typeof board.Ba === "function" ? board.Ba(b, c, void 0) : null;
   };
 
   window.bombFruit_find_spawn = function bombFruit_find_spawn(mgr, excludeIdx) {
@@ -16896,7 +16959,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     const freePos =
       window.__bombFruitFreePos ||
       window.__chessFreePos ||
-      (typeof d4E === "function" ? d4E : null);
+      window.bombFruit_nativeFreePos;
     const skip = new Set();
     if (excludeIdx != null) skip.add(excludeIdx);
     const occ =
@@ -16912,7 +16975,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
         ? window.chess_board_size(board)
         : null;
     if (!size || !size.width) return null;
-    const head = game && game.oa && game.oa.ka && game.oa.ka[0];
+    const head = game && game.Yc && game.Yc.ka && game.Yc.ka[0];
     const total = size.width * size.height;
     const start = Math.floor(Math.random() * total);
     for (let n = 0; n < total; n++) {
@@ -16997,11 +17060,11 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     const makeApple =
       window.__bombFruitMakeApple ||
       window.__chessMakeApple ||
-      (typeof g7 === "function" ? g7 : null);
+      (typeof S7 === "function" ? S7 : null);
     const pickType =
       window.__bombFruitPickType ||
       window.__chessPickType ||
-      (typeof Q3E === "function" ? Q3E : null);
+      (typeof hoF === "function" ? hoF : null);
     let dup;
     const lenBefore = mgr && mgr.ka ? mgr.ka.length : 0;
     if (typeof makeApple === "function") {
@@ -17036,10 +17099,10 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       if (template.sequenceNumber !== undefined) {
         dup.sequenceNumber = template.sequenceNumber;
       }
-      if (template.yNa !== undefined) dup.yNa = template.yNa;
-      if (template.Lh !== undefined) dup.Lh = template.Lh;
+      if (template.oOa !== undefined) dup.oOa = template.oOa;
+      if (template.Xg !== undefined) dup.Xg = template.Xg;
     }
-    dup.wm = true;
+    dup.Rm = true;
     dup.cM = 0;
     dup.nD = 0;
     dup.bombX1a = -1;
@@ -17050,11 +17113,11 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   window.bombFruit_inlineY6E = function bombFruit_inlineY6E(snake) {
     if (!snake) return;
     try {
-      snake.yb = "NONE";
-      snake.Qb = false;
-      if (snake.Ga !== "NONE") {
-        snake.direction = snake.Ga;
-        snake.Ga = "NONE";
+      snake.Lb = "NONE";
+      snake.Ob = false;
+      if (snake.Ia !== "NONE") {
+        snake.direction = snake.Ia;
+        snake.Ia = "NONE";
       }
     } catch (_e) {}
   };
@@ -17066,7 +17129,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
    * does not leave the head oscillating between old and new facing.
    */
   window.bombFruit_mineStyleDeath = function bombFruit_mineStyleDeath(game) {
-    if (!game || game.nj) return;
+    if (!game || game.uj) return;
     // Same gap as native A6E: this path never hits Oa(), so spend Cat life here.
     if (
       window.isCatActive &&
@@ -17080,15 +17143,15 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     window.__bombFruitOrphans = [];
     try {
       const deathBank =
-        (typeof s5E !== "undefined" && s5E) || window.__bombFruitS5E;
-      if (deathBank && deathBank.Ktc && deathBank.Ktc.play) deathBank.Ktc.play();
+        (typeof mqF !== "undefined" && mqF) || window.__bombFruitS5E;
+      if (deathBank && deathBank.Nuc && deathBank.Nuc.play) deathBank.Nuc.play();
     } catch (_s) {}
     try {
-      if (typeof game.Ub === "function") game.Ub();
+      if (typeof game.yb === "function") game.yb();
     } catch (_u) {}
-    const snake = game.oa;
+    const snake = game.Yc;
     try {
-      if (typeof y6E === "function") y6E(snake);
+      if (typeof srF === "function") srF(snake);
       else window.bombFruit_inlineY6E(snake);
     } catch (_y) {
       window.bombFruit_inlineY6E(snake);
@@ -17096,21 +17159,21 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     if (snake) {
       // Lock facing after turn ticks (A6E does not do this — Bomb Fruit needs it).
       try {
-        snake.Ca = snake.direction;
+        snake.Ka = snake.direction;
       } catch (_ca) {}
-      snake.Ka = 0;
+      snake.Ga = 0;
     }
     try {
-      if (typeof game.Dc === "function") game.Dc();
+      if (typeof game.Wb === "function") game.Wb();
       else {
-        game.nj = true;
-        game.lj = true;
-        const score = game.Sh != null ? game.Sh : game.Oh;
-        if (typeof A7E === "function") A7E(game.menu, 1400, score);
+        game.Za = true;
+        game.uj = true;
+        const score = game.Bi != null ? game.Bi : game.Oh;
+        if (typeof wsF === "function") wsF(game.menu, 1400, score);
         else if (typeof vdF === "function") vdF(game.menu, 1400, score);
       }
     } catch (_d) {
-      game.nj = true;
+      game.uj = true;
     }
     return false;
   };
@@ -17120,14 +17183,14 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     if (!Ma || !pos || !Ma.ka) return;
     try {
       const boomBank =
-        (typeof t6E !== "undefined" && t6E) || window.__bombFruitT6E;
+        (typeof nrF !== "undefined" && nrF) || window.__bombFruitT6E;
       if (boomBank) {
         const pack = [
-          boomBank.evc,
-          boomBank.fvc,
-          boomBank.gvc,
-          boomBank.hvc,
-          boomBank.ivc,
+          boomBank.Zvc,
+          boomBank.awc,
+          boomBank.bwc,
+          boomBank.cwc,
+          boomBank.dwc,
         ];
         const snd = pack[Math.floor(Math.random() * 5)];
         if (snd && snd.play) snd.play();
@@ -17135,12 +17198,12 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     } catch (_s) {}
     try {
       const tile = Ma.ka.ka;
-      if (Ma.Ga && Ma.Ga.particles && typeof _ !== "undefined" && _.Od) {
+      if (Ma.Ba && Ma.Ba.particles && typeof _ !== "undefined" && _.Yd) {
         Ma.Ga.particles.push({
-          pos: new _.Od(pos.x * tile, pos.y * tile),
-          He: new _.Od(Math.random() * 20 - 10, Math.random() * -20),
+          pos: new _.Yd(pos.x * tile, pos.y * tile),
+          Ce: new _.Yd(Math.random() * 20 - 10, Math.random() * -20),
           angle: 0,
-          s_: Math.random() * 20 - 10,
+          l0: Math.random() * 20 - 10,
           size: 1,
           type: 2,
         });
@@ -17155,7 +17218,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     const pos = apple.pos
       ? { x: apple.pos.x, y: apple.pos.y }
       : null;
-    const head = game.oa && game.oa.ka && game.oa.ka[0];
+    const head = game.Yc && game.Yc.ka && game.Yc.ka[0];
     const inBlast =
       pos && head && window.bombFruit_chebyshev(head, pos) <= 1;
 
@@ -17170,7 +17233,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
 
     // Mine-style boom SFX/particles (same pipeline as A6E).
     try {
-      window.bombFruit_mineBoomFx(game.Ma, pos);
+      window.bombFruit_mineBoomFx(game.Ga, pos);
     } catch (_fx) {}
 
     // Restore list to "others only" (drop the detonating middle fruit alone).
@@ -17178,9 +17241,9 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     for (let i = 0; i < others.length; i++) mgr.ka.push(others[i]);
     window.appleArray = mgr.ka;
 
-    if (inBlast && !game.nj && !game.lj) {
+    if (inBlast && !game.uj && !game.lj) {
       window.bombFruit_mineStyleDeath(game);
-      if (game.nj || game.lj) return;
+      if (game.uj || game.lj) return;
       // Cat life absorbed the blast — keep going and refill the detonated fruit.
     }
 
@@ -17213,13 +17276,13 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   window.bombFruit_orphan_boom = function bombFruit_orphan_boom(game, orphan) {
     if (!game || !orphan) return;
     const pos = { x: orphan.x, y: orphan.y };
-    const head = game.oa && game.oa.ka && game.oa.ka[0];
+    const head = game.Yc && game.Yc.ka && game.Yc.ka[0];
     const dist = window.bombFruit_chebyshev(head, pos);
     try {
-      window.bombFruit_mineBoomFx(game.Ma, pos);
+      window.bombFruit_mineBoomFx(game.Ga, pos);
     } catch (_fx) {}
     // Center of the old blast (the eaten tile) stays safe — ring kills.
-    if (dist > 0 && dist <= 1 && !game.nj && !game.lj) {
+    if (dist > 0 && dist <= 1 && !game.uj && !game.lj) {
       window.bombFruit_mineStyleDeath(game);
     }
   };
@@ -17241,7 +17304,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   window.bombFruit_tick_zones = function bombFruit_tick_zones(game, mgr) {
     const zones = window.bombFruit_zones();
     if (!zones.length) return;
-    const head = game.oa && game.oa.ka && game.oa.ka[0];
+    const head = game.Yc && game.Yc.ka && game.Yc.ka[0];
     if (!head) return;
     const fruitKeys = new Set();
     if (mgr && mgr.ka) {
@@ -17296,7 +17359,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
           } else {
             window.bombFruit_orphan_boom(game, z);
           }
-          if (game.nj || game.lj) {
+          if (game.uj || game.lj) {
             window.__bombFruitOrphans = [];
             return;
           }
@@ -17327,8 +17390,8 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   window.bombFruit_tick_logic = function bombFruit_tick_logic(game) {
     if (!window.isBombFruitActive || !window.isBombFruitActive()) return;
     const g = game || window.__remixGame;
-    if (!g || g.nj) return;
-    const mgr = g.wa;
+    if (!g || g.uj) return;
+    const mgr = g.oa;
     if (!mgr || !mgr.ka) return;
 
     if (!window.__bombFruitBootstrapped) {
@@ -17339,9 +17402,10 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       // Capture native freePos early (eat path also sets these) so boom
       // spawns use d4E(..., 2) with e7(...,15) Shield head radius.
       try {
-        if (typeof g7 === "function") window.__bombFruitMakeApple = g7;
-        if (typeof d4E === "function") window.__bombFruitFreePos = d4E;
-        if (typeof Q3E === "function") window.__bombFruitPickType = Q3E;
+        if (typeof S7 === "function") window.__bombFruitMakeApple = S7;
+        if (!window.__bombFruitFreePos)
+          window.__bombFruitFreePos = window.bombFruit_nativeFreePos;
+        if (typeof hoF === "function") window.__bombFruitPickType = hoF;
       } catch (_cap) {}
       // Do NOT constrain at start — keep native 1a/3a/5a/10a/tally layout.
       // Spawn radius applies only to new fruits (eat / boom refill).
@@ -17362,7 +17426,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     window.bombFruit_clear_shields(mgr);
 
     window.bombFruit_tick_zones(g, mgr);
-    if (g.nj) return;
+    if (g.uj) return;
 
     // Mirror zone arm state onto fruit for legacy/debug reads.
     window.bombFruit_refresh_snap(mgr);
@@ -17376,12 +17440,12 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     frac
   ) {
     if (!board || !board.ka || !pos) return;
-    const tile = board.wb && board.wb.ka && board.wb.ka.ka;
+    const tile = board.ub && board.ub.ka && board.ub.ka.ka;
     if (!tile) return;
     const ctx = board.ka;
     const px =
-      typeof _ !== "undefined" && _ && typeof _.Od === "function"
-        ? new _.Od(pos.x * tile, pos.y * tile)
+      typeof _ !== "undefined" && _ && typeof _.Yd === "function"
+        ? new _.Yd(pos.x * tile, pos.y * tile)
         : { x: pos.x * tile, y: pos.y * tile };
     const side = tile * 3;
     ctx.globalAlpha = 1;
@@ -17389,27 +17453,27 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     ctx.lineWidth = tile / 12;
     ctx.lineDashOffset = tile / 8;
     ctx.setLineDash([tile / 4, tile / 4]);
-    if (typeof B5E === "function") {
-      B5E(board, px, 0, 0, side);
+    if (typeof uqF === "function") {
+      uqF(board, px, 0, 0, side);
     } else {
       ctx.beginPath();
       ctx.rect(px.x + tile / 2 - side / 2, px.y + tile / 2 - side / 2, side, side);
       ctx.stroke();
     }
-    if (bombX1a > 0 && !(game && game.nj)) {
+    if (bombX1a > 0 && !(game && game.uj)) {
       const arm = window.BOMB_FRUIT_ARM_TICKS;
       const f = (arm - (bombX1a - (frac || 0))) / arm;
       const pulseSide = side * f;
       let alpha = 0.15;
-      if (typeof U2E === "function") {
+      if (typeof HmF === "function") {
         try {
-          alpha = U2E(f) * 0.15;
+          alpha = HmF(f) * 0.15;
         } catch (_e) {}
       }
       ctx.globalAlpha = alpha;
       ctx.fillStyle = "#f23606";
-      if (typeof C5E === "function") {
-        C5E(board, px, 0, 0, pulseSide);
+      if (typeof vqF === "function") {
+        vqF(board, px, 0, 0, pulseSide);
       } else {
         ctx.fillRect(
           px.x + tile / 2 - pulseSide / 2,
@@ -17449,13 +17513,13 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     if (!window.isBombFruitActive || !window.isBombFruitActive()) return;
     const boxes = window.checkboxes && window.checkboxes.checkboxStatuses;
     if (boxes && boxes.mineRadius === false) return;
-    const game = (board && board.wb) || window.__remixGame;
-    if (game && game.nj) return;
+    const game = (board && board.ub) || window.__remixGame;
+    if (game && game.uj) return;
     if (!board || !board.ka) return;
     // Menu / pre-start: apples exist but tick hasn't run — plant zones now.
     // Prune only before play so count changes drop stale rings; during play
     // tick owns linger/armed zones.
-    const mgr = (game && game.wa) || (board.wb && board.wb.wa);
+    const mgr = (game && game.oa) || (board.ub && board.ub.oa);
     if (mgr && mgr.ka && mgr.ka.length) {
       window.bombFruit_plant_layout_zones(
         mgr,
@@ -17544,13 +17608,13 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     !bfReplace(
       "e7 shield spawn physics",
       /if\(!r&&b===2&&window\.isMexicoActive&&window\.isMexicoActive\(\)\)return!0;if\(!r&&b===1&&window\.isMexicoActive&&window\.isMexicoActive\(\)\)return!0;return r\}/,
-      "if(!r&&b===2&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===1&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.ub===window.BOMB_FRUIT_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BOMB_FRUIT_MODE))return!0;}return r}"
+      "if(!r&&b===2&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===1&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.yb===window.BOMB_FRUIT_MODE)return!0;if(a.yb===22&&a.NSa&&a.NSa.has(window.BOMB_FRUIT_MODE))return!0;}return r}"
     )
   ) {
     bfReplace(
       "e7 shield spawn physics fallback",
       /if\(!r&&b===21&&window\.isCatActive&&window\.isCatActive\(\)&&\(window\.cat_peaceful_ticks\|0\)>0\)return!0;return r\}/,
-      "if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.ub===window.BOMB_FRUIT_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BOMB_FRUIT_MODE))return!0;}return r}"
+      "if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.yb===window.BOMB_FRUIT_MODE)return!0;if(a.yb===22&&a.NSa&&a.NSa.has(window.BOMB_FRUIT_MODE))return!0;}return r}"
     );
   }
 
@@ -17573,20 +17637,20 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   // it for Bomb Fruit so fruit radii render without enabling real mines.
   bfReplace(
     "D5E call gate classic",
-    /!e7\(this\.settings,4\)&&e7\(this\.settings,12\)&&D5E\(this\.Ja,a\)/,
-    "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive())&&D5E(this.Ja,a)"
+    /!M7\(this\.settings,4\)&&M7\(this\.settings,12\)&&wqF\(this\.Ia,a\)/,
+    "!M7(this.settings,4)&&(M7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive())&&wqF(this.Ia,a)"
   );
   bfReplace(
     "D5E call gate pixel",
-    /e7\(this\.settings,12\)&&D5E\(this\.Ja,dd\)/,
-    "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive())&&D5E(this.Ja,dd)"
+    /M7\(this\.settings,12\)&&wqF\(this\.Ia,Ad\)/,
+    "(M7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive())&&wqF(this.Ia,Ad)"
   );
 
   // --- Draw hook: D5E is the mines/FX board pass (Visibility gates #f23606) ---
   bfReplace(
     "D5E bomb fruit radii",
-    /D5E=function\(a,b\)\{for\(var c of a\.wb\.Ma\.Aa\)\{/,
-    "D5E=function(a,b){if(!window.__bombFruitS5E){try{window.__bombFruitS5E=s5E;window.__bombFruitT6E=t6E;window.__bombFruitX3E=x3E;}catch(_bfAud){}}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}for(var c of a.wb.Ma.Aa){"
+    /wqF=function\(a,b\)\{for\(var c of a\.ub\.Ga\.Aa\)\{/,
+    "wqF=function(a,b){if(!window.__bombFruitS5E){try{window.__bombFruitS5E=mqF;window.__bombFruitT6E=nrF;window.__bombFruitX3E=RnF;}catch(_bfAud){}}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}for(var c of a.ub.Ga.Aa){"
   );
 
   // Root cause of eat flicker: Vm→c4E sets apple.xL=0, and native D5E draws
@@ -17594,15 +17658,16 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   // every respawn. Keep Bomb Fruit rings fully opaque (fruit sprite fade unchanged).
   bfReplace(
     "D5E apple radius no xL fade",
-    /d\.ka\.globalAlpha=Math\.min\(1,\(h\.xL\+f\)\/2\)\*e;d\.ka\.strokeStyle="#f23606"/,
-    'd.ka.globalAlpha=(window.isBombFruitActive&&window.isBombFruitActive()?1:Math.min(1,(h.xL+f)/2))*e;d.ka.strokeStyle="#f23606"'
+    /d\.ka\.globalAlpha=Math\.min\(1,\(h\.gM\+f\)\/2\)\*e;d\.ka\.strokeStyle="#f23606"/,
+    'd.ka.globalAlpha=(window.isBombFruitActive&&window.isBombFruitActive()?1:Math.min(1,(h.gM+f)/2))*e;d.ka.strokeStyle="#f23606"'
   );
 
-  // Capture apple helpers early on eat (before Chess branch).
+  // Capture apple helpers early on eat (before Chess branch). Mirror whatever
+  // Chess captured (v14: S7 / free-pos shim, since d4E was inlined / hoF).
   bfReplace(
     "eat capture helpers",
-    /e=!1;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{window\.__chessMakeApple=g7;window\.__chessFreePos=d4E;window\.__chessPickType=Q3E;/,
-    "e=!1;if(window.isBombFruitActive&&window.isBombFruitActive()){window.__bombFruitMakeApple=g7;window.__bombFruitFreePos=d4E;window.__bombFruitPickType=Q3E;}if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;"
+    /e=!1;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{window\.__chessMakeApple=([^;]+?);window\.__chessFreePos=([^;]+?);window\.__chessPickType=([^;]+?);/,
+    "e=!1;if(window.isBombFruitActive&&window.isBombFruitActive()){window.__bombFruitMakeApple=$1;window.__bombFruitFreePos=$2;window.__bombFruitPickType=$3;}if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=$1;window.__chessFreePos=$2;window.__chessPickType=$3;"
   );
 
   if (
@@ -17624,14 +17689,14 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   if (
     !bfReplace(
       "j4E bomb fruit after mexico",
-      /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&a\.wa\.ka\.length>0&&\(window\.mexico_constrain_new_apples\(a\.wa,2\),0\)/,
-      "j4E(a.wa,k,d,a.Vm.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.wa.ka.length>0&&(window.mexico_constrain_new_apples(a.wa,2),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0)"
+      /AoF\(a\.oa,k,d,a\.Kc\.bind\(a\)\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&a\.oa\.ka\.length>0&&\(window\.mexico_constrain_new_apples\(a\.oa,2\),0\)/,
+      "AoF(a.oa,k,d,a.Kc.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.oa.ka.length>0&&(window.mexico_constrain_new_apples(a.oa,2),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.oa,0,!1),0)"
     )
   ) {
     bfReplace(
       "j4E bomb fruit",
-      /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\)/,
-      "j4E(a.wa,k,d,a.Vm.bind(a)),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0)"
+      /AoF\(a\.oa,k,d,a\.Kc\.bind\(a\)\)/,
+      "AoF(a.oa,k,d,a.Kc.bind(a)),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.oa,0,!1),0)"
     );
   }
 
@@ -17639,8 +17704,8 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   // behind keeps its radius; new cell gets its own).
   bfReplace(
     "Vm clear shields + sync zones",
-    /e=window\.isCatActive&&window\.isCatActive\(\)&&window\.cat_allows_fruit_spawn&&!window\.cat_allows_fruit_spawn\(a,1,1\)\?!1:a\.Vm\(k,!e,null\)\);/,
-    "e=window.isCatActive&&window.isCatActive()&&window.cat_allows_fruit_spawn&&!window.cat_allows_fruit_spawn(a,1,1)?!1:a.Vm(k,!e,null));if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_clear_shields(a.wa);window.bombFruit_sync_fruit_bombs(a.wa);}catch(_bf){}}"
+    /e=window\.isCatActive&&window\.isCatActive\(\)&&window\.cat_allows_fruit_spawn&&!window\.cat_allows_fruit_spawn\(a,1,1\)\?!1:a\.Kc\(k,!e,null\)\);/,
+    "e=window.isCatActive&&window.isCatActive()&&window.cat_allows_fruit_spawn&&!window.cat_allows_fruit_spawn(a,1,1)?!1:a.Kc(k,!e,null));if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_clear_shields(a.oa);window.bombFruit_sync_fruit_bombs(a.oa);}catch(_bf){}}"
   );
 
   // Classic Vm fail splices the eaten apple — board may be empty before
@@ -17648,14 +17713,14 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   if (
     !bfReplace(
       "splice empty win after mexico twin",
-      /\(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&\(window\.mexico_after_fruit_splice\(a\.wa,a\),0\)\)/,
-      "(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.wa,a),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
+      /\(a\.oa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.oa,a\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&\(window\.mexico_after_fruit_splice\(a\.oa,a\),0\)\)/,
+      "(a.oa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.oa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.oa,a),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.oa,0,!1),0))"
     )
   ) {
     bfReplace(
       "splice empty win after chess portal",
-      /\(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\)\)/,
-      "(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
+      /\(a\.oa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.oa,a\)\)/,
+      "(a.oa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.oa,a),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.oa,0,!1),0))"
     );
   }
 
@@ -17701,8 +17766,8 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   if (code.indexOf("window.BOMB_FRUIT_MODE)?window.BOMB_FRUIT_ICON") < 0) {
     bfReplace(
       "deathscreen Zb bomb fruit icon",
-      /\(a\.settings\.ob===window\.MEXICO_MODE\)\?window\.MEXICO_ICON:/,
-      "(a.settings.ob===window.MEXICO_MODE)?window.MEXICO_ICON:(a.settings.ob===window.BOMB_FRUIT_MODE)?window.BOMB_FRUIT_ICON:"
+      /\(a\.settings\.wb===window\.MEXICO_MODE\)\?window\.MEXICO_ICON:/,
+      "(a.settings.wb===window.MEXICO_MODE)?window.MEXICO_ICON:(a.settings.wb===window.BOMB_FRUIT_MODE)?window.BOMB_FRUIT_ICON:"
     );
     bfReplace(
       "blender b3E bomb fruit icon",
@@ -17863,9 +17928,9 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     const g = window.__remixGame;
     const mode =
       g && g.settings
-        ? g.settings.ub != null
-          ? g.settings.ub
-          : g.settings.ob
+        ? g.settings.yb != null
+          ? g.settings.yb
+          : g.settings.wb
         : null;
     if (mode === window.TEMP_WALLS_MODE) return true;
     if (mode === 22 && window.temp_walls_blending) return true;
@@ -17911,9 +17976,9 @@ window.TempWallsMod.alterSnakeCode = function (code) {
       const g = window.__remixGame;
       const mode =
         g && g.settings
-          ? g.settings.ub != null
-            ? g.settings.ub
-            : g.settings.ob
+          ? g.settings.yb != null
+            ? g.settings.yb
+            : g.settings.wb
           : null;
       if (mode === window.TEMP_WALLS_MODE) return true;
       if (mode === 22 && window.temp_walls_blending) return true;
@@ -17942,10 +18007,10 @@ window.TempWallsMod.alterSnakeCode = function (code) {
 
   window.tempWalls_has_any = function tempWalls_has_any(game) {
     const g = game || window.__remixGame;
-    const walls = g && g.Ca;
-    if (!walls || !walls.Aa || typeof walls.Aa.values !== "function") return false;
+    const walls = g && g.Tw;
+    if (!walls || !walls.wa || typeof walls.wa.values !== "function") return false;
     try {
-      for (const w of walls.Aa.values()) {
+      for (const w of walls.wa.values()) {
         if (w && w.__tempWall) return true;
       }
     } catch (_e) {}
@@ -17955,10 +18020,10 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   window.tempWalls_list = function tempWalls_list(game) {
     const out = [];
     const g = game || window.__remixGame;
-    const walls = g && g.Ca;
-    if (!walls || !walls.Aa || typeof walls.Aa.values !== "function") return out;
+    const walls = g && g.Tw;
+    if (!walls || !walls.wa || typeof walls.wa.values !== "function") return out;
     try {
-      for (const w of walls.Aa.values()) {
+      for (const w of walls.wa.values()) {
         if (w && w.__tempWall) out.push(w);
       }
     } catch (_e) {}
@@ -17968,18 +18033,18 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   window.tempWalls_cell_blocked = function tempWalls_cell_blocked(game, x, y) {
     const g = game || window.__remixGame;
     if (!g) return true;
-    const walls = g.Ca;
-    if (walls && Array.isArray(walls.wa) && walls.wa[y] && (walls.wa[y][x] | 0) > 0) {
+    const walls = g.Tw;
+    if (walls && Array.isArray(walls.oa) && walls.oa[y] && (walls.oa[y][x] | 0) > 0) {
       return true;
     }
-    const snake = g.oa && g.oa.ka;
+    const snake = g.Yc && g.Yc.ka;
     if (snake) {
       for (let i = 0; i < snake.length; i++) {
         const s = snake[i];
         if (s && (s.x | 0) === (x | 0) && (s.y | 0) === (y | 0)) return true;
       }
     }
-    const fruits = g.wa && g.wa.ka;
+    const fruits = g.oa && g.oa.ka;
     if (fruits) {
       for (let i = 0; i < fruits.length; i++) {
         const f = fruits[i];
@@ -17993,18 +18058,18 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   window.tempWalls_remove_one = function tempWalls_remove_one(game, wall) {
     const g = game || window.__remixGame;
     if (!g || !wall || !wall.pos) return;
-    const walls = g.Ca;
+    const walls = g.Tw;
     if (!walls) return;
     const x = wall.pos.x | 0;
     const y = wall.pos.y | 0;
     try {
-      if (walls.Aa && typeof walls.Aa.delete === "function") {
-        walls.Aa.delete(window.tempWalls_serial(wall.pos));
+      if (walls.wa && typeof walls.wa.delete === "function") {
+        walls.wa.delete(window.tempWalls_serial(wall.pos));
       }
     } catch (_e) {}
     try {
-      if (walls.wa && walls.wa[y] && (walls.wa[y][x] | 0) > 0) {
-        walls.wa[y][x]--;
+      if (walls.oa && walls.oa[y] && (walls.oa[y][x] | 0) > 0) {
+        walls.oa[y][x]--;
       }
     } catch (_e2) {}
   };
@@ -18020,26 +18085,26 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   window.tempWalls_place_at = function tempWalls_place_at(game, x, y) {
     const g = game || window.__remixGame;
     if (!g) return false;
-    const walls = g.Ca;
-    if (!walls || !walls.Aa || !Array.isArray(walls.wa) || !walls.wa.length) {
+    const walls = g.Tw;
+    if (!walls || !walls.wa || !Array.isArray(walls.oa) || !walls.oa.length) {
       return false;
     }
     const yi = y | 0;
     const xi = x | 0;
-    if (!walls.wa[yi] || xi < 0 || xi >= walls.wa[yi].length) return false;
-    if ((walls.wa[yi][xi] | 0) > 0) return false;
+    if (!walls.oa[yi] || xi < 0 || xi >= walls.oa[yi].length) return false;
+    if ((walls.oa[yi][xi] | 0) > 0) return false;
     const pos = window.tempWalls_make_pos(xi, yi);
     const obj = {
       pos: pos,
-      wm: false,
-      m0: false,
-      Lh: true,
+      Rm: false,
+      e9: false,
+      Xg: true,
       __tempWall: true,
       movesRemaining: window.TEMP_WALL_LIFESPAN | 35,
     };
     try {
-      walls.Aa.set(window.tempWalls_serial(pos), obj);
-      walls.wa[yi][xi]++;
+      walls.wa.set(window.tempWalls_serial(pos), obj);
+      walls.oa[yi][xi]++;
       if (window.slot_clear_arrow_at) {
         try {
           window.slot_clear_arrow_at(g, xi, yi);
@@ -18065,18 +18130,18 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     ) {
       key = window.__slotActivatedFruit || window.__slotEatenFruit;
     } else {
-      const sh = g.Sh | 0;
+      const sh = g.Bi | 0;
       if (sh <= 0) return 0;
       key = "sh:" + sh;
     }
     if (window.__tempWallsSpawnedForSh === key) return 0;
     window.__tempWallsSpawnedForSh = key;
-    const walls = g.Ca;
-    if (!walls || !Array.isArray(walls.wa) || !walls.wa.length) return 0;
-    const h = walls.wa.length;
-    const w = walls.wa[0] ? walls.wa[0].length : 0;
+    const walls = g.Tw;
+    if (!walls || !Array.isArray(walls.oa) || !walls.oa.length) return 0;
+    const h = walls.oa.length;
+    const w = walls.oa[0] ? walls.oa[0].length : 0;
     if (!w) return 0;
-    const head = g.oa && g.oa.ka && g.oa.ka[0];
+    const head = g.Yc && g.Yc.ka && g.Yc.ka[0];
     const minDist = window.TEMP_WALL_MIN_DIST | 6;
     const attempts = window.TEMP_WALL_SPAWN_ATTEMPTS | 15;
     const perEat = window.TEMP_WALL_PER_EAT | 2;
@@ -18115,7 +18180,7 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   };
 
   window.tempWalls_trigger_win = function tempWalls_trigger_win(game) {
-    if (!game || game.nj) return;
+    if (!game || game.uj) return;
     if (
       window.isSlotMachineActive &&
       window.isSlotMachineActive() &&
@@ -18126,23 +18191,23 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     }
     try {
       const winBank =
-        (typeof s5E !== "undefined" && s5E) || window.__bombFruitS5E;
+        (typeof mqF !== "undefined" && mqF) || window.__bombFruitS5E;
       if (winBank && winBank.WIN && winBank.WIN.play) winBank.WIN.play();
-      else if (typeof Q4E !== "undefined" && Q4E.rWd && Q4E.rWd.play)
-        Q4E.rWd.play();
+      else if (typeof KpF !== "undefined" && KpF.vZd && KpF.vZd.play)
+        KpF.vZd.play();
       else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
     } catch (_e) {}
-    game.ub = true;
-    game.nj = true;
+    game.Za = true;
+    game.uj = true;
     try {
-      const score = game.Sh != null ? game.Sh : game.Oh;
-      if (typeof A7E === "function") A7E(game.menu, 1400, score);
+      const score = game.Bi != null ? game.Bi : game.Oh;
+      if (typeof wsF === "function") wsF(game.menu, 1400, score);
       else if (typeof vdF === "function") vdF(game.menu, 1400, score);
     } catch (_e2) {}
   };
 
   window.tempWalls_win_if_empty = function tempWalls_win_if_empty(game, mgr) {
-    if (!game || game.nj) return false;
+    if (!game || game.uj) return false;
     if (!window.tempWalls_should_check_win()) return false;
     if (
       window.isSlotMachineActive &&
@@ -18159,7 +18224,7 @@ window.TempWallsMod.alterSnakeCode = function (code) {
 
   window.tempWalls_after_eat = function tempWalls_after_eat(mgr, allowEmptyWin) {
     const game = window.__remixGame;
-    if (!game || game.nj) return;
+    if (!game || game.uj) return;
     if (window.tempWalls_should_spawn()) {
       try {
         window.tempWalls_spawn_on_eat(game);
@@ -18167,7 +18232,7 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     }
     if (allowEmptyWin) {
       try {
-        window.tempWalls_win_if_empty(game, mgr || game.wa);
+        window.tempWalls_win_if_empty(game, mgr || game.oa);
       } catch (_e2) {}
     }
   };
@@ -18176,7 +18241,7 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     const g = game || window.__remixGame;
     if (!g) return;
     if (window.tempWalls_has_any(g)) {
-      const head = g.oa && g.oa.ka && g.oa.ka[0];
+      const head = g.Yc && g.Yc.ka && g.Yc.ka[0];
       if (head && head.x != null) {
         const key = (head.x | 0) + "," + (head.y | 0);
         if (
@@ -18194,15 +18259,15 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     }
     if (
       window.__tempWallsLastSh != null &&
-      (g.Sh | 0) > (window.__tempWallsLastSh | 0)
+      (g.Bi | 0) > (window.__tempWallsLastSh | 0)
     ) {
       // Slot Machine plants from slot_on_eating_fruit (no native f4E). Skip the
       // Sh-delta path so we don't plant a second batch after flags clear.
       if (!(window.isSlotMachineActive && window.isSlotMachineActive())) {
-      window.tempWalls_after_eat(g.wa, true);
+      window.tempWalls_after_eat(g.oa, true);
       }
     }
-    window.__tempWallsLastSh = g.Sh;
+    window.__tempWallsLastSh = g.Bi;
   };
 
   window.tempWalls_has_fading = function tempWalls_has_fading(game) {
@@ -18250,15 +18315,15 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     }
     let brick = "#578a34";
     try {
-      if (settings && typeof c7 === "function") {
-        brick = c7(settings, settings.oa, 3);
+      if (settings && typeof P7 === "function") {
+        brick = P7(settings, settings.oa, 3);
       }
     } catch (_e) {}
     return { brick: brick, mortar: brick };
   };
 
   window.tempWalls_tile_size = function tempWalls_tile_size(board) {
-    if (board && board.wb && board.wb.ka && board.wb.ka.ka) return board.wb.ka.ka;
+    if (board && board.ub && board.ub.ka && board.ub.ka.ka) return board.ub.ka.ka;
     const g = window.__remixGame;
     if (g && g.ka && g.ka.ka) return g.ka.ka;
     if (g && g.Ja && g.Ja.wb && g.Ja.wb.ka && g.Ja.wb.ka.ka) return g.Ja.wb.ka.ka;
@@ -18268,8 +18333,8 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   // Pulse fading temp walls on the same canvas layer the game just used for
   // solid walls: Ka.ka (classic / Temp Walls trophy) or Ka.oa (Dimension mode).
   window.tempWalls_drawPulse = function tempWalls_drawPulse(board, layer) {
-    const game = (board && board.wb) || window.__remixGame;
-    if (!game || game.nj) return;
+    const game = (board && board.ub) || window.__remixGame;
+    if (!game || game.uj) return;
     if (!window.tempWalls_has_fading(game)) return;
     if (!board) return;
 
@@ -18280,7 +18345,7 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     let tile = 0;
     try {
       tile =
-        (board.wb && board.wb.ka && board.wb.ka.ka) ||
+        (board.ub && board.ub.ka && board.ub.ka.ka) ||
         window.tempWalls_tile_size(board) ||
         0;
     } catch (_t) {}
@@ -18296,8 +18361,9 @@ window.TempWallsMod.alterSnakeCode = function (code) {
 
     let pixel = false;
     try {
-      if (typeof $6 === "function" && board.settings) {
-        pixel = !!$6(board.settings);
+      // v14: v13's $6(settings) pixel check became settings.RM().
+      if (board.settings && typeof board.settings.RM === "function") {
+        pixel = !!board.settings.RM();
       }
     } catch (_p) {}
 
@@ -18342,8 +18408,8 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   if (
     !twReplace(
       "e7 wall collide after bomb fruit",
-      /if\(!r&&b===15&&window\.BOMB_FRUIT_MODE!=null\)\{if\(a\.ub===window\.BOMB_FRUIT_MODE\)return!0;if\(a\.ub===22&&a\.rSa&&a\.rSa\.has\(window\.BOMB_FRUIT_MODE\)\)return!0;\}return r\}/,
-      "if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.ub===window.BOMB_FRUIT_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BOMB_FRUIT_MODE))return!0;}if(!r&&b===1&&((window.isTempWallsActive&&window.isTempWallsActive())||(window.tempWalls_has_any&&window.tempWalls_has_any(window.__remixGame))))return!0;return r}"
+      /if\(!r&&b===15&&window\.BOMB_FRUIT_MODE!=null\)\{if\(a\.yb===window\.BOMB_FRUIT_MODE\)return!0;if\(a\.yb===22&&a\.NSa&&a\.NSa\.has\(window\.BOMB_FRUIT_MODE\)\)return!0;\}return r\}/,
+      "if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.yb===window.BOMB_FRUIT_MODE)return!0;if(a.yb===22&&a.NSa&&a.NSa.has(window.BOMB_FRUIT_MODE))return!0;}if(!r&&b===1&&((window.isTempWallsActive&&window.isTempWallsActive())||(window.tempWalls_has_any&&window.tempWalls_has_any(window.__remixGame))))return!0;return r}"
     )
   ) {
     twReplace(
@@ -18368,8 +18434,8 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   if (
     !twReplace(
       "wall render temp walls pulse",
-      /td\.oa\.restore\(\)\}var Fd=this\.Fb;let se=Fd\.wb\.nj\?0:Pc/,
-      'td.oa.restore()}try{window.tempWalls_drawPulse&&window.tempWalls_drawPulse(td,"oa");}catch(_tw){}var Fd=this.Fb;let se=Fd.wb.nj?0:Pc'
+      /Wc\.oa\.restore\(\)\}var Cc=this\.yb;let ve=Cc\.ub\.uj\?0:oc/,
+      'Wc.oa.restore()}try{window.tempWalls_drawPulse&&window.tempWalls_drawPulse(Wc,"oa");}catch(_tw){}var Cc=this.yb;let ve=Cc.ub.uj?0:oc'
     )
   ) {
     console.error("TempWallsMod: wall render pulse hook failed");
@@ -18377,13 +18443,13 @@ window.TempWallsMod.alterSnakeCode = function (code) {
 
   twReplace(
     "D5E call gate classic temp walls",
-    /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)&&D5E\(this\.Ja,a\)/,
-    "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this))&&D5E(this.Ja,a)"
+    /!M7\(this\.settings,4\)&&\(M7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)&&wqF\(this\.Ia,a\)/,
+    "!M7(this.settings,4)&&(M7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this))&&wqF(this.Ia,a)"
   );
   twReplace(
     "D5E call gate pixel temp walls",
-    /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)&&D5E\(this\.Ja,dd\)/,
-    "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this))&&D5E(this.Ja,dd)"
+    /\(M7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)&&wqF\(this\.Ia,Ad\)/,
+    "(M7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this))&&wqF(this.Ia,Ad)"
   );
 
   if (
@@ -18399,8 +18465,8 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   if (
     !twReplace(
       "j4E temp walls after bomb fruit",
-      /window\.isBombFruitActive&&window\.isBombFruitActive\(\)&&\(window\.bombFruit_after_respawn\(a\.wa,0,!1\),0\)/,
-      "window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0),(window.tempWalls_should_check_win&&window.tempWalls_should_check_win()&&(window.tempWalls_win_if_empty(window.__remixGame,a.wa),0))"
+      /window\.isBombFruitActive&&window\.isBombFruitActive\(\)&&\(window\.bombFruit_after_respawn\(a\.oa,0,!1\),0\)/,
+      "window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.oa,0,!1),0),(window.tempWalls_should_check_win&&window.tempWalls_should_check_win()&&(window.tempWalls_win_if_empty(window.__remixGame,a.oa),0))"
     )
   ) {
     console.error("TempWallsMod: j4E hook failed");
@@ -18442,8 +18508,8 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   if (code.indexOf("window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON") < 0) {
     twReplace(
       "deathscreen Zb temp walls icon",
-      /\(a\.settings\.ob===window\.BOMB_FRUIT_MODE\)\?window\.BOMB_FRUIT_ICON:/,
-      "(a.settings.ob===window.BOMB_FRUIT_MODE)?window.BOMB_FRUIT_ICON:(a.settings.ob===window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON:"
+      /\(a\.settings\.wb===window\.BOMB_FRUIT_MODE\)\?window\.BOMB_FRUIT_ICON:/,
+      "(a.settings.wb===window.BOMB_FRUIT_MODE)?window.BOMB_FRUIT_ICON:(a.settings.wb===window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON:"
     );
     twReplace(
       "blender b3E temp walls icon",
@@ -18636,9 +18702,9 @@ window.fear_mode_selected = function fear_mode_selected() {
   const g = window.__remixGame;
   const mode =
     g && g.settings
-      ? g.settings.ub != null
-        ? g.settings.ub
-        : g.settings.ob
+      ? g.settings.yb != null
+        ? g.settings.yb
+        : g.settings.wb
       : null;
   return (
     mode === window.FEAR_MODE ||
@@ -18649,7 +18715,7 @@ window.fear_mode_selected = function fear_mode_selected() {
 
 window.fear_has_slot_ghost = function fear_has_slot_ghost(game) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!list) return false;
   for (let i = 0; i < list.length; i++) {
     if (list[i] && list[i].__slotFearGhost) return true;
@@ -18707,7 +18773,7 @@ window.fear_key = function fear_key(x, y) {
 };
 
 window.fear_head = function fear_head(game) {
-  const snake = game && game.oa;
+  const snake = game && game.Yc;
   return snake && snake.ka && snake.ka[0];
 };
 
@@ -18716,8 +18782,8 @@ window.fear_box = function fear_box(game) {
   const box =
     g &&
     ((g.ka && g.ka.oa) ||
-      (g.wa && g.wa.oa && g.wa.oa.oa) ||
-      (g.oa && g.oa.oa));
+      (g.oa && g.oa.oa && g.oa.oa.oa) ||
+      (g.Yc && g.Yc.oa));
   return box
     ? { width: box.width | 0, height: box.height | 0 }
     : null;
@@ -18726,8 +18792,8 @@ window.fear_box = function fear_box(game) {
 window.fear_wraps = function fear_wraps(game) {
   const g = game || window.__remixGame;
   try {
-    if (typeof e7 === "function" && g && g.settings) {
-      return !!(e7(g.settings, 4) || e7(g.settings, 21));
+    if (typeof M7 === "function" && g && g.settings) {
+      return !!(M7(g.settings, 4) || M7(g.settings, 21));
     }
   } catch (_e) {}
   return !!(
@@ -18755,7 +18821,7 @@ window.fear_step = function fear_step(pos, dir, game) {
 
 window.fear_wall_keys = function fear_wall_keys(game) {
   const keys = new Set();
-  const walls = game && game.Ca && game.Ca.Aa;
+  const walls = game && game.Tw && game.Tw.wa;
   if (!walls || typeof walls.values !== "function") return keys;
   try {
     for (const wall of walls.values()) {
@@ -18772,7 +18838,7 @@ window.fear_is_ghost = function fear_is_ghost(fruit) {
   return !!(
     fruit.__fearGhost ||
     fruit.__slotFearGhost ||
-    (fruit.Oka && window.fear_mode_selected())
+    (fruit.Bea && window.fear_mode_selected())
   );
 };
 
@@ -18784,10 +18850,10 @@ window.fear_capture_ghost_type = function fear_capture_ghost_type(fruit) {
   if (
     fruit.__slotFearGhost ||
     fruit.__fearGhost ||
-    (fruit.Oka && window.fear_mode_selected())
+    (fruit.Bea && window.fear_mode_selected())
   ) {
     fruit.__fearGhost = true;
-    fruit.Oka = false;
+    fruit.Bea = false;
     return true;
   }
   return false;
@@ -18816,7 +18882,7 @@ window.fear_sync_fruit_type = function fear_sync_fruit_type(fruit) {
 
 window.fear_sync_fruit_types = function fear_sync_fruit_types(game) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!list) return;
   for (let i = 0; i < list.length; i++) {
     window.fear_sync_fruit_type(list[i]);
@@ -18833,8 +18899,8 @@ window.fear_owner_id = function fear_owner_id(fruit) {
 window.fear_is_moving_mode = function fear_is_moving_mode(game) {
   const g = game || window.__remixGame;
   try {
-    if (typeof e7 === "function" && g && g.settings) {
-      if (e7(g.settings, 6) || e7(g.settings, 18)) return true;
+    if (typeof M7 === "function" && g && g.settings) {
+      if (M7(g.settings, 6) || M7(g.settings, 18)) return true;
     }
   } catch (_e) {}
   return !!(
@@ -18873,7 +18939,7 @@ window.fear_fruit_near_corner = function fear_fruit_near_corner(x, y, game) {
 window.fear_regroup_ten = function fear_regroup_ten(game) {
   if (window.__fearTenSide != null) return;
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!window.fear_mode_selected() || !list || !g.settings) return;
   // Keep every count layout, including 10a, in its native Poison-pair
   // positions. Fear only swaps the paired bad fruit to the ghost atlas.
@@ -18882,7 +18948,7 @@ window.fear_regroup_ten = function fear_regroup_ten(game) {
 
 window.fear_initialize_layout = function fear_initialize_layout(game) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!window.fear_mode_selected() || !list || window.__fearLayoutReady) return;
   window.fear_regroup_ten(g);
   if (!list.some(function (fruit) {
@@ -18909,8 +18975,8 @@ window.fear_initialize_layout = function fear_initialize_layout(game) {
         const firstGhost = Math.random() < 0.5;
         a.__fearGhost = firstGhost;
         b.__fearGhost = !firstGhost;
-        a.Oka = false;
-        b.Oka = false;
+        a.Bea = false;
+        b.Bea = false;
       }
     }
   }
@@ -18920,9 +18986,9 @@ window.fear_initialize_layout = function fear_initialize_layout(game) {
       window.__fearSeenFruits.add(list[i]);
     }
   }
-  if (window.__fearWaveGhostFill && g.wa) {
+  if (window.__fearWaveGhostFill && g.oa) {
     try {
-      window.fear_wave_ghost_fill(g.wa);
+      window.fear_wave_ghost_fill(g.oa);
     } catch (_e) {
       window.__fearWaveGhostFill = false;
     }
@@ -18931,7 +18997,7 @@ window.fear_initialize_layout = function fear_initialize_layout(game) {
 
 window.fear_pair_new_fruits = function fear_pair_new_fruits(game) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!window.fear_mode_selected() || !list) return;
   const freshObjects = [];
   for (let i = 0; i < list.length; i++) {
@@ -18943,11 +19009,11 @@ window.fear_pair_new_fruits = function fear_pair_new_fruits(game) {
   for (let i = 0; i + 1 < freshObjects.length; i += 2) {
     const a = freshObjects[i];
     const b = freshObjects[i + 1];
-    if (!!a.Oka !== !!b.Oka) {
+    if (!!a.Bea !== !!b.Bea) {
       // Native poison pair: Oka marks the bad twin.
-      a.__fearGhost = !!a.Oka;
-      b.__fearGhost = !!b.Oka;
-    } else if (a.Oka && b.Oka) {
+      a.__fearGhost = !!a.Bea;
+      b.__fearGhost = !!b.Bea;
+    } else if (a.Bea && b.Bea) {
       const firstGhost = Math.random() < 0.5;
       a.__fearGhost = firstGhost;
       b.__fearGhost = !firstGhost;
@@ -18958,8 +19024,8 @@ window.fear_pair_new_fruits = function fear_pair_new_fruits(game) {
       a.__fearGhost = false;
       b.__fearGhost = false;
     }
-    if (window.fear_is_ghost(a)) a.Oka = false;
-    if (window.fear_is_ghost(b)) b.Oka = false;
+    if (window.fear_is_ghost(a)) a.Bea = false;
+    if (window.fear_is_ghost(b)) b.Bea = false;
     window.fear_sync_fruit_type(a);
     window.fear_sync_fruit_type(b);
   }
@@ -18972,7 +19038,7 @@ window.fear_position_occupied = function fear_position_occupied(
   except
 ) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (list) {
     for (let i = 0; i < list.length; i++) {
       const fruit = list[i];
@@ -18985,7 +19051,7 @@ window.fear_position_occupied = function fear_position_occupied(
       }
     }
   }
-  const snake = g && g.oa && g.oa.ka;
+  const snake = g && g.Yc && g.Yc.ka;
   if (snake) {
     for (let i = 0; i < snake.length; i++) {
       if (
@@ -19128,7 +19194,7 @@ window.fear_direction_safe = function fear_direction_safe(
   if (!next) return false;
   const key = window.fear_key(next.x, next.y);
   if (window.fear_wall_keys(game).has(key)) return false;
-  const body = game && game.oa && game.oa.ka;
+  const body = game && game.Yc && game.Yc.ka;
   if (body) {
     for (let i = 1; i < body.length; i++) {
       if (
@@ -19148,7 +19214,7 @@ window.fear_choose_direction = function fear_choose_direction(
   cell,
   owner
 ) {
-  const snake = game && game.oa;
+  const snake = game && game.Yc;
   const head = window.fear_head(game);
   const facing = (snake && snake.direction) || window.head_dir || "RIGHT";
   if (!owner || !owner.fruit || !owner.fruit.pos || !head) return facing;
@@ -19196,7 +19262,7 @@ window.fear_choose_direction = function fear_choose_direction(
 
 window.fear_rebuild_grid = function fear_rebuild_grid(game) {
   const g = game || window.__remixGame;
-  const mgr = g && g.wa;
+  const mgr = g && g.oa;
   const list = mgr && mgr.ka;
   if (!list) {
     window.__fearGrid = new Map();
@@ -19249,7 +19315,7 @@ window.fear_rebuild_grid = function fear_rebuild_grid(game) {
   for (const cell of grid.values()) {
     cell.direction =
       cell.owners.length > 1
-        ? (g.oa && g.oa.direction) || window.head_dir || "RIGHT"
+        ? (g.Yc && g.Yc.direction) || window.head_dir || "RIGHT"
         : window.fear_choose_direction(g, cell, cell.owners[0]);
     cell.__fearArrow = true;
   }
@@ -19261,7 +19327,7 @@ window.fear_rebuild_grid = function fear_rebuild_grid(game) {
 
 window.fear_layout_signature = function fear_layout_signature(game) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!list) return "";
   const parts = [];
   for (let i = 0; i < list.length; i++) {
@@ -19282,17 +19348,17 @@ window.fear_layout_signature = function fear_layout_signature(game) {
 };
 
 window.fear_apply_direction = function fear_apply_direction(game, dir) {
-  const snake = game && game.oa;
+  const snake = game && game.Yc;
   if (!snake || !dir || dir === "NONE") return;
   const x = Math.round(+window.fear_head(game).x);
   const y = Math.round(+window.fear_head(game).y);
   const rows = [];
   rows[y] = [];
-  rows[y][x] = { direction: dir, wm: true };
+  rows[y][x] = { direction: dir, Rm: true };
   const manager = {
     ka: rows,
-    settings: { ub: -1, ob: -1, Qa: false },
-    oa: game && game.oa && game.oa.oa,
+    settings: { yb: -1, wb: -1, La: false },
+    oa: game && game.Yc && game.Yc.oa,
   };
   if (typeof window.__fearNativeArrowStep === "function") {
     const result = window.__fearNativeArrowStep(
@@ -19306,18 +19372,18 @@ window.fear_apply_direction = function fear_apply_direction(game, dir) {
   } else if (dir === window.fear_opposite(snake.direction)) {
     // Unit-test/unsupported-build fallback mirrors Arrow mode's reverse-arrow
     // collision. Live games always use the exposed native adapter.
-    if (game && typeof game.Oa === "function") game.Oa();
+    if (game && typeof game.Ka === "function") game.Ka();
     return "CRASH";
   } else if (typeof window.__fearNativeTurn === "function") {
     window.__fearNativeTurn(snake, dir);
   } else {
     // Unit-test/unsupported-build fallback only. Live games use S6E.
     snake.direction = dir;
-    snake.Qb = true;
-    snake.yb = "NONE";
-    snake.Ga = "NONE";
-    if (snake.Fb) snake.kc = snake.direction;
-    snake.Fb = false;
+    snake.Ob = true;
+    snake.Lb = "NONE";
+    snake.Ia = "NONE";
+    if (snake.yb) snake.Zb = snake.direction;
+    snake.yb = false;
   }
   window.head_dir = snake.direction;
   return dir;
@@ -19339,14 +19405,14 @@ window.fear_native_arrow_feedback = function fear_native_arrow_feedback(
   const y = Math.round(+cell.y);
   const rows = [];
   rows[y] = [];
-  rows[y][x] = { direction: dir, wm: true };
+  rows[y][x] = { direction: dir, Rm: true };
   // h7 clears this disposable tile and plays the same directional sound as a
   // real Arrow-mode collision. The persistent Fear grid is left untouched.
   window.__fearNativeArrowConsume(
     {
       ka: rows,
-      settings: { ub: -1, ob: -1, Qa: false },
-      oa: game && game.oa && game.oa.oa,
+      settings: { yb: -1, wb: -1, La: false },
+      oa: game && game.Yc && game.Yc.oa,
     },
     { x: x, y: y },
     true
@@ -19359,7 +19425,7 @@ window.fear_resolve_cell_direction = function fear_resolve_cell_direction(
 ) {
   if (!cell || !cell.owners || !cell.owners.length) return "NONE";
   const facing =
-    (game && game.oa && game.oa.direction) ||
+    (game && game.Yc && game.Yc.direction) ||
     window.head_dir ||
     cell.direction;
   if (cell.owners.length > 1) {
@@ -19372,7 +19438,7 @@ window.fear_resolve_cell_direction = function fear_resolve_cell_direction(
 };
 
 window.fear_remove_ghosts = function fear_remove_ghosts(game, owners) {
-  const list = game && game.wa && game.wa.ka;
+  const list = game && game.oa && game.oa.ka;
   if (!list) return 0;
   const remove = new Set();
   for (let i = 0; i < owners.length; i++) {
@@ -19392,8 +19458,8 @@ window.fear_remove_ghosts = function fear_remove_ghosts(game, owners) {
 
 window.fear_win_if_empty = function fear_win_if_empty(game, mgr) {
   const g = game || window.__remixGame;
-  const manager = mgr || (g && g.wa);
-  if (!g || g.nj || !manager || !manager.ka || manager.ka.length) return false;
+  const manager = mgr || (g && g.oa);
+  if (!g || g.uj || !manager || !manager.ka || manager.ka.length) return false;
   if (
     window.isSlotMachineActive &&
     window.isSlotMachineActive() &&
@@ -19405,8 +19471,8 @@ window.fear_win_if_empty = function fear_win_if_empty(game, mgr) {
     window.bombFruit_trigger_win(g);
     return true;
   }
-  g.ub = true;
-  g.nj = true;
+  g.Za = true;
+  g.uj = true;
   return true;
 };
 
@@ -19452,12 +19518,12 @@ window.fear_process_arrow = function fear_process_arrow(game, cell) {
     window.fear_expire();
   }
   window.fear_rebuild_grid(game);
-  window.fear_win_if_empty(game, game && game.wa);
+  window.fear_win_if_empty(game, game && game.oa);
   return true;
 };
 
 window.fear_find_fruit = function fear_find_fruit(game, pos) {
-  const list = game && game.wa && game.wa.ka;
+  const list = game && game.oa && game.oa.ka;
   if (!list || !pos) return null;
   for (let i = 0; i < list.length; i++) {
     const f = list[i];
@@ -19474,7 +19540,7 @@ window.fear_find_fruit = function fear_find_fruit(game, pos) {
 };
 
 window.fear_reconcile_pairs = function fear_reconcile_pairs(game, trimExcess) {
-  const list = game && game.wa && game.wa.ka;
+  const list = game && game.oa && game.oa.ka;
   if (!list) return;
   const groups = new Map();
   for (let i = 0; i < list.length; i++) {
@@ -19517,7 +19583,7 @@ window.fear_reconcile_pairs = function fear_reconcile_pairs(game, trimExcess) {
 };
 
 window.fear_remove_fresh_pair = function fear_remove_fresh_pair(game, fruit) {
-  const list = game && game.wa && game.wa.ka;
+  const list = game && game.oa && game.oa.ka;
   if (!list || !fruit || window.fear_is_ghost(fruit)) return 0;
   window.fear_reconcile_pairs(game, true);
   // Already missing ghosts vs fruit: never despawn another ghost on this eat.
@@ -19563,19 +19629,19 @@ window.fear_before_native_fruit_eat =
       window.fear_direct_contact(game, fruit);
       // The native branch has already retained this object in `d`. Mark that
       // stale reference as poison so it cannot score, grow, or trigger refill.
-      fruit.Oka = true;
+      fruit.Bea = true;
       return Math.max(0, nativeIndex | 0);
     }
     window.fear_remove_fresh_pair(game, fruit);
-    const updated = game.wa && game.wa.ka
-      ? game.wa.ka.indexOf(fruit)
+    const updated = game.oa && game.oa.ka
+      ? game.oa.ka.indexOf(fruit)
       : -1;
     return updated >= 0 ? updated : nativeIndex;
   };
 
 window.fear_board_counts = function fear_board_counts(game) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!list) return { ghosts: 0, fresh: 0, list: null };
   window.fear_sync_fruit_types(g);
   let ghosts = 0;
@@ -19598,7 +19664,7 @@ window.fear_mark_new_as_ghosts = function fear_mark_new_as_ghosts(
     const fruit = list[i];
     if (!fruit) continue;
     fruit.__fearGhost = true;
-    fruit.Oka = false;
+    fruit.Bea = false;
     if (fruit.slotMode != null) delete fruit.slotMode;
     window.__fearSeenFruits.add(fruit);
     window.fear_sync_fruit_type(fruit);
@@ -19743,7 +19809,7 @@ window.fear_wave_ghost_fill = function fear_wave_ghost_fill(mgr, nativeTopUp) {
 /** Max sequenceNumber among edible (non-ghost) fruit; 0 if none. */
 window.fear_tally_max_fruit_index = function fear_tally_max_fruit_index(game) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!list) return 0;
   let max = 0;
   for (let i = 0; i < list.length; i++) {
@@ -19870,14 +19936,14 @@ window.fear_should_wave_ghost_fill = function fear_should_wave_ghost_fill(
 /** Edible fruit left — mirrors patched r7E poison/Fear branch (skips ghosts). */
 window.fear_edible_fruit_count = function fear_edible_fruit_count(game) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!list) return 0;
   let c = 0;
   for (let i = 0; i < list.length; i++) {
     const d = list[i];
     if (!d) continue;
-    if (d.Lh === false) continue;
-    if (d.Oka || (window.fear_is_ghost && window.fear_is_ghost(d))) continue;
+    if (d.Xg === false) continue;
+    if (d.Bea || (window.fear_is_ghost && window.fear_is_ghost(d))) continue;
     c++;
   }
   return c;
@@ -19887,7 +19953,7 @@ window.fear_edible_fruit_count = function fear_edible_fruit_count(game) {
 window.fear_stamp_ghost_tally_from_pairs =
   function fear_stamp_ghost_tally_from_pairs(game) {
     const g = game || window.__remixGame;
-    const list = g && g.wa && g.wa.ka;
+    const list = g && g.oa && g.oa.ka;
     if (!list) return;
     for (let i = 0; i < list.length; i++) {
       const ghost = list[i];
@@ -19923,8 +19989,8 @@ window.fear_find_free_pos = function fear_find_free_pos(mgr, except) {
           : null;
   const board =
     (mgr && mgr.oa) ||
-    (g && g.oa) ||
-    (g && g.wa && g.wa.oa) ||
+    (g && g.Yc) ||
+    (g && g.oa && g.oa.oa) ||
     null;
   if (typeof free === "function" && board) {
     for (let attempt = 0; attempt < 24; attempt++) {
@@ -19974,7 +20040,7 @@ window.fear_find_free_pos = function fear_find_free_pos(mgr, except) {
 
 window.fear_relocate_one_ghost = function fear_relocate_one_ghost(game, mgr) {
   const g = game || window.__remixGame;
-  const list = (mgr && mgr.ka) || (g && g.wa && g.wa.ka);
+  const list = (mgr && mgr.ka) || (g && g.oa && g.oa.ka);
   if (!list || !list.length) return false;
   const ghosts = [];
   for (let i = 0; i < list.length; i++) {
@@ -19982,7 +20048,7 @@ window.fear_relocate_one_ghost = function fear_relocate_one_ghost(game, mgr) {
   }
   if (!ghosts.length) return false;
   const ghost = ghosts[(Math.random() * ghosts.length) | 0];
-  const next = window.fear_find_free_pos(mgr || (g && g.wa), ghost);
+  const next = window.fear_find_free_pos(mgr || (g && g.oa), ghost);
   if (!next || !ghost.pos) return false;
   if (
     Math.round(+ghost.pos.x) === next.x &&
@@ -20049,7 +20115,7 @@ window.fear_native_ghost_top_up =
 window.fear_direct_contact = function fear_direct_contact(game, fruit) {
   if (!fruit) return false;
   const head = window.fear_head(game);
-  const snake = game && game.oa;
+  const snake = game && game.Yc;
   const facing = (snake && snake.direction) || window.head_dir || "RIGHT";
   const virtual = {
     x: Math.round(+head.x),
@@ -20069,13 +20135,13 @@ window.fear_direct_contact = function fear_direct_contact(game, fruit) {
   } else {
     window.fear_expire();
   }
-  window.fear_win_if_empty(game, game && game.wa);
+  window.fear_win_if_empty(game, game && game.oa);
   return true;
 };
 
 window.fear_tick_logic = function fear_tick_logic(game) {
   const g = game || window.__remixGame;
-  if (!g || !g.wa || !g.oa || g.nj) return;
+  if (!g || !g.oa || !g.Yc || g.uj) return;
   window.__remixGame = g;
   window.__fearRefreshedMove = false;
   const head = window.fear_head(g);
@@ -20120,13 +20186,13 @@ window.fear_tick_logic = function fear_tick_logic(game) {
 
   // Prevent the missing-arrow fallback from ever entering a ghost. During
   // Fear, direct entry into ordinary fruit behaves like its temporary arrow.
-  const facing = (g.oa && g.oa.direction) || window.head_dir || "RIGHT";
+  const facing = (g.Yc && g.Yc.direction) || window.head_dir || "RIGHT";
   const next = window.fear_step(head, facing, g);
   const target = window.fear_find_fruit(g, next);
   if (
     target &&
     (window.fear_is_ghost(target) ||
-      ((window.fearTurnsRemaining | 0) > 0 && !target.Oka))
+      ((window.fearTurnsRemaining | 0) > 0 && !target.Bea))
   ) {
     window.fear_direct_contact(g, target);
   }
@@ -20136,8 +20202,8 @@ window.fear_tick_logic = function fear_tick_logic(game) {
 };
 
 window.fear_draw_arrows = function fear_draw_arrows(board) {
-  const game = board.wb || window.__remixGame;
-  if (!game || game.nj) return;
+  const game = board.ub || window.__remixGame;
+  if (!game || game.uj) return;
   // Fruit may move or be spawned after the pre-move Fear tick. Reconcile once
   // when its rounded tile layout changes, before any arrow pixels are drawn.
   if (window.fear_layout_signature(game) !== window.__fearGridSignature) {
@@ -20151,8 +20217,9 @@ window.fear_draw_arrows = function fear_draw_arrows(board) {
   // Native q4E/r4E Arrow-mode geometry.
   const pixel = (function () {
     try {
-      return typeof $6 === "function" && board.settings
-        ? !!$6(board.settings)
+      // v14: v13's $6(settings) pixel check became settings.RM().
+      return board.settings && typeof board.settings.RM === "function"
+        ? !!board.settings.RM()
         : false;
     } catch (_e) {
       return false;
@@ -20248,7 +20315,7 @@ window.fear_after_respawn = function fear_after_respawn(mgr) {
             window.__fearTallyGhostFillScheduled = false;
             if (!window.isFearActive || !window.isFearActive()) return;
             const game = window.__remixGame;
-            const appleMgr = game && game.wa;
+            const appleMgr = game && game.oa;
             if (!appleMgr) return;
             window.__fearWaveGhostFill = true;
             const counts = window.fear_board_counts(game);
@@ -20319,56 +20386,57 @@ window.FearMod.alterSnakeCode = function (code) {
   // direction lookup, reverse-arrow crash, turn transition, and tile consume.
   fearReplace(
     "native Arrow collision exposure",
-    /S6E=function\(a,b\)\{a\.direction=b;a\.Qb=!0;a\.yb="NONE";a\.Ga="NONE";a\.Fb&&\(a\.kc=a\.direction\);a\.Fb=!1\}/,
-    'S6E=(window.__fearNativeArrowConsume=h7,window.__fearNativeTurn=function(a,b){a.direction=b;a.Qb=!0;a.yb="NONE";a.Ga="NONE";a.Fb&&(a.kc=a.direction);a.Fb=!1},window.__fearNativeArrowStep=function(a,b,c,d){var e=U3E(b,d);if(e==="NONE")return e;if(e===Z6(c.direction)){a&&typeof a.Oa==="function"&&a.Oa();return"CRASH"}S6E(c,e);h7(b,d,!0);return e},window.__fearNativeTurn)'
+    /PrF=function\(a,b\)\{a\.direction=b;a\.Ob=!0;a\.Lb="NONE";a\.Ia="NONE";a\.yb&&\(a\.Zb=a\.direction\);a\.yb=!1\}/,
+    'PrF=(window.__fearNativeArrowConsume=T7,window.__fearNativeTurn=function(a,b){a.direction=b;a.Ob=!0;a.Lb="NONE";a.Ia="NONE";a.yb&&(a.Zb=a.direction);a.yb=!1},window.__fearNativeArrowStep=function(a,b,c,d){var e=loF(b,d);if(e==="NONE")return e;if(e===K7(c.direction)){a&&typeof a.Ka==="function"&&a.Ka();return"CRASH"}PrF(c,e);T7(b,d,!0);return e},window.__fearNativeTurn)'
   );
 
   // Keep handles so post-respawn can top-up / relocate ghosts.
   fearReplace(
     "expose native e4E",
-    /,e4E=function\(a\)\{/,
-    ",e4E=window.__fearE4E=function(a){"
+    /,uoF=function\(a\)\{/,
+    ",uoF=window.__fearE4E=function(a){"
   );
-  fearReplace(
-    "expose native d4E",
-    /,d4E=function\(a,b,c\)\{/,
-    ",d4E=window.__fearFreePos=function(a,b,c){"
-  );
+  // v14 inlined v13's d4E(board,b,c){return board.Ga(b,c,void 0)} at every
+  // call site as board.Ba(b,c,void 0); there is no function left to patch,
+  // so expose an equivalent adapter directly.
+  window.__fearFreePos = function (a, b, c) {
+    return a.Ba(b, c, void 0);
+  };
   fearReplace(
     "expose native r7E",
-    /,r7E=function\(/,
-    ",r7E=window.__fearR7E=window.r7E=function("
+    /,nsF=function\(/,
+    ",nsF=window.__fearR7E=window.r7E=function("
   ) ||
     fearReplace(
       "expose native r7E (spaced)",
-      /,\s*r7E\s*=\s*function\s*\(/,
-      ",r7E=window.__fearR7E=window.r7E=function("
+      /,\s*nsF\s*=\s*function\s*\(/,
+      ",nsF=window.__fearR7E=window.r7E=function("
     );
   fearReplace(
     "expose native t7E",
-    /,t7E=function\(([^)]*)\)\{/,
-    ",t7E=window.__fearT7E=window.t7E=function($1){if(window.isFearActive&&window.isFearActive())window.__fearWaveGhostFill=!0;"
+    /,psF=function\(([^)]*)\)\{/,
+    ",psF=window.__fearT7E=window.t7E=function($1){if(window.isFearActive&&window.isFearActive())window.__fearWaveGhostFill=!0;"
   ) ||
     fearReplace(
       "expose native t7E (spaced)",
-      /,\s*t7E\s*=\s*function\s*\(([^)]*)\)\s*\{/,
-      ",t7E=window.__fearT7E=window.t7E=function($1){if(window.isFearActive&&window.isFearActive())window.__fearWaveGhostFill=!0;"
+      /,\s*psF\s*=\s*function\s*\(([^)]*)\)\s*\{/,
+      ",psF=window.__fearT7E=window.t7E=function($1){if(window.isFearActive&&window.isFearActive())window.__fearWaveGhostFill=!0;"
     );
 
   // Treat full Fear / Fear blender as native Poison for pair counts and refill.
   fearReplace(
     "e7 poison clone",
     /if\(!r&&b===1&&\(\(window\.isTempWallsActive&&window\.isTempWallsActive\(\)\)\|\|\(window\.tempWalls_has_any&&window\.tempWalls_has_any\(window\.__remixGame\)\)\)\)return!0;return r\}/,
-    "if(!r&&b===1&&((window.isTempWallsActive&&window.isTempWallsActive())||(window.tempWalls_has_any&&window.tempWalls_has_any(window.__remixGame))))return!0;if(!r&&b===10&&window.FEAR_MODE!=null){if(a.ub===window.FEAR_MODE||a.ub==='fear'||a.ob==='fear')return!0;if((a.ub===22||a.ub==='blender')&&a.rSa&&a.rSa.has(window.FEAR_MODE))return!0;if(a.Qa&&a.Lc&&(a.Lc.has(window.FEAR_MODE)||a.Lc.has('fear')))return!0;}return r}"
+    "if(!r&&b===1&&((window.isTempWallsActive&&window.isTempWallsActive())||(window.tempWalls_has_any&&window.tempWalls_has_any(window.__remixGame))))return!0;if(!r&&b===10&&window.FEAR_MODE!=null){if(a.yb===window.FEAR_MODE||a.yb==='fear'||a.wb==='fear')return!0;if((a.yb===22||a.yb==='blender')&&a.NSa&&a.NSa.has(window.FEAR_MODE))return!0;if(a.La&&a.jd&&(a.jd.has(window.FEAR_MODE)||a.jd.has('fear')))return!0;}return r}"
   );
 
   // Draw ghost art for Fear Oka only; normal Poison/custom poison stays intact.
   const poisonDraw =
-    /([a-zA-Z0-9_$])=([a-zA-Z0-9_$])\.Oka\?E3E\(this\.([a-zA-Z0-9_$]{1,8})\[([a-zA-Z0-9_$])\],\2\.([a-zA-Z0-9_$]{1,8})\)\.ka\.canvas:this\.\3\[\4\]\.uH\(\2\.\5\)/;
+    /([a-zA-Z0-9_$])=([a-zA-Z0-9_$])\.Bea\?WnF\(this\.([a-zA-Z0-9_$]{1,8})\[([a-zA-Z0-9_$])\],\2\.([a-zA-Z0-9_$]{1,8})\)\.ka\.canvas:this\.\3\[\4\]\.lJ\(\2\.\5\)/;
   if (poisonDraw.test(code)) {
     code = code.assertReplace(
       poisonDraw,
-      "$1=(window.fear_sync_fruit_type&&window.fear_sync_fruit_type($2),window.fear_is_ghost&&window.fear_is_ghost($2)?this.$3[$4].uH($2.$5):($2.Oka?E3E(this.$3[$4],$2.$5).ka.canvas:this.$3[$4].uH($2.$5)))"
+      "$1=(window.fear_sync_fruit_type&&window.fear_sync_fruit_type($2),window.fear_is_ghost&&window.fear_is_ghost($2)?this.$3[$4].lJ($2.$5):($2.Bea?WnF(this.$3[$4],$2.$5).ka.canvas:this.$3[$4].lJ($2.$5)))"
     );
   } else {
     console.error("FearMod: failed to find poison draw");
@@ -20384,49 +20452,49 @@ window.FearMod.alterSnakeCode = function (code) {
   // is applied. S6E then clears yb/Ga exactly like a real forced arrow turn.
   fearReplace(
     "Fear tick at native Arrow timing",
-    /if\(e7\(this\.settings,16\)\)\{var Mb=this\.oa;let fd=Mb\.ka\[0\];if\(!e7\(Mb\.settings,11\)\|\|T3E\(Mb\.Rb,fd\)\)\{var Kb=U3E\(Mb\.Rb,fd\);Kb!=="NONE"&&\(Kb!==Z6\(Mb\.direction\)&&S6E\(Mb,Kb\),h7\(Mb\.Rb,fd,!0\)\)\}\}/,
+    /if\(M7\(this\.settings,16\)\)\{var pc=this\.Yc;let sc=pc\.ka\[0\];if\(!M7\(pc\.settings,11\)\|\|koF\(pc\.Qb,sc\)\)\{var Lb=loF\(pc\.Qb,sc\);Lb!=="NONE"&&\(Lb!==K7\(pc\.direction\)&&PrF\(pc,Lb\),T7\(pc\.Qb,sc,!0\)\)\}\}/,
     '$&if(window.isFearActive&&window.isFearActive()){try{window.fear_tick_logic(this);}catch(_fr){console.error("FearMod: tick failed",_fr);}}'
   );
 
   fearReplace(
     "Fear paired fruit before native eat",
-    /if\(e\|\|f\)\{g=d\.Oka;/,
-    "if(e||f){if(window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(a))k=window.fear_before_native_fruit_eat(a,d,k);g=d.Oka;"
+    /if\(e\|\|f\)\{g=d\.Bea;/,
+    "if(e||f){if(window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(a))k=window.fear_before_native_fruit_eat(a,d,k);g=d.Bea;"
   );
 
   // Ghost mode removes the paired ghost just before this eat loop. Do not let
   // Poison's Oka-based helper remove a second, unrelated fruit afterward.
   fearReplace(
     "skip native poison pair removal for Fear",
-    /e7\(a\.settings,10\)&&i4E\(a\.wa,([a-zA-Z0-9_$]{1,6}),([a-zA-Z0-9_$]{1,6}),a\.Lc\.bind\(a\)\)&&\1--/,
-    "e7(a.settings,10)&&!(window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(a))&&i4E(a.wa,$1,$2,a.Lc.bind(a))&&$1--"
+    /M7\(a\.settings,10\)&&zoF\(a\.oa,([a-zA-Z0-9_$]{1,6}),([a-zA-Z0-9_$]{1,6}),a\.Cc\.bind\(a\)\)&&\1--/,
+    "M7(a.settings,10)&&!(window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(a))&&zoF(a.oa,$1,$2,a.Cc.bind(a))&&$1--"
   );
 
   fearReplace(
     "conditional Fear poison twin spawn",
-    /e7\(a\.settings,10\)&&!f((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&e4E\(a\)/,
-    "e7(a.settings,10)&&!f$1&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+    /M7\(a\.settings,10\)&&!f((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&uoF\(a\)/,
+    "M7(a.settings,10)&&!f$1&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,uoF):uoF(a))"
   );
 
   fearReplace(
     "conditional Fear poison top-up",
-    /b<a\.ka\.length\/2((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&e4E\(a\)/,
-    "b<a.ka.length/2$1&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+    /b<a\.ka\.length\/2((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&uoF\(a\)/,
+    "b<a.ka.length/2$1&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,uoF):uoF(a))"
   );
 
   // Tally empty-count (r7E) only skips Oka. Fear clears Oka on ghosts for atlas
   // draw, which made ghosts block the next tally wave like Bomb's length check.
   const r7EGhostSkip =
-    /if\s*\(\s*e7\s*\(\s*b\.settings\s*,\s*10\s*\)\s*\|\|\s*e7\s*\(\s*b\.settings\s*,\s*11\s*\)\s*\)\s*for\s*\(\s*(?:var|let|const)\s+d\s+of\s+b\.ka\s*\)\s*!d\.Oka\s*&&\s*d\.Lh\s*&&\s*c\+\+/;
+    /if\s*\(\s*M7\s*\(\s*b\.settings\s*,\s*10\s*\)\s*\|\|\s*M7\s*\(\s*b\.settings\s*,\s*11\s*\)\s*\)\s*for\s*\(\s*(?:var|let|const)\s+d\s+of\s+b\.ka\s*\)\s*!d\.Bea\s*&&\s*d\.Xg\s*&&\s*c\+\+/;
   const r7EGhostRepl =
-    "if(e7(b.settings,10)||e7(b.settings,11))for(var d of b.ka)!(d.Oka||window.fear_is_ghost&&window.fear_is_ghost(d))&&d.Lh&&c++";
+    "if(M7(b.settings,10)||M7(b.settings,11))for(var d of b.ka)!(d.Bea||window.fear_is_ghost&&window.fear_is_ghost(d))&&d.Xg&&c++";
   if (
     !fearReplace("r7E ignore Fear ghosts like poison", r7EGhostSkip, r7EGhostRepl)
   ) {
     // Compact fallback (no whitespace flexibility).
     fearReplace(
       "r7E ignore Fear ghosts like poison (compact)",
-      /if\(e7\(b\.settings,10\)\|\|e7\(b\.settings,11\)\)for\(var d of b\.ka\)!d\.Oka&&d\.Lh&&c\+\+/,
+      /if\(M7\(b\.settings,10\)\|\|M7\(b\.settings,11\)\)for\(var d of b\.ka\)!d\.Bea&&d\.Xg&&c\+\+/,
       r7EGhostRepl
     );
   }
@@ -20445,8 +20513,8 @@ window.FearMod.alterSnakeCode = function (code) {
 
   fearReplace(
     "deathscreen Fear icon",
-    /\(a\.settings\.ob===window\.TEMP_WALLS_MODE\)\?window\.TEMP_WALLS_ICON:/,
-    "(a.settings.ob===window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON:(a.settings.ob===window.FEAR_MODE)?window.FEAR_ICON:"
+    /\(a\.settings\.wb===window\.TEMP_WALLS_MODE\)\?window\.TEMP_WALLS_ICON:/,
+    "(a.settings.wb===window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON:(a.settings.wb===window.FEAR_MODE)?window.FEAR_ICON:"
   );
   fearReplace(
     "blender Fear icon",
@@ -20665,11 +20733,11 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     );
   }
   // Native sprite recolor (resets via C3E then tints). Used for eyes/mouth.
-  if (code.indexOf("window.__slotA7=a7") < 0) {
+  if (code.indexOf("window.__slotA7=N7") < 0) {
     smReplace(
       "slot capture a7 sprite recolor",
-      /a7=function\(a,b,c,d=-1\)\{/,
-      "a7=function(a,b,c,d=-1){window.__slotA7=a7;",
+      /N7=function\(a,b,c,d=-1\)\{/,
+      "N7=function(a,b,c,d=-1){window.__slotA7=N7;",
       true
     );
   }
@@ -20679,21 +20747,21 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot capture face atlas on construct",
-        /this\.Ga=new (\w+)\(this\.wb,this\.settings,this\.ka,this\.oa,\s*this\.(\w+)\);/,
-        "this.Ga=new $1(this.wb,this.settings,this.ka,this.oa,this.$2);window.__slotFaceRef=this.Ga;",
+        /this\.Ga=new (\w+)\(this\.ub,this\.settings,this\.ka,this\.oa,\s*this\.(\w+)\);/,
+        "this.Ga=new $1(this.ub,this.settings,this.ka,this.oa,this.$2);window.__slotFaceRef=this.Ga;",
         true
       )
     ) {
       smReplace(
         "slot capture face on rainbow tint",
-        /b=a\.Ga;var c=a\.wb\.oa\.Sc;/,
-        "b=a.Ga;window.__slotFaceRef=b;var c=a.wb.oa.Sc;",
+        /d=c\.Ga;var e=c\.ub\.Yc\.Hl;/,
+        "d=c.Ga;window.__slotFaceRef=d;var e=c.ub.Yc.Hl;",
         true
       );
       smReplace(
         "slot capture face on classic tint",
-        /b=a\.Ga,C3E\(b\.oa\),C3E\(b\.Aa\),C3E\(b\.Ba\),C3E\(b\.wa\);/,
-        "b=a.Ga,window.__slotFaceRef=b,C3E(b.oa),C3E(b.Aa),C3E(b.Ba),C3E(b.wa);",
+        /d=c\.Ga,VnF\(d\.oa\),VnF\(d\.Aa\),VnF\(d\.Ba\),VnF\(d\.wa\);/,
+        "d=c.Ga,window.__slotFaceRef=d,VnF(d.oa),VnF(d.Aa),VnF(d.Ba),VnF(d.wa);",
         true
       );
     }
@@ -20715,9 +20783,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     const g = window.__remixGame;
     const mode =
       g && g.settings
-        ? g.settings.ub != null
-          ? g.settings.ub
-          : g.settings.ob
+        ? g.settings.yb != null
+          ? g.settings.yb
+          : g.settings.wb
         : null;
     return mode === window.SLOT_MACHINE_MODE;
   };
@@ -20988,11 +21056,11 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.slot_mexico_mid_y = function slot_mexico_mid_y(game) {
     if (typeof window.mexico_mid_y === "function") {
       try {
-        return window.mexico_mid_y(game && game.Ca) | 0;
+        return window.mexico_mid_y(game && game.Tw) | 0;
       } catch (_e) {}
     }
     const g = game || window.__remixGame;
-    const walls = g && g.Ca && g.Ca.wa;
+    const walls = g && g.Tw && g.Tw.oa;
     const h = walls && walls.length ? walls.length : 0;
     return Math.floor((h | 0) / 2);
   };
@@ -21047,7 +21115,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   };
 
   window.assignSlotMode = function assignSlotMode(fruit, sharedMode) {
-    if (!fruit || fruit.Oka) return null;
+    if (!fruit || fruit.Bea) return null;
     if (fruit.isPiece) return null;
     // Fear ghosts are hazards — never badge them.
     if (
@@ -21104,11 +21172,11 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       try {
         window.slot_apply_shield(
           fruit,
-          window.__remixGame && window.__remixGame.wa
+          window.__remixGame && window.__remixGame.oa
         );
       } catch (_e) {}
     } else if (!fruit.__slotShield) {
-      fruit.nba = undefined;
+      fruit.h7 = undefined;
       fruit.__slotShield = false;
       fruit.__ultraKeepShield = false;
     }
@@ -21132,7 +21200,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       occ.add((f.pos.x | 0) + "," + (f.pos.y | 0));
     }
     try {
-      const body = g && g.oa && g.oa.ka;
+      const body = g && g.Yc && g.Yc.ka;
       if (body && body.length) {
         for (let i = 0; i < body.length; i++) {
           const seg = body[i];
@@ -21168,7 +21236,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     let mode = window.slot_draw_mode_excluding([5]) | 0;
     if ((mode | 0) === 5) mode = 1;
     const g = window.__remixGame;
-    const mgr = (g && g.wa) || null;
+    const mgr = (g && g.oa) || null;
     // Mexico badge portal pairs: neither twin may sit on the middle row.
     // Always pin them to opposite halves; if that fails and either is on mid,
     // re-roll away from Mexico (still never Twin).
@@ -21258,7 +21326,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         window.__bombFruitPickType ||
         window.__chessPickType ||
         window.__slotQ3E ||
-        (typeof Q3E === "function" ? Q3E : null);
+        (typeof hoF === "function" ? hoF : null);
       if (typeof pick === "function" && mgr) {
         for (let n = 0; n < 8; n++) {
           const t = pick(mgr) | 0;
@@ -21288,13 +21356,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     // pair cannot steal them (and force those fruits to change).
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
-      if (!f || f.Oka || f.isPiece || f.__slotPortal) continue;
+      if (!f || f.Bea || f.isPiece || f.__slotPortal) continue;
       if (f.type != null) used.add(f.type | 0);
     }
 
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
-      if (!f || f.Oka || f.isPiece || !f.__slotPortal) continue;
+      if (!f || f.Bea || f.isPiece || !f.__slotPortal) continue;
       const id = f.__slotPortalPairId;
       if (id == null || seenPairs[id]) continue;
       seenPairs[id] = true;
@@ -21333,7 +21401,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     // Non-portal: only fill missing types. Never retag fruit that already has one.
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
-      if (!f || f.Oka || f.isPiece) continue;
+      if (!f || f.Bea || f.isPiece) continue;
       if (f.__slotPortal) continue;
       if (f.type == null) {
         const type = window.slot_pick_unique_type(mgr, used);
@@ -21396,7 +21464,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (!list) return;
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
-      if (f && f.Oka && f.slotMode != null) delete f.slotMode;
+      if (f && f.Bea && f.slotMode != null) delete f.slotMode;
     }
   };
 
@@ -21424,7 +21492,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (!list) return;
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
-      if (!f || f.isPiece || f.Oka) continue;
+      if (!f || f.isPiece || f.Bea) continue;
       f.burgerTimer = null;
       f.burgerTimerMax = null;
       f.burgerGrey = 0;
@@ -21437,12 +21505,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     const list =
       (mgr && mgr.ka) ||
       (window.__remixGame &&
-        window.__remixGame.wa &&
-        window.__remixGame.wa.ka) ||
+        window.__remixGame.oa &&
+        window.__remixGame.oa.ka) ||
       [];
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
-      if (f && f.Oka && !f.isPiece && f.burgerTimer != null) return true;
+      if (f && f.Bea && !f.isPiece && f.burgerTimer != null) return true;
     }
     return false;
   };
@@ -21452,15 +21520,15 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (!window.isSlotMachineActive || !window.isSlotMachineActive()) return;
     if ((window.__slotActive | 0) === 25) return; // live Burger tick owns it
     const g = game || window.__remixGame;
-    if (!g || !g.wa || !g.wa.ka) return;
+    if (!g || !g.oa || !g.oa.ka) return;
     if (typeof window.burger_ended === "function" && window.burger_ended(g)) {
       return;
     }
-    const apples = g.wa.ka;
+    const apples = g.oa.ka;
     const toDespawn = [];
     for (let i = 0; i < apples.length; i++) {
       const a = apples[i];
-      if (!a || a.isPiece || !a.Oka) continue;
+      if (!a || a.isPiece || !a.Bea) continue;
       if (a.burgerTimer == null) continue;
       if (
         typeof window.burger_apple_timer_eligible === "function" &&
@@ -21493,10 +21561,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
 
   window.slot_has_walls = function slot_has_walls(game) {
     const g = game || window.__remixGame;
-    const walls = g && g.Ca;
-    if (!walls || !Array.isArray(walls.wa)) return false;
-    for (let y = 0; y < walls.wa.length; y++) {
-      const row = walls.wa[y];
+    const walls = g && g.Tw;
+    if (!walls || !Array.isArray(walls.oa)) return false;
+    for (let y = 0; y < walls.oa.length; y++) {
+      const row = walls.oa[y];
       if (!row) continue;
       for (let x = 0; x < row.length; x++) {
         if ((row[x] | 0) > 0) return true;
@@ -21508,16 +21576,16 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   // Native y4E: cell is blocked unless wa value is 0 or 3.
   window.slot_pos_in_wall = function slot_pos_in_wall(game, x, y) {
     const g = game || window.__remixGame;
-    const wm = g && g.Ca;
-    if (!wm || !Array.isArray(wm.wa) || !wm.wa.length) return false;
+    const wm = g && g.Tw;
+    if (!wm || !Array.isArray(wm.oa) || !wm.oa.length) return false;
     const xi = x | 0;
     const yi = y | 0;
     try {
-      if (typeof y4E === "function") {
-        return !!y4E(wm, { x: xi, y: yi });
+      if (typeof tpF === "function") {
+        return !!tpF({ wa: wm.oa }, { x: xi, y: yi });
       }
     } catch (_y) {}
-    const row = wm.wa[yi];
+    const row = wm.oa[yi];
     if (!row || xi < 0 || xi >= row.length) return false;
     const v = row[xi] | 0;
     return v !== 0 && v !== 3;
@@ -21526,7 +21594,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.slot_add_wall_keys = function slot_add_wall_keys(game, keys) {
     const set = keys || new Set();
     const g = game || window.__remixGame;
-    const walls = g && g.Ca && g.Ca.wa;
+    const walls = g && g.Tw && g.Tw.oa;
     if (!walls || !walls.length) return set;
     for (let y = 0; y < walls.length; y++) {
       const row = walls[y];
@@ -21542,7 +21610,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.slot_add_bridge_keys = function slot_add_bridge_keys(game, keys) {
     const set = keys || new Set();
     const g = game || window.__remixGame;
-    const grid = g && g.Ga && g.Ga.oa;
+    const grid = g && g.wa && g.wa.oa;
     if (!grid || !grid.length) return set;
     for (let y = 0; y < grid.length; y++) {
       const row = grid[y];
@@ -21554,11 +21622,11 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     return set;
   };
 
-  // Statue cells live on game.Ya.oa (Map). Leftovers must keep e7(13) so apple
+  // Statue cells live on game.Ra.oa (Map). Leftovers must keep e7(13) so apple
   // eats still crack/crumble them; new body-plants stay gated by disableStatue.
   window.slot_has_statues = function slot_has_statues(game) {
     const g = game || window.__remixGame;
-    const ya = g && g.Ya;
+    const ya = g && g.Ra;
     if (!ya || !ya.oa) return false;
     try {
       if (typeof ya.oa.size === "number") return ya.oa.size > 0;
@@ -21588,7 +21656,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.slot_has_oka = function slot_has_oka(mgr) {
     const list = (mgr && mgr.ka) || [];
     for (let i = 0; i < list.length; i++) {
-      if (list[i] && list[i].Oka) return true;
+      if (list[i] && list[i].Bea) return true;
     }
     return false;
   };
@@ -21636,12 +21704,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     delete el.ChessColor;
     if (!window.slot_is_chess_piece_type(el.type)) return;
     const game = window.__remixGame;
-    const appleMgr = mgr || (game && game.wa);
+    const appleMgr = mgr || (game && game.oa);
     try {
       const pick =
         window.__bombFruitPickType ||
         window.__chessPickType ||
-        (typeof Q3E === "function" ? Q3E : null);
+        (typeof hoF === "function" ? hoF : null);
       if (typeof pick === "function" && appleMgr) {
         for (let n = 0; n < 12; n++) {
           const t = pick(appleMgr);
@@ -21663,12 +21731,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       (mgr && mgr.ka) ||
       window.appleArray ||
       (window.__remixGame &&
-        window.__remixGame.wa &&
-        window.__remixGame.wa.ka) ||
+        window.__remixGame.oa &&
+        window.__remixGame.oa.ka) ||
       [];
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
-      if (!f || f.Oka) continue;
+      if (!f || f.Bea) continue;
       if (f.isPiece) {
         // True pieces never carry fruit-only Slot state / badges.
         delete f.slotMode;
@@ -21708,7 +21776,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.slot_has_mines = function slot_has_mines(game) {
     const g = game || window.__remixGame;
     try {
-      const set = g && g.Ma && g.Ma.oa;
+      const set = g && g.Ga && g.Ga.oa;
       if (set && typeof set.size === "number") return set.size > 0;
       if (set && typeof set[Symbol.iterator] === "function") {
         for (const _ of set) return true;
@@ -21723,7 +21791,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
 
   window.slot_pos_on_bridge = function slot_pos_on_bridge(game, x, y) {
     const g = game || window.__remixGame;
-    const grid = g && g.Ga && g.Ga.oa;
+    const grid = g && g.wa && g.wa.oa;
     if (!grid || !grid.length) return false;
     const xi = x | 0;
     const yi = y | 0;
@@ -21803,32 +21871,32 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       if (Number.isFinite(x)) f.pos.x = Math.round(x);
       if (Number.isFinite(y)) f.pos.y = Math.round(y);
       try {
-        if (f.He) {
-          f.He.x = 0;
-          f.He.y = 0;
+        if (f.Ce) {
+          f.Ce.x = 0;
+          f.Ce.y = 0;
         } else {
-          f.He = window.slot_vec ? window.slot_vec(0, 0) : { x: 0, y: 0 };
+          f.Ce = window.slot_vec ? window.slot_vec(0, 0) : { x: 0, y: 0 };
         }
       } catch (_h) {
         try {
-          f.He = window.slot_vec ? window.slot_vec(0, 0) : { x: 0, y: 0 };
+          f.Ce = window.slot_vec ? window.slot_vec(0, 0) : { x: 0, y: 0 };
         } catch (_h2) {}
       }
       try {
-        if (f.CAb) {
-          f.CAb.x = 0;
-          f.CAb.y = 0;
+        if (f.qXa) {
+          f.qXa.x = 0;
+          f.qXa.y = 0;
         } else {
-          f.CAb = window.slot_vec ? window.slot_vec(0, 0) : { x: 0, y: 0 };
+          f.qXa = window.slot_vec ? window.slot_vec(0, 0) : { x: 0, y: 0 };
         }
       } catch (_c) {}
       try {
-        if (f.iL) {
-          f.iL.x = 0;
-          f.iL.y = 0;
+        if (f.YG) {
+          f.YG.x = 0;
+          f.YG.y = 0;
         } else {
           // Zeroed after leave; next winged/magnet enter re-enables via ensure.
-          f.iL = window.slot_vec ? window.slot_vec(0, 0) : { x: 0, y: 0 };
+          f.YG = window.slot_vec ? window.slot_vec(0, 0) : { x: 0, y: 0 };
         }
       } catch (_i) {}
     }
@@ -21845,7 +21913,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (!list) return;
     for (let i = list.length - 1; i >= 0; i--) {
       const f = list[i];
-      if (f && f.Oka && f.__slotPoison) {
+      if (f && f.Bea && f.__slotPoison) {
         list.splice(i, 1);
       }
     }
@@ -21863,20 +21931,20 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.__slotYyColorFieldSkip = {
     // Board theme (was wrongly used before).
     oa: 1,
-    Mb: 1,
     Qb: 1,
-    qc: 1,
+    Rb: 1,
+    Cc: 1,
     // Speed / size / count / mode / graphics.
     ka: 1,
     Ca: 1,
-    Sa: 1,
+    Ua: 1,
     Aa: 1,
-    ub: 1,
-    ob: 1,
+    yb: 1,
+    wb: 1,
     Ba: 1,
-    Ma: 1,
-    Fb: 1,
-    kc: 1,
+    Qa: 1,
+    Nb: 1,
+    xc: 1,
   };
 
   window.slot_yy_color_field = function slot_yy_color_field(settings) {
@@ -21886,13 +21954,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       window.__slotYyColorField = "wa";
       return "wa";
     }
-    if (typeof settings.Ja === "number") {
-      window.__slotYyColorField = "Ja";
-      return "Ja";
+    if (typeof settings.Ia === "number") {
+      window.__slotYyColorField = "Ia";
+      return "Ia";
     }
-    if (typeof settings.Jb === "number") {
-      window.__slotYyColorField = "Jb";
-      return "Jb";
+    if (typeof settings.Ob === "number") {
+      window.__slotYyColorField = "Ob";
+      return "Ob";
     }
     return null;
   };
@@ -21904,8 +21972,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         : 0;
     }
     if (typeof settings.wa === "number") return settings.wa | 0;
-    if (typeof settings.Ja === "number") return settings.Ja | 0;
-    if (typeof settings.Jb === "number") return settings.Jb | 0;
+    if (typeof settings.Ia === "number") return settings.Ia | 0;
+    if (typeof settings.Ob === "number") return settings.Ob | 0;
     return window.__slotYyColorIndex != null
       ? window.__slotYyColorIndex | 0
       : 0;
@@ -22001,9 +22069,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (s) {
       try {
         if (typeof s.wa === "number") s.wa = idx;
-        if (typeof s.Ja === "number") s.Ja = idx;
-        if (typeof s.Jb === "number") s.Jb = idx;
-        if (typeof s.kc === "number") s.kc = idx;
+        if (typeof s.Ia === "number") s.Ia = idx;
+        if (typeof s.Ob === "number") s.Ob = idx;
+        if (typeof s.xc === "number") s.xc = idx;
       } catch (_e) {}
     }
 
@@ -22022,7 +22090,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   };
 
   // True face atlas (P5E): blink/eat/die/tongue are b7 sprites with .render.
-  // game.Ga is bridges — must never be treated as the face.
+  // game.wa is bridges — must never be treated as the face.
   window.slot_yy_is_face_atlas = function slot_yy_is_face_atlas(face) {
     if (!face || typeof face !== "object") return false;
     const blink = face.oa;
@@ -22064,18 +22132,18 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         if (face.Ga && typeof face.Ga.render === "function") {
           a7(face.Ga, "#5282F2", primary);
         }
-        if (face.Ma && typeof face.Ma.render === "function") {
-          a7(face.Ma, "#5282F2", primary);
+        if (face.La && typeof face.La.render === "function") {
+          a7(face.La, "#5282F2", primary);
         }
         if (face.Ka && typeof face.Ka.render === "function") {
           a7(face.Ka, "#5282F2", primary);
         }
-        if (typeof _ !== "undefined" && _.AKd && _.HG && _.yKd) {
-          const hue = _.AKd(primary);
-          const tongue = _.AKd("#C73104");
+        if (typeof _ !== "undefined" && _.RJ && _.PJ && _.iSe) {
+          const hue = _.RJ(primary);
+          const tongue = _.RJ("#C73104");
           tongue[0] = (hue[0] + 180) % 360;
-          const tongueHex = _.HG(
-            _.yKd(tongue[0], tongue[1], tongue[2])
+          const tongueHex = _.PJ(
+            _.iSe(tongue[0], tongue[1], tongue[2])
           );
           if (face.wa) a7(face.wa, "#C73104", tongueHex);
           if (face.Oa && typeof face.Oa.render === "function") {
@@ -22108,12 +22176,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     const op = prevPrimary ? (prevPrimary + "").toUpperCase() : null;
     const os = prevSecondary ? (prevSecondary + "").toUpperCase() : null;
 
-    const snake = g.oa;
+    const snake = g.Yc;
     if (snake) {
       try {
         // Canonical gradient slots used by the renderer.
-        if (typeof snake.Sc === "string") snake.Sc = primary;
-        if (typeof snake.Yc === "string") snake.Yc = shade;
+        if (typeof snake.Hl === "string") snake.Hl = primary;
+        if (typeof snake.kd === "string") snake.kd = shade;
       } catch (_sc) {}
 
       // Remap any other cached hex that still holds the previous gradient.
@@ -22220,7 +22288,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (!list) return;
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
-      if (!f || f.Oka) continue;
+      if (!f || f.Bea) continue;
       if (f.isPiece) {
         window.slot_yy_flip_chess_piece(f);
         continue;
@@ -22308,7 +22376,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           window.slot_mexico_relocate_pair_halves(
             f,
             twin,
-            window.__remixGame && window.__remixGame.wa
+            window.__remixGame && window.__remixGame.oa
           );
         if (
           !moved &&
@@ -22339,7 +22407,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (!atMax) {
       window.cat_lives = Math.min(max, before + 1);
     }
-    const sh = (g && g.Sh) | 0;
+    const sh = (g && g.Bi) | 0;
     const grace = Math.ceil((sh + (window.CAT_GRACE_EXTRA | 3)) / 2);
     window.cat_peaceful_ticks = Math.max(
       window.cat_peaceful_ticks | 0,
@@ -22366,10 +22434,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     try {
       if (window.head_pos && window.head_pos[0] && window.head_pos[0].y != null) {
         hy = window.head_pos[0].y | 0;
-      } else if (g && g.oa && g.oa.ka && g.oa.ka.y != null) {
-        hy = g.oa.ka.y | 0;
-      } else if (g && g.oa && g.oa.x && g.oa.x.y != null) {
-        hy = g.oa.x.y | 0;
+      } else if (g && g.Yc && g.Yc.ka && g.Yc.ka.y != null) {
+        hy = g.Yc.ka.y | 0;
+      } else if (g && g.Yc && g.Yc.x && g.Yc.x.y != null) {
+        hy = g.Yc.x.y | 0;
       }
     } catch (_e) {}
     if (hy == null) return "top";
@@ -22418,7 +22486,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     try {
       let w = 0;
       let h = 0;
-      const walls = g && g.Ca && g.Ca.wa;
+      const walls = g && g.Tw && g.Tw.oa;
       if (walls && walls.length) {
         h = walls.length;
         w = walls[0] ? walls[0].length : 0;
@@ -22441,7 +22509,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     game
   ) {
     const g = game || window.__remixGame;
-    const mgr = g && g.wa;
+    const mgr = g && g.oa;
     if (!mgr || !mgr.ka) return false;
     const occ = new Set();
     for (let i = 0; i < mgr.ka.length; i++) {
@@ -22451,7 +22519,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     }
     // Seed snake body so half search treats those tiles as occupied.
     try {
-      const body = g && g.oa && g.oa.ka;
+      const body = g && g.Yc && g.Yc.ka;
       if (body && body.length) {
         for (let i = 0; i < body.length; i++) {
           const seg = body[i];
@@ -22522,7 +22590,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     ) {
       return true;
     }
-    const mgr = g && g.wa;
+    const mgr = g && g.oa;
     const list = mgr && mgr.ka;
     if (list) {
       for (let i = 0; i < list.length; i++) {
@@ -22545,10 +22613,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   ) {
     const g = game || window.__remixGame;
     if (!g || window.__slotMexicoMidUp) return false;
-    const walls = g.Ca;
-    if (!walls || !Array.isArray(walls.wa) || !walls.wa.length) return false;
-    const h = walls.wa.length;
-    const w = walls.wa[0] ? walls.wa[0].length : 0;
+    const walls = g.Tw;
+    if (!walls || !Array.isArray(walls.oa) || !walls.oa.length) return false;
+    const h = walls.oa.length;
+    const w = walls.oa[0] ? walls.oa[0].length : 0;
     if (!w) return false;
     const mid = Math.floor(h / 2);
     const serial =
@@ -22566,15 +22634,15 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           };
     let planted = 0;
     for (let x = 0; x < w; x++) {
-      if (walls.wa[mid] && (walls.wa[mid][x] | 0) > 0) continue;
+      if (walls.oa[mid] && (walls.oa[mid][x] | 0) > 0) continue;
       if (window.slot_mexico_cell_blocked_for_mid(g, x, mid)) continue;
       const pos = makePos(x, mid);
-      const obj = { pos: pos, wm: false, m0: false, Lh: true };
+      const obj = { pos: pos, Rm: false, e9: false, Xg: true };
       try {
-        if (walls.Aa && typeof walls.Aa.set === "function") {
-          walls.Aa.set(serial(pos), obj);
+        if (walls.wa && typeof walls.wa.set === "function") {
+          walls.wa.set(serial(pos), obj);
         }
-        if (walls.wa[mid]) walls.wa[mid][x]++;
+        if (walls.oa[mid]) walls.oa[mid][x]++;
         planted++;
         try {
           window.slot_clear_arrow_at && window.slot_clear_arrow_at(g, x, mid);
@@ -22588,14 +22656,14 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.slot_mexico_clear_mid = function slot_mexico_clear_mid(game) {
     const g = game || window.__remixGame;
     if (!g) return;
-    const walls = g.Ca;
-    if (!walls || !Array.isArray(walls.wa) || !walls.wa.length) {
+    const walls = g.Tw;
+    if (!walls || !Array.isArray(walls.oa) || !walls.oa.length) {
       window.__slotMexicoMidUp = false;
       window.__slotMexicoStartSide = null;
       return;
     }
-    const h = walls.wa.length;
-    const w = walls.wa[0] ? walls.wa[0].length : 0;
+    const h = walls.oa.length;
+    const w = walls.oa[0] ? walls.oa[0].length : 0;
     const mid = Math.floor(h / 2);
     const serial =
       typeof window.mexico_serial_coord === "function"
@@ -22611,21 +22679,21 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
             return { x: x, y: y };
           };
     for (let x = 0; x < w; x++) {
-      if (!walls.wa[mid] || (walls.wa[mid][x] | 0) <= 0) continue;
+      if (!walls.oa[mid] || (walls.oa[mid][x] | 0) <= 0) continue;
       const pos = makePos(x, mid);
       try {
-        if (walls.Aa && typeof walls.Aa.delete === "function") {
-          walls.Aa.delete(serial(pos));
+        if (walls.wa && typeof walls.wa.delete === "function") {
+          walls.wa.delete(serial(pos));
         }
       } catch (_e) {}
       // Animate removal when possible (Lh / decrement).
       try {
-        if (walls.Aa && typeof walls.Aa.get === "function") {
-          const left = walls.Aa.get(serial(pos));
-          if (left) left.Lh = true;
+        if (walls.wa && typeof walls.wa.get === "function") {
+          const left = walls.wa.get(serial(pos));
+          if (left) left.Xg = true;
         }
       } catch (_e2) {}
-      walls.wa[mid][x] = 0;
+      walls.oa[mid][x] = 0;
     }
     window.__slotMexicoMidUp = false;
     window.__slotMexicoStartSide = null;
@@ -22633,7 +22701,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
 
   window.slot_mexico_on_eat = function slot_mexico_on_eat(game) {
     const g = game || window.__remixGame;
-    if (!g || !g.wa) return false;
+    if (!g || !g.oa) return false;
     window.__slotMexicoStartSide = window.slot_mexico_head_side(g);
     const midWasUp = !!window.__slotMexicoMidUp;
     const pairOk = window.slot_mexico_plant_portal_pair(g);
@@ -22647,13 +22715,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (!midWasUp) {
       // leave mid alone (still down)
     }
-    const pos = window.slot_free_pos(g.wa);
+    const pos = window.slot_free_pos(g.oa);
     if (pos) {
-      const fruit = window.slot_make_apple(g.wa, pos);
+      const fruit = window.slot_make_apple(g.oa, pos);
       window.assignSlotMode(fruit);
-      g.wa.ka.push(fruit);
-      window.slot_ensure_unique_fruit_types(g.wa);
-      window.appleArray = g.wa.ka;
+      g.oa.ka.push(fruit);
+      window.slot_ensure_unique_fruit_types(g.oa);
+      window.appleArray = g.oa.ka;
       return true;
     }
     return false;
@@ -22679,14 +22747,14 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     }
 
     // Leave previous gimmick.
-    if ((prev === 6 || prev === 18) && g && g.wa) {
+    if ((prev === 6 || prev === 18) && g && g.oa) {
       try {
-        window.slot_snap_fruit_tiles(g.wa);
+        window.slot_snap_fruit_tiles(g.oa);
       } catch (_e) {}
     }
-    if (prev === 10 && g && g.wa) {
+    if (prev === 10 && g && g.oa) {
       try {
-        window.slot_clear_slot_poisons(g.wa);
+        window.slot_clear_slot_poisons(g.oa);
       } catch (_e) {}
     }
     // Arrow (16) tiles stay as leftovers — do not wipe Ka directions on leave.
@@ -22702,9 +22770,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       } catch (_e) {}
     }
     // Leaving Shield: keep nba on fruit, marked so Ultra/Chess won't strip them.
-    if (prev === 15 && g && g.wa) {
+    if (prev === 15 && g && g.oa) {
       try {
-        window.slot_mark_existing_shields && window.slot_mark_existing_shields(g.wa);
+        window.slot_mark_existing_shields && window.slot_mark_existing_shields(g.oa);
       } catch (_e) {}
     }
     // Twin (5): reverse only on Twin-badge eats. Drop leftover e7(5) so later
@@ -22713,12 +22781,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (prev === 5) {
       window.__slotTwinLive = false;
       try {
-        const snake = g && g.oa;
+        const snake = g && g.Yc;
         if (snake) {
           snake.Oa = false;
-          if (snake.Ga && snake.Ga !== "NONE") {
-            snake.direction = snake.Ga;
-            snake.Ga = "NONE";
+          if (snake.Ia && snake.Ia !== "NONE") {
+            snake.direction = snake.Ia;
+            snake.Ia = "NONE";
           }
         }
       } catch (_t) {}
@@ -22751,31 +22819,31 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     // Burger roll: strip piece timers, then arm every fresh fruit (same as
     // Burger mode reset). Without this, null timers become (null|0)===0 and
     // burger_tick expires the whole board into poison on the first tick.
-    if (next === 25 && g && g.wa) {
+    if (next === 25 && g && g.oa) {
       try {
         window.slot_strip_burger_from_pieces &&
-          window.slot_strip_burger_from_pieces(g.wa);
+          window.slot_strip_burger_from_pieces(g.oa);
       } catch (_bg) {}
       try {
         window.burger_fruits_eaten = 0;
         if (typeof window.burger_assign_timers_all === "function") {
-          window.burger_assign_timers_all(g.wa.ka, g);
+          window.burger_assign_timers_all(g.oa.ka, g);
         }
       } catch (_ba) {}
     }
     // Leaving Burger: freeze fresh-fruit greying, keep poison countdowns.
-    if (prev === 25 && g && g.wa) {
+    if (prev === 25 && g && g.oa) {
       try {
         window.slot_freeze_burger_fresh_timers &&
-          window.slot_freeze_burger_fresh_timers(g.wa);
+          window.slot_freeze_burger_fresh_timers(g.oa);
       } catch (_bf) {}
     }
 
     // Winged / Magnet: every fruit needs He/iL/CAb before m4E.update runs.
-    if ((next === 6 || next === 18) && g && g.wa) {
+    if ((next === 6 || next === 18) && g && g.oa) {
       try {
         window.slot_ensure_board_motion &&
-          window.slot_ensure_board_motion(g.wa, g);
+          window.slot_ensure_board_motion(g.oa, g);
       } catch (_m) {}
     }
 
@@ -22798,7 +22866,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   // this eat only, then clear so later fruits don't keep reversing.
   window.slot_prep_twin_eat = function slot_prep_twin_eat(game, fruit) {
     if (!window.isSlotMachineActive || !window.isSlotMachineActive()) return;
-    if (!fruit || fruit.Oka) return;
+    if (!fruit || fruit.Bea) return;
     if ((fruit.slotMode | 0) !== 5) return;
     window.__slotTwinLive = true;
   };
@@ -22823,8 +22891,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     const list =
       (mgr && mgr.ka) ||
       (window.__remixGame &&
-        window.__remixGame.wa &&
-        window.__remixGame.wa.ka) ||
+        window.__remixGame.oa &&
+        window.__remixGame.oa.ka) ||
       null;
     if (list) {
       for (let i = 0; i < list.length; i++) {
@@ -22896,7 +22964,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     const start = Math.max(0, fromIndex | 0);
     for (let i = start; i < mgr.ka.length; i++) {
       const f = mgr.ka[i];
-      if (!f || f.Oka || f.isPiece) continue;
+      if (!f || f.Bea || f.isPiece) continue;
       f.__slotBombPlant = true;
       if (typeof window.bombFruit_init_apple === "function") {
         window.bombFruit_init_apple(f);
@@ -22938,10 +23006,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.slot_arrow_host = function slot_arrow_host(game) {
     const g = game || window.__remixGame;
     if (!g) return null;
-    if (g.Ka && Array.isArray(g.Ka.ka)) return g.Ka;
-    if (g.Rb && Array.isArray(g.Rb.ka) && g.Rb.ka[0] && g.Rb.ka[0][0] &&
-        "direction" in g.Rb.ka[0][0]) {
-      return g.Rb;
+    if (g.Ba && Array.isArray(g.Ba.ka)) return g.Ba;
+    if (g.Lb && Array.isArray(g.Lb.ka) && g.Lb.ka[0] && g.Lb.ka[0][0] &&
+        "direction" in g.Lb.ka[0][0]) {
+      return g.Lb;
     }
     return null;
   };
@@ -22984,7 +23052,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         const cell = row[x];
         if (!cell) continue;
         cell.direction = "NONE";
-        cell.wm = false;
+        cell.Rm = false;
       }
     }
     return true;
@@ -23000,7 +23068,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     const cell = row && row[xi];
     if (!cell || !cell.direction || cell.direction === "NONE") return false;
     cell.direction = "NONE";
-    cell.wm = false;
+    cell.Rm = false;
     return true;
   };
 
@@ -23028,7 +23096,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       clearAt(pos.x, pos.y);
     };
 
-    const list = (mgr && mgr.ka) || (g.wa && g.wa.ka);
+    const list = (mgr && mgr.ka) || (g.oa && g.oa.ka);
     if (list) {
       for (let i = 0; i < list.length; i++) {
         const f = list[i];
@@ -23037,41 +23105,41 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     }
 
     try {
-      const keys = g.Ba && g.Ba.keys;
+      const keys = g.uL && g.uL.keys;
       if (keys && keys.length) {
         for (let i = 0; i < keys.length; i++) {
           const k = keys[i];
           if (!k) continue;
           if (k.pos) clearPos(k.pos);
-          else if (k.r7a) clearPos(k.r7a);
+          else if (k.q7a) clearPos(k.q7a);
           else if (k.x != null && k.y != null) clearAt(k.x, k.y);
         }
       }
     } catch (_k) {}
 
     try {
-      const aa = g.Aa;
-      if (aa && aa.oa) {
-        for (const box of aa.oa) {
+      const aa = g.Oy;
+      if (aa && aa.WJ) {
+        for (const box of aa.WJ) {
           if (box && box.pos) clearPos(box.pos);
         }
       }
-      if (aa && aa.d_) {
-        for (const goal of aa.d_) {
+      if (aa && aa.targets) {
+        for (const goal of aa.targets) {
           if (goal && goal.pos) clearPos(goal.pos);
         }
       }
     } catch (_s) {}
 
     try {
-      const walls = g.Ca;
-      if (walls && walls.Aa && typeof walls.Aa.values === "function") {
-        for (const wall of walls.Aa.values()) {
+      const walls = g.Tw;
+      if (walls && walls.wa && typeof walls.wa.values === "function") {
+        for (const wall of walls.wa.values()) {
           if (wall && wall.pos) clearPos(wall.pos);
         }
-      } else if (walls && Array.isArray(walls.wa)) {
-        for (let y = 0; y < walls.wa.length; y++) {
-          const row = walls.wa[y];
+      } else if (walls && Array.isArray(walls.oa)) {
+        for (let y = 0; y < walls.oa.length; y++) {
+          const row = walls.oa[y];
           if (!row) continue;
           for (let x = 0; x < row.length; x++) {
             if ((row[x] | 0) > 0) clearAt(x, y);
@@ -23081,7 +23149,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     } catch (_w) {}
 
     try {
-      const mines = g.Ma && g.Ma.oa;
+      const mines = g.Ga && g.Ga.oa;
       if (mines) {
         for (const mine of mines) {
           if (!mine) continue;
@@ -23092,7 +23160,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     } catch (_m) {}
 
     try {
-      const statues = g.Ya && g.Ya.oa;
+      const statues = g.Ra && g.Ra.oa;
       if (statues && typeof statues.values === "function") {
         for (const st of statues.values()) {
           if (st && st.pos) clearPos(st.pos);
@@ -23106,9 +23174,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     } catch (_st) {}
 
     try {
-      const qa = g.Qa;
+      const qa = g.Ca;
       const gateLists = [];
-      if (qa && qa.pfa) gateLists.push(qa.pfa);
+      if (qa && qa.gga) gateLists.push(qa.gga);
       if (qa && qa.Yfa) gateLists.push(qa.Yfa);
       for (let gi = 0; gi < gateLists.length; gi++) {
         const gl = gateLists[gi];
@@ -23122,7 +23190,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     } catch (_g) {}
 
     try {
-      const grid = g.Ga && g.Ga.oa;
+      const grid = g.wa && g.wa.oa;
       if (grid && grid.length) {
         for (let y = 0; y < grid.length; y++) {
           const row = grid[y];
@@ -23143,20 +23211,20 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     window.slot_clear_arrows_under_spawns(mgr, game);
   };
 
-  // Hotdog (17) sidewalls live on the wall manager (Ca.Aa entries with .ty).
+  // Hotdog (17) sidewalls live on the wall manager (Ca.Aa entries with .wv).
   // They exist only while Hotdog is the active roll — clear on leave.
   window.slot_hotdog_wall_host = function slot_hotdog_wall_host(game) {
     const g = game || window.__remixGame;
-    return (g && g.Ca) || null;
+    return (g && g.Tw) || null;
   };
 
   window.slot_count_hotdog_walls = function slot_count_hotdog_walls(game) {
     const wm = window.slot_hotdog_wall_host(game);
-    if (!wm || !wm.Aa) return 0;
+    if (!wm || !wm.wa) return 0;
     let n = 0;
     try {
-      for (const wall of wm.Aa.values()) {
-        if (wall && wall.ty != null) n++;
+      for (const wall of wm.wa.values()) {
+        if (wall && wall.wv != null) n++;
       }
     } catch (_e) {}
     return n;
@@ -23168,14 +23236,14 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
 
   window.slot_clear_hotdog_walls = function slot_clear_hotdog_walls(game) {
     const wm = window.slot_hotdog_wall_host(game);
-    if (!wm || !wm.Aa) return false;
+    if (!wm || !wm.wa) return false;
     const remove =
       window.__slotK6E ||
-      (typeof k6E === "function" ? k6E : null);
+      (typeof drF === "function" ? drF : null);
     const doomed = [];
     try {
-      for (const wall of wm.Aa.values()) {
-        if (wall && wall.ty != null && wall.pos) doomed.push(wall.pos);
+      for (const wall of wm.wa.values()) {
+        if (wall && wall.wv != null && wall.pos) doomed.push(wall.pos);
       }
     } catch (_e) {
       return false;
@@ -23187,12 +23255,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           remove(wm, pos);
         } else {
           const key =
-            typeof Y6 === "function"
-              ? Y6(pos)
+            typeof J7 === "function"
+              ? J7(pos)
               : ((pos.x | 0) << 16) | (pos.y | 0);
-          wm.Aa.delete(key);
-          if (wm.wa && wm.wa[pos.y] && wm.wa[pos.y][pos.x] != null) {
-            wm.wa[pos.y][pos.x] = Math.max(0, (wm.wa[pos.y][pos.x] | 0) - 1);
+          wm.wa.delete(key);
+          if (wm.oa && wm.oa[pos.y] && wm.oa[pos.y][pos.x] != null) {
+            wm.oa[pos.y][pos.x] = Math.max(0, (wm.oa[pos.y][pos.x] | 0) - 1);
           }
         }
       } catch (_e2) {}
@@ -23206,10 +23274,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (window.isBombFruitActive && window.isBombFruitActive()) return;
     if (!window.slot_has_armed_bombs || !window.slot_has_armed_bombs()) return;
     const g = game || window.__remixGame;
-    if (!g || g.nj || !g.wa) return;
+    if (!g || g.uj || !g.oa) return;
     try {
       if (typeof window.bombFruit_tick_zones === "function") {
-        window.bombFruit_tick_zones(g, g.wa);
+        window.bombFruit_tick_zones(g, g.oa);
       }
     } catch (_e) {}
   };
@@ -23219,8 +23287,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (!window.slot_has_armed_bombs || !window.slot_has_armed_bombs()) return;
     const boxes = window.checkboxes && window.checkboxes.checkboxStatuses;
     if (boxes && boxes.mineRadius === false) return;
-    const game = (board && board.wb) || window.__remixGame;
-    if (game && game.nj) return;
+    const game = (board && board.ub) || window.__remixGame;
+    if (game && game.uj) return;
     if (!board || !board.ka) return;
     const zones = window.__bombFruitZones || [];
     const ctx = board.ka;
@@ -23311,7 +23379,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     // piece pickup (isChessActive may be false after the last unlock).
     window.just_ate = "fruit";
     // Poison hazard: no activate / no respawn.
-    if (fruit.Oka) return;
+    if (fruit.Bea) return;
     // Same fruit may be reported twice per eat (before entity plants + on
     // splice). After slot_eat_respawn clears flags, a second call used to
     // re-arm __slotEating — unlock f4E then wrongly slotRespawn'd key/soko.
@@ -23328,7 +23396,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       if (m === 7) {
         try {
           window.slot_yy_swap_board &&
-            window.slot_yy_swap_board(game && game.wa);
+            window.slot_yy_swap_board(game && game.oa);
         } catch (_yy) {}
         try {
           window.slot_yy_flip_head_piece && window.slot_yy_flip_head_piece();
@@ -23376,7 +23444,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.slot_before_mode_spawns = function slot_before_mode_spawns(game, fruit) {
     window.__slotForceEntitySpawn = false;
     if (!window.isSlotMachineActive || !window.isSlotMachineActive()) return;
-    if (!fruit || fruit.Oka || fruit.isPiece) return;
+    if (!fruit || fruit.Bea || fruit.isPiece) return;
     if (fruit.slotMode == null) return;
     window.slot_on_eating_fruit(game, fruit);
     const m = fruit.slotMode | 0;
@@ -23395,7 +23463,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (!window.isSlotMachineActive || !window.isSlotMachineActive()) return;
     if ((window.__slotActive | 0) !== 20 && !window.__slotForceEntitySpawn) return;
     const g = game || window.__remixGame;
-    const ga = g && g.Ga;
+    const ga = g && g.wa;
     if (!ga || !Array.isArray(ga.oa) || !ga.oa.length) return;
     for (let y = 0; y < ga.oa.length; y++) {
       const row = ga.oa[y];
@@ -23406,8 +23474,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     }
     window.disableBridgeMode = false;
     try {
-      if (typeof m5E === "function") {
-        m5E(ga);
+      if (typeof fqF === "function") {
+        fqF(ga);
         for (let y = 0; y < ga.oa.length; y++) {
           const row = ga.oa[y];
           if (!row) continue;
@@ -23418,7 +23486,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       }
     } catch (_e) {}
     try {
-      const mgr = g.wa;
+      const mgr = g.oa;
       const pos = window.slot_free_pos(mgr, 0);
       if (!pos) return;
       if (typeof window.placeBridge === "function") {
@@ -23429,23 +23497,23 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       const x = pos.x | 0;
       if (!ga.oa[y]) return;
       ga.oa[y][x] = {
-        wm: true,
+        Rm: true,
         color: "#e68f1b",
-        Lh: true,
+        Xg: true,
       };
     } catch (_e2) {}
   };
 
   window.slot_has_keys = function slot_has_keys(game) {
     const g = game || window.__remixGame;
-    const keys = g && g.Ba && g.Ba.keys;
+    const keys = g && g.uL && g.uL.keys;
     return !!(keys && keys.length > 0);
   };
 
   window.slot_has_sokoboxes = function slot_has_sokoboxes(game) {
     const g = game || window.__remixGame;
     try {
-      const set = g && g.Aa && g.Aa.oa;
+      const set = g && g.Oy && g.Oy.WJ;
       if (set && typeof set.size === "number") return set.size > 0;
       if (set && typeof set[Symbol.iterator] === "function") {
         for (const _ of set) return true;
@@ -23457,7 +23525,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.slot_has_sokogoals = function slot_has_sokogoals(game) {
     const g = game || window.__remixGame;
     try {
-      const set = g && g.Aa && g.Aa.d_;
+      const set = g && g.Oy && g.Oy.targets;
       if (set && typeof set.size === "number") return set.size > 0;
       if (set && typeof set[Symbol.iterator] === "function") {
         for (const _ of set) return true;
@@ -23470,17 +23538,17 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.slot_add_soko_keys = function slot_add_soko_keys(game, keys, excludeBox) {
     const set = keys || new Set();
     const g = game || window.__remixGame;
-    const aa = g && g.Aa;
+    const aa = g && g.Oy;
     if (!aa) return set;
     try {
-      if (aa.oa) {
-        for (const box of aa.oa) {
+      if (aa.WJ) {
+        for (const box of aa.WJ) {
           if (!box || box === excludeBox || !box.pos) continue;
           set.add((box.pos.x | 0) + "," + (box.pos.y | 0));
         }
       }
-      if (aa.d_) {
-        for (const goal of aa.d_) {
+      if (aa.targets) {
+        for (const goal of aa.targets) {
           if (!goal) continue;
           set.add((goal.x | 0) + "," + (goal.y | 0));
         }
@@ -23491,7 +23559,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
 
   window.slot_soko_pos_on_snake = function slot_soko_pos_on_snake(game, pos) {
     if (!pos || pos.x == null || pos.y == null) return false;
-    const body = game && game.oa && game.oa.ka;
+    const body = game && game.Yc && game.Yc.ka;
     if (!body || !body.length) return false;
     const x = pos.x | 0;
     const y = pos.y | 0;
@@ -23509,7 +23577,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (!pos || pos.x == null || pos.y == null) return false;
     const g = game || window.__remixGame;
     const list =
-      (g && g.wa && g.wa.ka) ||
+      (g && g.oa && g.oa.ka) ||
       (window.appleArray && window.appleArray.length ? window.appleArray : null);
     if (!list || !list.length) return false;
     const x = pos.x | 0;
@@ -23528,10 +23596,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     game
   ) {
     const g = game || window.__remixGame;
-    const aa = g && g.Aa;
-    if (!aa || !aa.oa) return;
+    const aa = g && g.Oy;
+    if (!aa || !aa.WJ) return;
     try {
-      for (const box of aa.oa) {
+      for (const box of aa.WJ) {
         if (!box || !box.pos) continue;
         const x = Math.round(+box.pos.x);
         const y = Math.round(+box.pos.y);
@@ -23546,14 +23614,14 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   ) {
     if (!window.isSlotMachineActive || !window.isSlotMachineActive()) return;
     const g = game || window.__remixGame;
-    if (!g || g.nj) return;
+    if (!g || g.uj) return;
     window.slot_soko_snap_box_positions(g);
-    const aa = g.Aa;
-    if (!aa || !aa.oa) return;
+    const aa = g.Oy;
+    if (!aa || !aa.WJ) return;
     const hits = [];
     try {
-      for (const box of aa.oa) {
-        if (!box || !box.Lh || !box.pos) continue;
+      for (const box of aa.WJ) {
+        if (!box || !box.Xg || !box.pos) continue;
         if (
           window.slot_soko_pos_on_snake(g, box.pos) ||
           window.slot_soko_pos_on_fruit(g, box.pos)
@@ -23577,7 +23645,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         for (let attempt = 0; attempt < 32 && !pos; attempt++) {
           const p =
             typeof window.slot_free_pos === "function"
-              ? window.slot_free_pos(g.wa)
+              ? window.slot_free_pos(g.oa)
               : null;
           if (!p || p.x == null || p.y == null) break;
           const key = (p.x | 0) + "," + (p.y | 0);
@@ -23602,7 +23670,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
             box.pos.x = pos.x | 0;
             box.pos.y = pos.y | 0;
           }
-          box.wm = true;
+          box.Rm = true;
           if (
             !window.slot_soko_pos_on_snake(g, box.pos) &&
             !window.slot_soko_pos_on_fruit(g, box.pos)
@@ -23615,18 +23683,18 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       }
       if (!moved) {
         try {
-          aa.oa.delete(box);
+          aa.WJ.delete(box);
         } catch (_d) {}
       }
     }
     try {
-      window.slot_win_if_empty(g, g.wa);
+      window.slot_win_if_empty(g, g.oa);
     } catch (_w) {}
   };
 
   window.slot_has_bridges = function slot_has_bridges(game) {
     const g = game || window.__remixGame;
-    const ga = g && g.Ga;
+    const ga = g && g.wa;
     const grid = ga && ga.oa;
     if (!grid || !grid.length) return false;
     for (let y = 0; y < grid.length; y++) {
@@ -23641,9 +23709,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
 
   window.slot_has_gates = function slot_has_gates(game) {
     const g = game || window.__remixGame;
-    const qa = g && g.Qa;
+    const qa = g && g.Ca;
     try {
-      if (qa && qa.pfa && qa.pfa.length > 0) return true;
+      if (qa && qa.gga && qa.gga.length > 0) return true;
       if (qa && qa.Yfa && qa.Yfa.length > 0) return true;
           } catch (_e) {}
     return false;
@@ -23656,13 +23724,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     const list =
       (mgr && mgr.ka) ||
       (window.__remixGame &&
-        window.__remixGame.wa &&
-        window.__remixGame.wa.ka) ||
+        window.__remixGame.oa &&
+        window.__remixGame.oa.ka) ||
       [];
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
-      if (!f || f.isPiece || f.Oka) continue;
-      if (f.__slotShield && f.nba && typeof f.nba.has === "function") return true;
+      if (!f || f.isPiece || f.Bea) continue;
+      if (f.__slotShield && f.h7 && typeof f.h7.has === "function") return true;
     }
     return false;
   };
@@ -23671,8 +23739,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     const list = (mgr && mgr.ka) || [];
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
-      if (!f || f.isPiece || f.Oka) continue;
-      if (f.nba && typeof f.nba.has === "function") {
+      if (!f || f.isPiece || f.Bea) continue;
+      if (f.h7 && typeof f.h7.has === "function") {
         f.__slotShield = true;
         f.__ultraKeepShield = true;
       }
@@ -23684,7 +23752,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
       if (!f || f.isPiece) continue;
-      f.nba = undefined;
+      f.h7 = undefined;
       f.__slotShield = false;
       f.__ultraKeepShield = false;
       delete f.__slotNbaPrior;
@@ -23701,7 +23769,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       if (!arr) return;
       for (let i = 0; i < arr.length; i++) {
         const apple = arr[i];
-        if (!apple || apple.isPiece || apple.Oka) continue;
+        if (!apple || apple.isPiece || apple.Bea) continue;
         if (!(apple.__slotShield || apple.__ultraKeepShield)) continue;
         if (apple.__slotNbaPriorSaved) continue;
         const cur = apple[field];
@@ -23728,13 +23796,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     };
 
   window.slot_apply_shield = function slot_apply_shield(fruit, mgr) {
-    if (!fruit || fruit.isPiece || fruit.Oka) return false;
+    if (!fruit || fruit.isPiece || fruit.Bea) return false;
     const p3e =
       window.__slotP3E ||
-      (typeof P3E === "function" ? P3E : null);
+      (typeof goF === "function" ? goF : null);
     try {
       if (typeof p3e === "function" && mgr) {
-        fruit.nba = p3e(mgr, fruit.pos);
+        fruit.h7 = p3e(mgr, fruit.pos);
       } else {
         // P3E not captured yet — 1–2 blocked dirs (never a full four-way lock).
         const dirs = ["UP", "DOWN", "LEFT", "RIGHT"];
@@ -23743,10 +23811,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         while (set.size < n) {
           set.add(dirs[(Math.random() * 4) | 0]);
         }
-        fruit.nba = set;
+        fruit.h7 = set;
       }
     } catch (_e) {
-      fruit.nba = new Set(["UP"]);
+      fruit.h7 = new Set(["UP"]);
     }
     fruit.__slotShield = true;
     fruit.__ultraKeepShield = true;
@@ -23798,7 +23866,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         // Fear ghosts (trophy or Slot special) are hazards, not edible leftover.
         if (window.fear_is_ghost && window.fear_is_ghost(f)) continue;
         if (f.__slotFearGhost) continue;
-        if (f.Oka) continue; // poison hazard — not playable fruit
+        if (f.Bea) continue; // poison hazard — not playable fruit
         return true; // regular / portal / chess piece / badged fruit
       }
     }
@@ -23811,21 +23879,21 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
 
   /**
    * Native r7E win (after Timer.alter) does:
-   *   _.hn(header.Aa, "ALL");
+   *   _.hn(header.Ba, "ALL");
    *   _run/_pb + SplitPanelOnSplit("ALL", ticks*Fb*1e-3, delta);
-   *   _.hn(header.Ba, S2E(ticks*Fb));
+   *   _.hn(header.Ca, S2E(ticks*Fb));
    *   B7E(header, Sh, x7E(game, d6E(settings)));
    *   Mb = ticks;
    * Slot gates that whole block, so mirror it here. Split-panel alone is not
-   * enough — the visible score/time HUD is header.Aa / header.Ba.
+   * enough — the visible score/time HUD is header.Ba / header.Ca.
    */
   window.slot_record_all_timer_split = function slot_record_all_timer_split(
     game
   ) {
     if (!game) return;
-    const score = game.Sh != null ? game.Sh : game.Oh;
+    const score = game.Bi != null ? game.Bi : game.Oh;
     const ticks = game.ticks | 0;
-    const fb = typeof game.Fb === "number" ? game.Fb : 0;
+    const fb = typeof game.hb === "number" ? game.hb : 0;
     const timeMs = Math.floor(ticks * fb);
     const _time = timeMs * 1e-3;
 
@@ -23834,17 +23902,17 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       const header = game.header;
       const hn =
         window.__slotHn ||
-        (typeof _ !== "undefined" && _ && typeof _.hn === "function"
-          ? _.hn
+        (typeof _ !== "undefined" && _ && typeof _.Ym === "function"
+          ? _.Ym
           : null);
-      if (hn && header && header.Aa) {
-        hn(header.Aa, "ALL");
-      }
       if (hn && header && header.Ba) {
+        hn(header.Ba, "ALL");
+      }
+      if (hn && header && header.Ca) {
         if (typeof window.__slotS2E === "function") {
-          hn(header.Ba, window.__slotS2E(timeMs));
+          hn(header.Ca, window.__slotS2E(timeMs));
         } else if (typeof Number.prototype.timeFormat === "function") {
-          hn(header.Ba, _time.timeFormat());
+          hn(header.Ca, _time.timeFormat());
         }
       }
       if (
@@ -23853,9 +23921,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         typeof window.__slotX7E === "function" &&
         typeof window.__slotD6E === "function"
       ) {
-        const fd = String(
-          window.__slotX7E(game, window.__slotD6E(game.settings))
-        );
+        const fd =
+          game.settings && game.settings.Ka
+            ? "\u2014"
+            : String(window.__slotX7E(game, window.__slotD6E(game.settings)));
         window.__slotB7E(header, score, fd);
       }
     } catch (_h) {}
@@ -23943,12 +24012,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     } catch (_e) {}
 
     try {
-      if (game.ticks != null) game.Mb = game.ticks;
+      if (game.ticks != null) game.wb = game.ticks;
     } catch (_mb) {}
   };
 
   window.slot_trigger_win = function slot_trigger_win(game) {
-    if (!game || game.nj) return;
+    if (!game || game.uj) return;
     // All-apples win: restore Slot Machine topbar icon (not the last badge).
     try {
       window.__slotActive = null;
@@ -23957,19 +24026,19 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     } catch (_tr) {}
     try {
       const winBank =
-        (typeof s5E !== "undefined" && s5E) || window.__bombFruitS5E;
+        (typeof mqF !== "undefined" && mqF) || window.__bombFruitS5E;
       if (winBank && winBank.WIN && winBank.WIN.play) winBank.WIN.play();
-      else if (typeof Q4E !== "undefined" && Q4E.rWd && Q4E.rWd.play)
-        Q4E.rWd.play();
+      else if (typeof KpF !== "undefined" && KpF.vZd && KpF.vZd.play)
+        KpF.vZd.play();
       else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
     } catch (_e) {}
-      const score = game.Sh != null ? game.Sh : game.Oh;
+      const score = game.Bi != null ? game.Bi : game.Oh;
     // Native order: WIN → gotAll → ub/nj → end menu → ALL header/split → Mb.
     try {
       if (window.timeKeeper && typeof window.timeKeeper.gotAll === "function") {
         let timeMs = 0;
-        if (typeof game.ticks === "number" && typeof game.Fb === "number") {
-          timeMs = Math.floor(game.ticks * game.Fb);
+        if (typeof game.ticks === "number" && typeof game.hb === "number") {
+          timeMs = Math.floor(game.ticks * game.hb);
         } else if (typeof window.resetTime === "number" && window.resetTime > 0) {
           timeMs = Date.now() - window.resetTime;
         } else if (typeof game.ticks === "number") {
@@ -23978,12 +24047,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         window.timeKeeper.gotAll(Math.floor(timeMs), score);
       }
     } catch (_tk) {}
-    game.ub = true;
-    game.nj = true;
+    game.Za = true;
+    game.uj = true;
     try {
       const show =
         window.__slotShowEndMenu ||
-        (typeof A7E === "function" ? A7E : null) ||
+        (typeof wsF === "function" ? wsF : null) ||
         (typeof vdF === "function" ? vdF : null);
       if (typeof show === "function" && game.menu) {
         show(game.menu, 1400, score);
@@ -24000,17 +24069,17 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (typeof window.chess_make_pos === "function") {
       return window.chess_make_pos(xi, yi);
     }
-    if (typeof _ !== "undefined" && _ && typeof _.Od === "function") {
-      return new _.Od(xi, yi);
+    if (typeof _ !== "undefined" && _ && typeof _.Yd === "function") {
+      return new _.Yd(xi, yi);
     }
     return { x: xi, y: yi };
   };
 
-  // Winged/Magnet m4E.update reads fruit.iL.x / fruit.He.x every tick.
+  // Winged/Magnet m4E.update reads fruit.YG.x / fruit.Ce.x every tick.
   // slot_make_apple often runs before g7 is captured → bare fruits crash.
   window.slot_vec = function slot_vec(x, y) {
-    if (typeof _ !== "undefined" && _ && typeof _.Od === "function") {
-      return new _.Od(+x || 0, +y || 0);
+    if (typeof _ !== "undefined" && _ && typeof _.Yd === "function") {
+      return new _.Yd(+x || 0, +y || 0);
     }
     return { x: +x || 0, y: +y || 0 };
   };
@@ -24018,55 +24087,55 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   window.slot_ensure_fruit_motion = function slot_ensure_fruit_motion(fruit, game) {
     if (!fruit) return fruit;
     const g = game || window.__remixGame;
-    const mgr = (g && g.wa) || null;
-    const needHe = !fruit.He || typeof fruit.He.x !== "number";
+    const mgr = (g && g.oa) || null;
+    const needHe = !fruit.Ce || typeof fruit.Ce.x !== "number";
     if (needHe) {
       // Match g7: random He only while Winged; Magnet zeroes then pulls each tick.
       if (
         (window.__slotActive | 0) === 6 &&
-        typeof N3E === "function" &&
+        typeof eoF === "function" &&
         mgr
       ) {
         try {
-          fruit.He = N3E(mgr);
+          fruit.Ce = eoF(mgr);
         } catch (_n) {
-          fruit.He = window.slot_vec(
+          fruit.Ce = window.slot_vec(
             Math.random() < 0.5 ? -0.5 : 0.5,
             Math.random() < 0.5 ? -0.5 : 0.5
           );
         }
       } else {
-        fruit.He = window.slot_vec(0, 0);
+        fruit.Ce = window.slot_vec(0, 0);
       }
     }
-    if (!fruit.CAb || typeof fruit.CAb.x !== "number") {
+    if (!fruit.qXa || typeof fruit.qXa.x !== "number") {
       try {
-        fruit.CAb =
-          fruit.He && typeof fruit.He.clone === "function"
-            ? fruit.He.clone()
-            : window.slot_vec(fruit.He.x, fruit.He.y);
+        fruit.qXa =
+          fruit.Ce && typeof fruit.Ce.clone === "function"
+            ? fruit.Ce.clone()
+            : window.slot_vec(fruit.Ce.x, fruit.Ce.y);
       } catch (_c) {
-        fruit.CAb = window.slot_vec(
-          fruit.He && fruit.He.x,
-          fruit.He && fruit.He.y
+        fruit.qXa = window.slot_vec(
+          fruit.Ce && fruit.Ce.x,
+          fruit.Ce && fruit.Ce.y
         );
       }
     }
-    if (!fruit.iL || typeof fruit.iL.x !== "number") {
-      fruit.iL = window.slot_vec(1, 1);
+    if (!fruit.YG || typeof fruit.YG.x !== "number") {
+      fruit.YG = window.slot_vec(1, 1);
     } else if (
       ((window.__slotActive | 0) === 6 || (window.__slotActive | 0) === 18) &&
-      !fruit.iL.x &&
-      !fruit.iL.y
+      !fruit.YG.x &&
+      !fruit.YG.y
     ) {
       // Leave-snap zeroes iL; re-enable while Winged/Magnet is live.
-      fruit.iL.x = 1;
-      fruit.iL.y = 1;
+      fruit.YG.x = 1;
+      fruit.YG.y = 1;
     }
-    if (fruit.fD == null) fruit.fD = 0;
-    if (fruit.xL == null) fruit.xL = 0;
-    if (fruit.Lh == null) fruit.Lh = true;
-    if (fruit.wm == null) fruit.wm = false;
+    if (fruit.aD == null) fruit.aD = 0;
+    if (fruit.gM == null) fruit.gM = 0;
+    if (fruit.Xg == null) fruit.Xg = true;
+    if (fruit.Rm == null) fruit.Rm = false;
     return fruit;
   };
 
@@ -24093,11 +24162,11 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     const makeApple =
       window.__bombFruitMakeApple ||
       window.__chessMakeApple ||
-      (typeof g7 === "function" ? g7 : null);
+      (typeof S7 === "function" ? S7 : null);
     const pickType =
       window.__bombFruitPickType ||
       window.__chessPickType ||
-      (typeof Q3E === "function" ? Q3E : null);
+      (typeof hoF === "function" ? hoF : null);
     let dup = null;
     const lenBefore = mgr && mgr.ka ? mgr.ka.length : 0;
     try {
@@ -24112,7 +24181,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       dup = null;
     }
     if (!dup) {
-      dup = { type: 0, Oka: false, nba: void 0 };
+      dup = { type: 0, Bea: false, h7: void 0 };
     }
     const px = pos && pos.x != null ? pos.x | 0 : 0;
     const py = pos && pos.y != null ? pos.y | 0 : 0;
@@ -24130,10 +24199,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         dup.type = pickType(mgr);
       } catch (_t) {}
     }
-    dup.Oka = !!dup.Oka;
+    dup.Bea = !!dup.Bea;
     // g7 may stamp nba while e7(15) is borrowed (chess/bomb/shield leftovers).
     // Real Shield bars are re-applied only via slot_apply_shield.
-    dup.nba = undefined;
+    dup.h7 = undefined;
     dup.__slotShield = false;
     dup.__ultraKeepShield = false;
     window.slot_ensure_fruit_motion(dup);
@@ -24213,9 +24282,9 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     } catch (_e) {}
     try {
       const g = game || window.__remixGame;
-      if (g && typeof g.Rb === "function") {
+      if (g && typeof g.Lb === "function") {
         for (let attempt = 0; attempt < 16; attempt++) {
-          const p = g.Rb(null, 2);
+          const p = g.Lb(null, 2);
           if (ok(p)) return window.slot_make_pos(p.x, p.y);
         }
       }
@@ -24231,7 +24300,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           h = size.height | 0;
         }
       }
-      const walls = g && g.Ca && g.Ca.wa;
+      const walls = g && g.Tw && g.Tw.oa;
       if ((!w || !h) && walls && walls.length) {
         h = walls.length;
         w = walls[0] ? walls[0].length : 0;
@@ -24246,8 +24315,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         }
       }
       try {
-        // Snake body lives on game.oa.ka (same as Chess/BombFruit).
-        const snake = g && g.oa;
+        // Snake body lives on game.Yc.ka (same as Chess/BombFruit).
+        const snake = g && g.Yc;
         const body = snake && snake.ka;
         if (body && body.length) {
           for (let i = 0; i < body.length; i++) {
@@ -24303,7 +24372,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (!window.isSlotMachineActive || !window.isSlotMachineActive()) return;
     const g = game || window.__remixGame;
     if (g) window.__remixGame = g;
-    const mgr = g && g.wa;
+    const mgr = g && g.oa;
     const eatenMode = window.__slotEatenMode;
     const eaten = window.__slotEatenFruit;
     window.__slotEating = false;
@@ -24329,7 +24398,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       return;
     }
 
-    if (eaten && eaten.Oka) {
+    if (eaten && eaten.Bea) {
       // Poison hazard: never treat as board-clear win.
       window.__slotEatenFruit = null;
       window.__slotEatenMode = null;
@@ -24348,7 +24417,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       // Mexico (27) goes through slotRespawn like Portal — tally/dice store it
       // instead of planting a mid-board pair.
       window.slotRespawn(eatenMode, g);
-    } else if (eaten && !eaten.isPiece && !eaten.Oka) {
+    } else if (eaten && !eaten.isPiece && !eaten.Bea) {
       // Unbadged unlock fruit (or missed stamp): still refill one badge fruit.
       const mode = window.slot_draw_mode() | 0;
       window.slotRespawn(mode, g);
@@ -24371,7 +24440,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     }
     for (let i = fromIndex; i < list.length; i++) {
       const f = list[i];
-      if (!f || f.Oka || f.isPiece) continue;
+      if (!f || f.Bea || f.isPiece) continue;
       if (f.slotMode == null) window.assignSlotMode(f);
     }
   };
@@ -24438,8 +24507,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       if (
         g &&
         g.settings &&
-        typeof e7 === "function" &&
-        e7(g.settings, 11)
+        typeof M7 === "function" &&
+        M7(g.settings, 11)
       ) {
         return 10;
       }
@@ -24460,7 +24529,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     const seenPortalPair = Object.create(null);
     for (let i = start; i < list.length; i++) {
       const f = list[i];
-      if (!f || f.Oka) continue;
+      if (!f || f.Bea) continue;
       if (window.fear_is_ghost && window.fear_is_ghost(f)) continue;
       if (f.__slotPortal) {
         const pid = f.__slotPortalPairId;
@@ -24490,7 +24559,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         }
         // Marked portal without pair id: still try twin link.
         let twin = f.__slotPortalTwin;
-        if (twin && list.indexOf(twin) >= 0 && !twin.Oka) {
+        if (twin && list.indexOf(twin) >= 0 && !twin.Bea) {
           if (twin.__slotTallyGrouped) continue;
           f.__slotTallyGrouped = 1;
           twin.__slotTallyGrouped = 1;
@@ -24516,7 +24585,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     // Current edible tally index (native a.wa.wa = 1 after t7E).
     mgr.wa = 1;
     try {
-      if (mgr.Ca != null) mgr.Ca = false;
+      if (mgr.Ba != null) mgr.Ba = false;
     } catch (_c) {}
   };
 
@@ -24529,7 +24598,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     let max = 0;
     for (let i = 0; i < mgr.ka.length; i++) {
       const f = mgr.ka[i];
-      if (!f || f.Oka || f === excludeFruit) continue;
+      if (!f || f.Bea || f === excludeFruit) continue;
       if (window.fear_is_ghost && window.fear_is_ghost(f)) continue;
       const s = f.sequenceNumber | 0;
       if (s > max) max = s;
@@ -24544,7 +24613,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     fruit,
     mgr
   ) {
-    if (!fruit || fruit.Oka) return false;
+    if (!fruit || fruit.Bea) return false;
     if (window.fear_is_ghost && window.fear_is_ghost(fruit)) return false;
     const g = window.__remixGame;
     if (!window.slot_is_tally_count || !window.slot_is_tally_count(g)) {
@@ -24569,7 +24638,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     let n = 0;
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
-      if (!f || f.Oka) continue;
+      if (!f || f.Bea) continue;
       if (window.fear_is_ghost && window.fear_is_ghost(f)) continue;
       if (eaten && f === eaten) continue;
       n++;
@@ -24591,7 +24660,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (!g) return false;
     if (window.slot_is_dice_count && window.slot_is_dice_count(g)) return true;
     if (window.slot_is_tally_count && window.slot_is_tally_count(g)) return true;
-    if (window.slot_is_bomb_count && window.slot_is_bomb_count(g) && !g.kc) {
+    if (window.slot_is_bomb_count && window.slot_is_bomb_count(g) && !g.Qb) {
       return true;
     }
     return false;
@@ -24625,8 +24694,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   // refill and by FIFO wave dequeue. Does not touch the store queue.
   window.slot_plant_special_unit = function slot_plant_special_unit(mode, game) {
     const g = game || window.__remixGame;
-    if (!g || !g.wa) return false;
-    const mgr = g.wa;
+    if (!g || !g.oa) return false;
+    const mgr = g.oa;
     const m = mode | 0;
     const chessMode = window.slot_is_chess_mode(m);
 
@@ -24676,10 +24745,10 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     }
 
     if (m === 8) {
-      const ba = g.Ba;
+      const ba = g.uL;
       const plant =
         window.__slotQ6E ||
-        (typeof q6E === "function" ? q6E : null);
+        (typeof jrF === "function" ? jrF : null);
       if (ba && typeof plant === "function") {
         const beforeKeys = (ba.keys && ba.keys.length) | 0;
         window.__slotAllowKeyPlant = true;
@@ -24719,7 +24788,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       }
 
     if (m === 9) {
-      const aa = g.Aa;
+      const aa = g.Oy;
       const sokoSize = (set) => {
         try {
           if (!set) return 0;
@@ -24731,32 +24800,32 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           return 0;
         }
       };
-      const beforeBoxes = sokoSize(aa && aa.oa);
-      const beforeGoals = sokoSize(aa && aa.d_);
+      const beforeBoxes = sokoSize(aa && aa.WJ);
+      const beforeGoals = sokoSize(aa && aa.targets);
       const hasFruit = !!(mgr.ka && mgr.ka.length);
       const plant =
         window.__slotE5E ||
-        (typeof e5E === "function" ? e5E : null);
+        (typeof XpF === "function" ? XpF : null);
       // Native e5E ignores leftover fruit and can stack a box on an apple.
       // With fruit on the board, plant via slot_free_pos only.
       if (!hasFruit && aa && typeof plant === "function") {
         window.__slotAllowSokoPlant = true;
         try {
-          plant(aa, (g.Ba && g.Ba.keys && g.Ba.keys.length) | 0, true, true);
+          plant(aa, (g.uL && g.uL.keys && g.uL.keys.length) | 0, true, true);
         } catch (_e) {
         } finally {
           window.__slotAllowSokoPlant = false;
         }
       }
-      let boxes = sokoSize(aa && aa.oa);
-      let goals = sokoSize(aa && aa.d_);
+      let boxes = sokoSize(aa && aa.WJ);
+      let goals = sokoSize(aa && aa.targets);
       if (boxes > beforeBoxes || goals > beforeGoals) {
         try {
           window.slot_soko_resolve_body_overlaps &&
             window.slot_soko_resolve_body_overlaps(g);
         } catch (_r) {}
-        boxes = sokoSize(aa && aa.oa);
-        goals = sokoSize(aa && aa.d_);
+        boxes = sokoSize(aa && aa.WJ);
+        goals = sokoSize(aa && aa.targets);
         if (boxes > beforeBoxes || goals > beforeGoals) return true;
       }
 
@@ -24780,8 +24849,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           } finally {
             window.__slotAllowSokoPlant = false;
           }
-          boxes = sokoSize(aa.oa);
-          goals = sokoSize(aa.d_);
+          boxes = sokoSize(aa.WJ);
+          goals = sokoSize(aa.targets);
           if (boxes > beforeBoxes || goals > beforeGoals) {
             try {
               window.slot_soko_resolve_body_overlaps &&
@@ -24791,23 +24860,23 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
           }
           window.__slotAllowSokoPlant = true;
           try {
-            if (aa.oa && typeof aa.oa.add === "function") {
-              aa.oa.add({
+            if (aa.WJ && typeof aa.WJ.add === "function") {
+              aa.WJ.add({
                 pos: window.slot_make_pos(bp.x, bp.y),
                 prev: null,
-                wm: true,
-                Lh: true,
+                Rm: true,
+                Xg: true,
               });
             }
-            if (aa.d_ && typeof aa.d_.add === "function") {
-              aa.d_.add(window.slot_make_pos(gp.x, gp.y));
+            if (aa.targets && typeof aa.targets.add === "function") {
+              aa.targets.add(window.slot_make_pos(gp.x, gp.y));
             }
           } catch (_e3) {
           } finally {
             window.__slotAllowSokoPlant = false;
           }
-          boxes = sokoSize(aa.oa);
-          goals = sokoSize(aa.d_);
+          boxes = sokoSize(aa.WJ);
+          goals = sokoSize(aa.targets);
           if (boxes > beforeBoxes || goals > beforeGoals) {
             try {
               window.slot_soko_resolve_body_overlaps &&
@@ -24824,7 +24893,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       const makeFn =
         window.__chessMakeApple ||
         window.__bombFruitMakeApple ||
-        (typeof g7 === "function" ? g7 : null);
+        (typeof S7 === "function" ? S7 : null);
       const freeFn =
         window.__chessFreePos ||
         window.__bombFruitFreePos ||
@@ -24832,7 +24901,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       const pickFn =
         window.__chessPickType ||
         window.__bombFruitPickType ||
-        (typeof Q3E === "function" ? Q3E : null);
+        (typeof hoF === "function" ? hoF : null);
 
       let added = 0;
       if (typeof window.chess_fruit_respawn === "function" && makeFn) {
@@ -24894,7 +24963,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       const safePos = window.slot_free_pos(mgr);
       if (safePos) {
         const fruit = window.slot_make_apple(mgr, safePos);
-        fruit.Oka = false;
+        fruit.Bea = false;
         window.assignSlotMode(fruit);
         mgr.ka.push(fruit);
         planted++;
@@ -24902,7 +24971,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       const ghostPos = window.slot_free_pos(mgr);
       if (ghostPos) {
         const ghost = window.slot_make_apple(mgr, ghostPos);
-        ghost.Oka = true;
+        ghost.Bea = true;
         ghost.__slotFearGhost = true;
         delete ghost.slotMode;
         mgr.ka.push(ghost);
@@ -24923,7 +24992,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       const safePos = window.slot_free_pos(mgr);
       if (safePos) {
         const fruit = window.slot_make_apple(mgr, safePos);
-        fruit.Oka = false;
+        fruit.Bea = false;
         window.assignSlotMode(fruit);
         mgr.ka.push(fruit);
         planted++;
@@ -24931,7 +25000,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       const poisonPos = window.slot_free_pos(mgr);
       if (poisonPos) {
         const poison = window.slot_make_apple(mgr, poisonPos);
-      poison.Oka = true;
+      poison.Bea = true;
       poison.__slotPoison = true;
       delete poison.slotMode;
       mgr.ka.push(poison);
@@ -24951,7 +25020,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       try {
         const g = game || window.__remixGame;
         window.slot_clear_arrows_under_spawns &&
-          window.slot_clear_arrows_under_spawns(g && g.wa, g);
+          window.slot_clear_arrows_under_spawns(g && g.oa, g);
       } catch (_ar) {}
       return ok;
     };
@@ -24959,8 +25028,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
 
   window.slot_plant_badge_unit = function slot_plant_badge_unit(game, eatenMode) {
     const g = game || window.__remixGame;
-    if (!g || !g.wa) return false;
-    const mgr = g.wa;
+    if (!g || !g.oa) return false;
+    const mgr = g.oa;
     const m = eatenMode | 0;
     const pos = window.slot_free_pos(mgr);
     if (!pos) return false;
@@ -24983,8 +25052,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     opts
   ) {
     const g = game || window.__remixGame;
-    if (!g || !g.wa) return 0;
-    const mgr = g.wa;
+    if (!g || !g.oa) return 0;
+    const mgr = g.oa;
     const count = Math.max(0, n | 0);
     const plantStart = mgr.ka.length;
     let units = 0;
@@ -25017,8 +25086,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
 
   window.slotRespawn = function slotRespawn(mode, game) {
     const g = game || window.__remixGame;
-    if (!g || !g.wa) return false;
-    const mgr = g.wa;
+    if (!g || !g.oa) return false;
+    const mgr = g.oa;
     const m = mode | 0;
     const before = mgr.ka.length;
     const usesStore = window.slot_uses_special_store(g);
@@ -25071,7 +25140,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     // Bomb count (ka===5): mid-board skip until first empty → 24 units + kc.
     // Do NOT wait for keys/soko; FIFO specials fold into the 24. After kc,
     // fall through to normal per-badge refill (immediate specials).
-    if (window.slot_is_bomb_count(g) && !g.kc) {
+    if (window.slot_is_bomb_count(g) && !g.Qb) {
       if (window.slot_fruit_left_excluding_eaten(mgr) > 0) {
         window.appleArray = mgr.ka;
         return false;
@@ -25079,7 +25148,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       const n = window.slot_bomb_spawn_n(g);
       window.__fearWaveGhostFill = true;
       const planted = window.slot_plant_wave_units(g, n, m, null);
-      if (planted > 0) g.kc = true;
+      if (planted > 0) g.Qb = true;
       if (planted === 0) {
         window.__fearWaveGhostFill = false;
         window.slot_win_if_empty(g, mgr);
@@ -25195,7 +25264,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       if (mgr && mgr.ka) {
         for (let i = 0; i < mgr.ka.length; i++) {
           const f = mgr.ka[i];
-          if (f && !f.Oka && !f.isPiece && f.slotMode == null) {
+          if (f && !f.Bea && !f.isPiece && f.slotMode == null) {
             window.assignSlotMode(f);
           }
         }
@@ -25251,7 +25320,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         const from = Math.max(0, mgr.ka.length - n);
         for (let i = from; i < mgr.ka.length; i++) {
           const f = mgr.ka[i];
-          if (!f || f.Oka) continue;
+          if (!f || f.Bea) continue;
           if (
             f.isPiece ||
             f.ChessPiece != null ||
@@ -25267,7 +25336,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       const justBadged = [];
       for (let i = 0; i < mgr.ka.length; i++) {
         const f = mgr.ka[i];
-        if (f && !f.Oka && !f.isPiece && f.slotMode == null) {
+        if (f && !f.Bea && !f.isPiece && f.slotMode == null) {
           window.assignSlotMode(f);
           justBadged.push(f);
         }
@@ -25289,7 +25358,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
               : [];
         for (let i = 0; i < targets.length; i++) {
           const f = targets[i];
-          if (!f || f.Oka) continue;
+          if (!f || f.Bea) continue;
           window.slot_stamp_tally_unlock_index(f, mgr);
         }
       }
@@ -25318,7 +25387,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       delete f.__slotPortal;
       delete f.__slotPortalPairId;
       delete f.__slotPortalTwin;
-      if (!f.Oka && !f.isPiece && f.slotMode == null) {
+      if (!f.Bea && !f.isPiece && f.slotMode == null) {
         window.assignSlotMode(f);
       }
     }
@@ -25337,7 +25406,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (!window.isSlotMachineActive || !window.isSlotMachineActive()) return;
     if (!game) return;
     window.__remixGame = game;
-    const mgr = game.wa;
+    const mgr = game.oa;
     if (!mgr || !mgr.ka) return;
 
     // Unlock badge: any non-piece non-poison fruit missing slotMode gets one
@@ -25348,7 +25417,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     for (let i = 0; i < mgr.ka.length; i++) {
       const f = mgr.ka[i];
       if (!f) continue;
-      if (f.Oka) {
+      if (f.Bea) {
         if (f.slotMode != null) delete f.slotMode;
         continue;
       }
@@ -25443,7 +25512,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       }
     } catch (_tr) {}
 
-    if (mgr.ka.length === 0 && !game.nj) {
+    if (mgr.ka.length === 0 && !game.uj) {
       window.slot_win_if_empty(game, mgr);
     }
   };
@@ -25474,7 +25543,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       window.CHESS_MODE != null ? window.CHESS_MODE : 24,
       function () {
         const g = window.__remixGame;
-        return !!(g && g.wa && window.slot_has_pieces(g.wa));
+        return !!(g && g.oa && window.slot_has_pieces(g.oa));
       }
     );
     wrapActive("isBombFruitActive", 28, function () {
@@ -25755,19 +25824,19 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   // Native shield-clear b4E runs whenever e7(15) is true (Shield roll, shield
   // leftovers, chess/bomb borrow). Under Slot the eaten apple is often already
   // spliced / twin-flushed (portal) → .pos TypeError. Slot manages nba itself.
-  if (code.indexOf("slot_skip_b4E") < 0 && code.indexOf("b4E(a.wa,") >= 0) {
+  if (code.indexOf("slot_skip_b4E") < 0 && code.indexOf("soF(a.oa,") >= 0) {
     if (
       !smReplace(
         "slot skip b4E entirely under Slot",
-        /e7\(a\.settings,15\)&&!\(window\.isChessActive&&window\.isChessActive\(\)\)&&!\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)&&\(\(window\.__slotActive\|0\)===28\|\|window\.slot_has_armed_bombs&&window\.slot_has_armed_bombs\(\)\)\)&&\(([a-zA-Z0-9_$]+)&&\1\.pos\)&&\(window\.slot_skip_b4E_bomb=1,b4E\(a\.wa,\1\),/,
-        "e7(a.settings,15)&&!(window.isChessActive&&window.isChessActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive())&&($1&&$1.pos)&&(window.slot_skip_b4E=1,b4E(a.wa,$1),",
+        /M7\(a\.settings,15\)&&!\(window\.isChessActive&&window\.isChessActive\(\)\)&&!\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)&&\(\(window\.__slotActive\|0\)===28\|\|window\.slot_has_armed_bombs&&window\.slot_has_armed_bombs\(\)\)\)&&\(([a-zA-Z0-9_$]+)&&\1\.pos\)&&\(window\.slot_skip_b4E_bomb=1,soF\(a\.oa,\1\),/,
+        "M7(a.settings,15)&&!(window.isChessActive&&window.isChessActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive())&&($1&&$1.pos)&&(window.slot_skip_b4E=1,soF(a.oa,$1),",
         true
       )
     ) {
       smReplace(
         "slot skip b4E under Slot (from chess gate)",
-        /e7\(a\.settings,15\)&&!\(window\.isChessActive&&window\.isChessActive\(\)\)&&\(b4E\(a\.wa,([a-zA-Z0-9_$]+)\),/,
-        "e7(a.settings,15)&&!(window.isChessActive&&window.isChessActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive())&&($1&&$1.pos)&&(window.slot_skip_b4E=1,b4E(a.wa,$1),"
+        /M7\(a\.settings,15\)&&!\(window\.isChessActive&&window\.isChessActive\(\)\)&&\(soF\(a\.oa,([a-zA-Z0-9_$]+)\),/,
+        "M7(a.settings,15)&&!(window.isChessActive&&window.isChessActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive())&&($1&&$1.pos)&&(window.slot_skip_b4E=1,soF(a.oa,$1),"
       );
     }
   }
@@ -25781,8 +25850,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("__slotAllowKeyPlant)return;") < 0) {
     smReplace(
       "slot stamp+gate q6E on call",
-      /q6E=function\(a,b,c\)\{(?:window\.__slotQ6E=q6E;)?/,
-      "q6E=function(a,b,c){window.__slotQ6E=q6E;if(window.isSlotMachineActive&&window.isSlotMachineActive()&&!window.__slotAllowKeyPlant)return;"
+      /jrF=function\(a,b,c\)\{(?:window\.__slotQ6E=jrF;)?/,
+      "jrF=function(a,b,c){window.__slotQ6E=jrF;if(window.isSlotMachineActive&&window.isSlotMachineActive()&&!window.__slotAllowKeyPlant)return;"
     );
   }
   // Native q6E plants a sokogoal under the key when e7(9) (Key+Sokoban combo).
@@ -25791,23 +25860,23 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("slot_skip_key_soko_goal") < 0) {
     smReplace(
       "slot skip key→sokogoal under leftover soko",
-      /e7\(a\.settings,9\)&&S4E\(a\.Ca,d\.clone\(\),a\.keys\.length\)/,
-      "e7(a.settings,9)&&!(window.isSlotMachineActive&&window.isSlotMachineActive())&&(window.slot_skip_key_soko_goal=1,S4E(a.Ca,d.clone(),a.keys.length))"
+      /M7\(a\.settings,9\)&&MpF\(a\.Oy,d\.clone\(\),a\.keys\.length\)/,
+      "M7(a.settings,9)&&!(window.isSlotMachineActive&&window.isSlotMachineActive())&&(window.slot_skip_key_soko_goal=1,MpF(a.Oy,d.clone(),a.keys.length))"
     );
   }
   if (code.indexOf("__slotAllowSokoPlant)return;") < 0) {
     smReplace(
       "slot stamp+gate e5E on call",
-      /e5E=function\(a,b,c,d=!1\)\{(?:window\.__slotE5E=e5E;)?/,
-      "e5E=function(a,b,c,d=!1){window.__slotE5E=e5E;if(window.isSlotMachineActive&&window.isSlotMachineActive()&&!window.__slotAllowSokoPlant)return;"
+      /XpF=function\(a,b,c,d=!1\)\{(?:window\.__slotE5E=XpF;)?/,
+      "XpF=function(a,b,c,d=!1){window.__slotE5E=XpF;if(window.isSlotMachineActive&&window.isSlotMachineActive()&&!window.__slotAllowSokoPlant)return;"
     );
   }
   // Capture f4E so unlock/tests can call the native apple plant helper.
-  if (code.indexOf("window.__slotF4E=f4E") < 0) {
+  if (code.indexOf("window.__slotF4E=voF") < 0) {
     smReplace(
       "slot capture f4E on call",
-      /f4E=function\(a,b,c,d,e,f=!1\)\{(?:window\.__slotF4E=f4E;)?/,
-      "f4E=function(a,b,c,d,e,f=!1){window.__slotF4E=f4E;"
+      /voF=function\(a,b,c,d,e,f=!1\)\{(?:window\.__slotF4E=voF;)?/,
+      "voF=function(a,b,c,d,e,f=!1){window.__slotF4E=voF;"
     );
   }
   // Bulk refill (s7E/t7E/u7E sibling) plants keys/boxes via o6E/d5E when e7(8/9).
@@ -25815,16 +25884,16 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("slot_block_key_soko_bulk") < 0) {
     smReplace(
       "slot block key/soko bulk refill plants",
-      /e7\(a\.settings,8\)\?\(o6E\(a\.Ba,e,k,d\[e\],l,f\),e7\(a\.settings,9\)&&S4E\(a\.Aa,k\.clone\(\),a\.Ba\.keys\.length\)\):e7\(a\.settings,9\)\?\(n=d\[e\],d5E\(a\.Aa,\{pos:k\.clone\(\),prev:null,wm:!0,Lh:l,sequenceNumber:f\}\),S4E\(a\.Aa,n,a\.Ba\.keys\.length\)\):\(f4E\(a\.wa,k,void 0,\s*l,f,!0\)/,
-      "window.isSlotMachineActive&&window.isSlotMachineActive()?(window.slot_block_key_soko_bulk=1,f4E(a.wa,k,void 0,l,f,!0)):e7(a.settings,8)?(o6E(a.Ba,e,k,d[e],l,f),e7(a.settings,9)&&S4E(a.Aa,k.clone(),a.Ba.keys.length)):e7(a.settings,9)?(n=d[e],d5E(a.Aa,{pos:k.clone(),prev:null,wm:!0,Lh:l,sequenceNumber:f}),S4E(a.Aa,n,a.Ba.keys.length)):(f4E(a.wa,k,void 0,l,f,!0)"
+      /M7\(a\.settings,8\)\?\(hrF\(a\.uL,e,k,d\[e\],l,f\),M7\(a\.settings,9\)&&MpF\(a\.Oy,k\.clone\(\),a\.uL\.keys\.length\)\):M7\(a\.settings,9\)\?\(n=d\[e\],WpF\(a\.Oy,\{pos:k\.clone\(\),prev:null,Rm:!0,Xg:l,sequenceNumber:f\}\),MpF\(a\.Oy,n,a\.uL\.keys\.length\)\):\(voF\(a\.oa,k,void 0,\s*l,f,!0\)/,
+      "window.isSlotMachineActive&&window.isSlotMachineActive()?(window.slot_block_key_soko_bulk=1,voF(a.oa,k,void 0,l,f,!0)):M7(a.settings,8)?(hrF(a.uL,e,k,d[e],l,f),M7(a.settings,9)&&MpF(a.Oy,k.clone(),a.uL.keys.length)):M7(a.settings,9)?(n=d[e],WpF(a.Oy,{pos:k.clone(),prev:null,Rm:!0,Xg:l,sequenceNumber:f}),MpF(a.Oy,n,a.uL.keys.length)):(voF(a.oa,k,void 0,l,f,!0)"
     );
   }
   // u7E initial/count plant: same — under Slot always fruit, never key/box.
   if (code.indexOf("slot_u7E_fruit_only") < 0) {
     smReplace(
       "slot u7E fruit only",
-      /for\(let d=0;d<b;d\+\+\)\{if\(e7\(a\.settings,8\)\)q6E\(a\.Ba,d,c\);else if\(e7\(a\.settings,9\)\)e5E\(a\.Aa,a\.Ba\.keys\.length,c,!0\);else\{let e=a\.Rb\(null,2\);e&&f4E\(a\.wa,e,void 0,c\)\}/,
-      "for(let d=0;d<b;d++){if(window.isSlotMachineActive&&window.isSlotMachineActive()){window.slot_u7E_fruit_only=1;let e=a.Rb(null,2);e&&f4E(a.wa,e,void 0,c)}else if(e7(a.settings,8))q6E(a.Ba,d,c);else if(e7(a.settings,9))e5E(a.Aa,a.Ba.keys.length,c,!0);else{let e=a.Rb(null,2);e&&f4E(a.wa,e,void 0,c)}"
+      /for\(let d=0;d<b;d\+\+\)\{if\(M7\(a\.settings,8\)\)jrF\(a\.uL,d,c\);else if\(M7\(a\.settings,9\)\)XpF\(a\.Oy,a\.uL\.keys\.length,c,!0\);else\{let e=a\.Lb\(null,2\);e&&voF\(a\.oa,e,void 0,c\)\}/,
+      "for(let d=0;d<b;d++){if(window.isSlotMachineActive&&window.isSlotMachineActive()){window.slot_u7E_fruit_only=1;let e=a.Lb(null,2);e&&voF(a.oa,e,void 0,c)}else if(M7(a.settings,8))jrF(a.uL,d,c);else if(M7(a.settings,9))XpF(a.Oy,a.uL.keys.length,c,!0);else{let e=a.Lb(null,2);e&&voF(a.oa,e,void 0,c)}"
     );
   }
   // Apple-manager reset uses Y3E to pick portal-style fixed offsets
@@ -25837,14 +25906,14 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot Y3E ignore leftover key/soko for layout",
-        /Y3E=function\(a\)\{return e7\(a,2\)\|\|e7\(a,8\)\|\|e7\(a,9\)\|\|\(e7\(a,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\)\)\)\}/,
-        "Y3E=function(a){return window.isSlotMachineActive&&window.isSlotMachineActive()?(window.slot_Y3E_gate=1,(window.__slotActive|0)===2):e7(a,2)||e7(a,8)||e7(a,9)||(e7(a,10)&&!(window.isBurgerSettings&&window.isBurgerSettings(a)))}"
+        /ooF=function\(a\)\{return M7\(a,2\)\|\|M7\(a,8\)\|\|M7\(a,9\)\|\|\(M7\(a,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\)\)\)\}/,
+        "ooF=function(a){return window.isSlotMachineActive&&window.isSlotMachineActive()?(window.slot_Y3E_gate=1,(window.__slotActive|0)===2):M7(a,2)||M7(a,8)||M7(a,9)||(M7(a,10)&&!(window.isBurgerSettings&&window.isBurgerSettings(a)))}"
       )
     ) {
       smReplace(
         "slot Y3E ignore leftover key/soko for layout (no burger)",
-        /Y3E=function\(a\)\{return e7\(a,2\)\|\|e7\(a,8\)\|\|e7\(a,9\)\|\|e7\(a,10\)\}/,
-        "Y3E=function(a){return window.isSlotMachineActive&&window.isSlotMachineActive()?(window.slot_Y3E_gate=1,(window.__slotActive|0)===2):e7(a,2)||e7(a,8)||e7(a,9)||e7(a,10)}"
+        /ooF=function\(a\)\{return M7\(a,2\)\|\|M7\(a,8\)\|\|M7\(a,9\)\|\|M7\(a,10\)\}/,
+        "ooF=function(a){return window.isSlotMachineActive&&window.isSlotMachineActive()?(window.slot_Y3E_gate=1,(window.__slotActive|0)===2):M7(a,2)||M7(a,8)||M7(a,9)||M7(a,10)}"
       );
     }
   }
@@ -25854,14 +25923,14 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot reset before Y3E layout (chess line)",
-        /this\.ka=\[\];window\.appleArray=this\.ka;window\.head_dir="RIGHT";window\.head_state="OPEN";window\.head_color="NONE";window\.color_turn="w";window\.just_ate="fruit";var a=Y3E\(this\.settings\)/,
-        'this.ka=[];window.appleArray=this.ka;window.head_dir="RIGHT";window.head_state="OPEN";window.head_color="NONE";window.color_turn="w";window.just_ate="fruit";window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_pre_layout_reset=1,window.slot_reset_state&&window.slot_reset_state());var a=Y3E(this.settings)'
+        /this\.ka=\[\];window\.appleArray=this\.ka;window\.head_dir="RIGHT";window\.head_state="OPEN";window\.head_color="NONE";window\.color_turn="w";window\.just_ate="fruit";var a=ooF\(this\.settings\)/,
+        'this.ka=[];window.appleArray=this.ka;window.head_dir="RIGHT";window.head_state="OPEN";window.head_color="NONE";window.color_turn="w";window.just_ate="fruit";window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_pre_layout_reset=1,window.slot_reset_state&&window.slot_reset_state());var a=ooF(this.settings)'
       )
     ) {
       smReplace(
         "slot reset before Y3E layout",
-        /this\.ka=\[\];var a=Y3E\(this\.settings\)/,
-        "this.ka=[];window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_pre_layout_reset=1,window.slot_reset_state&&window.slot_reset_state());var a=Y3E(this.settings)"
+        /this\.ka=\[\];var a=ooF\(this\.settings\)/,
+        "this.ka=[];window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_pre_layout_reset=1,window.slot_reset_state&&window.slot_reset_state());var a=ooF(this.settings)"
       );
     }
   }
@@ -25875,16 +25944,16 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     const menuFnMatch = code.match(
       /([a-zA-Z0-9_$]{1,8})\(this\.menu,\s*1400,\s*this\.([a-zA-Z0-9_$]{1,8})\)/
     );
-    const endMenuFn = menuFnMatch ? menuFnMatch[1] : "A7E";
-    // _.hn(sc.Ba,S2E(zc*Hd));let fd=String(x7E(this,d6E(this.settings)));B7E(...)
+    const endMenuFn = menuFnMatch ? menuFnMatch[1] : "wsF";
+    // v14: _.Ym(lc.Ca,FmF($b*Wc));let sc=this.settings.Ka?"<em dash>":String(jsF(this,XqF(this.settings)));xsF(this.header,...)
     const allFmt = code.match(
-      /_\.([a-zA-Z0-9_$]{1,8})\([a-zA-Z0-9_$]{1,8}\.Ba,([a-zA-Z0-9_$]{1,8})\([a-zA-Z0-9_$]{1,8}\*[a-zA-Z0-9_$]{1,8}\)\);let [a-zA-Z0-9_$]{1,8}=String\(([a-zA-Z0-9_$]{1,8})\(this,([a-zA-Z0-9_$]{1,8})\(this\.settings\)\)\);([a-zA-Z0-9_$]{1,8})\(this\.header/
+      /_\.([a-zA-Z0-9_$]{1,8})\([a-zA-Z0-9_$]{1,8}\.Ca,([a-zA-Z0-9_$]{1,8})\([a-zA-Z0-9_$]{1,8}\*[a-zA-Z0-9_$]{1,8}\)\);let [a-zA-Z0-9_$]{1,8}=(?:this\.settings\.[a-zA-Z0-9_$]{1,8}\?"[^"]*":)?String\(([a-zA-Z0-9_$]{1,8})\(this,([a-zA-Z0-9_$]{1,8})\(this\.settings\)\)\);([a-zA-Z0-9_$]{1,8})\(this\.header/
     );
-    const hnName = allFmt ? allFmt[1] : "hn";
-    const s2eName = allFmt ? allFmt[2] : "S2E";
-    const x7eName = allFmt ? allFmt[3] : "x7E";
-    const d6eName = allFmt ? allFmt[4] : "d6E";
-    const b7eName = allFmt ? allFmt[5] : "B7E";
+    const hnName = allFmt ? allFmt[1] : "Ym";
+    const s2eName = allFmt ? allFmt[2] : "FmF";
+    const x7eName = allFmt ? allFmt[3] : "jsF";
+    const d6eName = allFmt ? allFmt[4] : "XqF";
+    const b7eName = allFmt ? allFmt[5] : "xsF";
     smReplace(
       "slot eager-capture end-menu + ALL-split helpers on tick",
       /\}tick\(\)\{window\.__remixGame=this;/,
@@ -25922,15 +25991,15 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("slot_r7E_win_gate") < 0) {
     smReplace(
       "slot gate r7E empty win",
-      /if\(r7E\(this\)===0\)\{s5E\.WIN\.play\(\);(window\.timeKeeper\.gotAll\([^;]*?\),)?this\.ub=this\.nj=!0/,
-      "if(r7E(this)===0&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_r7E_win_gate=1))){s5E.WIN.play();$1this.ub=this.nj=!0"
+      /if\(nsF\(this\)===0\)\{mqF\.WIN\.play\(\);(window\.timeKeeper\.gotAll\([^;]*?\),)?this\.Za=this\.uj=!0/,
+      "if(nsF(this)===0&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_r7E_win_gate=1))){mqF.WIN.play();$1this.Za=this.uj=!0"
     );
   }
-  if (code.indexOf("window.__slotK6E=k6E;") < 0) {
+  if (code.indexOf("window.__slotK6E=drF;") < 0) {
     smReplace(
       "slot stamp k6E on call",
-      /k6E=function\(a,b\)\{/,
-      "k6E=function(a,b){window.__slotK6E=k6E;"
+      /drF=function\(a,b\)\{/,
+      "drF=function(a,b){window.__slotK6E=drF;"
     );
   }
 
@@ -25944,7 +26013,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     smReplace(
       "e7(15) keep shield leftovers",
       /if\(b===15&&\(window\.__slotActive===15\|\|/,
-      "if(b===15&&(window.__slotActive===15||window.slot_has_shields&&window.slot_has_shields(window.__remixGame&&window.__remixGame.wa)||"
+      "if(b===15&&(window.__slotActive===15||window.slot_has_shields&&window.slot_has_shields(window.__remixGame&&window.__remixGame.oa)||"
     );
   }
   // While carrying a chess piece, nba locks must actually block eats (e7(15)).
@@ -25953,15 +26022,15 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "e7(15) while carrying chess piece",
-        /if\(b===15&&\(window\.__slotActive===15\|\|window\.slot_has_shields&&window\.slot_has_shields\(window\.__remixGame&&window\.__remixGame\.wa\)\|\|window\.slot_is_chess_mode&&window\.slot_is_chess_mode\(window\.__slotActive\)\|\|window\.__slotActive===28\|\|window\.slot_has_armed_bombs&&window\.slot_has_armed_bombs\(\)\)\)return!0;/,
-        'if(b===15&&(window.__slotActive===15||window.slot_has_shields&&window.slot_has_shields(window.__remixGame&&window.__remixGame.wa)||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive)||window.__slotActive===28||window.slot_has_armed_bombs&&window.slot_has_armed_bombs()||window.head_state&&window.head_state!=="OPEN"))return!0;',
+        /if\(b===15&&\(window\.__slotActive===15\|\|window\.slot_has_shields&&window\.slot_has_shields\(window\.__remixGame&&window\.__remixGame\.oa\)\|\|window\.slot_is_chess_mode&&window\.slot_is_chess_mode\(window\.__slotActive\)\|\|window\.__slotActive===28\|\|window\.slot_has_armed_bombs&&window\.slot_has_armed_bombs\(\)\)\)return!0;/,
+        'if(b===15&&(window.__slotActive===15||window.slot_has_shields&&window.slot_has_shields(window.__remixGame&&window.__remixGame.oa)||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive)||window.__slotActive===28||window.slot_has_armed_bombs&&window.slot_has_armed_bombs()||window.head_state&&window.head_state!=="OPEN"))return!0;',
         true
       )
     ) {
       smReplace(
         "e7(15) while carrying chess piece legacy",
         /if\(b===15&&\(window\.__slotActive===15\|\|window\.slot_is_chess_mode&&window\.slot_is_chess_mode\(window\.__slotActive\)\|\|window\.__slotActive===28\|\|window\.slot_has_armed_bombs&&window\.slot_has_armed_bombs\(\)\)\)return!0;/,
-        'if(b===15&&(window.__slotActive===15||window.slot_has_shields&&window.slot_has_shields(window.__remixGame&&window.__remixGame.wa)||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive)||window.__slotActive===28||window.slot_has_armed_bombs&&window.slot_has_armed_bombs()||window.head_state&&window.head_state!=="OPEN"))return!0;',
+        'if(b===15&&(window.__slotActive===15||window.slot_has_shields&&window.slot_has_shields(window.__remixGame&&window.__remixGame.oa)||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive)||window.__slotActive===28||window.slot_has_armed_bombs&&window.slot_has_armed_bombs()||window.head_state&&window.head_state!=="OPEN"))return!0;',
         true
       );
     }
@@ -25971,24 +26040,24 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("slot_g7_shield_gate") < 0) {
     smReplace(
       "slot gate g7 nba stamp",
-      /nba:e7\(a\.settings,15\)\?P3E\(a,b\):void 0/,
-      "nba:e7(a.settings,15)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===15)&&(window.slot_g7_shield_gate=1)?P3E(a,b):void 0"
+      /h7:M7\(a\.settings,15\)\?goF\(a,b\):void 0/,
+      "h7:M7(a.settings,15)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===15)&&(window.slot_g7_shield_gate=1)?goF(a,b):void 0"
     );
   }
   // Portal teleport twin: native P6E uses even/odd index mates. Under Slot,
   // leftover non-portal fruit breaks that — resolve via pair id / twin ref.
-  if (code.indexOf("slot_portal_twin_index(a.Ga") < 0) {
+  if (code.indexOf("slot_portal_twin_index(a.Ba") < 0) {
     smReplace(
       "slot P6E twin via pair id",
-      /c=a\.Ga\.ka\[b%2===0\?b\+1:b-1\]/,
-      "c=a.Ga.ka[(window.isSlotMachineActive&&window.isSlotMachineActive()&&window.slot_portal_twin_index)?(function(){var _si=window.slot_portal_twin_index(a.Ga,b);return _si>=0?_si:b%2===0?b+1:b-1;})():b%2===0?b+1:b-1]"
+      /c=a\.Ba\.ka\[b%2===0\?b\+1:b-1\]/,
+      "c=a.Ba.ka[(window.isSlotMachineActive&&window.isSlotMachineActive()&&window.slot_portal_twin_index)?(function(){var _si=window.slot_portal_twin_index(a.Ba,b);return _si>=0?_si:b%2===0?b+1:b-1;})():b%2===0?b+1:b-1]"
     );
   }
-  if (code.indexOf("slot_portal_twin_index(a.wa,k)") < 0) {
+  if (code.indexOf("slot_portal_twin_index(a.oa,k)") < 0) {
     smReplace(
       "slot portal _ti via pair id",
-      /let _ti=k%2===0\?k\+1:k-1;if\(_ti>=0&&_ti<a\.wa\.ka\.length&&a\.wa\.ka\[_ti\]\)b=!0,P6E\(a\.Sa,k,f,e,g\)/,
-      "let _ti=(window.isSlotMachineActive&&window.isSlotMachineActive()&&window.slot_portal_twin_index)?window.slot_portal_twin_index(a.wa,k):(k%2===0?k+1:k-1);if(_ti>=0&&_ti<a.wa.ka.length&&a.wa.ka[_ti])b=!0,P6E(a.Sa,k,f,e,g)"
+      /let _ti=k%2===0\?k\+1:k-1;if\(_ti>=0&&_ti<a\.oa\.ka\.length&&a\.oa\.ka\[_ti\]\)b=!0,MrF\(a\.La,k,f,e,g\)/,
+      "let _ti=(window.isSlotMachineActive&&window.isSlotMachineActive()&&window.slot_portal_twin_index)?window.slot_portal_twin_index(a.oa,k):(k%2===0?k+1:k-1);if(_ti>=0&&_ti<a.oa.ka.length&&a.oa.ka[_ti])b=!0,MrF(a.La,k,f,e,g)"
     );
   }
 
@@ -26000,23 +26069,25 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot R3E only unique/portal pairs",
-        /R3E=function\(a\)\{window\.__bowlIsMode=([a-zA-Z0-9_$]{1,8});/,
-        "R3E=function(a){if(window.isSlotMachineActive&&window.isSlotMachineActive()){window.slot_R3E_gate=1;window.slot_ensure_unique_fruit_types&&window.slot_ensure_unique_fruit_types(a);return;}window.__bowlIsMode=$1;"
+        /ioF=function\(a\)\{window\.__bowlIsMode=([a-zA-Z0-9_$]{1,8});/,
+        "ioF=function(a){if(window.isSlotMachineActive&&window.isSlotMachineActive()){window.slot_R3E_gate=1;window.slot_ensure_unique_fruit_types&&window.slot_ensure_unique_fruit_types(a);return;}window.__bowlIsMode=$1;",
+        true
       )
     ) {
       smReplace(
         "slot R3E only unique/portal pairs native",
-        /R3E=function\(a\)\{if\(e7\(a\.settings,2\)\)\{/,
-        "R3E=function(a){if(window.isSlotMachineActive&&window.isSlotMachineActive()){window.slot_R3E_gate=1;window.slot_ensure_unique_fruit_types&&window.slot_ensure_unique_fruit_types(a);return;}if(e7(a.settings,2)){"
+        /ioF=function\(a\)\{if\(M7\(a\.settings,2\)\)\{/,
+        "ioF=function(a){if(window.isSlotMachineActive&&window.isSlotMachineActive()){window.slot_R3E_gate=1;window.slot_ensure_unique_fruit_types&&window.slot_ensure_unique_fruit_types(a);return;}if(M7(a.settings,2)){"
       );
     }
   }
   // Portal He sync: under Slot, sync only marked twin pairs (not even/odd leftovers).
+  // v14 tick: if(M7(l.settings,2))for(let sc=0;...){let Mc=(l.ka[sc].BEc??0)<...;xd.Ce...DmF(...)}
   if (code.indexOf("slot_sync_portal_he_pairs") < 0) {
     smReplace(
       "slot portal He sync twin pairs only",
-      /if\(e7\(k\.settings,2\)\)for\(let fd=0;fd<k\.ka\.length;fd\+=2\)\{let vc,ad,Yd=\(\(vc=\s*k\.ka\[fd\]\.EDc\)!=null\?vc:0\)<\(\(ad=k\.ka\[fd\+1\]\.EDc\)!=null\?ad:0\)\?fd:fd\+1,ud=k\.ka\[Yd\],od=k\.ka\[Yd===fd\?fd\+1:fd\];ud\.He\.x===0&&ud\.He\.y===0\|\|od\.He\.x===0&&od\.He\.y===0\?\(V3E\(ud,!0,!0\),V3E\(od,!0,!0\)\):\(ud\.He\.x===0\?V3E\(od,!0,!1\):od\.He\.x=ud\.He\.x,ud\.He\.y===0\?V3E\(od,!1,!0\):od\.He\.y=ud\.He\.y\)\}/,
-      "if(e7(k.settings,2)){if(window.isSlotMachineActive&&window.isSlotMachineActive()){(function(){window.slot_sync_portal_he_pairs=1;var seen={};for(var i=0;i<k.ka.length;i++){var pa=k.ka[i];if(!pa||!pa.__slotPortal)continue;var pid=pa.__slotPortalPairId;if(pid!=null&&seen[pid])continue;if(pid!=null)seen[pid]=1;var pb=pa.__slotPortalTwin;if(!pb||k.ka.indexOf(pb)<0){pb=null;if(pid!=null)for(var j=0;j<k.ka.length;j++){var o=k.ka[j];if(o&&o!==pa&&o.__slotPortal&&o.__slotPortalPairId===pid){pb=o;break;}}}if(!pb)continue;var vc,ad,Yd=((vc=pa.EDc)!=null?vc:0)<((ad=pb.EDc)!=null?ad:0)?0:1,ud=Yd===0?pa:pb,od=Yd===0?pb:pa;ud.He.x===0&&ud.He.y===0||od.He.x===0&&od.He.y===0?(V3E(ud,!0,!0),V3E(od,!0,!0)):(ud.He.x===0?V3E(od,!0,!1):od.He.x=ud.He.x,ud.He.y===0?V3E(od,!1,!0):od.He.y=ud.He.y);}})();}else for(let fd=0;fd<k.ka.length;fd+=2){let vc,ad,Yd=((vc=k.ka[fd].EDc)!=null?vc:0)<((ad=k.ka[fd+1].EDc)!=null?ad:0)?fd:fd+1,ud=k.ka[Yd],od=k.ka[Yd===fd?fd+1:fd];ud.He.x===0&&ud.He.y===0||od.He.x===0&&od.He.y===0?(V3E(ud,!0,!0),V3E(od,!0,!0)):(ud.He.x===0?V3E(od,!0,!1):od.He.x=ud.He.x,ud.He.y===0?V3E(od,!1,!0):od.He.y=ud.He.y)}}"
+      /if\(M7\(l\.settings,2\)\)for\(let sc=0;sc<l\.ka\.length;sc\+=2\)\{let Mc=\(l\.ka\[sc\]\.BEc\?\?0\)<\(l\.ka\[sc\+1\]\.BEc\?\?0\)\?sc:sc\+1,xd=l\.ka\[Mc\],Od=l\.ka\[Mc===sc\?sc\+1:sc\];xd\.Ce\.x===0&&xd\.Ce\.y===0\|\|Od\.Ce\.x===0&&Od\.Ce\.y===0\?\(DmF\(xd,!0,!0\),DmF\(Od,!0,!0\)\):\(xd\.Ce\.x===0\?DmF\(Od,!0,!1\):Od\.Ce\.x=xd\.Ce\.x,xd\.Ce\.y===0\?DmF\(Od,!1,!0\):Od\.Ce\.y=xd\.Ce\.y\)\}/,
+      "if(M7(l.settings,2)){if(window.isSlotMachineActive&&window.isSlotMachineActive()){(function(){window.slot_sync_portal_he_pairs=1;var seen={};for(var i=0;i<l.ka.length;i++){var pa=l.ka[i];if(!pa||!pa.__slotPortal)continue;var pid=pa.__slotPortalPairId;if(pid!=null&&seen[pid])continue;if(pid!=null)seen[pid]=1;var pb=pa.__slotPortalTwin;if(!pb||l.ka.indexOf(pb)<0){pb=null;if(pid!=null)for(var j=0;j<l.ka.length;j++){var o=l.ka[j];if(o&&o!==pa&&o.__slotPortal&&o.__slotPortalPairId===pid){pb=o;break;}}}if(!pb)continue;var ud=(pa.BEc??0)<(pb.BEc??0)?pa:pb,od=ud===pa?pb:pa;ud.Ce.x===0&&ud.Ce.y===0||od.Ce.x===0&&od.Ce.y===0?(DmF(ud,!0,!0),DmF(od,!0,!0)):(ud.Ce.x===0?DmF(od,!0,!1):od.Ce.x=ud.Ce.x,ud.Ce.y===0?DmF(od,!1,!0):od.Ce.y=ud.Ce.y);}})();}else for(let sc=0;sc<l.ka.length;sc+=2){let Mc=(l.ka[sc].BEc??0)<(l.ka[sc+1].BEc??0)?sc:sc+1,xd=l.ka[Mc],Od=l.ka[Mc===sc?sc+1:sc];xd.Ce.x===0&&xd.Ce.y===0||Od.Ce.x===0&&Od.Ce.y===0?(DmF(xd,!0,!0),DmF(Od,!0,!0)):(xd.Ce.x===0?DmF(Od,!0,!1):Od.Ce.x=xd.Ce.x,xd.Ce.y===0?DmF(Od,!1,!0):Od.Ce.y=xd.Ce.y)}}"
     );
   }
   // MorePudding PortalPairs braces this into if{ PortalPairs? assign : for; enforce }.
@@ -26024,14 +26095,15 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot block u7E portal consecutive typing",
-        /if\(e7\(a\.settings,2\)&&b\.length>0\)\{if\(window\.pudding_settings&&window\.pudding_settings\.PortalPairs/,
-        "if(e7(a.settings,2)&&b.length>0&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_u7E_portal_pair_types=1))){if(window.pudding_settings&&window.pudding_settings.PortalPairs"
+        /if\(M7\(a\.settings,2\)&&b\.length>0\)\{if\(window\.pudding_settings&&window\.pudding_settings\.PortalPairs/,
+        "if(M7(a.settings,2)&&b.length>0&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_u7E_portal_pair_types=1))){if(window.pudding_settings&&window.pudding_settings.PortalPairs",
+        true
       )
     ) {
       smReplace(
         "slot block u7E portal consecutive typing native",
-        /if\(e7\(a\.settings,2\)&&b\.length>0\)for\(b\[0\]\.type=Q3E\(a\.wa\),b\[1\]\.type=b\[0\]\.type,a=2;a<b\.length;a\+=2\)b\[a\]\.type=\(b\[a-2\]\.type\+1\)%\s*24,b\[a\+1\]\.type=b\[a\]\.type/,
-        "if(e7(a.settings,2)&&b.length>0&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_u7E_portal_pair_types=1)))for(b[0].type=Q3E(a.wa),b[1].type=b[0].type,a=2;a<b.length;a+=2)b[a].type=(b[a-2].type+1)%24,b[a+1].type=b[a].type"
+        /if\(M7\(a\.settings,2\)&&b\.length>0\)for\(b\[0\]\.type=hoF\(a\.oa\),b\[1\]\.type=b\[0\]\.type,a=2;a<b\.length;a\+=2\)b\[a\]\.type=\(b\[a-2\]\.type\+1\)%\s*24,b\[a\+1\]\.type=b\[a\]\.type/,
+        "if(M7(a.settings,2)&&b.length>0&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_u7E_portal_pair_types=1)))for(b[0].type=hoF(a.oa),b[1].type=b[0].type,a=2;a<b.length;a+=2)b[a].type=(b[a-2].type+1)%24,b[a+1].type=b[a].type"
       );
     }
   }
@@ -26043,76 +26115,109 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot portal no wipe after twin_index",
-        /a\.wa\.ka\.length%2!==0&&!\(window\.isChessActive&&window\.isChessActive\(\)\)\)\{a\.wa\.ka\.splice\(0,a\.wa\.ka\.length\);break\}else\{let _ti=\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)&&window\.slot_portal_twin_index\)\?window\.slot_portal_twin_index\(a\.wa,k\):\(k%2===0\?k\+1:k-1\);if\(_ti>=0&&_ti<a\.wa\.ka\.length&&a\.wa\.ka\[_ti\]\)b=!0,P6E\(a\.Sa,k,f,e,g\)/,
-        "a.wa.ka.length%2!==0&&!(window.isChessActive&&window.isChessActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_portal_no_wipe=1))){a.wa.ka.splice(0,a.wa.ka.length);break}else{let _ti=(window.isSlotMachineActive&&window.isSlotMachineActive()&&window.slot_portal_twin_index)?window.slot_portal_twin_index(a.wa,k):(k%2===0?k+1:k-1);if(_ti>=0&&_ti<a.wa.ka.length&&a.wa.ka[_ti]&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(a.wa.ka[k]&&a.wa.ka[k].__slotPortal)))b=!0,P6E(a.Sa,k,f,e,g)"
+        /a\.oa\.ka\.length%2!==0&&!\(window\.isChessActive&&window\.isChessActive\(\)\)\)\{a\.oa\.ka\.splice\(0,a\.oa\.ka\.length\);break\}else\{let _ti=\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)&&window\.slot_portal_twin_index\)\?window\.slot_portal_twin_index\(a\.oa,k\):\(k%2===0\?k\+1:k-1\);if\(_ti>=0&&_ti<a\.oa\.ka\.length&&a\.oa\.ka\[_ti\]\)b=!0,MrF\(a\.La,k,f,e,g\)/,
+        "a.oa.ka.length%2!==0&&!(window.isChessActive&&window.isChessActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_portal_no_wipe=1))){a.oa.ka.splice(0,a.oa.ka.length);break}else{let _ti=(window.isSlotMachineActive&&window.isSlotMachineActive()&&window.slot_portal_twin_index)?window.slot_portal_twin_index(a.oa,k):(k%2===0?k+1:k-1);if(_ti>=0&&_ti<a.oa.ka.length&&a.oa.ka[_ti]&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(a.oa.ka[k]&&a.oa.ka[k].__slotPortal)))b=!0,MrF(a.La,k,f,e,g)"
       )
     ) {
       if (
         !smReplace(
           "slot portal no wipe + twin after chess",
-          /if\(e7\(a\.settings,2\)&&!\(window\.isChessActive&&window\.isChessActive\(\)&&window\.just_ate==='piece'\)\)if\(a\.wa\.ka\.length%2!==0&&!\(window\.isChessActive&&window\.isChessActive\(\)\)\)\{a\.wa\.ka\.splice\(0,a\.wa\.ka\.length\);break\}else\{let _ti=k%2===0\?k\+1:k-1;if\(_ti>=0&&_ti<a\.wa\.ka\.length&&a\.wa\.ka\[_ti\]\)b=!0,P6E\(a\.Sa,k,f,e,g\),f&&e7\(a\.settings,20\)&&p5E\(a\.Ga\);\}/,
-          "if(e7(a.settings,2)&&!(window.isChessActive&&window.isChessActive()&&window.just_ate==='piece'))if(a.wa.ka.length%2!==0&&!(window.isChessActive&&window.isChessActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_portal_no_wipe=1))){a.wa.ka.splice(0,a.wa.ka.length);break}else{let _ti=(window.isSlotMachineActive&&window.isSlotMachineActive()&&window.slot_portal_twin_index)?window.slot_portal_twin_index(a.wa,k):(k%2===0?k+1:k-1);if(_ti>=0&&_ti<a.wa.ka.length&&a.wa.ka[_ti]&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(a.wa.ka[k]&&a.wa.ka[k].__slotPortal)))b=!0,P6E(a.Sa,k,f,e,g),f&&e7(a.settings,20)&&p5E(a.Ga);}"
+          /if\(M7\(a\.settings,2\)&&!\(window\.isChessActive&&window\.isChessActive\(\)&&window\.just_ate==='piece'\)\)if\(a\.oa\.ka\.length%2!==0&&!\(window\.isChessActive&&window\.isChessActive\(\)\)\)\{a\.oa\.ka\.splice\(0,a\.oa\.ka\.length\);break\}else\{let _ti=k%2===0\?k\+1:k-1;if\(_ti>=0&&_ti<a\.oa\.ka\.length&&a\.oa\.ka\[_ti\]\)b=!0,MrF\(a\.La,k,f,e,g\),f&&M7\(a\.settings,20\)&&jqF\(a\.wa\);\}/,
+          "if(M7(a.settings,2)&&!(window.isChessActive&&window.isChessActive()&&window.just_ate==='piece'))if(a.oa.ka.length%2!==0&&!(window.isChessActive&&window.isChessActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_portal_no_wipe=1))){a.oa.ka.splice(0,a.oa.ka.length);break}else{let _ti=(window.isSlotMachineActive&&window.isSlotMachineActive()&&window.slot_portal_twin_index)?window.slot_portal_twin_index(a.oa,k):(k%2===0?k+1:k-1);if(_ti>=0&&_ti<a.oa.ka.length&&a.oa.ka[_ti]&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(a.oa.ka[k]&&a.oa.ka[k].__slotPortal)))b=!0,MrF(a.La,k,f,e,g),f&&M7(a.settings,20)&&jqF(a.wa);}"
         )
       ) {
         if (
           !smReplace(
             "slot portal no wipe condition only",
-            /a\.wa\.ka\.length%2!==0&&!\(window\.isChessActive&&window\.isChessActive\(\)\)\)\{a\.wa\.ka\.splice\(0,a\.wa\.ka\.length\);break\}/,
-            "a.wa.ka.length%2!==0&&!(window.isChessActive&&window.isChessActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_portal_no_wipe=1))){a.wa.ka.splice(0,a.wa.ka.length);break}"
+            /a\.oa\.ka\.length%2!==0&&!\(window\.isChessActive&&window\.isChessActive\(\)\)\)\{a\.oa\.ka\.splice\(0,a\.oa\.ka\.length\);break\}/,
+            "a.oa.ka.length%2!==0&&!(window.isChessActive&&window.isChessActive())&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_portal_no_wipe=1))){a.oa.ka.splice(0,a.oa.ka.length);break}"
           )
         ) {
           smReplace(
             "slot portal no wipe native",
-            /if\(e7\(a\.settings,2\)\)if\(a\.wa\.ka\.length%2!==0\)\{a\.wa\.ka\.splice\(0,a\.wa\.ka\.length\);break\}else b=!0,P6E\(a\.Sa,k,f,e,g\),f&&e7\(a\.settings,20\)&&p5E\(a\.Ga\);/,
-            "if(e7(a.settings,2)&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&a.wa.ka[k]&&!a.wa.ka[k].__slotPortal))if(a.wa.ka.length%2!==0&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_portal_no_wipe=1))){a.wa.ka.splice(0,a.wa.ka.length);break}else{let _ti=(window.isSlotMachineActive&&window.isSlotMachineActive()&&window.slot_portal_twin_index)?window.slot_portal_twin_index(a.wa,k):(k%2===0?k+1:k-1);if(_ti>=0&&_ti<a.wa.ka.length&&a.wa.ka[_ti])b=!0,P6E(a.Sa,k,f,e,g),f&&e7(a.settings,20)&&p5E(a.Ga);}"
+            /if\(M7\(a\.settings,2\)\)if\(a\.oa\.ka\.length%2!==0\)\{a\.oa\.ka\.splice\(0,a\.oa\.ka\.length\);break\}else b=!0,MrF\(a\.La,k,f,e,g\),f&&M7\(a\.settings,20\)&&jqF\(a\.wa\);/,
+            "if(M7(a.settings,2)&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&a.oa.ka[k]&&!a.oa.ka[k].__slotPortal))if(a.oa.ka.length%2!==0&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_portal_no_wipe=1))){a.oa.ka.splice(0,a.oa.ka.length);break}else{let _ti=(window.isSlotMachineActive&&window.isSlotMachineActive()&&window.slot_portal_twin_index)?window.slot_portal_twin_index(a.oa,k):(k%2===0?k+1:k-1);if(_ti>=0&&_ti<a.oa.ka.length&&a.oa.ka[_ti])b=!0,MrF(a.La,k,f,e,g),f&&M7(a.settings,20)&&jqF(a.wa);}"
           );
         }
       }
     }
   }
 
-  // n7E paints fruit into the wall grid with raw pos. Portal He-sync (and
-  // winged leftovers) can leave half-tiles like 3.5 — wa[y] is then undefined
-  // and tick crashes: Cannot set properties of undefined (setting '3.5').
-  // MorePudding already bounds-checks the K3E mirror write; match that form.
+  // v14 split native n7E into game.Ia(a=!0) plus per-subsystem painters:
+  // YoF (snake), CoF (fruit), krF (keys), YpF (soko), ArF (walls), xrF (mines),
+  // gqF (bridges). Portal He-sync (and winged leftovers) can leave half-tiles
+  // like 3.5 — wa[y] is then undefined and tick crashes: Cannot set properties
+  // of undefined (setting '3.5'). Round + bounds-check the CoF fruit writes.
+  // MorePudding may already bounds-check the boF mirror write; match that too.
+  const slotFruitGrid =
+    "else{if(window.isSlotMachineActive&&window.isSlotMachineActive()){window.slot_n7E_round_fruit=1;c.push(new _.Yd(Math.round(d.pos.x),Math.round(d.pos.y)));}else c.push(d.pos.clone());}for(let d of c){var _sfx=Math.round(+d.x),_sfy=Math.round(+d.y);if(window.isSlotMachineActive&&window.isSlotMachineActive())window.slot_n7E_grid_guard=1;if(_sfy<0||_sfy>=a.oa.wa.length||!a.oa.wa[_sfy]||_sfx<0||_sfx>=a.oa.wa[_sfy].length)continue;b=Q7(a.settings)?3:2,a.oa.wa[_sfy][_sfx]=b,boF(a.settings)&&(c=V7(a.oa,new _.Yd(_sfx,_sfy)),c&&a.oa.wa[c.y]&&(a.oa.wa[c.y][c.x]=b));}";
   if (code.indexOf("slot_n7E_round_fruit") < 0) {
     if (
       !smReplace(
         "slot n7E round fractional fruit for grid",
-        /else c\.push\(e\.pos\.clone\(\)\);for\(var f of c\)e=d7\(b\.settings\)\?3:2,b\.oa\.wa\[f\.y\]\[f\.x\]=\s*e,K3E\(b\.settings\)&&\(c=j7\(b\.oa,f\),c\.y\s*>=\s*0\s*&&\s*c\.y\s*<\s*a\.ka\.oa\.height\s*&&\s*c\.x\s*>=\s*0\s*&&\s*c\.x\s*<\s*a\.ka\.oa\.width\s*&&\s*\(b\.oa\.wa\[c\.y\]\[c\.x\]\s*=\s*e\)\)/,
-        "else{if(window.isSlotMachineActive&&window.isSlotMachineActive()){window.slot_n7E_round_fruit=1;c.push(new _.Od(Math.round(e.pos.x),Math.round(e.pos.y)));}else c.push(e.pos.clone());}for(var f of c){var _sfx=Math.round(+f.x),_sfy=Math.round(+f.y);if(window.isSlotMachineActive&&window.isSlotMachineActive())window.slot_n7E_grid_guard=1;if(_sfy<0||_sfy>=b.oa.wa.length||!b.oa.wa[_sfy]||_sfx<0||_sfx>=b.oa.wa[_sfy].length)continue;e=d7(b.settings)?3:2,b.oa.wa[_sfy][_sfx]=e,K3E(b.settings)&&(c=j7(b.oa,new _.Od(_sfx,_sfy)),c.y>=0&&c.y<a.ka.oa.height&&c.x>=0&&c.x<a.ka.oa.width&&(b.oa.wa[c.y][c.x]=e));}"
+        /else c\.push\(d\.pos\.clone\(\)\);for\(let d of c\)b=Q7\(a\.settings\)\?3:2,a\.oa\.wa\[d\.y\]\[d\.x\]=\s*b,boF\(a\.settings\)&&\(c=V7\(a\.oa,d\),c\.y\s*>=\s*0\s*&&\s*c\.y\s*<\s*a\.[a-zA-Z0-9_$]{1,4}\.oa\.height\s*&&\s*c\.x\s*>=\s*0\s*&&\s*c\.x\s*<\s*a\.[a-zA-Z0-9_$]{1,4}\.oa\.width\s*&&\s*\(a\.oa\.wa\[c\.y\]\[c\.x\]\s*=\s*b\)\)/,
+        slotFruitGrid,
+        true
       )
     ) {
       if (
         !smReplace(
           "slot n7E round fractional fruit (native K3E)",
-          /else c\.push\(e\.pos\.clone\(\)\);for\(var f of c\)e=d7\(b\.settings\)\?3:2,b\.oa\.wa\[f\.y\]\[f\.x\]=\s*e,K3E\(b\.settings\)&&\(c=j7\(b\.oa,f\),b\.oa\.wa\[c\.y\]\[c\.x\]=e\)/,
-          "else{if(window.isSlotMachineActive&&window.isSlotMachineActive()){window.slot_n7E_round_fruit=1;c.push(new _.Od(Math.round(e.pos.x),Math.round(e.pos.y)));}else c.push(e.pos.clone());}for(var f of c){var _sfx=Math.round(+f.x),_sfy=Math.round(+f.y);if(window.isSlotMachineActive&&window.isSlotMachineActive())window.slot_n7E_grid_guard=1;if(_sfy<0||_sfy>=b.oa.wa.length||!b.oa.wa[_sfy]||_sfx<0||_sfx>=b.oa.wa[_sfy].length)continue;e=d7(b.settings)?3:2,b.oa.wa[_sfy][_sfx]=e,K3E(b.settings)&&(c=j7(b.oa,new _.Od(_sfx,_sfy)),b.oa.wa[c.y]&&(b.oa.wa[c.y][c.x]=e));}"
+          /else c\.push\(d\.pos\.clone\(\)\);for\(let d of c\)b=Q7\(a\.settings\)\?3:2,a\.oa\.wa\[d\.y\]\[d\.x\]=\s*b,boF\(a\.settings\)&&\(c=V7\(a\.oa,d\),a\.oa\.wa\[c\.y\]\[c\.x\]=b\)/,
+          slotFruitGrid
         )
       ) {
         smReplace(
           "slot n7E safe fruit grid write only",
-          /for\(var f of c\)e=d7\(b\.settings\)\?3:2,b\.oa\.wa\[f\.y\]\[f\.x\]=\s*e,/,
-          "for(var f of c){var _sfx=Math.round(+f.x),_sfy=Math.round(+f.y);if(window.isSlotMachineActive&&window.isSlotMachineActive()){window.slot_n7E_grid_guard=1;}if(_sfy<0||_sfy>=b.oa.wa.length||!b.oa.wa[_sfy]||_sfx<0||_sfx>=b.oa.wa[_sfy].length)continue;e=d7(b.settings)?3:2,b.oa.wa[_sfy][_sfx]=e,"
+          /for\(let d of c\)b=Q7\(a\.settings\)\?3:2,a\.oa\.wa\[d\.y\]\[d\.x\]=\s*b,/,
+          "for(let d of c)if(a.oa.wa[d.y]&&a.oa.wa[d.y][d.x]!==void 0||(window.slot_n7E_grid_guard=1,!1))b=Q7(a.settings)?3:2,a.oa.wa[d.y][d.x]=b,"
         );
       }
     }
   }
-  if (code.indexOf("window.__n7E=n7E") < 0) {
+  // v14: n7E is the game method Ia(a=!0). Expose a caller (game) => game.Ia().
+  if (code.indexOf("window.__n7E=") < 0) {
     smReplace(
       "slot stamp n7E on call",
-      /n7E=function\(a\)\{/,
-      "n7E=function(a){window.__n7E=n7E;"
+      /\bIa\(a=!0\)\{if\(!XoF\(this\.ka\)\)\{/,
+      "Ia(a=!0){window.__n7E=function(g){g&&g.Ia&&g.Ia()};if(!XoF(this.ka)){",
+      true
     );
   }
 
-  // n7E also paints keys(=6), sokoboxes(=7), walls, mines without bounds checks.
-  // Leftover key at oob/fractional y → Cannot set properties of undefined (setting '6').
+  // Native painters also write keys(=6), sokoboxes(=7), walls, mines without
+  // bounds checks. Leftover key at oob/fractional y → Cannot set properties of
+  // undefined (setting '6'). v14 splits these into krF / YpF / ArF / xrF.
   if (code.indexOf("slot_n7E_entity_guard") < 0) {
+    const slotSafeSet =
+      "var _sg=function(p,v){if(!p)return;var _y=Math.round(+p.y),_x=Math.round(+p.x);a.ka.wa[_y]&&_x>=0&&_x<a.ka.wa[_y].length&&(a.ka.wa[_y][_x]=v)};";
     smReplace(
-      "slot n7E guard key/soko/wall/mine grid writes",
-      /f=a\.Ba;for\(var g of f\.keys\)g\.Lh&&\(f\.ka\.wa\[g\.pos\.y\]\[g\.pos\.x\]=6,e7\(f\.settings,7\)&&\(e=j7\(f\.ka,g\.pos\),f\.ka\.wa\[e\.y\]\[e\.x\]=6\)\);g=a\.Aa;for\(var h of g\.oa\)h\.Lh&&\(g\.ka\.wa\[h\.pos\.y\]\[h\.pos\.x\]=7,e7\(g\.settings,7\)&&\(f=j7\(g\.ka,h\.pos\),g\.ka\.wa\[f\.y\]\[f\.x\]=7\)\);h=a\.Ca;for\(var k of h\.Aa\.values\(\)\)k\.Lh&&!k\.m0&&O5E\(k\)&&\(h\.ka\.wa\[k\.pos\.y\]\[k\.pos\.x\]=k\.WQ\?11:k\.ty\?12:5\);k=a\.Ma;for\(var l of k\.oa\)l\.Lh&&\(k\.ka\.wa\[l\.pos\.y\]\[l\.pos\.x\]=9\)/,
-      "f=a.Ba;for(var g of f.keys)if(g.Lh){window.slot_n7E_entity_guard=1;var _ky=Math.round(+g.pos.y),_kx=Math.round(+g.pos.x);if(_ky>=0&&_ky<f.ka.wa.length&&f.ka.wa[_ky]&&_kx>=0&&_kx<f.ka.wa[_ky].length)f.ka.wa[_ky][_kx]=6;if(e7(f.settings,7)){e=j7(f.ka,g.pos);if(e&&e.y>=0&&e.y<f.ka.wa.length&&f.ka.wa[e.y]&&e.x>=0&&e.x<f.ka.wa[e.y].length)f.ka.wa[e.y][e.x]=6;}}g=a.Aa;for(var h of g.oa)if(h.Lh){var _sy=Math.round(+h.pos.y),_sx=Math.round(+h.pos.x);if(_sy>=0&&_sy<g.ka.wa.length&&g.ka.wa[_sy]&&_sx>=0&&_sx<g.ka.wa[_sy].length)g.ka.wa[_sy][_sx]=7;if(e7(g.settings,7)){f=j7(g.ka,h.pos);if(f&&f.y>=0&&f.y<g.ka.wa.length&&g.ka.wa[f.y]&&f.x>=0&&f.x<g.ka.wa[f.y].length)g.ka.wa[f.y][f.x]=7;}}h=a.Ca;for(var k of h.Aa.values())if(k.Lh&&!k.m0&&O5E(k)){var _wy=Math.round(+k.pos.y),_wx=Math.round(+k.pos.x);if(_wy>=0&&_wy<h.ka.wa.length&&h.ka.wa[_wy]&&_wx>=0&&_wx<h.ka.wa[_wy].length)h.ka.wa[_wy][_wx]=k.WQ?11:k.ty?12:5;}k=a.Ma;for(var l of k.oa)if(l.Lh){var _my=Math.round(+l.pos.y),_mx=Math.round(+l.pos.x);if(_my>=0&&_my<k.ka.wa.length&&k.ka.wa[_my]&&_mx>=0&&_mx<k.ka.wa[_my].length)k.ka.wa[_my][_mx]=9;}"
+      "slot n7E guard key grid writes",
+      /krF=function\(a,b=!0\)\{for\(let c of a\.keys\)if\(c\.Xg===b&&\(a\.ka\.wa\[c\.pos\.y\]\[c\.pos\.x\]=6,M7\(a\.settings,7\)\)\)\{let d=V7\(a\.ka,c\.pos\);a\.ka\.wa\[d\.y\]\[d\.x\]=6\}\}/,
+      "krF=function(a,b=!0){window.slot_n7E_entity_guard=1;" +
+        slotSafeSet +
+        "for(let c of a.keys)if(c.Xg===b){_sg(c.pos,6);if(M7(a.settings,7))_sg(V7(a.ka,c.pos),6)}}"
+    );
+    smReplace(
+      "slot n7E guard sokobox grid writes",
+      /YpF=function\(a,b=!0\)\{for\(let c of a\.WJ\)if\(c\.Xg===b&&\(a\.ka\.wa\[c\.pos\.y\]\[c\.pos\.x\]=7,M7\(a\.settings,7\)\)\)\{let d=V7\(a\.ka,c\.pos\);a\.ka\.wa\[d\.y\]\[d\.x\]=7\}\}/,
+      "YpF=function(a,b=!0){" +
+        slotSafeSet +
+        "for(let c of a.WJ)if(c.Xg===b){_sg(c.pos,7);if(M7(a.settings,7))_sg(V7(a.ka,c.pos),7)}}"
+    );
+    smReplace(
+      "slot n7E guard wall grid writes",
+      /ArF=function\(a,b=!0\)\{for\(let c of a\.wa\.values\(\)\)c\.Xg===b&&!c\.e9&&ZoF\(c,b\)&&\(a\.ka\.wa\[c\.pos\.y\]\[c\.pos\.x\]=c\.iR\?11:c\.wv\?12:5\)\}/,
+      "ArF=function(a,b=!0){" +
+        slotSafeSet +
+        "for(let c of a.wa.values())c.Xg===b&&!c.e9&&ZoF(c,b)&&_sg(c.pos,c.iR?11:c.wv?12:5)}"
+    );
+    smReplace(
+      "slot n7E guard mine grid writes",
+      /xrF=function\(a,b=!0\)\{for\(let c of a\.oa\)c\.Xg===b&&\(a\.ka\.wa\[c\.pos\.y\]\[c\.pos\.x\]=9\)\}/,
+      "xrF=function(a,b=!0){" +
+        slotSafeSet +
+        "for(let c of a.oa)c.Xg===b&&_sg(c.pos,9)}"
     );
   }
 
@@ -26122,15 +26227,15 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("slot_U3E_guard") < 0) {
     smReplace(
       "slot guard T3E/U3E arrow cell lookup",
-      /T3E=function\(a,b\)\{return m7\(a\.oa,b\)\?a\.ka\[b\.y\]\[b\.x\]\.Lh:!1\},U3E=function\(a,b\)\{return m7\(a\.oa,b\)\?a\.ka\[b\.y\]\[b\.x\]\.direction:"NONE"\}/,
-      'T3E=function(a,b){if(!a||!a.ka||!b)return!1;var _ty=Math.round(+b.y),_tx=Math.round(+b.x);return m7(a.oa,b)&&a.ka[_ty]&&a.ka[_ty][_tx]?a.ka[_ty][_tx].Lh:!1},U3E=function(a,b){window.slot_U3E_guard=1;if(!a||!a.ka||!b)return"NONE";var _uy=Math.round(+b.y),_ux=Math.round(+b.x);return m7(a.oa,b)&&a.ka[_uy]&&a.ka[_uy][_ux]?a.ka[_uy][_ux].direction:"NONE"}'
+      /koF=function\(a,b\)\{return X7\(a\.oa,b\)\?a\.ka\[b\.y\]\[b\.x\]\.Xg:!1\},loF=function\(a,b\)\{return X7\(a\.oa,b\)\?a\.ka\[b\.y\]\[b\.x\]\.direction:"NONE"\}/,
+      'koF=function(a,b){if(!a||!a.ka||!b)return!1;var _ty=Math.round(+b.y),_tx=Math.round(+b.x);return X7(a.oa,b)&&a.ka[_ty]&&a.ka[_ty][_tx]?a.ka[_ty][_tx].Xg:!1},loF=function(a,b){window.slot_U3E_guard=1;if(!a||!a.ka||!b)return"NONE";var _uy=Math.round(+b.y),_ux=Math.round(+b.x);return X7(a.oa,b)&&a.ka[_uy]&&a.ka[_uy][_ux]?a.ka[_uy][_ux].direction:"NONE"}'
     );
   }
   if (code.indexOf("slot_h7_guard") < 0) {
     smReplace(
       "slot guard h7 arrow clear",
-      /h7=function\(a,b,c\)\{var d=a\.ka\[b\.y\]\[b\.x\];if\(c\)switch\(d\.direction\)\{case "DOWN":o4E\.DOWN\.play\(\);break;case "UP":o4E\.UP\.play\(\);break;case "LEFT":o4E\.LEFT\.play\(\);break;case "RIGHT":o4E\.RIGHT\.play\(\)\}d\.direction="NONE";d\.wm=!1;e7\(a\.settings,7\)&&\(b=j7\(a\.oa,b\),a=a\.ka\[b\.y\]\[b\.x\],a\.direction="NONE",a\.wm=!1\)\}/,
-      'h7=function(a,b,c){window.slot_h7_guard=1;if(!a||!a.ka||!b)return;var _hy=Math.round(+b.y),_hx=Math.round(+b.x);if(!a.ka[_hy]||!a.ka[_hy][_hx])return;var d=a.ka[_hy][_hx];if(c)switch(d.direction){case "DOWN":o4E.DOWN.play();break;case "UP":o4E.UP.play();break;case "LEFT":o4E.LEFT.play();break;case "RIGHT":o4E.RIGHT.play()}d.direction="NONE";d.wm=!1;e7(a.settings,7)&&(b=j7(a.oa,b),b&&a.ka[b.y]&&a.ka[b.y][b.x]&&(a=a.ka[b.y][b.x],a.direction="NONE",a.wm=!1))}'
+      /T7=function\(a,b,c\)\{var d=a\.ka\[b\.y\]\[b\.x\];if\(c\)switch\(d\.direction\)\{case "DOWN":FoF\.DOWN\.play\(\);break;case "UP":FoF\.UP\.play\(\);break;case "LEFT":FoF\.LEFT\.play\(\);break;case "RIGHT":FoF\.RIGHT\.play\(\)\}d\.direction="NONE";d\.Rm=!1;M7\(a\.settings,7\)&&\(b=V7\(a\.oa,b\),a=a\.ka\[b\.y\]\[b\.x\],a\.direction="NONE",a\.Rm=!1\)\}/,
+      'T7=function(a,b,c){window.slot_h7_guard=1;if(!a||!a.ka||!b)return;var _hy=Math.round(+b.y),_hx=Math.round(+b.x);if(!a.ka[_hy]||!a.ka[_hy][_hx])return;var d=a.ka[_hy][_hx];if(c)switch(d.direction){case "DOWN":FoF.DOWN.play();break;case "UP":FoF.UP.play();break;case "LEFT":FoF.LEFT.play();break;case "RIGHT":FoF.RIGHT.play()}d.direction="NONE";d.Rm=!1;M7(a.settings,7)&&(b=V7(a.oa,b),b&&a.ka[b.y]&&a.ka[b.y][b.x]&&(a=a.ka[b.y][b.x],a.direction="NONE",a.Rm=!1))}'
     );
   }
   // Sokobox respawn (W4E) compares against snake head — empty/missing body
@@ -26138,26 +26243,26 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("slot_W4E_head_guard") < 0) {
     smReplace(
       "slot guard W4E head for soko respawn",
-      /return k7\(a\.ka,a\.Aa\.ka\[0\],d\)<=3\?c:d\}/,
-      "return(window.slot_W4E_head_guard=1,!a.Aa||!a.Aa.ka||!a.Aa.ka[0]||k7(a.ka,a.Aa.ka[0],d)<=3)?c:d}"
+      /return yoF\(a\.ka,a\.Yc\.ka\[0\],d\)<=3\?c:d\}/,
+      "return(window.slot_W4E_head_guard=1,!a.Yc||!a.Yc.ka||!a.Yc.ka[0]||yoF(a.ka,a.Yc.ka[0],d)<=3)?c:d}"
     );
   }
-  // Snake body mirror write (dimension) can also land oob.
+  // Snake body mirror write (dimension) can also land oob (v14 YoF).
   if (code.indexOf("slot_n7E_snake_mirror_guard") < 0) {
     smReplace(
       "slot n7E guard snake dimension mirror write",
-      /b\.oa\.wa\[d\.y\]\[d\.x\]=1,e7\(b\.settings,7\)&&\(d=l7\(b,c\),b\.oa\.wa\[d\.y\]\[d\.x\]=\s*1\)/,
-      "b.oa.wa[d.y]&&(b.oa.wa[d.y][d.x]=1),e7(b.settings,7)&&(d=l7(b,c),window.slot_n7E_snake_mirror_guard=1,d&&d.y>=0&&d.y<b.oa.wa.length&&b.oa.wa[d.y]&&d.x>=0&&d.x<b.oa.wa[d.y].length&&(b.oa.wa[d.y][d.x]=1))"
+      /a\.oa\.wa\[c\.y\]\[c\.x\]=1,M7\(a\.settings,7\)&&\(c=W7\(a,d\),a\.oa\.wa\[c\.y\]\[c\.x\]=\s*1\)/,
+      "a.oa.wa[c.y]&&(a.oa.wa[c.y][c.x]=1),M7(a.settings,7)&&(c=W7(a,d),window.slot_n7E_snake_mirror_guard=1,c&&c.y>=0&&c.y<a.oa.wa.length&&a.oa.wa[c.y]&&c.x>=0&&c.x<a.oa.wa[c.y].length&&(a.oa.wa[c.y][c.x]=1))"
     );
   }
 
   // Capture native P3E on first call (scoped inside the snake bundle).
   // Do NOT inject between comma-assigned function defs — that can break boot.
-  if (code.indexOf("window.__slotP3E=P3E") < 0) {
+  if (code.indexOf("window.__slotP3E=goF") < 0) {
     smReplace(
       "slot stamp P3E on call",
-      /P3E=function\(a,b\)\{/,
-      "P3E=function(a,b){window.__slotP3E=P3E;"
+      /goF=function\(a,b\)\{/,
+      "goF=function(a,b){window.__slotP3E=goF;"
     );
   }
 
@@ -26167,7 +26272,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   // are Slot-local (no sticky native).
   if (
     code.indexOf("b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27") < 0 &&
-    code.indexOf("isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE") >= 0
+    code.indexOf("isSlotMachineActive&&window.isSlotMachineActive()&&a.yb===window.SLOT_MACHINE_MODE") >= 0
   ) {
     if (
       !smReplace(
@@ -26203,7 +26308,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     );
   }
   if (code.indexOf("slot_has_keys") < 0 &&
-      code.indexOf("isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE") >= 0) {
+      code.indexOf("isSlotMachineActive&&window.isSlotMachineActive()&&a.yb===window.SLOT_MACHINE_MODE") >= 0) {
     smReplace(
       "e7 slot machine add key/sokoban leftovers",
       /if\(b===5&&window\.__slotTwinLive\)return!0;if\(b===10&&window\.slot_has_oka/,
@@ -26222,12 +26327,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   }
   if (
     code.indexOf("slot_has_bridges") < 0 &&
-    code.indexOf("isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE") >= 0
+    code.indexOf("isSlotMachineActive&&window.isSlotMachineActive()&&a.yb===window.SLOT_MACHINE_MODE") >= 0
   ) {
     smReplace(
       "e7 slot machine add bridge/gate leftovers + null-safe active",
-      /if\(!r&&window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)&&a\.ub===window\.SLOT_MACHINE_MODE\)\{if\(b===window\.__slotActive\)return!0;/,
-      "if(!r&&window.isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE){if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27)return!0;"
+      /if\(!r&&window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)&&a\.yb===window\.SLOT_MACHINE_MODE\)\{if\(b===window\.__slotActive\)return!0;/,
+      "if(!r&&window.isSlotMachineActive&&window.isSlotMachineActive()&&a.yb===window.SLOT_MACHINE_MODE){if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27)return!0;"
     );
     if (code.indexOf("slot_has_bridges") < 0) {
       smReplace(
@@ -26240,12 +26345,12 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   // Cat Sc border wrap: also honor Slot Peaceful roll (lives may be 0).
   if (
     code.indexOf("(window.__slotActive|0)===21)){if((window.cat_peaceful_ticks|0)<=0)") < 0 &&
-    code.indexOf("Sc(a){if(window.isCatActive&&window.isCatActive()&&!m7(this.ka,a)&&((window.cat_peaceful_ticks|0)>0||(window.cat_lives|0)>0))") >= 0
+    code.indexOf("Hl(a){if(window.isCatActive&&window.isCatActive()&&!X7(this.ka,a)&&((window.cat_peaceful_ticks|0)>0||(window.cat_lives|0)>0))") >= 0
   ) {
     smReplace(
       "Sc slot peaceful border wrap",
-      /Sc\(a\)\{if\(window\.isCatActive&&window\.isCatActive\(\)&&!m7\(this\.ka,a\)&&\(\(window\.cat_peaceful_ticks\|0\)>0\|\|\(window\.cat_lives\|0\)>0\)\)\{if\(\(window\.cat_peaceful_ticks\|0\)<=0\)\{window\.cat_try_spend_life\(this\);\}i7\(this\.ka,a\);\}/,
-      "Sc(a){if(window.isCatActive&&window.isCatActive()&&!m7(this.ka,a)&&((window.cat_peaceful_ticks|0)>0||(window.cat_lives|0)>0||(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.__slotActive|0)===21))){if((window.cat_peaceful_ticks|0)<=0&&!((window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.__slotActive|0)===21))){window.cat_try_spend_life(this);}i7(this.ka,a);}"
+      /Hl\(a\)\{if\(window\.isCatActive&&window\.isCatActive\(\)&&!X7\(this\.ka,a\)&&\(\(window\.cat_peaceful_ticks\|0\)>0\|\|\(window\.cat_lives\|0\)>0\)\)\{if\(\(window\.cat_peaceful_ticks\|0\)<=0\)\{window\.cat_try_spend_life\(this\);\}U7\(this\.ka,a\);\}/,
+      "Hl(a){if(window.isCatActive&&window.isCatActive()&&!X7(this.ka,a)&&((window.cat_peaceful_ticks|0)>0||(window.cat_lives|0)>0||(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.__slotActive|0)===21))){if((window.cat_peaceful_ticks|0)<=0&&!((window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.__slotActive|0)===21))){window.cat_try_spend_life(this);}U7(this.ka,a);}"
     );
   }
 
@@ -26257,20 +26362,20 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   ) {
     smReplace(
       "e7 slot burger roll enables poison mode",
-      /if\(b===10&&window\.slot_has_oka&&window\.slot_has_oka\(window\.__remixGame&&window\.__remixGame\.wa\)\)return!0;/,
-      "if(b===10&&((window.__slotActive|0)===25||window.slot_has_oka&&window.slot_has_oka(window.__remixGame&&window.__remixGame.wa)))return!0;"
+      /if\(b===10&&window\.slot_has_oka&&window\.slot_has_oka\(window\.__remixGame&&window\.__remixGame\.oa\)\)return!0;/,
+      "if(b===10&&((window.__slotActive|0)===25||window.slot_has_oka&&window.slot_has_oka(window.__remixGame&&window.__remixGame.oa)))return!0;"
     );
   }
   if (code.indexOf("isSlotMachineActive()&&(b===window.__slotActive") < 0 &&
-      code.indexOf("isSlotMachineActive&&window.isSlotMachineActive()&&a.ub===window.SLOT_MACHINE_MODE") < 0) {
+      code.indexOf("isSlotMachineActive&&window.isSlotMachineActive()&&a.yb===window.SLOT_MACHINE_MODE") < 0) {
     const slotE7Tail =
-      "if(!r&&window.isSlotMachineActive&&window.isSlotMachineActive()&&(a.ub===window.SLOT_MACHINE_MODE||a.ub==='slot_machine'||a.ob==='slot_machine')){if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27&&b!==29)return!0;if(b===5&&window.__slotTwinLive)return!0;if(b===1&&window.slot_has_walls&&window.slot_has_walls())return!0;if(b===2&&window.slot_has_portal_pairs&&window.slot_has_portal_pairs(window.__remixGame&&window.__remixGame.wa))return!0;if(b===8&&window.slot_has_keys&&window.slot_has_keys())return!0;if(b===9&&window.slot_has_sokoboxes&&window.slot_has_sokoboxes())return!0;if(b===10&&((window.__slotActive|0)===25||window.slot_has_oka&&window.slot_has_oka(window.__remixGame&&window.__remixGame.wa)))return!0;if(b===12&&window.slot_has_mines&&window.slot_has_mines())return!0;if(b===13&&window.slot_has_statues&&window.slot_has_statues())return!0;if(b===16&&window.slot_has_arrows&&window.slot_has_arrows())return!0;if(b===19&&window.slot_has_gates&&window.slot_has_gates())return!0;if(b===20&&window.slot_has_bridges&&window.slot_has_bridges())return!0;if(b===21&&window.__slotActive===21)return!0;if(b===15&&(window.__slotActive===15||window.slot_has_shields&&window.slot_has_shields(window.__remixGame&&window.__remixGame.wa)||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive)||window.__slotActive===28||window.slot_has_armed_bombs&&window.slot_has_armed_bombs()||window.head_state&&window.head_state!==\"OPEN\"))return!0;}return r}";
+      "if(!r&&window.isSlotMachineActive&&window.isSlotMachineActive()&&(a.yb===window.SLOT_MACHINE_MODE||a.yb==='slot_machine'||a.wb==='slot_machine')){if(window.__slotActive!=null&&b===window.__slotActive&&b!==5&&b!==4&&b!==7&&b!==11&&b!==27&&b!==29)return!0;if(b===5&&window.__slotTwinLive)return!0;if(b===1&&window.slot_has_walls&&window.slot_has_walls())return!0;if(b===2&&window.slot_has_portal_pairs&&window.slot_has_portal_pairs(window.__remixGame&&window.__remixGame.oa))return!0;if(b===8&&window.slot_has_keys&&window.slot_has_keys())return!0;if(b===9&&window.slot_has_sokoboxes&&window.slot_has_sokoboxes())return!0;if(b===10&&((window.__slotActive|0)===25||window.slot_has_oka&&window.slot_has_oka(window.__remixGame&&window.__remixGame.oa)))return!0;if(b===12&&window.slot_has_mines&&window.slot_has_mines())return!0;if(b===13&&window.slot_has_statues&&window.slot_has_statues())return!0;if(b===16&&window.slot_has_arrows&&window.slot_has_arrows())return!0;if(b===19&&window.slot_has_gates&&window.slot_has_gates())return!0;if(b===20&&window.slot_has_bridges&&window.slot_has_bridges())return!0;if(b===21&&window.__slotActive===21)return!0;if(b===15&&(window.__slotActive===15||window.slot_has_shields&&window.slot_has_shields(window.__remixGame&&window.__remixGame.oa)||window.slot_is_chess_mode&&window.slot_is_chess_mode(window.__slotActive)||window.__slotActive===28||window.slot_has_armed_bombs&&window.slot_has_armed_bombs()||window.head_state&&window.head_state!==\"OPEN\"))return!0;}return r}";
     const e7Fear =
-      /if\(!r&&b===10&&window\.FEAR_MODE!=null\)\{if\(a\.ub===window\.FEAR_MODE\|\|a\.ub==='fear'\|\|a\.ob==='fear'\)return!0;if\(\(a\.ub===22\|\|a\.ub==='blender'\)&&a\.rSa&&a\.rSa\.has\(window\.FEAR_MODE\)\)return!0;if\(a\.Qa&&a\.Lc&&\(a\.Lc\.has\(window\.FEAR_MODE\)\|\|a\.Lc\.has\('fear'\)\)\)return!0;\}return r\}/;
+      /if\(!r&&b===10&&window\.FEAR_MODE!=null\)\{if\(a\.yb===window\.FEAR_MODE\|\|a\.yb==='fear'\|\|a\.(?:ob|wb)==='fear'\)return!0;if\(\(a\.yb===22\|\|a\.yb==='blender'\)&&a\.NSa&&a\.NSa\.has\(window\.FEAR_MODE\)\)return!0;if\(a\.La&&a\.jd&&\(a\.jd\.has\(window\.FEAR_MODE\)\|\|a\.jd\.has\('fear'\)\)\)return!0;\}return r\}/;
     const e7TempWalls =
       /if\(!r&&b===1&&\(\(window\.isTempWallsActive&&window\.isTempWallsActive\(\)\)\|\|\(window\.tempWalls_has_any&&window\.tempWalls_has_any\(window\.__remixGame\)\)\)\)return!0;return r\}/;
     const e7Bomb =
-      /if\(!r&&b===15&&window\.BOMB_FRUIT_MODE!=null\)\{if\(a\.ub===window\.BOMB_FRUIT_MODE\)return!0;if\(a\.ub===22&&a\.rSa&&a\.rSa\.has\(window\.BOMB_FRUIT_MODE\)\)return!0;\}return r\}/;
+      /if\(!r&&b===15&&window\.BOMB_FRUIT_MODE!=null\)\{if\(a\.yb===window\.BOMB_FRUIT_MODE\)return!0;if\(a\.yb===22&&a\.NSa&&a\.NSa\.has\(window\.BOMB_FRUIT_MODE\)\)return!0;\}return r\}/;
     const e7Mexico =
       /if\(!r&&b===2&&window\.isMexicoActive&&window\.isMexicoActive\(\)\)return!0;if\(!r&&b===1&&window\.isMexicoActive&&window\.isMexicoActive\(\)\)return!0;return r\}/;
     const e7Cat =
@@ -26280,7 +26385,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         label: "e7 slot machine after Fear",
         re: e7Fear,
         rep:
-          "if(!r&&b===10&&window.FEAR_MODE!=null){if(a.ub===window.FEAR_MODE||a.ub==='fear'||a.ob==='fear')return!0;if((a.ub===22||a.ub==='blender')&&a.rSa&&a.rSa.has(window.FEAR_MODE))return!0;if(a.Qa&&a.Lc&&(a.Lc.has(window.FEAR_MODE)||a.Lc.has('fear')))return!0;}" +
+          "if(!r&&b===10&&window.FEAR_MODE!=null){if(a.yb===window.FEAR_MODE||a.yb==='fear'||a.wb==='fear')return!0;if((a.yb===22||a.yb==='blender')&&a.NSa&&a.NSa.has(window.FEAR_MODE))return!0;if(a.La&&a.jd&&(a.jd.has(window.FEAR_MODE)||a.jd.has('fear')))return!0;}" +
           slotE7Tail,
       },
       {
@@ -26294,7 +26399,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
         label: "e7 slot machine after bomb fruit",
         re: e7Bomb,
         rep:
-          "if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.ub===window.BOMB_FRUIT_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BOMB_FRUIT_MODE))return!0;}" +
+          "if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.yb===window.BOMB_FRUIT_MODE)return!0;if(a.yb===22&&a.NSa&&a.NSa.has(window.BOMB_FRUIT_MODE))return!0;}" +
           slotE7Tail,
       },
       {
@@ -26321,27 +26426,27 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("slot_borderless_wrap()") < 0) {
       smReplace(
       "n7 include slot borderless wrap",
-      /n7=function\(a\)\{return e7\(a,21\)\|\|e7\(a,4\)\}/,
-      "n7=function(a){return e7(a,21)||e7(a,4)||" + slotWrap + "}"
+      /Y7=function\(a\)\{return M7\(a,21\)\|\|M7\(a,4\)\}/,
+      "Y7=function(a){return M7(a,21)||M7(a,4)||" + slotWrap + "}"
     );
     smReplace(
       "slot borderless wrap head step i7",
-      /e7\(a\.settings,4\)&&i7\(a\.ka,e\);g=m7\(a\.ka,e\)&&a\.ka\.wa\[e\.y\]\[e\.x\]!==10&&y4E\(a\.ka,e\);f=!m7\(a\.ka,e\)&&!e7\(a\.settings,4\)&&f/,
-      "(e7(a.settings,4)||" +
+      /M7\(a\.settings,4\)&&U7\(a\.ka,e\);g=X7\(a\.ka,e\)&&a\.ka\.wa\[e\.y\]\[e\.x\]!==10&&tpF\(a\.ka,e\);f=!X7\(a\.ka,e\)&&!M7\(a\.settings,4\)&&f/,
+      "(M7(a.settings,4)||" +
         slotWrap +
-        ")&&i7(a.ka,e);g=m7(a.ka,e)&&a.ka.wa[e.y][e.x]!==10&&y4E(a.ka,e);f=!m7(a.ka,e)&&!e7(a.settings,4)&&!" +
+        ")&&U7(a.ka,e);g=X7(a.ka,e)&&a.ka.wa[e.y][e.x]!==10&&tpF(a.ka,e);f=!X7(a.ka,e)&&!M7(a.settings,4)&&!" +
         slotWrap +
         "&&f"
     );
     smReplace(
       "slot borderless wrap body continuous",
-      /e7\(a\.settings,4\)&&!c\)b\.pos\.x<0\?/,
-      "(e7(a.settings,4)||" + slotWrap + ")&&!c)b.pos.x<0?"
+      /M7\(a\.settings,4\)&&!c\)b\.pos\.x<0\?/,
+      "(M7(a.settings,4)||" + slotWrap + ")&&!c)b.pos.x<0?"
     );
     smReplace(
       "slot borderless wrap fruit motion",
-      /e7\(this\.settings,4\)&&\(a\.pos\.x<0\?a\.pos\.x\+=this\.oa\.oa\.width/,
-      "(e7(this.settings,4)||" +
+      /M7\(this\.settings,4\)&&\(a\.pos\.x<0\?a\.pos\.x\+=this\.oa\.oa\.width/,
+      "(M7(this.settings,4)||" +
         slotWrap +
         ")&&(a.pos.x<0?a.pos.x+=this.oa.oa.width"
     );
@@ -26352,8 +26457,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("slot_before_mode_spawns") < 0) {
     smReplace(
       "slot before wall/gate/bridge spawn",
-      /f=!a\.nj&&!g&&\(a\.Sh%2===1\|\|e7\(a\.settings,11\)\);e7\(a\.settings,1\)&&f&&/,
-      "window.slot_before_mode_spawns&&window.slot_before_mode_spawns(a,d),f=!a.nj&&!g&&(a.Sh%2===1||e7(a.settings,11)||window.slot_force_entity_spawn&&window.slot_force_entity_spawn());e7(a.settings,1)&&f&&"
+      /f=!a\.uj&&!g&&\(a\.Bi%2===1\|\|M7\(a\.settings,11\)\);M7\(a\.settings,1\)&&f&&/,
+      "window.slot_before_mode_spawns&&window.slot_before_mode_spawns(a,d),f=!a.uj&&!g&&(a.Bi%2===1||M7(a.settings,11)||window.slot_force_entity_spawn&&window.slot_force_entity_spawn());M7(a.settings,1)&&f&&"
     );
   }
 
@@ -26363,18 +26468,19 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   // Clearing them made bridge/gate mode spawn with the toggle off. While Slot
   // is active, slot_sync_ultra_disables already owns the flags, and the
   // UltraPlace early-returns allow the active roll through.
-  if (code.indexOf("slot_force_entity_spawn())&&h6E(a.Qa") < 0) {
+  // v14 gate plant: M7(19)&&f&&(h=!M7(11),a.Ia(h),arF(a.Ca,a.Yc.ka),h||a.Ia()).
+  if (code.indexOf("slot_force_entity_spawn())&&(h=!M7(a.settings,11),a.Ia(h),arF(") < 0) {
     smReplace(
       "slot force gate plant",
-      /e7\(a\.settings,19\)&&f&&h6E\(a\.Qa,a\.oa\.ka\)/,
-      "e7(a.settings,19)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===19)&&(f||window.slot_force_entity_spawn&&window.slot_force_entity_spawn())&&h6E(a.Qa,a.oa.ka)"
+      /M7\(a\.settings,19\)&&f&&\(h=!M7\(a\.settings,11\),a\.Ia\(h\),arF\(a\.Ca,a\.Yc\.ka\),h\|\|a\.Ia\(\)\)/,
+      "M7(a.settings,19)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===19)&&(f||window.slot_force_entity_spawn&&window.slot_force_entity_spawn())&&(h=!M7(a.settings,11),a.Ia(h),arF(a.Ca,a.Yc.ka),h||a.Ia())"
     );
   }
   if (code.indexOf("slot_ensure_bridge_planted(a))") < 0) {
     smReplace(
       "slot force bridge plant",
-      /e7\(a\.settings,20\)&&f&&\(m5E\(a\.Ga\),e7\(a\.settings,9\)&&n7E\(a\)\)/,
-      "e7(a.settings,20)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===20)&&(f||window.slot_force_entity_spawn&&window.slot_force_entity_spawn())&&(m5E(a.Ga),e7(a.settings,9)&&n7E(a),window.slot_ensure_bridge_planted&&window.slot_ensure_bridge_planted(a))"
+      /M7\(a\.settings,20\)&&f&&\(fqF\(a\.wa\),M7\(a\.settings,9\)&&a\.Ia\(\)\)/,
+      "M7(a.settings,20)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===20)&&(f||window.slot_force_entity_spawn&&window.slot_force_entity_spawn())&&(fqF(a.wa),M7(a.settings,9)&&a.Ia(),window.slot_ensure_bridge_planted&&window.slot_ensure_bridge_planted(a))"
     );
   }
 
@@ -26411,55 +26517,55 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     ) {
       smReplace(
         "slot disableMineMode on v6E",
-        /([$a-zA-Z0-9_]{0,8}=function\(a\)\{)(var b=[$a-zA-Z0-9_]{0,8}\(a\.ka,null,9\);)/,
+        /([$a-zA-Z0-9_]{0,8}=function\(a\)\{)(var b=a\.ka\.[$a-zA-Z0-9_]{1,8}\(null,9,void 0\);)/,
         "$1if(window.disableMineMode&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.__slotActive|0)===12))return;$2",
         true
       );
     }
   }
   if (
-    code.indexOf("__slotActive|0)===12)&&v6E(a.Ma)") < 0 &&
-    code.indexOf("e7(a.settings,12)&&v6E") >= 0
+    code.indexOf("__slotActive|0)===12)&&prF(a.Ga)") < 0 &&
+    code.indexOf("M7(a.settings,12)&&prF") >= 0
   ) {
     smReplace(
       "slot mine spawn only while minesweeper rolled",
-      /e7\(a\.settings,12\)&&v6E\(a\.Ma\)/,
-      "e7(a.settings,12)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===12)&&v6E(a.Ma)"
+      /M7\(a\.settings,12\)&&prF\(a\.Ga\)/,
+      "M7(a.settings,12)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===12)&&prF(a.Ga)"
     );
   }
 
   // UltraPlace gates statue body-plant AND crumble behind disableStatueBodyPlant.
   // Under Slot Machine: new plants only while Statue is rolled; crumble/break must
   // still run whenever statues exist (same as native statue mode apple eats).
-  if (code.indexOf("slot_has_statues())))return;var b=a.wa.ka") < 0) {
+  if (code.indexOf("slot_has_statues())))return;var b=a.Yc.ka") < 0) {
     smReplace(
       "slot allow statue crumble despite ultra disable",
-      /if\(window\.disableStatueBodyPlant\)return;var b=a\.wa\.ka,c=!1;/,
-      "if(window.disableStatueBodyPlant&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&((window.__slotActive|0)===13||window.slot_has_statues&&window.slot_has_statues())))return;var b=a.wa.ka,c=!1;",
+      /if\(window\.disableStatueBodyPlant\)return;var b=a\.Yc\.ka,c=!1;/,
+      "if(window.disableStatueBodyPlant&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&((window.__slotActive|0)===13||window.slot_has_statues&&window.slot_has_statues())))return;var b=a.Yc.ka,c=!1;",
       true
     );
   }
   if (
-    code.indexOf("__slotActive|0)===13))return;for(var c=a.wa.ka") < 0 &&
-    code.indexOf("disableStatueBodyPlant)return;for(var c=a.wa.ka") >= 0
+    code.indexOf("__slotActive|0)===13))return;for(var c=a.Yc.ka") < 0 &&
+    code.indexOf("disableStatueBodyPlant)return;for(var c=a.Yc.ka") >= 0
   ) {
     smReplace(
       "slot allow statue body plant only while rolled",
-      /if\(window\.disableStatueBodyPlant\)return;for\(var c=a\.wa\.ka/,
-      "if(window.disableStatueBodyPlant&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.__slotActive|0)===13))return;for(var c=a.wa.ka"
+      /if\(window\.disableStatueBodyPlant\)return;for\(var c=a\.Yc\.ka/,
+      "if(window.disableStatueBodyPlant&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.__slotActive|0)===13))return;for(var c=a.Yc.ka"
     );
   }
   // Remix (non-Ultra) has no UltraPlace disable gate — leftover e7(13) would
   // otherwise re-plant body statues on every apple. Gate only k7E to the roll;
   // l7E (break near head) + e7E (crumble) stay on whenever e7(13) is true.
   if (
-    code.indexOf("__slotActive|0)===13)&&k7E(a.Ya") < 0 &&
-    code.indexOf("e7(a.settings,13)&&(e&&l7E(a.Ya),e7E(a.Ya),k7E(a.Ya") >= 0
+    code.indexOf("__slotActive|0)===13)&&fsF(a.Ra") < 0 &&
+    code.indexOf("M7(a.settings,13)&&(e&&gsF(a.Ra),$rF(a.Ra),fsF(a.Ra") >= 0
   ) {
     smReplace(
       "slot gate statue body-plant call site",
-      /e7\(a\.settings,13\)&&\(e&&l7E\(a\.Ya\),e7E\(a\.Ya\),k7E\(a\.Ya,a\.Yc\.bind\(a\)\)/,
-      "e7(a.settings,13)&&(e&&l7E(a.Ya),e7E(a.Ya),(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===13)&&k7E(a.Ya,a.Yc.bind(a))"
+      /M7\(a\.settings,13\)&&\(e&&gsF\(a\.Ra\),\$rF\(a\.Ra\),fsF\(a\.Ra,a\.jd\.bind\(a\)\)/,
+      "M7(a.settings,13)&&(e&&gsF(a.Ra),$rF(a.Ra),(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===13)&&fsF(a.Ra,a.jd.bind(a))"
     );
   }
 
@@ -26488,16 +26594,16 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("slot_hotdog_B6E_filter") < 0) {
     smReplace(
       "slot B6E only hotdog ty walls",
-      /B6E=function\(a\)\{return e7\(a\.settings,17\)\?e7\(a\.settings,22\)\|\|a\.settings\.Qa\?Array\.from\(a\.Aa\.values\(\)\)\.filter\(b=>b\.ty!==void 0\):Array\.from\(a\.Aa\.values\(\)\):\[\]\}/,
-      "B6E=function(a){return e7(a.settings,17)?(window.isSlotMachineActive&&window.isSlotMachineActive()||e7(a.settings,22)||a.settings.Qa?(window.slot_hotdog_B6E_filter=1,Array.from(a.Aa.values()).filter(b=>b&&b.ty!==void 0)):Array.from(a.Aa.values())):[]}"
+      /vrF=function\(a\)\{return M7\(a\.settings,17\)\?M7\(a\.settings,22\)\|\|a\.settings\.La\?Array\.from\(a\.wa\.values\(\)\)\.filter\(b=>b\.wv!==void 0\):Array\.from\(a\.wa\.values\(\)\):\[\]\}/,
+      "vrF=function(a){return M7(a.settings,17)?(window.isSlotMachineActive&&window.isSlotMachineActive()||M7(a.settings,22)||a.settings.La?(window.slot_hotdog_B6E_filter=1,Array.from(a.wa.values()).filter(b=>b&&b.wv!==void 0)):Array.from(a.wa.values())):[]}"
     );
   }
   // Belt-and-suspenders: F6E ages hotdog walls — skip entries missing ty.
   if (code.indexOf("slot_hotdog_F6E_guard") < 0) {
     smReplace(
       "slot F6E guard missing ty",
-      /F6E=function\(a\)\{if\(!e7\(a\.settings,2\)\)\{a=B6E\(a\);for\(let b of a\)b\.ty\.nea\+=1\}\}/,
-      "F6E=function(a){if(!e7(a.settings,2)){a=B6E(a);for(let b of a)b&&b.ty&&(window.slot_hotdog_F6E_guard=1,b.ty.nea+=1)}}"
+      /BrF=function\(a\)\{if\(!M7\(a\.settings,2\)\)\{a=vrF\(a\);for\(let b of a\)b\.wv\.k5\+=1\}\}/,
+      "BrF=function(a){if(!M7(a.settings,2)){a=vrF(a);for(let b of a)b&&b.wv&&(window.slot_hotdog_F6E_guard=1,b.wv.k5+=1)}}"
     );
   }
 
@@ -26506,8 +26612,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("slot_skip_key_soko_refill") < 0) {
     smReplace(
       "slot skip key/sokoban apple-manager refill",
-      /e7\(this\.settings,8\)\?\(q6E\(this\.Ba,a,!0\),!1\):e7\(this\.settings,9\)\?\(e5E\(this\.Aa,this\.Ba\.keys\.length,!0\),!1\):\(c=this\.Rb\(c,2\)\)\?\(c4E\(this\.wa,a,c\),b&&this\.wa\.ka\.sort\(\(f,g\)=>f\.pos\.y-g\.pos\.y\),!0\):!1/,
-      'window.isSlotMachineActive&&window.isSlotMachineActive()?(c=this.Rb(c,2))?(c4E(this.wa,a,c),b&&this.wa.ka.sort((f,g)=>f.pos.y-g.pos.y),window.slot_skip_key_soko_refill=1,!0):!1:e7(this.settings,8)?(q6E(this.Ba,a,!0),!1):e7(this.settings,9)?(e5E(this.Aa,this.Ba.keys.length,!0),!1):(c=this.Rb(c,2))?(c4E(this.wa,a,c),b&&this.wa.ka.sort((f,g)=>f.pos.y-g.pos.y),!0):!1'
+      /M7\(this\.settings,8\)\?\(jrF\(this\.uL,a,!0\),!1\):M7\(this\.settings,9\)\?\(XpF\(this\.Oy,this\.uL\.keys\.length,!0\),!1\):\(c=this\.Lb\(c,2\)\)\?\(toF\(this\.oa,a,c\),b&&this\.oa\.ka\.sort\(\(f,g\)=>f\.pos\.y-g\.pos\.y\),!0\):!1/,
+      'window.isSlotMachineActive&&window.isSlotMachineActive()?(c=this.Lb(c,2))?(toF(this.oa,a,c),b&&this.oa.ka.sort((f,g)=>f.pos.y-g.pos.y),window.slot_skip_key_soko_refill=1,!0):!1:M7(this.settings,8)?(jrF(this.uL,a,!0),!1):M7(this.settings,9)?(XpF(this.Oy,this.uL.keys.length,!0),!1):(c=this.Lb(c,2))?(toF(this.oa,a,c),b&&this.oa.ka.sort((f,g)=>f.pos.y-g.pos.y),!0):!1'
     );
   }
 
@@ -26517,17 +26623,17 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("slot_key_unlock_fruit") < 0) {
     smReplace(
       "slot key unlock always fruit",
-      /e7\(a\.settings,9\)\?d5E\(a\.Ca,\{pos:b\.r7a\.clone\(\),prev:null,wm:!1,yNa:b\.type,Lh:!0,sequenceNumber:b\.sequenceNumber\}\):f4E\(a\.oa,b\.r7a,b\.type,!0,b\.sequenceNumber\)/,
-      "window.isSlotMachineActive&&window.isSlotMachineActive()?(window.slot_key_unlock_fruit=1,f4E(a.oa,b.r7a,b.type,!0,b.sequenceNumber,!0)):e7(a.settings,9)?d5E(a.Ca,{pos:b.r7a.clone(),prev:null,wm:!1,yNa:b.type,Lh:!0,sequenceNumber:b.sequenceNumber}):f4E(a.oa,b.r7a,b.type,!0,b.sequenceNumber)"
+      /M7\(a\.settings,9\)\?WpF\(a\.Oy,\{pos:b\.q7a\.clone\(\),prev:null,Rm:!1,oOa:b\.type,Xg:!0,sequenceNumber:b\.sequenceNumber\}\):voF\(a\.oa,b\.q7a,b\.type,!0,b\.sequenceNumber\)/,
+      "window.isSlotMachineActive&&window.isSlotMachineActive()?(window.slot_key_unlock_fruit=1,voF(a.oa,b.q7a,b.type,!0,b.sequenceNumber,!0)):M7(a.settings,9)?WpF(a.Oy,{pos:b.q7a.clone(),prev:null,Rm:!1,oOa:b.type,Xg:!0,sequenceNumber:b.sequenceNumber}):voF(a.oa,b.q7a,b.type,!0,b.sequenceNumber)"
     );
   } else if (
-    code.indexOf("slot_key_unlock_fruit=1,f4E(a.oa,b.r7a,b.type,!0,b.sequenceNumber,!0)") < 0 &&
-    code.indexOf("slot_key_unlock_fruit=1,f4E(a.oa,b.r7a,b.type,!0,b.sequenceNumber)") >= 0
+    code.indexOf("slot_key_unlock_fruit=1,voF(a.oa,b.q7a,b.type,!0,b.sequenceNumber,!0)") < 0 &&
+    code.indexOf("slot_key_unlock_fruit=1,voF(a.oa,b.q7a,b.type,!0,b.sequenceNumber)") >= 0
   ) {
     smReplace(
       "slot key unlock no portal pair",
-      /window\.slot_key_unlock_fruit=1,f4E\(a\.oa,b\.r7a,b\.type,!0,b\.sequenceNumber\)/,
-      "window.slot_key_unlock_fruit=1,f4E(a.oa,b.r7a,b.type,!0,b.sequenceNumber,!0)"
+      /window\.slot_key_unlock_fruit=1,voF\(a\.oa,b\.q7a,b\.type,!0,b\.sequenceNumber\)/,
+      "window.slot_key_unlock_fruit=1,voF(a.oa,b.q7a,b.type,!0,b.sequenceNumber,!0)"
     );
   }
 
@@ -26536,131 +26642,131 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("slot_soko_unlock_fruit") < 0) {
     smReplace(
       "slot soko unlock single fruit",
-      /c&&f4E\(a\.wa,c,b\.yNa,b\.Lh,b\.sequenceNumber\)/,
-      "c&&(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_soko_unlock_fruit=1),f4E(a.wa,c,b.yNa,b.Lh,b.sequenceNumber,window.isSlotMachineActive&&window.isSlotMachineActive()?!0:!1))"
+      /c&&voF\(a\.oa,c,b\.oOa,b\.Xg,b\.sequenceNumber\)/,
+      "c&&(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_soko_unlock_fruit=1),voF(a.oa,c,b.oOa,b.Xg,b.sequenceNumber,window.isSlotMachineActive&&window.isSlotMachineActive()?!0:!1))"
     );
   } else if (
-    code.indexOf("slot_soko_unlock_fruit=1),f4E(a.wa,c,b.yNa,b.Lh,b.sequenceNumber,") < 0 &&
-    code.indexOf("slot_soko_unlock_fruit=1),f4E(a.wa,c,b.yNa,b.Lh,b.sequenceNumber)") >= 0
+    code.indexOf("slot_soko_unlock_fruit=1),voF(a.oa,c,b.oOa,b.Xg,b.sequenceNumber,") < 0 &&
+    code.indexOf("slot_soko_unlock_fruit=1),voF(a.oa,c,b.oOa,b.Xg,b.sequenceNumber)") >= 0
   ) {
     smReplace(
       "slot soko unlock no portal pair",
-      /window\.slot_soko_unlock_fruit=1\),f4E\(a\.wa,c,b\.yNa,b\.Lh,b\.sequenceNumber\)/,
-      "window.slot_soko_unlock_fruit=1),f4E(a.wa,c,b.yNa,b.Lh,b.sequenceNumber,!0)"
+      /window\.slot_soko_unlock_fruit=1\),voF\(a\.oa,c,b\.oOa,b\.Xg,b\.sequenceNumber\)/,
+      "window.slot_soko_unlock_fruit=1),voF(a.oa,c,b.oOa,b.Xg,b.sequenceNumber,!0)"
     );
   }
 
-  // Poison: under Slot Machine never pair/spawn Okas via native g4E/e4E/l4E —
+  // Poison: under Slot Machine never pair/spawn Okas via native woF/uoF/BoF —
   // poison badge refill is exactly one safe fruit + one Oka from slotRespawn.
-  // Native g4E tops up to ~half the board (2+ poisons on 3a/5a).
+  // Native woF tops up to ~half the board (2+ poisons on 3a/5a).
   if (
     code.indexOf("(__slotActive|0)===10)&&(window.slot_poison_oka_gate") >= 0
   ) {
     smReplace(
       "slot poison Oka pairing never under Slot (upgrade)",
-      /e7\(a\.settings,10\)&&\(!\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)\)\|\|\(window\.__slotActive\|0\)===10\)&&\(window\.slot_poison_oka_gate=1,c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.Oka=c,a\.ka\[a\.ka\.length-2\]\.Oka=!c\)/,
-      "e7(a.settings,10)&&!(window.isSlotMachineActive&&window.isSlotMachineActive())&&(window.slot_poison_oka_gate=1,c=Math.random()<.5,a.ka[a.ka.length-1].Oka=c,a.ka[a.ka.length-2].Oka=!c)",
+      /M7\(a\.settings,10\)&&\(!\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)\)\|\|\(window\.__slotActive\|0\)===10\)&&\(window\.slot_poison_oka_gate=1,c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.Bea=c,a\.ka\[a\.ka\.length-2\]\.Bea=!c\)/,
+      "M7(a.settings,10)&&!(window.isSlotMachineActive&&window.isSlotMachineActive())&&(window.slot_poison_oka_gate=1,c=Math.random()<.5,a.ka[a.ka.length-1].Bea=c,a.ka[a.ka.length-2].Bea=!c)",
       true
     );
   } else if (code.indexOf("slot_poison_oka_gate") < 0) {
     if (
       !smReplace(
         "slot gate poison Oka pairing after burger",
-        /e7\(a\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)&&\(c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.Oka=c,a\.ka\[a\.ka\.length-2\]\.Oka=!c\)/,
-        "e7(a.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive())&&(window.slot_poison_oka_gate=1,c=Math.random()<.5,a.ka[a.ka.length-1].Oka=c,a.ka[a.ka.length-2].Oka=!c)"
+        /M7\(a\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)&&\(c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.Bea=c,a\.ka\[a\.ka\.length-2\]\.Bea=!c\)/,
+        "M7(a.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive())&&(window.slot_poison_oka_gate=1,c=Math.random()<.5,a.ka[a.ka.length-1].Bea=c,a.ka[a.ka.length-2].Bea=!c)"
       )
     ) {
       smReplace(
         "slot gate poison Oka pairing",
-        /e7\(a\.settings,10\)&&\(c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.Oka=c,a\.ka\[a\.ka\.length-2\]\.Oka=!c\)/,
-        "e7(a.settings,10)&&!(window.isSlotMachineActive&&window.isSlotMachineActive())&&(window.slot_poison_oka_gate=1,c=Math.random()<.5,a.ka[a.ka.length-1].Oka=c,a.ka[a.ka.length-2].Oka=!c)",
+        /M7\(a\.settings,10\)&&\(c=Math\.random\(\)<\.5,a\.ka\[a\.ka\.length-1\]\.Bea=c,a\.ka\[a\.ka\.length-2\]\.Bea=!c\)/,
+        "M7(a.settings,10)&&!(window.isSlotMachineActive&&window.isSlotMachineActive())&&(window.slot_poison_oka_gate=1,c=Math.random()<.5,a.ka[a.ka.length-1].Bea=c,a.ka[a.ka.length-2].Bea=!c)",
         true
       );
     }
   }
-  // Burger already gates e4E/l4E/g4E top-up; add Slot so poison roll cannot
+  // Burger already gates uoF/BoF/woF top-up; add Slot so poison roll cannot
   // spawn extra Okas to fill half the board.
   if (code.indexOf("slot_block_e4E") < 0) {
     if (
       !smReplace(
-        "slot block e4E after Fear gate",
-        /e7\(a\.settings,10\)&&!f((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&\(\(window\.fear_uses_ghost_pairs&&window\.fear_uses_ghost_pairs\(window\.__remixGame\)\)\?window\.fear_native_ghost_top_up\(a,e4E\):e4E\(a\)\)/,
-        "e7(a.settings,10)&&!f$1&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+        "slot block uoF after Fear gate",
+        /M7\(a\.settings,10\)&&!f((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&\(\(window\.fear_uses_ghost_pairs&&window\.fear_uses_ghost_pairs\(window\.__remixGame\)\)\?window\.fear_native_ghost_top_up\(a,uoF\):uoF\(a\)\)/,
+        "M7(a.settings,10)&&!f$1&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,uoF):uoF(a))"
       ) &&
       !smReplace(
-        "slot block e4E after burger gate",
-        /e7\(a\.settings,10\)&&!f&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)&&e4E\(a\)/,
-        "e7(a.settings,10)&&!f&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&e4E(a)"
+        "slot block uoF after burger gate",
+        /M7\(a\.settings,10\)&&!f&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)&&uoF\(a\)/,
+        "M7(a.settings,10)&&!f&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&uoF(a)"
       )
     ) {
       smReplace(
-        "slot block e4E",
-        /e7\(a\.settings,10\)&&!f&&e4E\(a\)/,
-        "e7(a.settings,10)&&!f&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&e4E(a)"
+        "slot block uoF",
+        /M7\(a\.settings,10\)&&!f&&uoF\(a\)/,
+        "M7(a.settings,10)&&!f&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_e4E=1))&&uoF(a)"
       );
     }
   }
   if (code.indexOf("slot_block_l4E") < 0) {
     if (
       !smReplace(
-        "slot block l4E after burger gate snapshot",
-        /window\.__remixGame=(this|a),window\.burger_settings_snapshot&&window\.burger_settings_snapshot\(\1\.settings\),e7\(\1\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(\1\.settings\)\)&&l4E\(\1\.wa\)/g,
-        "window.__remixGame=$1,window.burger_settings_snapshot&&window.burger_settings_snapshot($1.settings),e7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
+        "slot block BoF after burger gate snapshot",
+        /window\.__remixGame=(this|a),window\.burger_settings_snapshot&&window\.burger_settings_snapshot\(\1\.settings\),M7\(\1\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(\1\.settings\)\)&&BoF\(\1\.oa\)/g,
+        "window.__remixGame=$1,window.burger_settings_snapshot&&window.burger_settings_snapshot($1.settings),M7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&BoF($1.oa)"
       ) &&
       !smReplace(
-        "slot block l4E after burger gate",
-        /window\.__remixGame=(this|a),e7\(\1\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(\1\.settings\)\)&&l4E\(\1\.wa\)/g,
-        "window.__remixGame=$1,e7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
+        "slot block BoF after burger gate",
+        /window\.__remixGame=(this|a),M7\(\1\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(\1\.settings\)\)&&BoF\(\1\.oa\)/g,
+        "window.__remixGame=$1,M7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&BoF($1.oa)"
       ) &&
       !smReplace(
-        "slot block l4E after burger gate legacy",
-        /e7\((this|a)\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(\1\.settings\)\)&&l4E\(\1\.wa\)/g,
-        "e7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
+        "slot block BoF after burger gate legacy",
+        /M7\((this|a)\.settings,10\)&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(\1\.settings\)\)&&BoF\(\1\.oa\)/g,
+        "M7($1.settings,10)&&!(window.isBurgerSettings&&window.isBurgerSettings($1.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&BoF($1.oa)"
       )
     ) {
       smReplace(
-        "slot block l4E",
-        /e7\((this|a)\.settings,10\)&&l4E\(\1\.wa\)/g,
-        "e7($1.settings,10)&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&l4E($1.wa)"
+        "slot block BoF",
+        /M7\((this|a)\.settings,10\)&&BoF\(\1\.oa\)/g,
+        "M7($1.settings,10)&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_l4E=1))&&BoF($1.oa)"
       );
     }
-    if (code.indexOf("l4E=function(a){var _bs=") >= 0) {
+    if (code.indexOf("BoF=function(a){var _bs=") >= 0) {
       smReplace(
-        "slot block l4E function after burger sanitize",
-        /l4E=function\(a\)\{var _bs=\(a&&a\.settings\)\|\|\(window\.__remixGame&&window\.__remixGame\.settings\)\|\|window\.__burgerSettingsRef;if\(window\.isBurgerSettings&&window\.isBurgerSettings\(_bs\)\)return;/,
-        "l4E=function(a){var _bs=(a&&a.settings)||(window.__remixGame&&window.__remixGame.settings)||window.__burgerSettingsRef;if(window.isBurgerSettings&&window.isBurgerSettings(_bs))return;if(window.isSlotMachineActive&&window.isSlotMachineActive())return;"
+        "slot block BoF function after burger sanitize",
+        /BoF=function\(a\)\{var _bs=\(a&&a\.settings\)\|\|\(window\.__remixGame&&window\.__remixGame\.settings\)\|\|window\.__burgerSettingsRef;if\(window\.isBurgerSettings&&window\.isBurgerSettings\(_bs\)\)return;/,
+        "BoF=function(a){var _bs=(a&&a.settings)||(window.__remixGame&&window.__remixGame.settings)||window.__burgerSettingsRef;if(window.isBurgerSettings&&window.isBurgerSettings(_bs))return;if(window.isSlotMachineActive&&window.isSlotMachineActive())return;"
       );
-    } else if (code.indexOf("l4E=function(a){if(window.isBurgerSettings") >= 0) {
+    } else if (code.indexOf("BoF=function(a){if(window.isBurgerSettings") >= 0) {
       smReplace(
-        "slot block l4E function after burger",
-        /l4E=function\(a\)\{if\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)return;/,
-        "l4E=function(a){if(window.isBurgerSettings&&window.isBurgerSettings(a.settings))return;if(window.isSlotMachineActive&&window.isSlotMachineActive())return;"
+        "slot block BoF function after burger",
+        /BoF=function\(a\)\{if\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)return;/,
+        "BoF=function(a){if(window.isBurgerSettings&&window.isBurgerSettings(a.settings))return;if(window.isSlotMachineActive&&window.isSlotMachineActive())return;"
       );
-    } else if (code.indexOf("l4E=function(a){if(window.isSlotMachineActive") < 0) {
+    } else if (code.indexOf("BoF=function(a){if(window.isSlotMachineActive") < 0) {
       smReplace(
-        "slot block l4E function",
-        /l4E=function\(a\)\{/,
-        "l4E=function(a){if(window.isSlotMachineActive&&window.isSlotMachineActive())return;"
+        "slot block BoF function",
+        /BoF=function\(a\)\{/,
+        "BoF=function(a){if(window.isSlotMachineActive&&window.isSlotMachineActive())return;"
       );
     }
   }
   if (code.indexOf("slot_block_g4E") < 0) {
     if (
       !smReplace(
-        "slot block g4E top-up after Fear",
-        /b<a\.ka\.length\/2((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&\(\(window\.fear_uses_ghost_pairs&&window\.fear_uses_ghost_pairs\(window\.__remixGame\)\)\?window\.fear_native_ghost_top_up\(a,e4E\):e4E\(a\)\)/,
-        "b<a.ka.length/2$1&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_g4E=1))&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+        "slot block woF top-up after Fear",
+        /b<a\.ka\.length\/2((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&\(\(window\.fear_uses_ghost_pairs&&window\.fear_uses_ghost_pairs\(window\.__remixGame\)\)\?window\.fear_native_ghost_top_up\(a,uoF\):uoF\(a\)\)/,
+        "b<a.ka.length/2$1&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_g4E=1))&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,uoF):uoF(a))"
       ) &&
       !smReplace(
-        "slot block g4E top-up after burger",
-        /b<a\.ka\.length\/2&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)&&e4E\(a\)/,
-        "b<a.ka.length/2&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_g4E=1))&&e4E(a)"
+        "slot block woF top-up after burger",
+        /b<a\.ka\.length\/2&&!\(window\.isBurgerSettings&&window\.isBurgerSettings\(a\.settings\)\)&&uoF\(a\)/,
+        "b<a.ka.length/2&&!(window.isBurgerSettings&&window.isBurgerSettings(a.settings))&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_g4E=1))&&uoF(a)"
       )
     ) {
       smReplace(
-        "slot block g4E top-up",
-        /b<a\.ka\.length\/2&&e4E\(a\)/,
-        "b<a.ka.length/2&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_g4E=1))&&e4E(a)"
+        "slot block woF top-up",
+        /b<a\.ka\.length\/2&&uoF\(a\)/,
+        "b<a.ka.length/2&&!(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_block_g4E=1))&&uoF(a)"
       );
     }
   }
@@ -26670,8 +26776,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("__slotActive|0)===15))for") < 0) {
     smReplace(
       "slot P3E fruit shields only on shield roll",
-      /if\(e7\((this|a)\.settings,15\)&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\)\)for/g,
-      "if(e7($1.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields())&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===15))for"
+      /if\(M7\((this|a)\.settings,15\)&&\(!window\.ultraShouldSpawnFruitShields\|\|window\.ultraShouldSpawnFruitShields\(\)\)\)for/g,
+      "if(M7($1.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields())&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===15))for"
     );
   }
   if (code.indexOf("chess_convert_new_apples(a,g)") >= 0) {
@@ -26715,14 +26821,14 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot pulse twin reverse before e7(5)",
-        /\(f=e7\(a\.settings,5\)&&!a\.nj\)&&\(b=!0\)/,
-        "window.slot_prep_twin_eat&&window.slot_prep_twin_eat(a,d),(f=e7(a.settings,5)&&!a.nj)&&(b=!0)"
+        /\(f=M7\(a\.settings,5\)&&!a\.uj\)&&\(b=!0\)/,
+        "window.slot_prep_twin_eat&&window.slot_prep_twin_eat(a,d),(f=M7(a.settings,5)&&!a.uj)&&(b=!0)"
       )
     ) {
       smReplace(
         "slot pulse twin reverse fallback",
-        /\(f=e7\(a\.settings,5\)&&!a\.nj\)&&\(b=!0\);/,
-        "window.slot_prep_twin_eat&&window.slot_prep_twin_eat(a,d),(f=e7(a.settings,5)&&!a.nj)&&(b=!0);"
+        /\(f=M7\(a\.settings,5\)&&!a\.uj\)&&\(b=!0\);/,
+        "window.slot_prep_twin_eat&&window.slot_prep_twin_eat(a,d),(f=M7(a.settings,5)&&!a.uj)&&(b=!0);"
       );
     }
   }
@@ -26730,104 +26836,113 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot finish twin reverse after O6E",
-        /if\(e=f&&!e7\(a\.settings,2\)\)O6E\(a\.oa,B6E\(a\.Ca\),a\.Ca\.Ca\.bind\(a\.Ca\)\),e7\(a\.settings,20\)&&p5E\(a\.Ga\);/,
-        "if(e=f&&!e7(a.settings,2))O6E(a.oa,B6E(a.Ca),a.Ca.Ca.bind(a.Ca)),e7(a.settings,20)&&p5E(a.Ga);window.slot_finish_twin_eat&&window.slot_finish_twin_eat();"
+        /if\(e=f&&!M7\(a\.settings,2\)\)LrF\(a\.Yc,vrF\(a\.Tw\),a\.Tw\.PMa\.bind\(a\.Tw\)\),M7\(a\.settings,20\)&&jqF\(a\.wa\);/,
+        "if(e=f&&!M7(a.settings,2))LrF(a.Yc,vrF(a.Tw),a.Tw.PMa.bind(a.Tw)),M7(a.settings,20)&&jqF(a.wa);window.slot_finish_twin_eat&&window.slot_finish_twin_eat();"
       )
     ) {
       smReplace(
         "slot finish twin reverse after O6E loose",
-        /O6E\(a\.oa,B6E\(a\.Ca\),a\.Ca\.Ca\.bind\(a\.Ca\)\),e7\(a\.settings,20\)&&p5E\(a\.Ga\);/,
-        "O6E(a.oa,B6E(a.Ca),a.Ca.Ca.bind(a.Ca)),e7(a.settings,20)&&p5E(a.Ga);window.slot_finish_twin_eat&&window.slot_finish_twin_eat();"
+        /LrF\(a\.Yc,vrF\(a\.Tw\),a\.Tw\.PMa\.bind\(a\.Tw\)\),M7\(a\.settings,20\)&&jqF\(a\.wa\);/,
+        "LrF(a.Yc,vrF(a.Tw),a.Tw.PMa.bind(a.Tw)),M7(a.settings,20)&&jqF(a.wa);window.slot_finish_twin_eat&&window.slot_finish_twin_eat();"
       );
     }
   }
 
   // Upgrade older gate/bridge plant sites that forced the Ultra disable flags
   // off (that spawned gates/bridges in normal mode with the checkbox off).
-  if (code.indexOf("disableGateMode=!1,h6E") >= 0) {
+  if (code.indexOf("disableGateMode=!1,(h=!M7(a.settings,11)") >= 0) {
     smReplace(
       "slot gate plant keep ultra disable",
-      /e7\(a\.settings,19\)&&(?:\(\!\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)\)\|\|\(window\.__slotActive\|0\)===19\)&&)?\(f\|\|window\.slot_force_entity_spawn&&window\.slot_force_entity_spawn\(\)\)&&\(window\.disableGateMode=!1,h6E\(a\.Qa,a\.oa\.ka\)\)/,
-      "e7(a.settings,19)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===19)&&(f||window.slot_force_entity_spawn&&window.slot_force_entity_spawn())&&h6E(a.Qa,a.oa.ka)",
+      /M7\(a\.settings,19\)&&(?:\(\!\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)\)\|\|\(window\.__slotActive\|0\)===19\)&&)?\(f\|\|window\.slot_force_entity_spawn&&window\.slot_force_entity_spawn\(\)\)&&\(window\.disableGateMode=!1,\(h=!M7\(a\.settings,11\),a\.Ia\(h\),arF\(a\.Ca,a\.Yc\.ka\),h\|\|a\.Ia\(\)\)\)/,
+      "M7(a.settings,19)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===19)&&(f||window.slot_force_entity_spawn&&window.slot_force_entity_spawn())&&(h=!M7(a.settings,11),a.Ia(h),arF(a.Ca,a.Yc.ka),h||a.Ia())",
       true
     );
   }
-  if (code.indexOf("disableBridgeMode=!1,m5E") >= 0) {
+  if (code.indexOf("disableBridgeMode=!1,fqF") >= 0) {
     smReplace(
       "slot bridge plant keep ultra disable",
-      /e7\(a\.settings,20\)&&(?:\(\!\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)\)\|\|\(window\.__slotActive\|0\)===20\)&&)?\(f\|\|window\.slot_force_entity_spawn&&window\.slot_force_entity_spawn\(\)\)&&\(window\.disableBridgeMode=!1,m5E\(a\.Ga\),e7\(a\.settings,9\)&&n7E\(a\),window\.slot_ensure_bridge_planted&&window\.slot_ensure_bridge_planted\(a\)\)/,
-      "e7(a.settings,20)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===20)&&(f||window.slot_force_entity_spawn&&window.slot_force_entity_spawn())&&(m5E(a.Ga),e7(a.settings,9)&&n7E(a),window.slot_ensure_bridge_planted&&window.slot_ensure_bridge_planted(a))",
+      /M7\(a\.settings,20\)&&(?:\(\!\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)\)\|\|\(window\.__slotActive\|0\)===20\)&&)?\(f\|\|window\.slot_force_entity_spawn&&window\.slot_force_entity_spawn\(\)\)&&\(window\.disableBridgeMode=!1,fqF\(a\.wa\),M7\(a\.settings,9\)&&a\.Ia\(\),window\.slot_ensure_bridge_planted&&window\.slot_ensure_bridge_planted\(a\)\)/,
+      "M7(a.settings,20)&&(!(window.isSlotMachineActive&&window.isSlotMachineActive())||(window.__slotActive|0)===20)&&(f||window.slot_force_entity_spawn&&window.slot_force_entity_spawn())&&(fqF(a.wa),M7(a.settings,9)&&a.Ia(),window.slot_ensure_bridge_planted&&window.slot_ensure_bridge_planted(a))",
       true
     );
   }
 
   // Capture key/sokoban plant helpers at eat site. Prefer e=!1 BEFORE captures
-  // so a missing q6E/e5E name never falls through to native Vm fruit refill.
+  // so a missing jrF/XpF name never falls through to native Vm fruit refill.
   const slotEatCapture =
-    "e=!1;try{window.__slotQ6E=q6E;}catch(_q){}try{window.__slotE5E=e5E;}catch(_s){}window.slot_eat_respawn&&window.slot_eat_respawn(a)";
+    "e=!1;try{window.__slotQ6E=jrF;}catch(_q){}try{window.__slotE5E=XpF;}catch(_s){}window.slot_eat_respawn&&window.slot_eat_respawn(a)";
   const slotEatCaptureComma =
-    "(e=!1,function(){try{window.__slotQ6E=q6E;}catch(_q){}try{window.__slotE5E=e5E;}catch(_s){}window.slot_eat_respawn&&window.slot_eat_respawn(a);}(),!1)";
+    "(e=!1,function(){try{window.__slotQ6E=jrF;}catch(_q){}try{window.__slotE5E=XpF;}catch(_s){}window.slot_eat_respawn&&window.slot_eat_respawn(a);}(),!1)";
 
   // Upgrade older capture-before-e=!1 hooks (ReferenceError aborted refill skip).
   if (
-    code.indexOf("try{window.__slotE5E=e5E;}") < 0 &&
-    code.indexOf("window.__slotQ6E=q6E") >= 0 &&
+    code.indexOf("try{window.__slotE5E=XpF;}") < 0 &&
+    code.indexOf("window.__slotQ6E=jrF") >= 0 &&
     code.indexOf("slot_eat_respawn&&window.slot_eat_respawn(a)") >= 0
   ) {
     code = code.replace(
-      /window\.__slotQ6E=q6E;window\.__slotE5E=e5E;e=!1;window\.slot_eat_respawn&&window\.slot_eat_respawn\(a\)/g,
+      /window\.__slotQ6E=jrF;window\.__slotE5E=XpF;e=!1;window\.slot_eat_respawn&&window\.slot_eat_respawn\(a\)/g,
       slotEatCapture
     );
     code = code.replace(
-      /\(window\.__slotQ6E=q6E,window\.__slotE5E=e5E,window\.slot_eat_respawn&&window\.slot_eat_respawn\(a\),!1\)/g,
+      /\(window\.__slotQ6E=jrF,window\.__slotE5E=XpF,window\.slot_eat_respawn&&window\.slot_eat_respawn\(a\),!1\)/g,
       slotEatCaptureComma
     );
     code = code.replace(
-      /window\.__slotQ6E=q6E,window\.__slotE5E=e5E,window\.slot_eat_respawn&&window\.slot_eat_respawn\(a\)/g,
-      "e=!1,function(){try{window.__slotQ6E=q6E;}catch(_q){}try{window.__slotE5E=e5E;}catch(_s){}window.slot_eat_respawn&&window.slot_eat_respawn(a);}()"
+      /window\.__slotQ6E=jrF,window\.__slotE5E=XpF,window\.slot_eat_respawn&&window\.slot_eat_respawn\(a\)/g,
+      "e=!1,function(){try{window.__slotQ6E=jrF;}catch(_q){}try{window.__slotE5E=XpF;}catch(_s){}window.slot_eat_respawn&&window.slot_eat_respawn(a);}()"
     );
   }
 
-  if (code.indexOf("try{window.__slotE5E=e5E;}") < 0 && code.indexOf("slot_eat_respawn&&window.slot_eat_respawn(a)") >= 0) {
+  if (code.indexOf("try{window.__slotE5E=XpF;}") < 0 && code.indexOf("slot_eat_respawn&&window.slot_eat_respawn(a)") >= 0) {
     const eatCapRe = /window\.slot_eat_respawn&&window\.slot_eat_respawn\(a\)/g;
     if (code.match(eatCapRe)) {
       code = code.replace(
         eatCapRe,
-        "e=!1,function(){try{window.__slotQ6E=q6E;}catch(_q){}try{window.__slotE5E=e5E;}catch(_s){}window.slot_eat_respawn&&window.slot_eat_respawn(a);}()"
+        "e=!1,function(){try{window.__slotQ6E=jrF;}catch(_q){}try{window.__slotE5E=XpF;}catch(_s){}window.slot_eat_respawn&&window.slot_eat_respawn(a);}()"
       );
     }
   }
 
-  // Native Vm relocates the same apple; Chess leftover steals once pieces exist.
-  // Slot also captures Chess freePos/makeApple so second-eat relocate works.
+  // Native Vm (v14 Kc) relocates the same apple; Chess leftover steals once
+  // pieces exist. Slot also captures Chess freePos/makeApple so second-eat
+  // relocate works. v14 has no d4E wrapper (callers use board.Ba(b,c,void 0)),
+  // so Slot supplies an equivalent (board, exclude, flag) picker. BombFruit's
+  // own capture assignments are matched loosely and re-used verbatim.
   const slotChessHelpers =
-    "window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;";
+    "window.__chessMakeApple=S7;window.__chessFreePos=window.chess_native_free_pos||function(q,r,s){return q.Ba(r,s,void 0)};window.__chessPickType=hoF;";
+  const slotBombCaps =
+    "window\\.__bombFruitMakeApple=[^;]*;window\\.__bombFruitFreePos=[^;]*;window\\.__bombFruitPickType=[^;]*;";
   if (
     code.indexOf(
-      "isSlotMachineActive&&window.isSlotMachineActive()){window.__bombFruitMakeApple=g7"
+      "isSlotMachineActive&&window.isSlotMachineActive()){window.__bombFruitMakeApple="
     ) >= 0 &&
-    code.indexOf(
-      "isSlotMachineActive&&window.isSlotMachineActive()){window.__bombFruitMakeApple=g7;window.__bombFruitFreePos=d4E;window.__bombFruitPickType=Q3E;window.__chessMakeApple=g7"
-    ) < 0
+    code.indexOf(slotChessHelpers) < 0
   ) {
     smReplace(
       "slot capture chess helpers on eat (upgrade)",
-      /if\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)\)\{window\.__bombFruitMakeApple=g7;window\.__bombFruitFreePos=d4E;window\.__bombFruitPickType=Q3E;/,
-      "if(window.isSlotMachineActive&&window.isSlotMachineActive()){window.__bombFruitMakeApple=g7;window.__bombFruitFreePos=d4E;window.__bombFruitPickType=Q3E;" +
-        slotChessHelpers
+      new RegExp(
+        "if\\(window\\.isSlotMachineActive&&window\\.isSlotMachineActive\\(\\)\\)\\{" +
+          slotBombCaps
+      ),
+      "$&" + slotChessHelpers
     );
   }
   if (
     code.indexOf(
-      "isSlotMachineActive&&window.isSlotMachineActive()){window.__bombFruitMakeApple=g7"
+      "isSlotMachineActive&&window.isSlotMachineActive()){window.__bombFruitMakeApple="
     ) < 0 &&
-    code.indexOf("try{window.__slotE5E=e5E;}") < 0
+    code.indexOf("try{window.__slotE5E=XpF;}") < 0
   ) {
     if (
       !smReplace(
         "slot capture + eat before chess",
-        /e=!1;if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{window\.__bombFruitMakeApple=g7;window\.__bombFruitFreePos=d4E;window\.__bombFruitPickType=Q3E;\}if\(window\.isChessActive&&window\.isChessActive\(\)\)\{/,
-        "e=!1;if(window.isBombFruitActive&&window.isBombFruitActive()){window.__bombFruitMakeApple=g7;window.__bombFruitFreePos=d4E;window.__bombFruitPickType=Q3E;}if(window.isSlotMachineActive&&window.isSlotMachineActive()){window.__bombFruitMakeApple=g7;window.__bombFruitFreePos=d4E;window.__bombFruitPickType=Q3E;" +
+        new RegExp(
+          "e=!1;if\\(window\\.isBombFruitActive&&window\\.isBombFruitActive\\(\\)\\)\\{(" +
+            slotBombCaps +
+            ")\\}if\\(window\\.isChessActive&&window\\.isChessActive\\(\\)\\)\\{"
+        ),
+        "e=!1;if(window.isBombFruitActive&&window.isBombFruitActive()){$1}if(window.isSlotMachineActive&&window.isSlotMachineActive()){$1" +
           slotChessHelpers +
           slotEatCapture +
           ";}else if(window.isChessActive&&window.isChessActive()){"
@@ -26836,19 +26951,19 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       if (
         !smReplace(
           "slot eat before mexico/portal",
-          /else if\(window\.isMexicoActive&&window\.isMexicoActive\(\)\)\{e=!window\.cat_allows_pair_spawn\|\|window\.cat_allows_pair_spawn\(a\);\}else e7\(a\.settings,2\)\?/,
+          /else if\(window\.isMexicoActive&&window\.isMexicoActive\(\)\)\{e=!window\.cat_allows_pair_spawn\|\|window\.cat_allows_pair_spawn\(a\);\}else M7\(a\.settings,2\)\?/,
           "else if(window.isSlotMachineActive&&window.isSlotMachineActive()){" +
             slotChessHelpers +
             slotEatCapture +
-            ";}else if(window.isMexicoActive&&window.isMexicoActive()){e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a);}else e7(a.settings,2)?"
+            ";}else if(window.isMexicoActive&&window.isMexicoActive()){e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a);}else M7(a.settings,2)?"
         )
       ) {
         smReplace(
           "slot skip Vm eat respawn fallback",
-          /e=window\.isCatActive&&window\.isCatActive\(\)&&window\.cat_allows_fruit_spawn&&!window\.cat_allows_fruit_spawn\(a,1,1\)\?!1:a\.Vm\(k,!e,null\)/,
+          /e=window\.isCatActive&&window\.isCatActive\(\)&&window\.cat_allows_fruit_spawn&&!window\.cat_allows_fruit_spawn\(a,1,1\)\?!1:a\.Kc\(k,!e,null\)/,
           "e=window.isCatActive&&window.isCatActive()&&window.cat_allows_fruit_spawn&&!window.cat_allows_fruit_spawn(a,1,1)?!1:window.isSlotMachineActive&&window.isSlotMachineActive()?" +
             slotEatCaptureComma +
-            ":a.Vm(k,!e,null)"
+            ":a.Kc(k,!e,null)"
         );
       }
     }
@@ -26860,45 +26975,45 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       smReplace(
         "slot flush portal twin on existing eat splice",
-        /(window\.slot_on_eating_fruit&&window\.slot_on_eating_fruit\(a,a\.wa\.ka\[k\]\),a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\))/,
-        "window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.wa.ka[k]),a.wa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.wa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a)",
+        /(window\.slot_on_eating_fruit&&window\.slot_on_eating_fruit\(a,a\.oa\.ka\[k\]\),a\.oa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.oa,a\))/,
+        "window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.oa.ka[k]),a.oa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.oa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.oa,a)",
         true
       )
     ) {
       /* upgraded prior slot splice hook */
     } else if (code.indexOf("slot_on_eating_fruit") < 0) {
     const spliceReMexicoBomb =
-      /(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&\(window\.mexico_after_fruit_splice\(a\.wa,a\),0\),window\.isBombFruitActive&&window\.isBombFruitActive\(\)&&\(window\.bombFruit_after_respawn\(a\.wa,0,!1\),0\))/;
+      /(a\.oa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.oa,a\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&\(window\.mexico_after_fruit_splice\(a\.oa,a\),0\),window\.isBombFruitActive&&window\.isBombFruitActive\(\)&&\(window\.bombFruit_after_respawn\(a\.oa,0,!1\),0\))/;
     const spliceRe2 =
-      /(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\),window\.isBombFruitActive&&window\.isBombFruitActive\(\)&&\(window\.bombFruit_after_respawn\(a\.wa,0,!1\),0\))/;
+      /(a\.oa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.oa,a\),window\.isBombFruitActive&&window\.isBombFruitActive\(\)&&\(window\.bombFruit_after_respawn\(a\.oa,0,!1\),0\))/;
     if (code.match(spliceReMexicoBomb)) {
       smReplace(
         "slot eat before splice mexico+bomb",
         spliceReMexicoBomb,
-          "(window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.wa.ka[k]),a.wa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.wa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.wa,a),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
+          "(window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.oa.ka[k]),a.oa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.oa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.oa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.oa,a),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.oa,0,!1),0))"
       );
     } else if (code.match(spliceRe2)) {
       smReplace(
         "slot eat before splice",
         spliceRe2,
-          "(window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.wa.ka[k]),a.wa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.wa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
+          "(window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.oa.ka[k]),a.oa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.oa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.oa,a),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.oa,0,!1),0))"
       );
     } else {
       const simpleMexico =
-        /(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&\(window\.mexico_after_fruit_splice\(a\.wa,a\),0\))/;
+        /(a\.oa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.oa,a\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&\(window\.mexico_after_fruit_splice\(a\.oa,a\),0\))/;
       const simple =
-        /(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\))/;
+        /(a\.oa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.oa,a\))/;
       if (code.match(simpleMexico)) {
         smReplace(
           "slot eat before splice mexico",
           simpleMexico,
-            "(window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.wa.ka[k]),a.wa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.wa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.wa,a),0))"
+            "(window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.oa.ka[k]),a.oa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.oa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.oa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.oa,a),0))"
         );
       } else if (code.match(simple)) {
         smReplace(
           "slot eat before splice simple",
           simple,
-            "(window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.wa.ka[k]),a.wa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.wa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a))"
+            "(window.slot_on_eating_fruit&&window.slot_on_eating_fruit(a,a.oa.ka[k]),a.oa.ka.splice(k,1),k--,window.slot_flush_portal_twin&&window.slot_flush_portal_twin(a.oa),window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.oa,a))"
         );
       } else {
         console.error("SlotMachineMod: failed to find fruit splice eat hook");
@@ -26920,42 +27035,50 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
 
   // Apple-manager reset: after native type assign (R3E / per-fruit Q3E), stamp
   // badges + enforce unique fruit types for the pre-start board. Slot keeps
-  // Y3E/e7(2) false until a Portal roll, so R3E never runs on initial spawn —
+  // Y3E/M7(2) false until a Portal roll, so R3E never runs on initial spawn —
   // this hook is the only start-layout unique-type path.
+  // v14 native: if(M7(this.settings,2))ioF(this);else for(var q of this.ka)q.type=hoF(this);
+  // (MorePudding may brace/extend it; loop var name is matched loosely.)
   if (code.indexOf("slot_after_layout(this)") < 0) {
-    if (
-      !smReplace(
-        "slot after layout on apple reset (enforceUnique)",
-        /if\(e7\(this\.settings,2\)\)\(R3E\(this\),window\.enforceUniquePortalFruitTypes&&window\.enforceUniquePortalFruitTypes\(this\)\);else\{for\(var n of this\.ka\)n\.type=-1;window\.ensureCustomBowlDimensionOka&&window\.ensureCustomBowlDimensionOka\(this\);for\(n of this\.ka\)n\.type=Q3E\(this\)\};/,
-        "if(e7(this.settings,2))(R3E(this),window.enforceUniquePortalFruitTypes&&window.enforceUniquePortalFruitTypes(this));else{for(var n of this.ka)n.type=-1;window.ensureCustomBowlDimensionOka&&window.ensureCustomBowlDimensionOka(this);for(n of this.ka)n.type=Q3E(this)};window.isSlotMachineActive&&window.isSlotMachineActive()&&window.slot_after_layout&&window.slot_after_layout(this);"
-      )
-    ) {
-    smReplace(
-        "slot after layout on apple reset",
-        /if\(e7\(this\.settings,2\)\)R3E\(this\);else\{for\(var n of this\.ka\)n\.type=-1;window\.ensureCustomBowlDimensionOka&&window\.ensureCustomBowlDimensionOka\(this\);for\(n of this\.ka\)n\.type=Q3E\(this\)\};/,
-        "if(e7(this.settings,2))R3E(this);else{for(var n of this.ka)n.type=-1;window.ensureCustomBowlDimensionOka&&window.ensureCustomBowlDimensionOka(this);for(n of this.ka)n.type=Q3E(this)};window.isSlotMachineActive&&window.isSlotMachineActive()&&window.slot_after_layout&&window.slot_after_layout(this);"
-      );
-    }
+    const slotAfterLayout =
+      "$&window.isSlotMachineActive&&window.isSlotMachineActive()&&window.slot_after_layout&&window.slot_after_layout(this);";
+    smTryReplace("slot after layout on apple reset", [
+      {
+        label: "slot after layout on apple reset (enforceUnique)",
+        re: /if\(M7\(this\.settings,2\)\)\(ioF\(this\),window\.enforceUniquePortalFruitTypes&&window\.enforceUniquePortalFruitTypes\(this\)\);else\{for\(var ([a-zA-Z_$][a-zA-Z0-9_$]*) of this\.ka\)\1\.type=-1;window\.ensureCustomBowlDimensionOka&&window\.ensureCustomBowlDimensionOka\(this\);for\(\1 of this\.ka\)\1\.type=hoF\(this\)\};/,
+        rep: slotAfterLayout,
+      },
+      {
+        label: "slot after layout on apple reset (bowl)",
+        re: /if\(M7\(this\.settings,2\)\)ioF\(this\);else\{for\(var ([a-zA-Z_$][a-zA-Z0-9_$]*) of this\.ka\)\1\.type=-1;window\.ensureCustomBowlDimensionOka&&window\.ensureCustomBowlDimensionOka\(this\);for\(\1 of this\.ka\)\1\.type=hoF\(this\)\};/,
+        rep: slotAfterLayout,
+      },
+      {
+        label: "slot after layout on apple reset (native)",
+        re: /if\(M7\(this\.settings,2\)\)ioF\(this\);else for\(var ([a-zA-Z_$][a-zA-Z0-9_$]*) of this\.ka\)\1\.type=hoF\(this\);/,
+        rep: slotAfterLayout,
+      },
+    ]);
   }
 
   // Eat-path j4E / splice: optional capture of key/sokoban helpers (not start layout).
   if (
-    code.indexOf("window.__slotQ6E=q6E,window.__slotE5E=e5E,window.slot_after_layout") >= 0
+    code.indexOf("window.__slotQ6E=jrF,window.__slotE5E=XpF,window.slot_after_layout") >= 0
   ) {
     smReplace(
       "slot after layout capture try/catch",
-      /window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)&&\(window\.__slotQ6E=q6E,window\.__slotE5E=e5E,window\.slot_after_layout\(a\.wa\),0\)/,
-      "window.isSlotMachineActive&&window.isSlotMachineActive()&&((function(){try{window.__slotQ6E=q6E;}catch(_q){}try{window.__slotE5E=e5E;}catch(_s){}})(),window.slot_after_layout(a.wa),0)"
+      /window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)&&\(window\.__slotQ6E=jrF,window\.__slotE5E=XpF,window\.slot_after_layout\(a\.oa\),0\)/,
+      "window.isSlotMachineActive&&window.isSlotMachineActive()&&((function(){try{window.__slotQ6E=jrF;}catch(_q){}try{window.__slotE5E=XpF;}catch(_s){}})(),window.slot_after_layout(a.oa),0)"
     );
   } else if (
-    code.indexOf("try{window.__slotE5E=e5E;}") < 0 &&
-    code.indexOf("window.slot_after_layout(a.wa),0)") >= 0 &&
-    code.indexOf("window.__slotQ6E=q6E") < 0
+    code.indexOf("try{window.__slotE5E=XpF;}") < 0 &&
+    code.indexOf("window.slot_after_layout(a.oa),0)") >= 0 &&
+    code.indexOf("window.__slotQ6E=jrF") < 0
   ) {
     smReplace(
       "slot after layout capture key helpers",
-      /window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)&&\(window\.slot_after_layout\(a\.wa\),0\)/,
-      "window.isSlotMachineActive&&window.isSlotMachineActive()&&((function(){try{window.__slotQ6E=q6E;}catch(_q){}try{window.__slotE5E=e5E;}catch(_s){}})(),window.slot_after_layout(a.wa),0)"
+      /window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)&&\(window\.slot_after_layout\(a\.oa\),0\)/,
+      "window.isSlotMachineActive&&window.isSlotMachineActive()&&((function(){try{window.__slotQ6E=jrF;}catch(_q){}try{window.__slotE5E=XpF;}catch(_s){}})(),window.slot_after_layout(a.oa),0)"
     );
   }
 
@@ -26986,29 +27109,29 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
 
   // D5E still opens for Slot Machine so mine/FX pass can run; badges draw AFTER
   // fruit sprites (drawImage hook) so they sit on top, not under the apple.
-  if (code.indexOf("isSlotMachineActive()&&window.isSlotMachineActive())&&D5E") < 0 &&
-      code.indexOf("isSlotMachineActive&&window.isSlotMachineActive())&&D5E") < 0) {
+  if (code.indexOf("isSlotMachineActive()&&window.isSlotMachineActive())&&wqF") < 0 &&
+      code.indexOf("isSlotMachineActive&&window.isSlotMachineActive())&&wqF") < 0) {
     const slotD5EClassic =
-      "||window.isSlotMachineActive&&window.isSlotMachineActive())&&D5E(this.Ja,a)";
+      "||window.isSlotMachineActive&&window.isSlotMachineActive())&&wqF(this.Ia,a)";
     const slotD5EPixel =
-      "||window.isSlotMachineActive&&window.isSlotMachineActive())&&D5E(this.Ja,dd)";
+      "||window.isSlotMachineActive&&window.isSlotMachineActive())&&wqF(this.Ia,Ad)";
     smTryReplace("D5E call gate for slot", [
       {
-        re: /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_fading&&window\.tempWalls_has_fading\(this\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,a\)/,
+        re: /!M7\(this\.settings,4\)&&\(M7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_fading&&window\.tempWalls_has_fading\(this\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&wqF\(this\.Ia,a\)/,
         rep:
-          "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
+          "!M7(this.settings,4)&&(M7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
           slotD5EClassic,
       },
       {
-        re: /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,a\)/,
+        re: /!M7\(this\.settings,4\)&&\(M7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&wqF\(this\.Ia,a\)/,
         rep:
-          "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
+          "!M7(this.settings,4)&&(M7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
           slotD5EClassic,
       },
       {
-        re: /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)&&D5E\(this\.Ja,a\)/,
+        re: /!M7\(this\.settings,4\)&&\(M7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)&&wqF\(this\.Ia,a\)/,
         rep:
-          "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()" +
+          "!M7(this.settings,4)&&(M7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()" +
           slotD5EClassic,
       },
     ], true);
@@ -27016,21 +27139,21 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
       "D5E call gate pixel for slot",
       [
       {
-        re: /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_fading&&window\.tempWalls_has_fading\(this\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,dd\)/,
+        re: /\(M7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_fading&&window\.tempWalls_has_fading\(this\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&wqF\(this\.Ia,Ad\)/,
         rep:
-          "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
+          "(M7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
           slotD5EPixel,
       },
       {
-        re: /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&D5E\(this\.Ja,dd\)/,
+        re: /\(M7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\|\|window\.tempWalls_has_any&&window\.tempWalls_has_any\(this\)\)&&wqF\(this\.Ia,Ad\)/,
         rep:
-          "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
+          "(M7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_any&&window.tempWalls_has_any(this)" +
           slotD5EPixel,
       },
       {
-        re: /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)&&D5E\(this\.Ja,dd\)/,
+        re: /\(M7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)&&wqF\(this\.Ia,Ad\)/,
         rep:
-          "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()" +
+          "(M7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()" +
           slotD5EPixel,
       },
     ], true);
@@ -27041,23 +27164,23 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot ensure badges after bomb radii",
-        /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}for\(var c of a\.wb\.Ma\.Aa\)\{/,
-        'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a,b);}catch(_sm){}}for(var c of a.wb.Ma.Aa){',
+        /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}for\(var c of a\.ub\.Ga\.Aa\)\{/,
+        'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a,b);}catch(_sm){}}for(var c of a.ub.Ga.Aa){',
         true
       )
     ) {
       smReplace(
         "slot ensure badges after temp walls pulse",
-        /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}try\{window\.tempWalls_drawPulse\(a\);\}catch\(_tw\)\{\}for\(var c of a\.wb\.Ma\.Aa\)\{/,
-        'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}try{window.tempWalls_drawPulse(a);}catch(_tw){}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a,b);}catch(_sm){}}for(var c of a.wb.Ma.Aa){',
+        /if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{try\{window\.bombFruit_drawRadii\(a,b\);\}catch\(_bf\)\{\}\}try\{window\.tempWalls_drawPulse\(a\);\}catch\(_tw\)\{\}for\(var c of a\.ub\.Ga\.Aa\)\{/,
+        'if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}try{window.tempWalls_drawPulse(a);}catch(_tw){}if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);window.slot_bomb_leftover_draw&&window.slot_bomb_leftover_draw(a,b);}catch(_sm){}}for(var c of a.ub.Ga.Aa){',
         true
       );
     }
     if (code.indexOf("slot_ensure_badges") < 0) {
       smReplace(
         "slot ensure badges at D5E start",
-        /D5E=function\(a,b\)\{/,
-        "D5E=function(a,b){if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);}catch(_sm){}}"
+        /wqF=function\(a,b\)\{/,
+        "wqF=function(a,b){if(window.isSlotMachineActive&&window.isSlotMachineActive()){try{window.slot_ensure_badges(a);}catch(_sm){}}"
       );
     }
   }
@@ -27067,8 +27190,8 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     if (
       !smReplace(
         "slot badge after burger fruit draw",
-        /\(this\.ka\.drawImage\(f,0,0,g,g,-d\/2,-d\/2,d,d\),b&&!b\.Oka&&b\.burgerGrey>0&&\(this\.ka\.globalAlpha=Math\.min\(\.85,b\.burgerGrey\/110\),this\.ka\.fillStyle="#1a1a1a",this\.ka\.beginPath\(\),this\.ka\.arc\(0,0,d\*\.32,0,6\.283185307179586\),this\.ka\.fill\(\),this\.ka\.globalAlpha=1\)\);/,
-        '(this.ka.drawImage(f,0,0,g,g,-d/2,-d/2,d,d),b&&!b.Oka&&b.burgerGrey>0&&(this.ka.globalAlpha=Math.min(.85,b.burgerGrey/110),this.ka.fillStyle="#1a1a1a",this.ka.beginPath(),this.ka.arc(0,0,d*.32,0,6.283185307179586),this.ka.fill(),this.ka.globalAlpha=1),window.slot_draw_badge_at_fruit&&window.slot_draw_badge_at_fruit(this,b,d));'
+        /\(this\.ka\.drawImage\(f,0,0,g,g,-d\/2,-d\/2,d,d\),b&&!b\.Bea&&b\.burgerGrey>0&&\(this\.ka\.globalAlpha=Math\.min\(\.85,b\.burgerGrey\/110\),this\.ka\.fillStyle="#1a1a1a",this\.ka\.beginPath\(\),this\.ka\.arc\(0,0,d\*\.32,0,6\.283185307179586\),this\.ka\.fill\(\),this\.ka\.globalAlpha=1\)\);/,
+        '(this.ka.drawImage(f,0,0,g,g,-d/2,-d/2,d,d),b&&!b.Bea&&b.burgerGrey>0&&(this.ka.globalAlpha=Math.min(.85,b.burgerGrey/110),this.ka.fillStyle="#1a1a1a",this.ka.beginPath(),this.ka.arc(0,0,d*.32,0,6.283185307179586),this.ka.fill(),this.ka.globalAlpha=1),window.slot_draw_badge_at_fruit&&window.slot_draw_badge_at_fruit(this,b,d));'
       )
     ) {
     smReplace(
@@ -27081,13 +27204,13 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
 
   window.slot_ensure_badges = function slot_ensure_badges(board) {
     if (!window.isSlotMachineActive || !window.isSlotMachineActive()) return;
-    const game = (board && board.wb) || window.__remixGame;
+    const game = (board && board.ub) || window.__remixGame;
     if (game) window.__remixGame = game;
-    const mgr = (game && game.wa) || (board && board.wb && board.wb.wa);
+    const mgr = (game && game.oa) || (board && board.ub && board.ub.oa);
     if (!mgr || !mgr.ka) return;
     for (let i = 0; i < mgr.ka.length; i++) {
       const f = mgr.ka[i];
-      if (!f || f.Oka || f.isPiece) continue;
+      if (!f || f.Bea || f.isPiece) continue;
       if (
         f.__slotFearGhost ||
         (window.fear_is_ghost && window.fear_is_ghost(f))
@@ -27106,7 +27229,7 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
     fruitSize
   ) {
     if (!window.isSlotMachineActive || !window.isSlotMachineActive()) return;
-    if (!fruit || fruit.Oka || fruit.isPiece || fruit.slotMode == null) return;
+    if (!fruit || fruit.Bea || fruit.isPiece || fruit.slotMode == null) return;
     // Fear ghosts are hazards — never show a Slot badge on them.
     if (
       fruit.__slotFearGhost ||
@@ -27193,19 +27316,19 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   if (code.indexOf("window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON") < 0) {
     smTryReplace("deathscreen Zb slot icon", [
       {
-        re: /\(a\.settings\.ob===window\.TEMP_WALLS_MODE\)\?window\.TEMP_WALLS_ICON:/,
+        re: /\(a\.settings\.wb===window\.TEMP_WALLS_MODE\)\?window\.TEMP_WALLS_ICON:/,
         rep:
-          "(a.settings.ob===window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON:(a.settings.ob===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:",
+          "(a.settings.wb===window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON:(a.settings.wb===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:",
       },
       {
-        re: /\(a\.settings\.ob===window\.BOMB_FRUIT_MODE\)\?window\.BOMB_FRUIT_ICON:/,
+        re: /\(a\.settings\.wb===window\.BOMB_FRUIT_MODE\)\?window\.BOMB_FRUIT_ICON:/,
         rep:
-          "(a.settings.ob===window.BOMB_FRUIT_MODE)?window.BOMB_FRUIT_ICON:(a.settings.ob===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:",
+          "(a.settings.wb===window.BOMB_FRUIT_MODE)?window.BOMB_FRUIT_ICON:(a.settings.wb===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:",
       },
       {
-        re: /\(a\.settings\.ob===window\.MEXICO_MODE\)\?window\.MEXICO_ICON:/,
+        re: /\(a\.settings\.wb===window\.MEXICO_MODE\)\?window\.MEXICO_ICON:/,
         rep:
-          "(a.settings.ob===window.MEXICO_MODE)?window.MEXICO_ICON:(a.settings.ob===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:",
+          "(a.settings.wb===window.MEXICO_MODE)?window.MEXICO_ICON:(a.settings.wb===window.SLOT_MACHINE_MODE)?window.SLOT_MACHINE_ICON:",
       },
     ]);
     smTryReplace("blender b3E slot icon", [
@@ -27230,14 +27353,21 @@ window.SlotMachineMod.alterSnakeCode = function (code) {
   // Cat life spend while Slot Machine even when Cat not the roll:
   // Oa already checks isCatActive — our wrap keeps it true when lives>0.
 
-  // Run after every Slot regex that still names d4E. The native picker remains
-  // authoritative; Fear only filters its result before fruit construction.
-  if (code.indexOf("window.fear_spawn_pick(d4E,") < 0) {
-    const nativeSpawnCalls = code.match(/\bd4E\(/g);
+  // Run after every Slot regex that still names the native free-pos picker.
+  // The native picker remains authoritative; Fear only filters its result
+  // before fruit construction. v14 inlined v13's d4E(board,b,c) wrapper as
+  // board.Ba(b,c,void 0) (10 sites: a.ka.Ba / a.oa.Ba / this.oa.Ba);
+  // Fear exposes window.__fearFreePos=(a,b,c)=>a.Ba(b,c,void 0).
+  if (code.indexOf("window.fear_spawn_pick(window.__fearFreePos||") < 0) {
+    const nativeSpawnRe = /\b((?:a|this)\.(?:ka|oa))\.Ba\(([^()]*?),void 0\)/g;
+    const nativeSpawnCalls = code.match(nativeSpawnRe);
     if (nativeSpawnCalls && nativeSpawnCalls.length) {
-      code = code.replace(/\bd4E\(/g, "window.fear_spawn_pick(d4E,");
+      code = code.replace(
+        nativeSpawnRe,
+        "window.fear_spawn_pick(window.__fearFreePos||((_fp,_fq,_fr)=>_fp.Ba(_fq,_fr,void 0)),$1,$2)"
+      );
     } else {
-      console.error("SlotMachineMod: failed to find d4E calls for Fear");
+      console.error("SlotMachineMod: failed to find board free-pos calls for Fear");
     }
   }
 
@@ -27546,7 +27676,7 @@ window.SlotMachineMod.runCodeAfter = function () {
         const r = origBurgerPoison.apply(this, arguments);
         if (
           apple &&
-          apple.Oka &&
+          apple.Bea &&
           window.isSlotMachineActive &&
           window.isSlotMachineActive()
         ) {
@@ -27576,11 +27706,11 @@ window.SlotMachineMod.runCodeAfter = function () {
       ) {
         try {
           const g = window.__remixGame;
-          const list = g && g.wa && g.wa.ka;
+          const list = g && g.oa && g.oa.ka;
           if (list && typeof window.burger_assign_timer === "function") {
             for (let i = 0; i < list.length; i++) {
               const a = list[i];
-              if (!a || a.Oka || a.isPiece) continue;
+              if (!a || a.Bea || a.isPiece) continue;
               if (
                 a.burgerTimer == null ||
                 !Number.isFinite(Number(a.burgerTimer)) ||
@@ -27623,7 +27753,7 @@ window.SlotMachineMod.runCodeAfter = function () {
         (window.__slotActive | 0) === 25
       ) {
         const g = game || window.__remixGame;
-        const mgr = g && g.wa;
+        const mgr = g && g.oa;
         if (!mgr) return false;
         let pos = null;
         try {
@@ -27642,7 +27772,7 @@ window.SlotMachineMod.runCodeAfter = function () {
               ? window.slot_make_apple(mgr, pos)
               : null;
           if (!apple) return false;
-          apple.Oka = false;
+          apple.Bea = false;
           if (sequenceNumber !== undefined) {
             apple.sequenceNumber = sequenceNumber;
           }
@@ -27893,9 +28023,9 @@ window.SlotMachineMod.runCodeAfter = function () {
     window.capture_attempt = function (x, y) {
       const before =
         window.__remixGame &&
-        window.__remixGame.wa &&
-        window.__remixGame.wa.ka
-          ? window.__remixGame.wa.ka.slice()
+        window.__remixGame.oa &&
+        window.__remixGame.oa.ka
+          ? window.__remixGame.oa.ka.slice()
           : null;
       const r = origCapture.apply(this, arguments);
       if (r && window.isSlotMachineActive && window.isSlotMachineActive()) {
@@ -27903,13 +28033,13 @@ window.SlotMachineMod.runCodeAfter = function () {
           window.just_ate = "fruit";
           const list =
             (window.__remixGame &&
-              window.__remixGame.wa &&
-              window.__remixGame.wa.ka) ||
+              window.__remixGame.oa &&
+              window.__remixGame.oa.ka) ||
             window.appleArray ||
             [];
           for (let i = 0; i < list.length; i++) {
             const f = list[i];
-            if (!f || f.isPiece || f.Oka) continue;
+            if (!f || f.isPiece || f.Bea) continue;
             if (f.slotMode != null) continue;
             if (
               before &&
@@ -27922,7 +28052,7 @@ window.SlotMachineMod.runCodeAfter = function () {
               // Unlock must fully demote piece identity before badge stamp.
               window.slot_demote_chess_piece_to_fruit(
                 f,
-                window.__remixGame && window.__remixGame.wa
+                window.__remixGame && window.__remixGame.oa
               );
               f.__slotFromChessUnlock = true;
               window.assignSlotMode(f);
@@ -27930,7 +28060,7 @@ window.SlotMachineMod.runCodeAfter = function () {
             }
           }
           window.slot_sanitize_chess_identity(
-            window.__remixGame && window.__remixGame.wa
+            window.__remixGame && window.__remixGame.oa
           );
         } catch (_e) {}
       }
@@ -28628,12 +28758,13 @@ window.DiceCounts.alterSnakeCode = function (code) {
 
   // Cluster-count state reset on play start — must run after the full
   // `var a,b,c` line; never splice into the b= declarator (semicolon breaks var).
+  // v14: `,c=…ka===2||…ka===6,d=c||…ka===3;` (v13 was `,c=…2||…3||…6;`).
   const clusterResetDeclarator =
-    /,c=this\.settings\.ka===2\|\|this\.settings\.ka===3\|\|this\.settings\.ka===6;/;
+    /,c=this\.settings\.ka===2\|\|this\.settings\.ka===6,d=c\|\|this\.settings\.ka===3;/;
   if (code.match(clusterResetDeclarator)) {
     code = code.assertReplace(
       clusterResetDeclarator,
-      ",c=this.settings.ka===2||this.settings.ka===3||this.settings.ka===6;window.remixIsClusterCount&&window.remixIsClusterCount(this.settings.ka)&&window.remixClusterCountReset&&window.remixClusterCountReset();"
+      ",c=this.settings.ka===2||this.settings.ka===6,d=c||this.settings.ka===3;window.remixIsClusterCount&&window.remixIsClusterCount(this.settings.ka)&&window.remixClusterCountReset&&window.remixClusterCountReset();"
     );
   } else {
     console.error("DiceCounts: failed to inject cluster-count reset on play start");
@@ -28676,10 +28807,10 @@ window.DiceCounts.alterSnakeCode = function (code) {
       diceRefill[0],
       `(window.remixIsDiceLike&&window.remixIsDiceLike(this.settings.ka))?odF(this)!==0||ecF(this.settings) && rdF(this)<=0||(tdF(this,this.settings.ka===4?Math.ceil(Math.random()*6):window.remixDiceSpawnCount(this.settings.ka,1)),odF(this)>0 && ${sound}.play())`
     );
-  } else if (code.match(/a\.settings\.ka===4\?r7E\(a\)===0&&s7E\(a\)/)) {
+  } else if (code.match(/a\.settings\.ka===4\?nsF\(a\)===0&&osF\(a\)/)) {
     code = code.assertReplace(
-      /a\.settings\.ka===4\?r7E\(a\)===0&&s7E\(a\)/,
-      `(window.remixIsDiceLike&&window.remixIsDiceLike(a.settings.ka))?r7E(a)===0&&(a.settings.ka===4?s7E(a):u7E(a,window.remixDiceSpawnCount(a.settings.ka,1)))`
+      /a\.settings\.ka===4\?nsF\(a\)===0&&osF\(a\)/,
+      `(window.remixIsDiceLike&&window.remixIsDiceLike(a.settings.ka))?nsF(a)===0&&(a.settings.ka===4?osF(a):qsF(a,window.remixDiceSpawnCount(a.settings.ka,1)))`
     );
   } else {
     console.error("DiceCounts: failed to find native dice tdF/s7E refill path");
@@ -28804,10 +28935,11 @@ window.DiceCounts.alterSnakeCode = function (code) {
     }
   }
 
-  if (code.indexOf("remixClusterCountPlayReset") < 0 && code.match(/a\.ub=a\.ob;a\.ka=a\.Ca;/)) {
+  // v14 settings apply: mode ub->yb / ob->wb, local var a->c.
+  if (code.indexOf("remixClusterCountPlayReset") < 0 && code.match(/c\.yb=c\.wb;c\.ka=c\.Ca;/)) {
     code = code.assertReplace(
-      /a\.ub=a\.ob;a\.ka=a\.Ca;/,
-      "a.ub=a.ob;a.ka=a.Ca;if(window.remixIsClusterCount&&window.remixIsClusterCount(a.ka)){try{window.remixClusterCountReset();}catch(_cc){}}/*remixClusterCountPlayReset*/"
+      /c\.yb=c\.wb;c\.ka=c\.Ca;/,
+      "c.yb=c.wb;c.ka=c.Ca;if(window.remixIsClusterCount&&window.remixIsClusterCount(c.ka)){try{window.remixClusterCountReset();}catch(_cc){}}/*remixClusterCountPlayReset*/"
     );
   }
 
@@ -29949,17 +30081,17 @@ window.CustomSpeeds.alterSnakeCode = function (code) {
   }
 
   // Flip A↔B when score increases (apple eaten). Current builds don't
-  // keep a stable `a.Sh++` token in tick, so detect Sh deltas at tick start.
+  // keep a stable `a.Bi++` (v13 a.Sh++) token in tick, so detect score deltas at tick start.
   if (code.indexOf("window.remixOnAppleEatenSpeedSwitch") < 0) {
     const tickHead = code.match(/tick\(\)\s*\{\s*window\.__remixGame\s*=\s*this\s*;/);
     if (tickHead) {
       code = code.assertReplace(
         tickHead[0],
         tickHead[0] +
-          "if(window.__remixLastSh!=null&&this.Sh>window.__remixLastSh){window.remixOnAppleEatenSpeedSwitch();}window.__remixLastSh=this.Sh;"
+          "if(window.__remixLastSh!=null&&this.Bi>window.__remixLastSh){window.remixOnAppleEatenSpeedSwitch();}window.__remixLastSh=this.Bi;"
       );
-    } else if (code.indexOf("a.Sh++;") >= 0) {
-      code = code.replace(/a\.Sh\+\+;/g, "a.Sh++;window.remixOnAppleEatenSpeedSwitch();");
+    } else if (code.indexOf("a.Bi++;") >= 0) {
+      code = code.replace(/a\.Bi\+\+;/g, "a.Bi++;window.remixOnAppleEatenSpeedSwitch();");
     } else {
       console.error("CustomSpeeds: failed to find apple eat / tick head hook");
     }
@@ -30645,7 +30777,7 @@ window.remixSyncCustomFruitEntryFromSettings = function remixSyncCustomFruitEntr
 window.remixReloadFruitSprite = function remixReloadFruitSprite(sprite, url) {
   if (!sprite || !url) return;
   sprite.path = url;
-  const img = sprite.jB || sprite.Hr;
+  const img = sprite.hR || sprite.jB || sprite.Hr;
   if (!img) return;
   const paint = function () {
     sprite.loaded = true;
@@ -30703,7 +30835,7 @@ window.remixPatchCustomFruitAtlas = function remixPatchCustomFruitAtlas() {
         img.crossOrigin = "Anonymous";
         const color = document.createElement("canvas").getContext("2d");
         const grey = document.createElement("canvas").getContext("2d");
-        sprite = { path: "", jB: img, oa: color, ka: grey, loaded: false };
+        sprite = { path: "", hR: img, oa: color, ka: grey, loaded: false };
         window.__remixCustomPoisonAtlas[slot] = sprite;
       }
       window.remixReloadFruitSprite(sprite, poison[key]);
@@ -31220,8 +31352,9 @@ window.CustomFruit.alterSnakeCode = function (code) {
     window.injectCustomFruit();
   }
 
+  // v14 build strips newlines, so bound the statement with [^;] instead of `.`.
   const getAppleStuff = new RegExp(
-    /(?:let|const|var).*[a-zA-Z0-9_$]{1,8}\.canvas\:.*\([a-zA-Z0-9_$]{1,8}\.[a-zA-Z0-9_$]{1,8}\);/
+    /(?:let|const|var) [^;]*?[a-zA-Z0-9_$]{1,8}\.canvas\:[^;]*\([a-zA-Z0-9_$]{1,8}\.[a-zA-Z0-9_$]{1,8}\);/
   );
   if (getAppleStuff.test(code)) {
     const poisonDefault = code.match(getAppleStuff)[0];
@@ -31293,13 +31426,13 @@ window.CustomFruit.alterSnakeCode = function (code) {
   }
 
   // Poison apples with Custom Poison Fruit: draw poison atlas instead of greyed fruit.
-  // Live build: f=b.Oka?E3E(this.oa[e],b.xsa).ka.canvas:this.oa[e].uH(b.xsa)
+  // Live build (v14): f=b.Bea?WnF(this.oa[e],b.ota).ka.canvas:this.oa[e].lJ(b.ota)
   const poisonDrawRe =
-    /([a-zA-Z0-9_$])=([a-zA-Z0-9_$])\.Oka\?E3E\(this\.([a-zA-Z0-9_$]{1,8})\[([a-zA-Z0-9_$])\],\2\.([a-zA-Z0-9_$]{1,8})\)\.ka\.canvas:this\.\3\[\4\]\.uH\(\2\.\5\)/;
+    /([a-zA-Z0-9_$])=([a-zA-Z0-9_$])\.Bea\?WnF\(this\.([a-zA-Z0-9_$]{1,8})\[([a-zA-Z0-9_$])\],\2\.([a-zA-Z0-9_$]{1,8})\)\.ka\.canvas:this\.\3\[\4\]\.lJ\(\2\.\5\)/;
   if (!code.includes("remixCustomPoisonAtlasCanvas") && poisonDrawRe.test(code)) {
     code = code.assertReplace(
       poisonDrawRe,
-      "$1=($2.Oka&&window.pudding_settings.CustomPoison&&window.pudding_settings.CustomPoisonApplied&&typeof window.remixCustomPoisonAtlasCanvas==='function'&&window.remixCustomPoisonAtlasCanvas($2.$5))||($2.Oka?E3E(this.$3[$4],$2.$5).ka.canvas:this.$3[$4].uH($2.$5))"
+      "$1=($2.Bea&&window.pudding_settings.CustomPoison&&window.pudding_settings.CustomPoisonApplied&&typeof window.remixCustomPoisonAtlasCanvas==='function'&&window.remixCustomPoisonAtlasCanvas($2.$5))||($2.Bea?WnF(this.$3[$4],$2.$5).ka.canvas:this.$3[$4].lJ($2.$5))"
     );
   }
 
@@ -31315,14 +31448,19 @@ window.CustomFruit.alterSnakeCode = function (code) {
     );
   }
 
+  // v14 a7/N7 sprite recolor: v13 statement `(f=a.Ca)==null||D3E(f,b,c,-1)`
+  // is now the comma-expression tail `a.Ca?.Aa(b,c,-1)`, so the grey bypass
+  // must stay an expression (a ternary) instead of an if/else block.
   const disableRealGrey = new RegExp(
-    /\(f=[a-zA-Z0-9_$]{1,8}.[a-zA-Z0-9_$]{1,8}\)==null\|\|[a-zA-Z0-9_$]{1,8}\(f,b,c,-1\)/
+    /([a-zA-Z0-9_$]{1,8}\.[a-zA-Z0-9_$]{1,8})\?\.([a-zA-Z0-9_$]{1,8})\(b,c,-1\)/
   );
   if (disableRealGrey.test(code)) {
-    const realGrey = code.match(disableRealGrey)[0];
-    const realGreyPath = realGrey.split(")")[0].split("=")[1];
+    const m = code.match(disableRealGrey);
+    const realGrey = m[0];
+    const realGreyPath = m[1];
+    const greyCall = realGreyPath + "." + m[2] + "(b,c,0)";
     const customGrey =
-      "if(window.pudding_settings.CustomPoison && window.pudding_settings.CustomPoisonApplied && window.__remixCustomPoison && " +
+      "((window.pudding_settings.CustomPoison && window.pudding_settings.CustomPoisonApplied && window.__remixCustomPoison && " +
       realGreyPath +
       " && ((" +
       realGreyPath +
@@ -31336,18 +31474,18 @@ window.CustomFruit.alterSnakeCode = function (code) {
       realGreyPath +
       '.path||"").indexOf("trophy_10")>=0 || (' +
       realGreyPath +
-      '.path||"").indexOf("modloader-icon")>=0)){ ' +
-      realGrey.slice(0, -1).slice(0, -1).slice(0, -1) +
-      "0) } else if (" +
+      '.path||"").indexOf("modloader-icon")>=0))?' +
+      greyCall +
+      ":(" +
       realGreyPath +
       " && " +
       realGreyPath +
-      '.path.includes("poison-skull")) { ' +
-      realGrey.slice(0, -1).slice(0, -1).slice(0, -1) +
-      "0) } else { " +
+      '.path.includes("poison-skull"))?' +
+      greyCall +
+      ":" +
       realGrey +
-      " }";
-    code = code.assertReplace(disableRealGrey, customGrey);
+      ")";
+    code = code.assertReplace(disableRealGrey, () => customGrey);
   }
 
   return code;
@@ -32253,8 +32391,10 @@ window.HamiltonMod.alterSnakeCode = function (code) {
       "window.wallCoords=[];window.HamiltonMod&&window.HamiltonMod.onGameReset();"
     );
   } else {
-    // Stock / lightly patched dumps: ";this.reset()}}" or "this.reset();;;;}}"
-    const reset_regex = /;?this\.reset\(\);*\}{2}/;
+    // Stock dumps. v13's settings-apply method ended ";this.reset()}}"; in v14
+    // it is a standalone function ending ";a.reset();return!0}" (the old
+    // `this.reset()}}` shape now only matches an unrelated touch handler).
+    const reset_regex = /;?a\.reset\(\);*return!0\}/;
     window.catchError(reset_regex, code);
     if (!window.wallCoords) window.wallCoords = [];
     code = code.assertReplace(
@@ -32945,8 +33085,8 @@ window.RemixSpeedInfo.runCodeBefore = function () {
             null;
           if (g) {
             if (id === "count" && typeof g.Ca === "number") return g.Ca | 0;
-            if (id === "speed" && typeof g.Oa === "number") return g.Oa | 0;
-            if (id === "size" && typeof g.Sa === "number") return g.Sa | 0;
+            if (id === "speed" && typeof g.Ra === "number") return g.Ra | 0;
+            if (id === "size" && typeof g.Ua === "number") return g.Ua | 0;
           }
         } catch (_set) {}
       }
@@ -34315,13 +34455,13 @@ window.remixPatchWallEveryApple = function remixPatchWallEveryApple(code) {
   // Slot Machine may have already extended the every-other `f` flag with
   // slot_force_entity_spawn — keep that when patching wall spawn.
   const reSlot =
-    /([a-zA-Z_$][\w$]*)=!([a-zA-Z_$][\w$]*)\.nj&&!([a-zA-Z_$][\w$]*)&&\(\2\.Sh%2===1\|\|e7\(\2\.settings,11\)\|\|window\.slot_force_entity_spawn&&window\.slot_force_entity_spawn\(\)\);e7\(\2\.settings,1\)&&\1&&/;
+    /([a-zA-Z_$][\w$]*)=!([a-zA-Z_$][\w$]*)\.uj&&!([a-zA-Z_$][\w$]*)&&\(\2\.Bi%2===1\|\|M7\(\2\.settings,11\)\|\|window\.slot_force_entity_spawn&&window\.slot_force_entity_spawn\(\)\);M7\(\2\.settings,1\)&&\1&&/;
   const rePlain =
-    /([a-zA-Z_$][\w$]*)=!([a-zA-Z_$][\w$]*)\.nj&&!([a-zA-Z_$][\w$]*)&&\(\2\.Sh%2===1\|\|e7\(\2\.settings,11\)\);e7\(\2\.settings,1\)&&\1&&/;
+    /([a-zA-Z_$][\w$]*)=!([a-zA-Z_$][\w$]*)\.uj&&!([a-zA-Z_$][\w$]*)&&\(\2\.Bi%2===1\|\|M7\(\2\.settings,11\)\);M7\(\2\.settings,1\)&&\1&&/;
   if (reSlot.test(code)) {
     return code.replace(
       reSlot,
-      "$1=!$2.nj&&!$3&&($2.Sh%2===1||e7($2.settings,11)||window.slot_force_entity_spawn&&window.slot_force_entity_spawn());e7($2.settings,1)&&!window.remixMexicoBlocksWallSpawn()&&($1||window.remixShouldSpawnWallEveryApple()&&!$2.nj&&!$3)&&"
+      "$1=!$2.uj&&!$3&&($2.Bi%2===1||M7($2.settings,11)||window.slot_force_entity_spawn&&window.slot_force_entity_spawn());M7($2.settings,1)&&!window.remixMexicoBlocksWallSpawn()&&($1||window.remixShouldSpawnWallEveryApple()&&!$2.uj&&!$3)&&"
     );
   }
   if (!rePlain.test(code)) {
@@ -34330,7 +34470,7 @@ window.remixPatchWallEveryApple = function remixPatchWallEveryApple(code) {
   }
   return code.replace(
     rePlain,
-    "$1=!$2.nj&&!$3&&($2.Sh%2===1||e7($2.settings,11));e7($2.settings,1)&&!window.remixMexicoBlocksWallSpawn()&&($1||window.remixShouldSpawnWallEveryApple()&&!$2.nj&&!$3)&&"
+    "$1=!$2.uj&&!$3&&($2.Bi%2===1||M7($2.settings,11));M7($2.settings,1)&&!window.remixMexicoBlocksWallSpawn()&&($1||window.remixShouldSpawnWallEveryApple()&&!$2.uj&&!$3)&&"
   );
 };
 
@@ -35003,7 +35143,7 @@ window.RemixMod.runCodeAfter = function () {
   modIndicator.id = "remix-mod-indicator";
   modIndicator.style =
     "position:absolute;font-family:Arial,sans-serif;color:white;font-size:14px;padding-top:4px;padding-left:30px;user-select: none;";
-  modIndicator.textContent = "Remix Mod v13";
+  modIndicator.textContent = "Remix Mod v14";
   let canvasNode = document.getElementsByClassName("jNB0Ic")[0];
   let parent = document.getElementsByClassName("EjCLSb")[0];
   if (parent && canvasNode) {
@@ -35250,7 +35390,7 @@ window.remixShuffleModdedLogic = (function () {
       if (item.kind === "native") native.add(item.id);
       else if (item.flag) mods.add(item.flag);
     }
-    const ua = menu && menu.settings && menu.settings.Ua;
+    const ua = menu && menu.settings && menu.settings.Za;
     if (ua && typeof ua.forEach === "function") {
       ua.forEach(function (el, id) {
         if (!el || !el.classList) return;
@@ -35269,8 +35409,8 @@ window.remixShuffleModdedLogic = (function () {
   window.remixShuffleModdedRun = function remixShuffleModdedRun(rng) {
     if (window.remixShuffleModdedIsDisabled()) return false;
     const menu = window._puddingSnakeMenu;
-    if (!menu || (menu.oa !== "settings" && menu.oa !== "combo")) return false;
-    if (menu.oa === "combo") {
+    if (!menu || (menu.wa !== "settings" && menu.wa !== "combo")) return false;
+    if (menu.wa === "combo") {
       const pool = logic.buildBlenderPool(function (id) {
         return !!document.getElementById(id);
       });
@@ -35282,10 +35422,10 @@ window.remixShuffleModdedLogic = (function () {
       {
         daily: !!settings.Ga,
         current: {
-          apple: settings.Fb,
-          color: settings.Jb,
-          theme: settings.Qb,
-          trophy: settings.ob,
+          apple: settings.Nb,
+          color: settings.Ob,
+          theme: settings.Rb,
+          trophy: settings.wb,
         },
         rows: {
           apple: rowLength("apple"),
@@ -35324,14 +35464,14 @@ window.remixShuffleModdedLogic = (function () {
     if (typeof code !== "string") return code;
     if (code.indexOf("window.remixShuffleModdedRun()") !== -1) return code;
     const re =
-      /([a-zA-Z0-9_$]{1,8})=function\(a\)\{if\(a\.visible\)\{if\(a\.oa===\s*"settings"\)\{var b=Math\.floor\(Math\.random\(\)\*24\);[\s\S]*?_\.Ow\(a\.qc\)\}\}/;
+      /([a-zA-Z0-9_$]{1,8})=function\(a\)\{if\(a\.visible\)\{if\(a\.wa===\s*"settings"\)\{var b=Math\.floor\(Math\.random\(\)\*24\);[\s\S]*?_\.cw\(a\.Cc\)\}\}/;
     if (!re.test(code)) {
       console.error("ShuffleModded: could not find the native shuffle function");
       return code;
     }
     return code.replace(
       re,
-      '$1=function(a){if(a.visible){window._puddingSnakeMenu=a;if(typeof window.remixShuffleModdedRun==="function")window.remixShuffleModdedRun();_.Ow(a.qc)}}'
+      '$1=function(a){if(a.visible){window._puddingSnakeMenu=a;if(typeof window.remixShuffleModdedRun==="function")window.remixShuffleModdedRun();_.cw(a.Cc)}}'
     );
   };
 })();

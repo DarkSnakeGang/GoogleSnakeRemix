@@ -19,6 +19,12 @@ if (text.includes("__remixMoreMenuSpeedPatched")) {
   console.log("already patched: MoreMenu speed inject");
   process.exit(0);
 }
+// Upstream (Nov 2026) anchors the inject on the speed function itself, which
+// is what this patch used to work around.
+if (text.includes("const speedFunction = code.match(")) {
+  console.log("upstream MoreMenu already anchors on the speed function; skipping");
+  process.exit(0);
+}
 
 const oldMatch = [
   "const replacePoint = tickFunction.match(",

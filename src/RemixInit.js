@@ -593,13 +593,13 @@ window.remixPatchWallEveryApple = function remixPatchWallEveryApple(code) {
   // Slot Machine may have already extended the every-other `f` flag with
   // slot_force_entity_spawn — keep that when patching wall spawn.
   const reSlot =
-    /([a-zA-Z_$][\w$]*)=!([a-zA-Z_$][\w$]*)\.nj&&!([a-zA-Z_$][\w$]*)&&\(\2\.Sh%2===1\|\|e7\(\2\.settings,11\)\|\|window\.slot_force_entity_spawn&&window\.slot_force_entity_spawn\(\)\);e7\(\2\.settings,1\)&&\1&&/;
+    /([a-zA-Z_$][\w$]*)=!([a-zA-Z_$][\w$]*)\.uj&&!([a-zA-Z_$][\w$]*)&&\(\2\.Bi%2===1\|\|M7\(\2\.settings,11\)\|\|window\.slot_force_entity_spawn&&window\.slot_force_entity_spawn\(\)\);M7\(\2\.settings,1\)&&\1&&/;
   const rePlain =
-    /([a-zA-Z_$][\w$]*)=!([a-zA-Z_$][\w$]*)\.nj&&!([a-zA-Z_$][\w$]*)&&\(\2\.Sh%2===1\|\|e7\(\2\.settings,11\)\);e7\(\2\.settings,1\)&&\1&&/;
+    /([a-zA-Z_$][\w$]*)=!([a-zA-Z_$][\w$]*)\.uj&&!([a-zA-Z_$][\w$]*)&&\(\2\.Bi%2===1\|\|M7\(\2\.settings,11\)\);M7\(\2\.settings,1\)&&\1&&/;
   if (reSlot.test(code)) {
     return code.replace(
       reSlot,
-      "$1=!$2.nj&&!$3&&($2.Sh%2===1||e7($2.settings,11)||window.slot_force_entity_spawn&&window.slot_force_entity_spawn());e7($2.settings,1)&&!window.remixMexicoBlocksWallSpawn()&&($1||window.remixShouldSpawnWallEveryApple()&&!$2.nj&&!$3)&&"
+      "$1=!$2.uj&&!$3&&($2.Bi%2===1||M7($2.settings,11)||window.slot_force_entity_spawn&&window.slot_force_entity_spawn());M7($2.settings,1)&&!window.remixMexicoBlocksWallSpawn()&&($1||window.remixShouldSpawnWallEveryApple()&&!$2.uj&&!$3)&&"
     );
   }
   if (!rePlain.test(code)) {
@@ -608,7 +608,7 @@ window.remixPatchWallEveryApple = function remixPatchWallEveryApple(code) {
   }
   return code.replace(
     rePlain,
-    "$1=!$2.nj&&!$3&&($2.Sh%2===1||e7($2.settings,11));e7($2.settings,1)&&!window.remixMexicoBlocksWallSpawn()&&($1||window.remixShouldSpawnWallEveryApple()&&!$2.nj&&!$3)&&"
+    "$1=!$2.uj&&!$3&&($2.Bi%2===1||M7($2.settings,11));M7($2.settings,1)&&!window.remixMexicoBlocksWallSpawn()&&($1||window.remixShouldSpawnWallEveryApple()&&!$2.uj&&!$3)&&"
   );
 };
 
@@ -1281,7 +1281,7 @@ window.RemixMod.runCodeAfter = function () {
   modIndicator.id = "remix-mod-indicator";
   modIndicator.style =
     "position:absolute;font-family:Arial,sans-serif;color:white;font-size:14px;padding-top:4px;padding-left:30px;user-select: none;";
-  modIndicator.textContent = "Remix Mod v13";
+  modIndicator.textContent = "Remix Mod v14";
   let canvasNode = document.getElementsByClassName("jNB0Ic")[0];
   let parent = document.getElementsByClassName("EjCLSb")[0];
   if (parent && canvasNode) {

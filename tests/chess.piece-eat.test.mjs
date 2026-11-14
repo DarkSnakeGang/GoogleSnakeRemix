@@ -24,7 +24,7 @@ describe("chess double-eat law (offline)", () => {
     assert.match(chess, /chess_on_second_piece_eat\(_ae\)/);
     assert.match(
       chess,
-      /window\.just_ate!=='piece'&&q7E\(a\.header,a\.Sh,a\.ticks,a\.Fb\)/
+      /window\.just_ate!=='piece'&&msF\(a\.header,a\.Bi,a\.ticks,a\.hb\)/
     );
     assert.match(chess, /While carrying a piece, keep full Chess locks/);
     assert.match(chess, /Piece mode always runs the lock\/unlock dance/);
@@ -66,8 +66,8 @@ describe("chess double-eat law (offline)", () => {
     const board = { width: 8, height: 8 };
     // Bridge at 2,3
     const grid = Array.from({ length: 8 }, () => Array(8).fill(null));
-    grid[3][2] = { wm: false };
-    w.__remixGame = { Ga: { oa: grid } };
+    grid[3][2] = { Rm: false };
+    w.__remixGame = { wa: { oa: grid } };
 
     assert.equal(w.chess_pos_on_bridge(null, { x: 2, y: 3 }), true);
     assert.equal(w.chess_pos_on_bridge(null, { x: 1, y: 1 }), false);
@@ -130,7 +130,7 @@ describe("chess double-eat law (offline)", () => {
 
     // --- success: relocate, keep carry ---
     w.__slotOn = false;
-    w.__remixGame = { wa: { ka: [], oa: { width: 8, height: 8 } } };
+    w.__remixGame = { oa: { ka: [], oa: { width: 8, height: 8 } } };
     w.head_state = "rook";
     w.head_color = "w";
     w.__shieldAll = 0;
@@ -142,12 +142,12 @@ describe("chess double-eat law (offline)", () => {
       type: 101,
       pos: { x: 1, y: 1 },
     };
-    w.__remixGame.wa.ka = [eatenA];
+    w.__remixGame.oa.ka = [eatenA];
     w.chess_on_second_piece_eat(eatenA);
     assert.equal(w.head_state, "rook", "keep carry on relocate");
     assert.equal(w.head_color, "w");
     assert.ok(w.__shieldAll > 0);
-    const relocated = w.__remixGame.wa.ka.filter(
+    const relocated = w.__remixGame.oa.ka.filter(
       (f) => f && f !== eatenA && f.isPiece
     );
     assert.equal(relocated.length, 1);
@@ -169,10 +169,10 @@ describe("chess double-eat law (offline)", () => {
       type: 103,
       pos: { x: 1, y: 2 },
     };
-    w.__remixGame.wa.ka = [eatenSlot];
+    w.__remixGame.oa.ka = [eatenSlot];
     w.chess_on_second_piece_eat(eatenSlot);
     assert.equal(w.head_state, "rook", "slot freePos keeps carry");
-    const slotReloc = w.__remixGame.wa.ka.filter(
+    const slotReloc = w.__remixGame.oa.ka.filter(
       (f) => f && f !== eatenSlot && f.isPiece
     );
     assert.equal(slotReloc.length, 1);
@@ -198,13 +198,13 @@ describe("chess double-eat law (offline)", () => {
       type: 102,
       pos: { x: 2, y: 2 },
     };
-    w.__remixGame.wa.ka = [eatenOpp];
+    w.__remixGame.oa.ka = [eatenOpp];
     w.chess_on_second_piece_eat(eatenOpp);
     assert.equal(w.head_state, "OPEN");
     assert.equal(w.head_color, "NONE");
     assert.ok(w.__shieldEmpty > 0);
     assert.equal(
-      w.__remixGame.wa.ka.filter((f) => f && f !== eatenOpp && f.isPiece).length,
+      w.__remixGame.oa.ka.filter((f) => f && f !== eatenOpp && f.isPiece).length,
       0,
       "fail opposite must not plant a replacement"
     );
@@ -236,13 +236,13 @@ describe("chess double-eat law (offline)", () => {
       type: 57,
       pos: { x: 6, y: 6 },
     };
-    w.__remixGame.wa.ka = [same, opp1, opp2];
+    w.__remixGame.oa.ka = [same, opp1, opp2];
     w.chess_on_second_piece_eat(same);
     assert.equal(w.head_state, "king");
     assert.equal(w.head_color, "w");
     assert.equal(w.__trophy, 55);
     assert.ok(w.__shieldAll > 0);
-    const left = w.__remixGame.wa.ka.filter((f) => f && f.isPiece);
+    const left = w.__remixGame.oa.ka.filter((f) => f && f.isPiece);
     // same is still in list (native splice not simulated); one opposite removed
     const blackLeft = left.filter((f) => f.ChessColor === "b");
     assert.equal(blackLeft.length, 1, JSON.stringify(left));
@@ -265,7 +265,7 @@ describe("chess double-eat law (offline)", () => {
     };
     const sandbox = { window: {}, Math, Object, Set, console };
     const src = `
-      window.chess_shield_field = "nba";
+      window.chess_shield_field = "h7";
       window.chess_peaceful_active = function(){ return !!window.__peaceful; };
       window.isChessActive = function(){ return true; };
       window.head_pos = [{ x: 4, y: 4 }];
@@ -281,25 +281,25 @@ describe("chess double-eat law (offline)", () => {
     const fn = new Function("window", "Math", "Object", "Set", src);
     fn(sandbox.window, Math, Object, Set);
     const w = sandbox.window;
-    const piece = { isPiece: true, nba: new Set(["UP"]) };
+    const piece = { isPiece: true, h7: new Set(["UP"]) };
     w.appleArray = [piece];
 
     // OPEN + peaceful → empty
     w.head_state = "OPEN";
     w.__peaceful = true;
     w.shield_all();
-    assert.equal(piece.nba, undefined, "OPEN+peaceful clears");
+    assert.equal(piece.h7, undefined, "OPEN+peaceful clears");
 
     // Carrying + peaceful → still lock
-    piece.nba = undefined;
+    piece.h7 = undefined;
     w.head_state = "rook";
     w.__peaceful = true;
     w.__opened = null;
     w.shield_all();
-    assert.ok(piece.nba && piece.nba.size === 4, "carry+peaceful locks");
+    assert.ok(piece.h7 && piece.h7.size === 4, "carry+peaceful locks");
     w.chess_tick_logic();
     assert.equal(w.__opened, "rook", "carry+peaceful still runs unlock rays");
-    assert.ok(piece.nba && piece.nba.size === 4, "tick keeps locks while carrying");
+    assert.ok(piece.h7 && piece.h7.size === 4, "tick keeps locks while carrying");
   });
 
   it("unit: rook open ignores fruit on the file and still opens the bishop", () => {
@@ -354,11 +354,11 @@ describe("chess double-eat law (offline)", () => {
 async function eatPieceAtHead(page) {
   return page.evaluate(() => {
     const g = window.__remixGame;
-    const apples = g.wa.ka;
+    const apples = g.oa.ka;
     if (!apples.length) return { ok: false, reason: "no apples" };
 
-    const head = g.oa.ka[0];
-    const dir = g.oa.direction || "RIGHT";
+    const head = g.Yc.ka[0];
+    const dir = g.Yc.direction || "RIGHT";
     const next = { x: head.x, y: head.y };
     if (dir === "RIGHT") next.x += 1;
     else if (dir === "LEFT") next.x -= 1;
@@ -386,26 +386,25 @@ async function eatPieceAtHead(page) {
     eaten.isPiece = true;
     if (!eaten.ChessPiece) eaten.ChessPiece = "pawn";
     if (!eaten.ChessColor) eaten.ChessColor = "w";
-    eaten.Oba = undefined;
+    eaten.h7 = undefined;
 
     const beforeCount = apples.length;
-    const beforeScore = g.Sh;
-    const beforeLen = g.oa.Ta;
-    const beforeUb = g.ub;
+    const beforeScore = g.Bi;
+    const beforeLen = g.Yc.ka.length;
+    const beforeUb = g.Za;
     const beforeLj = g.lj;
 
     g.tick();
 
     function shieldCount(a) {
-      if (a.nba) {
-        if (typeof a.nba.size === "number") return a.nba.size;
-        if (Array.isArray(a.nba)) return a.nba.length;
+      if (a.h7) {
+        if (typeof a.h7.size === "number") return a.h7.size;
+        if (Array.isArray(a.h7)) return a.h7.length;
       }
-      if (a.Oba) return a.Oba.length;
       return 0;
     }
 
-    const after = g.wa.ka;
+    const after = g.oa.ka;
     const afterPositions = after.map((a) => ({
       x: a.pos.x,
       y: a.pos.y,
@@ -429,16 +428,16 @@ async function eatPieceAtHead(page) {
       afterCount: after.length,
       removed: beforeCount - after.length,
       scoreBefore: beforeScore,
-      scoreAfter: g.Sh,
+      scoreAfter: g.Bi,
       lenBefore: beforeLen,
-      lenAfter: g.oa.Ta,
+      lenAfter: g.Yc.ka.length,
       head_state: window.head_state,
       head_color: window.head_color,
       just_ate: window.just_ate,
-      won: !!(g.ub && g.lj),
+      won: !!(g.Za && g.lj),
       ubBefore: beforeUb,
       ljBefore: beforeLj,
-      ubAfter: g.ub,
+      ubAfter: g.Za,
       ljAfter: g.lj,
       survivorsMatch,
       extras,
@@ -507,23 +506,23 @@ describe("chess piece eat (browser)", { skip: !runBrowser }, () => {
       await h.start({ mode: "chess", count: COUNT.THREE, size: SIZE.NORMAL });
       const r = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        g.Sh = 0;
+        g.Bi = 0;
         window.cat_check_score_win = () => false;
-        g.settings.ub = 22;
+        g.settings.yb = 22;
         window.CurrentModeNum = 22;
         const rSa = new Set([window.CHESS_MODE, 21]);
         g.rSa = rSa;
-        g.settings.rSa = rSa;
+        g.settings.NSa = rSa;
         window.chess_blending = true;
 
         window.head_state = "OPEN";
         window.shield_empty_all();
-        const head = g.oa.ka[0];
-        g.oa.direction = "RIGHT";
-        g.oa.Ca = "RIGHT";
+        const head = g.Yc.ka[0];
+        g.Yc.direction = "RIGHT";
+        g.Yc.Ka = "RIGHT";
         const step = (h) => ({ x: h.x + 1, y: h.y });
 
-        const first = g.wa.ka[0];
+        const first = g.oa.ka[0];
         first.pos.x = step(head).x;
         first.pos.y = step(head).y;
         first.isPiece = true;
@@ -531,36 +530,36 @@ describe("chess piece eat (browser)", { skip: !runBrowser }, () => {
         first.ChessColor = "w";
         g.tick();
 
-        const target = g.wa.ka.find((a) => a && a.isPiece);
+        const target = g.oa.ka.find((a) => a && a.isPiece);
         target.ChessColor = "w"; // same color — no unlock via pawn diagonals
         target.ChessPiece = "rook";
         target.isPiece = true;
         // Force locks then let peaceful chess_tick clear them / eat.
-        target.nba = new Set(["UP", "DOWN", "LEFT", "RIGHT"]);
-        window.appleArray = g.wa.ka;
+        target.h7 = new Set(["UP", "DOWN", "LEFT", "RIGHT"]);
+        window.appleArray = g.oa.ka;
         window.shield_all();
         const lockedAfterShieldAll =
-          target.nba && typeof target.nba.size === "number"
-            ? target.nba.size
+          target.h7 && typeof target.h7.size === "number"
+            ? target.h7.size
             : 0;
 
-        const h2 = g.oa.ka[0];
+        const h2 = g.Yc.ka[0];
         const n2 = step(h2);
         target.pos.x = n2.x;
         target.pos.y = n2.y;
-        const before = g.wa.ka.length;
+        const before = g.oa.ka.length;
         g.tick();
         return {
           peaceful: window.chess_peaceful_active(g),
           lockedAfterShieldAll,
           before,
-          after: g.wa.ka.length,
-          removed: before - g.wa.ka.length,
-          nj: !!g.nj,
+          after: g.oa.ka.length,
+          removed: before - g.oa.ka.length,
+          nj: !!g.uj,
           just_ate: window.just_ate,
           head_state: window.head_state,
-          targetStill: g.wa.ka.includes(target),
-          headOn: g.oa.ka[0].x === n2.x && g.oa.ka[0].y === n2.y,
+          targetStill: g.oa.ka.includes(target),
+          headOn: g.Yc.ka[0].x === n2.x && g.Yc.ka[0].y === n2.y,
         };
       });
 
@@ -592,13 +591,13 @@ describe("chess piece eat (browser)", { skip: !runBrowser }, () => {
       await h.start({ mode: "chess", count: COUNT.THREE, size: SIZE.NORMAL });
       const r = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        g.Sh = 0;
+        g.Bi = 0;
         window.cat_check_score_win = () => false;
-        g.settings.ub = 22;
+        g.settings.yb = 22;
         window.CurrentModeNum = 22;
         const rSa = new Set([window.CHESS_MODE, window.CAT_MODE]);
         g.rSa = rSa;
-        g.settings.rSa = rSa;
+        g.settings.NSa = rSa;
         window.cat_lives = 3;
         window.cat_peaceful_ticks = 0;
         window.cat_blending = true;
@@ -606,12 +605,12 @@ describe("chess piece eat (browser)", { skip: !runBrowser }, () => {
 
         window.head_state = "OPEN";
         window.shield_empty_all();
-        const head = g.oa.ka[0];
-        g.oa.direction = "RIGHT";
-        g.oa.Ca = "RIGHT";
+        const head = g.Yc.ka[0];
+        g.Yc.direction = "RIGHT";
+        g.Yc.Ka = "RIGHT";
         const step = (h) => ({ x: h.x + 1, y: h.y });
 
-        const first = g.wa.ka[0];
+        const first = g.oa.ka[0];
         first.pos.x = step(head).x;
         first.pos.y = step(head).y;
         first.isPiece = true;
@@ -619,31 +618,31 @@ describe("chess piece eat (browser)", { skip: !runBrowser }, () => {
         first.ChessColor = "w";
         g.tick();
 
-        const target = g.wa.ka.find((a) => a && a.isPiece);
+        const target = g.oa.ka.find((a) => a && a.isPiece);
         target.ChessColor = "w";
         target.ChessPiece = "rook";
         target.isPiece = true;
-        window.appleArray = g.wa.ka;
+        window.appleArray = g.oa.ka;
         window.shield_all();
-        target.nba = new Set(["UP", "DOWN", "LEFT", "RIGHT"]);
+        target.h7 = new Set(["UP", "DOWN", "LEFT", "RIGHT"]);
 
-        const h2 = g.oa.ka[0];
+        const h2 = g.Yc.ka[0];
         const n2 = step(h2);
         target.pos.x = n2.x;
         target.pos.y = n2.y;
-        const before = g.wa.ka.length;
+        const before = g.oa.ka.length;
         const lives0 = window.cat_lives | 0;
         g.tick();
         return {
           before,
-          after: g.wa.ka.length,
-          removed: before - g.wa.ka.length,
-          nj: !!g.nj,
+          after: g.oa.ka.length,
+          removed: before - g.oa.ka.length,
+          nj: !!g.uj,
           lives0,
           lives1: window.cat_lives | 0,
           just_ate: window.just_ate,
-          targetStill: g.wa.ka.includes(target),
-          headOn: g.oa.ka[0].x === n2.x && g.oa.ka[0].y === n2.y,
+          targetStill: g.oa.ka.includes(target),
+          headOn: g.Yc.ka[0].x === n2.x && g.Yc.ka[0].y === n2.y,
         };
       });
 

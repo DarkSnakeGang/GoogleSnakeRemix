@@ -229,7 +229,7 @@ window.remixShuffleModdedLogic = (function () {
       if (item.kind === "native") native.add(item.id);
       else if (item.flag) mods.add(item.flag);
     }
-    const ua = menu && menu.settings && menu.settings.Ua;
+    const ua = menu && menu.settings && menu.settings.Za;
     if (ua && typeof ua.forEach === "function") {
       ua.forEach(function (el, id) {
         if (!el || !el.classList) return;
@@ -248,8 +248,8 @@ window.remixShuffleModdedLogic = (function () {
   window.remixShuffleModdedRun = function remixShuffleModdedRun(rng) {
     if (window.remixShuffleModdedIsDisabled()) return false;
     const menu = window._puddingSnakeMenu;
-    if (!menu || (menu.oa !== "settings" && menu.oa !== "combo")) return false;
-    if (menu.oa === "combo") {
+    if (!menu || (menu.wa !== "settings" && menu.wa !== "combo")) return false;
+    if (menu.wa === "combo") {
       const pool = logic.buildBlenderPool(function (id) {
         return !!document.getElementById(id);
       });
@@ -261,10 +261,10 @@ window.remixShuffleModdedLogic = (function () {
       {
         daily: !!settings.Ga,
         current: {
-          apple: settings.Fb,
-          color: settings.Jb,
-          theme: settings.Qb,
-          trophy: settings.ob,
+          apple: settings.Nb,
+          color: settings.Ob,
+          theme: settings.Rb,
+          trophy: settings.wb,
         },
         rows: {
           apple: rowLength("apple"),
@@ -303,14 +303,14 @@ window.remixShuffleModdedLogic = (function () {
     if (typeof code !== "string") return code;
     if (code.indexOf("window.remixShuffleModdedRun()") !== -1) return code;
     const re =
-      /([a-zA-Z0-9_$]{1,8})=function\(a\)\{if\(a\.visible\)\{if\(a\.oa===\s*"settings"\)\{var b=Math\.floor\(Math\.random\(\)\*24\);[\s\S]*?_\.Ow\(a\.qc\)\}\}/;
+      /([a-zA-Z0-9_$]{1,8})=function\(a\)\{if\(a\.visible\)\{if\(a\.wa===\s*"settings"\)\{var b=Math\.floor\(Math\.random\(\)\*24\);[\s\S]*?_\.cw\(a\.Cc\)\}\}/;
     if (!re.test(code)) {
       console.error("ShuffleModded: could not find the native shuffle function");
       return code;
     }
     return code.replace(
       re,
-      '$1=function(a){if(a.visible){window._puddingSnakeMenu=a;if(typeof window.remixShuffleModdedRun==="function")window.remixShuffleModdedRun();_.Ow(a.qc)}}'
+      '$1=function(a){if(a.visible){window._puddingSnakeMenu=a;if(typeof window.remixShuffleModdedRun==="function")window.remixShuffleModdedRun();_.cw(a.Cc)}}'
     );
   };
 })();

@@ -5,7 +5,7 @@ window.ChessMod = {};
 ////////////////////////////////////////////////////////////////////
 
 window.ChessMod.runCodeBefore = function () {
-  console.log("Adding Chess Mode (v13, independent mode)");
+  console.log("Adding Chess Mode (v14, independent mode)");
 
   window.CHESS_ICON = "data:image/png;base64,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";
 
@@ -218,7 +218,7 @@ window.ChessMod.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.ChessMod.alterSnakeCode = function (code) {
-  console.log("Coding Chess Mode into the game (v13)");
+  console.log("Coding Chess Mode into the game (v14)");
 
   // Ensure fruits exist if alter runs in odd order
   if (window.new_fruit && !window._chessFruitsInjected) {
@@ -228,11 +228,19 @@ window.ChessMod.alterSnakeCode = function (code) {
   // Visibility gates fruit drawing on one checkbox for everything that is not
   // poison. Split pieces out of that branch so the Chess Pieces row applies.
   // Both the normal and the twin/infinity mirrored draw carry the same guard.
-  // MorePudding currently marks poison as (b.nla||b.Oka); older builds used b.Oka.
+  // MorePudding marked poison as (b.nla||b.Oka) on v13 (Oka is Bea on v14);
+  // older builds used b.Oka. Try the v14 spellings first.
   const fruit = "window.checkboxes.checkboxStatuses.fruit";
   const pieces =
     "(b.isPiece ? window.checkboxes.checkboxStatuses.chessPieces : window.checkboxes.checkboxStatuses.fruit)";
-  const poisonMarks = ["(b.nla||b.Oka)", "b.Oka"];
+  const poisonMarks = [
+    "(b.nla||b.Oka||b.Bea)",
+    "(b.nla||b.Bea)",
+    "(b.Oka||b.Bea)",
+    "b.Bea",
+    "(b.nla||b.Oka)",
+    "b.Oka",
+  ];
   let fruitGatePatched = false;
   for (let i = 0; i < poisonMarks.length; i++) {
     const from =
@@ -285,17 +293,17 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (window.CHESS_MODE == null) return false;
     if (window.CurrentModeNum === window.CHESS_MODE) return true;
     if (window.CurrentModeNum === 22 && window.chess_blending) return true;
-    // Chess may be in blender rSa via the mode grid without chess_blending.
-    // Match e7(...,15) so eat/respawn/unlock stay on the Chess path.
+    // Chess may be in blender NSa via the mode grid without chess_blending.
+    // Match M7(...,15) so eat/respawn/unlock stay on the Chess path.
     const g = window.__remixGame;
     const s = g && g.settings;
     if (!s) return false;
-    if (s.ub === window.CHESS_MODE || s.ob === window.CHESS_MODE) return true;
+    if (s.yb === window.CHESS_MODE || s.wb === window.CHESS_MODE) return true;
     if (
-      (s.ub === 22 || window.CurrentModeNum === 22) &&
-      s.rSa &&
-      typeof s.rSa.has === "function" &&
-      s.rSa.has(window.CHESS_MODE)
+      (s.yb === 22 || window.CurrentModeNum === 22) &&
+      s.NSa &&
+      typeof s.NSa.has === "function" &&
+      s.NSa.has(window.CHESS_MODE)
     ) {
       return true;
     }
@@ -303,18 +311,18 @@ window.ChessMod.alterSnakeCode = function (code) {
   };
 
   // Chess trophy + Portal physics (mode or blender). Solo Chess / solo Portal stay off.
-  // Do not call e7() here — it lives in the game closure, not on window.
+  // Do not call M7() here — it lives in the game closure, not on window.
   window.chess_portal_combo = function chess_portal_combo() {
     if (!window.isChessActive || !window.isChessActive()) return false;
     const g = window.__remixGame;
     if (!g || !g.settings) return false;
     const s = g.settings;
-    if (s.ub === 2 || s.ob === 2) return true;
+    if (s.yb === 2 || s.wb === 2) return true;
     if (
-      (s.ub === 22 || window.CurrentModeNum === 22 || s.ob === 22) &&
-      s.rSa &&
-      typeof s.rSa.has === "function" &&
-      s.rSa.has(2)
+      (s.yb === 22 || window.CurrentModeNum === 22 || s.wb === 22) &&
+      s.NSa &&
+      typeof s.NSa.has === "function" &&
+      s.NSa.has(2)
     ) {
       return true;
     }
@@ -335,10 +343,10 @@ window.ChessMod.alterSnakeCode = function (code) {
   window.__chessPortalTwinKey = null;
   window.__chessPortalTwinApple = null;
 
-  // Shield field name on apple objects in v12
-  window.chess_shield_field = "nba";
+  // Shield field name on apple objects in v14 (v13: nba)
+  window.chess_shield_field = "h7";
 
-  // Native Peaceful (e7 21) makes P3E return an empty shield set — fruit stay
+  // Native Peaceful (M7 21) makes goF return an empty shield set — fruit stay
   // edible. Chess lock via shield_all must match that: while Peaceful / Cat
   // grace / Slot Peaceful-roll is on, do not keep 4-way locks (otherwise the
   // snake skips Sc death and walks through locked pieces without eating).
@@ -356,12 +364,12 @@ window.ChessMod.alterSnakeCode = function (code) {
     const g = game || window.__remixGame;
     if (!g || !g.settings) return false;
     const s = g.settings;
-    if ((s.ub | 0) === 21) return true;
-    if ((s.ub | 0) === 22) {
-      if (s.rSa && typeof s.rSa.has === "function" && s.rSa.has(21)) return true;
-      if (g.rSa && typeof g.rSa.has === "function" && g.rSa.has(21)) return true;
+    if ((s.yb | 0) === 21) return true;
+    if ((s.yb | 0) === 22) {
+      if (s.NSa && typeof s.NSa.has === "function" && s.NSa.has(21)) return true;
+      if (g.NSa && typeof g.NSa.has === "function" && g.NSa.has(21)) return true;
     }
-    if (s.Qa && s.Lc && typeof s.Lc.has === "function" && s.Lc.has(21)) {
+    if (s.La && s.jd && typeof s.jd.has === "function" && s.jd.has(21)) {
       return true;
     }
     return false;
@@ -415,7 +423,7 @@ window.ChessMod.alterSnakeCode = function (code) {
       window.chess_peaceful_active &&
       window.chess_peaceful_active(game)
     ) {
-      fruit[window.chess_shield_field || "nba"] = undefined;
+      fruit[window.chess_shield_field || "h7"] = undefined;
       return true;
     }
     if (
@@ -424,7 +432,7 @@ window.ChessMod.alterSnakeCode = function (code) {
       window.isCatActive() &&
       ((window.cat_peaceful_ticks | 0) > 0 || (window.cat_lives | 0) > 0)
     ) {
-      fruit[window.chess_shield_field || "nba"] = undefined;
+      fruit[window.chess_shield_field || "h7"] = undefined;
       if (
         (window.cat_peaceful_ticks | 0) <= 0 &&
         typeof window.cat_try_spend_life === "function"
@@ -489,7 +497,7 @@ window.ChessMod.alterSnakeCode = function (code) {
       let apple = window.appleArray[index];
       if (
         apple.isPiece &&
-        !apple.Oka &&
+        !apple.Bea &&
         apple.pos.x == x &&
         apple.pos.y == y &&
         window.head_color != apple.ChessColor
@@ -570,7 +578,7 @@ window.ChessMod.alterSnakeCode = function (code) {
   // Fruit keeps ChessColor after an unlock. A ray that treats fruit as a
   // piece will try to capture it, fail, and never reach the real target.
   function chessRayPiece(piece) {
-    return !!(piece && piece.isPiece && !piece.Oka && piece.pos);
+    return !!(piece && piece.isPiece && !piece.Bea && piece.pos);
   }
 
   function getClosestPiecesToRook(rookPos, pieces) {
@@ -753,9 +761,9 @@ window.ChessMod.alterSnakeCode = function (code) {
       skipIndexes instanceof Set
         ? skipIndexes
         : new Set(skipIndexes || []);
-    if (game && game.oa && Array.isArray(game.oa.ka)) {
-      for (let i = 0; i < game.oa.ka.length; i++) {
-        const seg = game.oa.ka[i];
+    if (game && game.Yc && Array.isArray(game.Yc.ka)) {
+      for (let i = 0; i < game.Yc.ka.length; i++) {
+        const seg = game.Yc.ka[i];
         const k = window.chess_pos_key(seg);
         if (k != null) keys.add(k);
       }
@@ -784,10 +792,10 @@ window.ChessMod.alterSnakeCode = function (code) {
     return k == null || !occupiedKeys.has(k);
   };
 
-  // Bridge tiles (game.Ga.oa[y][x]) are not free cells for piece/fruit spawn.
+  // Bridge tiles (game.wa.oa[y][x]) are not free cells for piece/fruit spawn.
   window.chess_pos_on_bridge = function chess_pos_on_bridge(game, posOrX, y) {
     const g = game || window.__remixGame;
-    const grid = g && g.Ga && g.Ga.oa;
+    const grid = g && g.wa && g.wa.oa;
     if (!grid || !grid.length) return false;
     let xi;
     let yi;
@@ -801,16 +809,16 @@ window.ChessMod.alterSnakeCode = function (code) {
     return !!(grid[yi] && grid[yi][xi]);
   };
 
-  // Native Tb bans cells with l7(board, head, cell) <= 3 when portal/shield
+  // Native Lb bans cells with yoF(board, head, cell) <= 3 when portal/shield
   // spawn (b===2). Chess enables shield via f7(..., 15), so new piece spawns
   // must keep the same head radius. Start-layout (iaF) positions are exempt.
   window.chess_spawn_radius = 3;
 
   window.chess_spawn_dist = function chess_spawn_dist(board, from, to) {
     if (!from || !to) return Infinity;
-    if (typeof l7 === "function" && board) {
+    if (typeof yoF === "function" && board) {
       try {
-        return l7(board, from, to);
+        return yoF(board, from, to);
       } catch (_e) {}
     }
     return Math.abs(from.x - to.x) + Math.abs(from.y - to.y);
@@ -824,22 +832,22 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (!pos || pos.x == null || pos.y == null) return false;
     const limit =
       maxDist == null ? window.chess_spawn_radius : maxDist;
-    const snake = game && game.oa;
+    const snake = game && game.Yc;
     const head = snake && snake.ka && snake.ka[0];
     if (!head) return true;
-    const board = game.ka || (game.wa && game.wa.oa) || null;
+    const board = game.ka || (game.oa && game.oa.oa) || null;
     if (window.chess_spawn_dist(board, head, pos) <= limit) return false;
     // Twin snake: also ban the head-radius mirror, matching Tb.
     if (
       snake &&
       snake.settings &&
-      typeof e7 === "function" &&
-      e7(snake.settings, 7) &&
-      typeof k7 === "function" &&
+      typeof M7 === "function" &&
+      M7(snake.settings, 7) &&
+      typeof V7 === "function" &&
       board
     ) {
       try {
-        const twin = k7(board, pos);
+        const twin = V7(board, pos);
         if (
           twin &&
           window.chess_spawn_dist(board, head, twin) <= limit
@@ -851,9 +859,14 @@ window.ChessMod.alterSnakeCode = function (code) {
     return true;
   };
 
+  // Native board free-cell picker (v13 d4E; inlined on v14 as board.Ba(pos,n,void 0)).
+  window.chess_native_free_pos = function chess_native_free_pos(board, pos, n) {
+    return board.Ba(pos, n, void 0);
+  };
+
   window.chess_make_pos = function chess_make_pos(x, y) {
-    if (typeof _ !== "undefined" && _ && typeof _.Od === "function") {
-      return new _.Od(x, y);
+    if (typeof _ !== "undefined" && _ && typeof _.Yd === "function") {
+      return new _.Yd(x, y);
     }
     if (typeof _ !== "undefined" && _ && typeof _.Sd === "function") {
       return new _.Sd(x, y);
@@ -884,8 +897,8 @@ window.ChessMod.alterSnakeCode = function (code) {
       }
     }
     const nativeFree =
-      game && typeof game.Rb === "function"
-        ? game.Rb.bind(game)
+      game && typeof game.Lb === "function"
+        ? game.Lb.bind(game)
         : game && typeof game.Tb === "function"
           ? game.Tb.bind(game)
           : null;
@@ -914,7 +927,7 @@ window.ChessMod.alterSnakeCode = function (code) {
     el.ChessColor = window.color_turn;
     el.isPiece = true;
     el.type = window[window.color_turn + el.ChessPiece];
-    el.nba = undefined;
+    el.h7 = undefined;
     window.SwitchTurn();
   };
 
@@ -965,8 +978,8 @@ window.ChessMod.alterSnakeCode = function (code) {
       const freePos =
         typeof window.__chessFreePos === "function"
           ? window.__chessFreePos
-          : typeof d4E === "function"
-            ? d4E
+          : typeof window.chess_native_free_pos === "function"
+            ? window.chess_native_free_pos
             : null;
       const occ = window.chess_occupied_keys(game, mgr.ka, new Set());
       // Also ban the eaten cell explicitly (still in ka until native splice).
@@ -993,7 +1006,7 @@ window.ChessMod.alterSnakeCode = function (code) {
       if (snapshot && typeof snapshot === "object") {
         for (const key in snapshot) {
           if (!Object.prototype.hasOwnProperty.call(snapshot, key)) continue;
-          if (key === "pos" || key === "nba" || key === "Oba") continue;
+          if (key === "pos" || key === "h7" || key === "Oba") continue;
           try {
             dup[key] = snapshot[key];
           } catch (_e2) {}
@@ -1013,11 +1026,11 @@ window.ChessMod.alterSnakeCode = function (code) {
         ? snapshot.type
         : window[color + piece];
     if (typeId != null) dup.type = typeId;
-    dup.nba = undefined;
+    dup.h7 = undefined;
     dup.Oba = undefined;
-    dup.wm = true;
-    dup.cM = 0;
-    dup.nD = 0;
+    dup.Rm = true;
+    dup.gM = 0;
+    dup.aD = 0;
     // Not a Slot badge fruit.
     try {
       delete dup.slotMode;
@@ -1040,7 +1053,7 @@ window.ChessMod.alterSnakeCode = function (code) {
     const opposites = [];
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
-      if (!f || !f.isPiece || f.Oka) continue;
+      if (!f || !f.isPiece || f.Bea) continue;
       if (f.ChessColor && f.ChessColor !== color) opposites.push(i);
     }
     if (!opposites.length) return false;
@@ -1061,7 +1074,7 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (window.head_state === "OPEN") return;
 
     const game = window.__remixGame;
-    const mgr = (game && game.wa) || null;
+    const mgr = (game && game.oa) || null;
     const snapshot = {
       ChessPiece: eaten.ChessPiece,
       ChessColor: eaten.ChessColor,
@@ -1192,10 +1205,10 @@ window.ChessMod.alterSnakeCode = function (code) {
         dup.pos.y = pos.y;
       }
       if (typeof pickType === "function") dup.type = pickType(mgr);
-      // wm is the game's spawn-in animation flag (cleared by manager refresh()).
-      dup.wm = true;
-      dup.cM = 0;
-      dup.nD = 0;
+      // Rm is the game's spawn-in animation flag (cleared by manager refresh()).
+      dup.Rm = true;
+      dup.gM = 0;
+      dup.aD = 0;
       window.chess_assign_piece(dup);
       return dup;
     };
@@ -1224,12 +1237,12 @@ window.ChessMod.alterSnakeCode = function (code) {
     return 2;
   };
 
-  // Build a non-piece twin apple for Chess+Portal unlock (clone when g7 is not exposed).
+  // Build a non-piece twin apple for Chess+Portal unlock (clone when S7 is not exposed).
   window.chess_clone_as_fruit = function chess_clone_as_fruit(src, pos) {
     if (!src) return null;
     const make = window.__chessMakeApple;
     const game = window.__remixGame;
-    const mgr = game && game.wa;
+    const mgr = game && game.oa;
     let dup = null;
     if (typeof make === "function" && mgr) {
       try {
@@ -1267,10 +1280,10 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (src.sequenceNumber !== undefined) {
       dup.sequenceNumber = src.sequenceNumber;
     }
-    dup.nba = undefined;
-    dup.wm = true;
-    dup.cM = 0;
-    dup.nD = 0;
+    dup.h7 = undefined;
+    dup.Rm = true;
+    dup.gM = 0;
+    dup.aD = 0;
     return dup;
   };
 
@@ -1282,16 +1295,16 @@ window.ChessMod.alterSnakeCode = function (code) {
     unlockedIndex
   ) {
     const game = window.__remixGame;
-    if (!game || !game.wa || !unlockedApple) return null;
-    const mgr = game.wa;
+    if (!game || !game.oa || !unlockedApple) return null;
+    const mgr = game.oa;
     const board = mgr.oa;
     window.appleArray = mgr.ka;
     const occ = window.chess_occupied_keys(game, mgr.ka, new Set());
     const freePos =
       typeof window.__chessFreePos === "function"
         ? window.__chessFreePos
-        : typeof d4E === "function"
-          ? d4E
+        : typeof window.chess_native_free_pos === "function"
+          ? window.chess_native_free_pos
           : null;
     const pos = window.chess_find_legal_spawn(board, freePos, occ, null);
     if (!pos) return null;
@@ -1389,7 +1402,7 @@ window.ChessMod.alterSnakeCode = function (code) {
     const empty = mgr.ka.length === 0;
 
     // Bomb: first fruit → 24 pairs (48 pieces), then normal +2.
-    if (ka === 5 && game && !game.kc) {
+    if (ka === 5 && game && !game.Qb) {
       const n = window.chess_spawn_n_pairs(
         mgr,
         makeApple,
@@ -1398,7 +1411,7 @@ window.ChessMod.alterSnakeCode = function (code) {
         24,
         null
       );
-      game.kc = true;
+      game.Qb = true;
       return n;
     }
 
@@ -1482,20 +1495,20 @@ window.ChessMod.alterSnakeCode = function (code) {
     const make =
       typeof window.__chessMakeApple === "function"
         ? window.__chessMakeApple
-        : typeof g7 === "function"
-          ? g7
+        : typeof S7 === "function"
+          ? S7
           : null;
     const freePos =
       typeof window.__chessFreePos === "function"
         ? window.__chessFreePos
-        : typeof d4E === "function"
-          ? d4E
+        : typeof window.chess_native_free_pos === "function"
+          ? window.chess_native_free_pos
           : null;
     const pickType =
       typeof window.__chessPickType === "function"
         ? window.__chessPickType
-        : typeof Q3E === "function"
-          ? Q3E
+        : typeof hoF === "function"
+          ? hoF
           : null;
     if (typeof make === "function") {
       window.chess_portal_combo_respawn(mgr, game, make, freePos, pickType);
@@ -1521,11 +1534,11 @@ window.ChessMod.alterSnakeCode = function (code) {
     for (let i = start; i < mgr.ka.length; i++) {
       window.chess_assign_piece(mgr.ka[i]);
     }
-    // Prefer native freePos via game.Tb when sanitizing qaF results.
+    // Prefer native freePos via game.Lb when sanitizing qaF results.
     const freePos =
-      window.__remixGame && typeof window.__remixGame.Rb === "function"
+      window.__remixGame && typeof window.__remixGame.Lb === "function"
         ? function (board, excl, radius) {
-            return window.__remixGame.Rb(excl, radius);
+            return window.__remixGame.Lb(excl, radius);
           }
         : window.__remixGame && typeof window.__remixGame.Tb === "function"
         ? function (board, excl, radius) {
@@ -1542,46 +1555,46 @@ window.ChessMod.alterSnakeCode = function (code) {
     if (!window.isChessActive || !window.isChessActive()) return false;
     if (!window.head_pos || !window.appleArray) return false;
     let apple = window.findApple(window.head_pos[0], window.appleArray);
-    return !!(apple && apple.isPiece && !apple.Oka);
+    return !!(apple && apple.isPiece && !apple.Bea);
   };
 
-  // --- Code patches for v13 ---
+  // --- Code patches for v14 ---
 
-  // Make Chess activate Shield physics via e7(..., 15)
+  // Make Chess activate Shield physics via M7(..., 15)
   let f7_regex = new RegExp(
-    /e7=function\(a,b\)\{return a\.Qa\?a\.Lc\.has\(b\):a\.ub===22&&a\.rSa\.has\(b\)\?!0:a\.ub===b\}/
+    /M7=function\(a,b\)\{return a\.La\?a\.jd\.has\(b\):a\.yb===22&&a\.NSa\.has\(b\)\?!0:a\.yb===b\}/
   );
   if (code.match(f7_regex)) {
     code = code.assertReplace(
       f7_regex,
-      `e7=function(a,b){var r=a.Qa?a.Lc.has(b):a.ub===22&&a.rSa.has(b)?!0:a.ub===b;if(!r&&b===15&&window.CHESS_MODE!=null){if(a.ub===window.CHESS_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.CHESS_MODE))return!0;}return r}`
+      `M7=function(a,b){var r=a.La?a.jd.has(b):a.yb===22&&a.NSa.has(b)?!0:a.yb===b;if(!r&&b===15&&window.CHESS_MODE!=null){if(a.yb===window.CHESS_MODE)return!0;if(a.yb===22&&a.NSa&&a.NSa.has(window.CHESS_MODE))return!0;}return r}`
     );
   } else {
-    console.error("ChessMod: failed to patch e7");
+    console.error("ChessMod: failed to patch M7");
   }
 
-  // Shield bars on chess locks: under Peaceful/Cat absorb the hit (clear nba)
-  // instead of Oa, so the same-tick head move can eat the piece.
+  // Shield bars on chess locks: under Peaceful/Cat absorb the hit (clear h7)
+  // instead of Ka (death), so the same-tick head move can eat the piece.
   if (
     code.match(
-      /\(\(g=f\.nba\)==null\?0:g\.has\(d\)\)&&this\.Oa\(\);/
+      /f\.h7\?\.has\(d\)&&this\.Ka\(\)/
     )
   ) {
     code = code.assertReplace(
-      /\(\(g=f\.nba\)==null\?0:g\.has\(d\)\)&&this\.Oa\(\);/,
-      `((g=f.nba)==null?0:g.has(d))&&(window.chess_shield_hit_absorb&&window.chess_shield_hit_absorb(this,f)?0:this.Oa());`
+      /f\.h7\?\.has\(d\)&&this\.Ka\(\)/,
+      `f.h7?.has(d)&&(window.chess_shield_hit_absorb&&window.chess_shield_hit_absorb(this,f)?0:this.Ka())`
     );
   } else {
-    console.error("ChessMod: failed to patch Sc shield hit absorb");
+    console.error("ChessMod: failed to patch Hl shield hit absorb");
   }
   if (
     code.match(
-      /\(\(h=f\.nba\)==null\?0:h\.has\(this\.oa\.direction\)\)&&this\.Oa\(\)/
+      /f\.h7\?\.has\(this\.Yc\.direction\)&&this\.Ka\(\)/
     )
   ) {
     code = code.assertReplace(
-      /\(\(h=f\.nba\)==null\?0:h\.has\(this\.oa\.direction\)\)&&this\.Oa\(\)/,
-      `((h=f.nba)==null?0:h.has(this.oa.direction))&&(window.chess_shield_hit_absorb&&window.chess_shield_hit_absorb(this,f)?0:this.Oa())`
+      /f\.h7\?\.has\(this\.Yc\.direction\)&&this\.Ka\(\)/,
+      `f.h7?.has(this.Yc.direction)&&(window.chess_shield_hit_absorb&&window.chess_shield_hit_absorb(this,f)?0:this.Ka())`
     );
   }
 
@@ -1589,45 +1602,45 @@ window.ChessMod.alterSnakeCode = function (code) {
   // Visibility may have already patched this tick(); keep the matcher loose.
   // Also expose __remixGame for the Playwright harness.
   let tick_regex = /\}tick\(\)\{/;
-  if (code.match(/\}tick\(\)\{var a=this\.Aa,b=this\.nj;/)) {
+  if (code.match(/\}tick\(\)\{var a=this\.Oy,b=this\.uj;/)) {
     code = code.assertReplace(
-      /\}tick\(\)\{var a=this\.Aa,b=this\.nj;/,
-      `}tick(){window.__remixGame=this;if(window.isChessActive&&window.isChessActive()){try{window.head_pos=this.oa.ka;window.head_dir=this.oa.direction;window.appleArray=this.wa.ka;window.chess_tick_logic();}catch(_ce){console.error("ChessMod: tick failed",_ce);}}var a=this.Aa,b=this.nj;`
+      /\}tick\(\)\{var a=this\.Oy,b=this\.uj;/,
+      `}tick(){window.__remixGame=this;if(window.isChessActive&&window.isChessActive()){try{window.head_pos=this.Yc.ka;window.head_dir=this.Yc.direction;window.appleArray=this.oa.ka;window.chess_tick_logic();}catch(_ce){console.error("ChessMod: tick failed",_ce);}}var a=this.Oy,b=this.uj;`
     );
   } else if (code.match(tick_regex)) {
     code = code.assertReplace(
       tick_regex,
-      `}tick(){window.__remixGame=this;if(window.isChessActive&&window.isChessActive()){try{window.head_pos=this.oa.ka;window.head_dir=this.oa.direction;window.appleArray=this.wa.ka;window.chess_tick_logic();}catch(_e){}}`
+      `}tick(){window.__remixGame=this;if(window.isChessActive&&window.isChessActive()){try{window.head_pos=this.Yc.ka;window.head_dir=this.Yc.direction;window.appleArray=this.oa.ka;window.chess_tick_logic();}catch(_e){}}`
     );
   } else {
     console.error("ChessMod: failed to find tick()");
   }
 
-  // On apple manager reset: chess state + Portal pair layout (Y3E force).
+  // On apple manager reset: chess state + Portal pair layout (ooF force).
   // Pudding prepends timer code to reset(){ so we must NOT match reset(){this.ka=[] —
-  // only the inner this.ka=[] / Y3E line that still exists after Pudding.
-  if (code.match(/this\.ka=\s*\[\];var a=Y3E\(this\.settings\)/)) {
+  // only the inner this.ka=[] / ooF line that still exists after Pudding.
+  if (code.match(/this\.ka=\s*\[\];var a=ooF\(this\.settings\)/)) {
     code = code.assertReplace(
-      /this\.ka=\s*\[\];var a=Y3E\(this\.settings\)/,
-      `this.ka=[];window.appleArray=this.ka;window.head_dir="RIGHT";window.head_state="OPEN";window.head_color="NONE";window.color_turn="w";window.just_ate="fruit";var a=Y3E(this.settings)||!!(window.isChessActive&&window.isChessActive())`
+      /this\.ka=\s*\[\];var a=ooF\(this\.settings\)/,
+      `this.ka=[];window.appleArray=this.ka;window.head_dir="RIGHT";window.head_state="OPEN";window.head_color="NONE";window.color_turn="w";window.just_ate="fruit";var a=ooF(this.settings)||!!(window.isChessActive&&window.isChessActive())`
     );
-  } else if (code.match(/var a=Y3E\(this\.settings\)/)) {
+  } else if (code.match(/var a=ooF\(this\.settings\)/)) {
     code = code.assertReplace(
-      /var a=Y3E\(this\.settings\)/,
-      `var a=Y3E(this.settings)||!!(window.isChessActive&&window.isChessActive())`
+      /var a=ooF\(this\.settings\)/,
+      `var a=ooF(this.settings)||!!(window.isChessActive&&window.isChessActive())`
     );
   } else {
-    console.error("ChessMod: failed to find Y3E apple-layout flag");
+    console.error("ChessMod: failed to find ooF apple-layout flag");
   }
 
-  // After shield nba init on reset: turn the apples into alternating pieces, start OPEN
+  // After shield h7 init on reset: turn the apples into alternating pieces, start OPEN
   let after_shield_init = new RegExp(
-    /if\(e7\(this\.settings,15\)\)for\(let q of this\.ka\)q\.nba=\s*P3E\(this,q\.pos\);/
+    /if\(M7\(this\.settings,15\)\)for\(let r of this\.ka\)r\.h7=\s*goF\(this,r\.pos\);/
   );
   if (code.match(after_shield_init)) {
     code = code.assertReplace(
       after_shield_init,
-      `if(e7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let q of this.ka)q.nba=P3E(this,q.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}`
+      `if(M7(this.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(let r of this.ka)r.h7=goF(this,r.pos);if(window.isChessActive&&window.isChessActive()){try{window.appleArray=this.ka;window.randomize_pieces();window.shield_empty_all();}catch(_ce){console.error("ChessMod: reset failed",_ce);}}`
     );
   } else {
     console.error("ChessMod: failed to find shield init on reset");
@@ -1635,41 +1648,41 @@ window.ChessMod.alterSnakeCode = function (code) {
 
   // Collision cleanup: remove doomed apples in pairs while chess (keep even count)
   let pair_splice = new RegExp(
-    /e7\(this\.settings,2\)\?n%2===0\?\(this\.ka\.splice\(n,2\),n--\):\(this\.ka\.splice\(n-\s*1,2\),n-=2\)/
+    /M7\(this\.settings,2\)\?c%2===0\?\(this\.ka\.splice\(c,2\),c--\):\(this\.ka\.splice\(c-\s*1,2\),c-=2\)/
   );
   if (code.match(pair_splice)) {
     code = code.assertReplace(
       pair_splice,
-      `(e7(this.settings,2)||(window.isChessActive&&window.isChessActive()))?n%2===0?(this.ka.splice(n,2),n--):(this.ka.splice(n-1,2),n-=2)`
+      `(M7(this.settings,2)||(window.isChessActive&&window.isChessActive()))?c%2===0?(this.ka.splice(c,2),c--):(this.ka.splice(c-1,2),c-=2)`
     );
   } else {
     console.error("ChessMod: failed to find pair-splice on reset");
   }
 
-  // Portal pair-spawn in f4E: include chess so fruit eats / dice / bomb double via all-or-nothing pairs
+  // Portal pair-spawn in voF (v13 f4E): include chess so fruit eats / dice / bomb double via all-or-nothing pairs
   let qaf_pair = new RegExp(
-    /e7\(a\.settings,\s*2\)&&!f\?/
+    /M7\(a\.settings,\s*2\)&&!f\?/
   );
   if (code.match(qaf_pair)) {
     code = code.assertReplace(
       qaf_pair,
-      `(e7(a.settings,2)||(window.isChessActive&&window.isChessActive()))&&!f?`
+      `(M7(a.settings,2)||(window.isChessActive&&window.isChessActive()))&&!f?`
     );
   } else {
-    console.error("ChessMod: failed to find f4E portal pair condition");
+    console.error("ChessMod: failed to find voF portal pair condition");
   }
 
-  // After f4E adds apples (+ optional shields), convert new ones to chess pieces
+  // After voF adds apples (+ optional shields), convert new ones to chess pieces
   let qaf_after_oba = new RegExp(
-    /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(e7\(a\.settings,15\)\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.nba=P3E\(a,c\.pos\);/
+    /g=a\.ka\.length-g;if\(e!==void 0\)for\(c=0;c<g;c\+\+\)a\.ka\[a\.ka\.length-1-c\]\.sequenceNumber=e;if\(M7\(a\.settings,15\)\)for\(e=0;e<g;e\+\+\)c=a\.ka\[a\.ka\.length-1-e\],c\.h7=goF\(a,c\.pos\);/
   );
   if (code.match(qaf_after_oba)) {
     code = code.assertReplace(
       qaf_after_oba,
-      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(e7(a.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.nba=P3E(a,c.pos);if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(g>0&&window.ultraShouldSpawnFruitShields&&!window.ultraShouldSpawnFruitShields()){for(e=0;e<g;e++){c=a.ka[a.ka.length-1-e];if(!c.isPiece)c.nba=void 0;}}`
+      `g=a.ka.length-g;if(e!==void 0)for(c=0;c<g;c++)a.ka[a.ka.length-1-c].sequenceNumber=e;if(M7(a.settings,15)&&(!window.ultraShouldSpawnFruitShields||window.ultraShouldSpawnFruitShields()))for(e=0;e<g;e++)c=a.ka[a.ka.length-1-e],c.h7=goF(a,c.pos);if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(g>0&&window.ultraShouldSpawnFruitShields&&!window.ultraShouldSpawnFruitShields()){for(e=0;e<g;e++){c=a.ka[a.ka.length-1-e];if(!c.isPiece)c.h7=void 0;}}`
     );
   } else {
-    console.error("ChessMod: failed to find f4E trailing convert hook");
+    console.error("ChessMod: failed to find voF trailing convert hook");
   }
 
   // Track selected fruit
@@ -1692,13 +1705,13 @@ window.ChessMod.alterSnakeCode = function (code) {
 
   // Do NOT multiply dice roll by 2 — Portal pairing already doubles (R apples -> 2R pieces).
 
-  // Score / eat: pieces never score; fruit scores. Eat helper uses a.Sh++.
+  // Score / eat: pieces never score; fruit scores. Eat helper uses a.Bi++.
   // Second piece eat while carrying → chess_on_second_piece_eat law (Chess+Slot).
-  let score_regex = new RegExp(/a\.Sh\+\+;/);
+  let score_regex = new RegExp(/a\.Bi\+\+;/);
   if (code.match(score_regex)) {
     code = code.assertReplace(
       score_regex,
-      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';a.Sh++;}else if(_ae&&_ae.isPiece){window.just_ate='piece';if(window.head_state!=='OPEN'&&window.chess_on_second_piece_eat){window.chess_on_second_piece_eat(_ae);}else{window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}}else{window.just_ate='fruit';a.Sh++;}}else{a.Sh++;}`
+      `if(window.isChessActive&&window.isChessActive()){let _ae=window.findApple(window.head_pos[0],window.appleArray);if(_ae&&!_ae.isPiece){window.just_ate='fruit';a.Bi++;}else if(_ae&&_ae.isPiece){window.just_ate='piece';if(window.head_state!=='OPEN'&&window.chess_on_second_piece_eat){window.chess_on_second_piece_eat(_ae);}else{window.head_state=_ae.ChessPiece;window.updateTrophySRC(_ae.type);window.head_color=_ae.ChessColor;window.shield_all();}}else{window.just_ate='fruit';a.Bi++;}}else{a.Bi++;}`
     );
   } else {
     console.error("ChessMod: failed to find score increment");
@@ -1708,11 +1721,11 @@ window.ChessMod.alterSnakeCode = function (code) {
   // even when Chess deliberately leaves the score unchanged. Do not repeat a
   // milestone split when the collided object was a scoreless chess piece.
   const nativeMilestoneSplit =
-    /q7E\(a\.header,a\.Sh,a\.ticks,a\.Fb\)/;
+    /msF\(a\.header,a\.Bi,a\.ticks,a\.hb\)/;
   if (code.match(nativeMilestoneSplit)) {
     code = code.assertReplace(
       nativeMilestoneSplit,
-      "window.just_ate!=='piece'&&q7E(a.header,a.Sh,a.ticks,a.Fb)"
+      "window.just_ate!=='piece'&&msF(a.header,a.Bi,a.ticks,a.hb)"
     );
   } else {
     console.error("ChessMod: failed to gate native 25/50/100 split");
@@ -1721,80 +1734,80 @@ window.ChessMod.alterSnakeCode = function (code) {
   // Don't grow when eating a chess piece. This runs before the score hook, so the
   // piece is still in appleArray and can be detected live.
   let snakeLength = new RegExp(
-    /e7\(a\.settings,3\)\?a\.oa\.Ua\+=2:a\.oa\.Ua\+=1;/
+    /M7\(a\.settings,3\)\?a\.Yc\.Ra\+=2:a\.Yc\.Ra\+=1;/
   );
   if (code.match(snakeLength)) {
     code = code.assertReplace(
       snakeLength,
-      `e7(a.settings,3)?a.oa.Ua+=2:a.oa.Ua+=1;if(window.chess_eating_piece&&window.chess_eating_piece()){a.oa.Ua-=e7(a.settings,3)?2:1;}`
+      `M7(a.settings,3)?a.Yc.Ra+=2:a.Yc.Ra+=1;if(window.chess_eating_piece&&window.chess_eating_piece()){a.Yc.Ra-=M7(a.settings,3)?2:1;}`
     );
   }
 
   // Also block Candy's random length bonus on chess piece pickup
   let candy_len_bonus = new RegExp(
-    /if\(window\.isCandyActive && window\.isCandyActive\(\)\) \{\s*a\.oa\.Ua \+= Math\.floor\(Math\.random\(\) \* 6\);\s*\}/
+    /if\(window\.isCandyActive && window\.isCandyActive\(\)\) \{\s*a\.Yc\.Ra \+= Math\.floor\(Math\.random\(\) \* 6\);\s*\}/
   );
   if (code.match(candy_len_bonus)) {
     code = code.assertReplace(
       candy_len_bonus,
-      `if(window.isCandyActive && window.isCandyActive() && !(window.chess_eating_piece&&window.chess_eating_piece())) {a.oa.Ua += Math.floor(Math.random() * 6);}`
+      `if(window.isCandyActive && window.isCandyActive() && !(window.chess_eating_piece&&window.chess_eating_piece())) {a.Yc.Ra += Math.floor(Math.random() * 6);}`
     );
   }
 
   // Prevent native shield clear from fighting chess shields:
   let shield_clear = new RegExp(
-    /e7\(a\.settings,15\)&&\(b4E\(a\.wa,([a-zA-Z0-9_$]+)\),/
+    /M7\(a\.settings,15\)&&\(soF\(a\.oa,([a-zA-Z0-9_$]+)\),/
   );
   if (code.match(shield_clear)) {
     code = code.assertReplace(
       shield_clear,
-      `e7(a.settings,15)&&!(window.isChessActive&&window.isChessActive())&&(b4E(a.wa,$1),`
+      `M7(a.settings,15)&&!(window.isChessActive&&window.isChessActive())&&(soF(a.oa,$1),`
     );
   }
 
   // Gate Portal teleport / odd wipe for Chess+Portal:
-  // - piece eats: skip entire portal branch (no P6E)
+  // - piece eats: skip entire portal branch (no MrF)
   // - while Chess active: never wipe the board on odd apple count
-  // - only call P6E when the even/odd twin apple exists (odd Chess boards
-  //   after piece eats / unlock can leave a lone apple; native P6E crashes on .pos)
+  // - only call MrF when the even/odd twin apple exists (odd Chess boards
+  //   after piece eats / unlock can leave a lone apple; native MrF crashes on .pos)
   let portal_teleport = new RegExp(
-    /if\(e7\(a\.settings,2\)\)if\(a\.wa\.ka\.length%2!==0\)\{a\.wa\.ka\.splice\(0,a\.wa\.ka\.length\);break\}else b=!0,P6E\(a\.Sa,k,f,e,g\),f&&e7\(a\.settings,20\)&&p5E\(a\.Ga\);/
+    /if\(M7\(a\.settings,2\)\)if\(a\.oa\.ka\.length%2!==0\)\{a\.oa\.ka\.splice\(0,a\.oa\.ka\.length\);break\}else b=!0,MrF\(a\.La,k,f,e,g\),f&&M7\(a\.settings,20\)&&jqF\(a\.wa\);/
   );
   if (code.match(portal_teleport)) {
     code = code.assertReplace(
       portal_teleport,
-      `if(e7(a.settings,2)&&!(window.isChessActive&&window.isChessActive()&&window.just_ate==='piece'))if(a.wa.ka.length%2!==0&&!(window.isChessActive&&window.isChessActive())){a.wa.ka.splice(0,a.wa.ka.length);break}else{let _ti=k%2===0?k+1:k-1;if(_ti>=0&&_ti<a.wa.ka.length&&a.wa.ka[_ti])b=!0,P6E(a.Sa,k,f,e,g),f&&e7(a.settings,20)&&p5E(a.Ga);}`
+      `if(M7(a.settings,2)&&!(window.isChessActive&&window.isChessActive()&&window.just_ate==='piece'))if(a.oa.ka.length%2!==0&&!(window.isChessActive&&window.isChessActive())){a.oa.ka.splice(0,a.oa.ka.length);break}else{let _ti=k%2===0?k+1:k-1;if(_ti>=0&&_ti<a.oa.ka.length&&a.oa.ka[_ti])b=!0,MrF(a.La,k,f,e,g),f&&M7(a.settings,20)&&jqF(a.wa);}`
     );
   } else {
-    console.error("ChessMod: failed to find portal P6E teleport gate");
+    console.error("ChessMod: failed to find portal MrF teleport gate");
   }
 
-  // Chess never uses native Vm reposition: e=!1 splices the eaten apple, so a
+  // Chess never uses native Kc reposition: e=!1 splices the eaten apple, so a
   // piece eat removes only that piece and a fruit eat spawns exactly 2 fresh
   // pieces through chess_fruit_respawn.
   // Chess+Portal fruit (incl. Dice/Tally/Bomb): note twin, splice clears it, then
   // 2-piece respawn. Solo Chess still leaves Dice/Tally/pre-bomb to native refill.
   // Key/Soko stay excluded for now.
   let spawn = new RegExp(
-    /e=!1;e7\(a\.settings,2\)\?e=!0:e7\(a\.settings,10\)&&d\.Oka\?e=!1:\(e=a\.settings\.ka!==6&&\(d7\(a\.settings\)\|\|e7\(a\.settings,7\)\),e=a\.Vm\(k,\s*!e,null\)\);/
+    /e=!1;M7\(a\.settings,2\)\?e=!0:M7\(a\.settings,10\)&&d\.Bea\?e=!1:\(e=a\.settings\.ka!==6&&\(Q7\(a\.settings\)\|\|M7\(a\.settings,7\)\),e=a\.Kc\(k,\s*!e,null\)\);/
   );
   if (code.match(spawn)) {
     code = code.assertReplace(
       spawn,
-      `e=!1;if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;e=!1;if(window.just_ate==='fruit'&&!(e7(a.settings,8)||e7(a.settings,9))){if(window.chess_portal_combo&&window.chess_portal_combo()){window.chess_portal_note_fruit_twin(a.wa,k);}else if(!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.kc))){window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);}}}else e7(a.settings,2)?e=!0:e7(a.settings,10)&&d.Oka?e=!1:(e=a.settings.ka!==6&&(d7(a.settings)||e7(a.settings,7)),e=a.Vm(k,!e,null));`
+      `e=!1;if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=S7;window.__chessFreePos=window.chess_native_free_pos;window.__chessPickType=hoF;e=!1;if(window.just_ate==='fruit'&&!(M7(a.settings,8)||M7(a.settings,9))){if(window.chess_portal_combo&&window.chess_portal_combo()){window.chess_portal_note_fruit_twin(a.oa,k);}else if(!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.Qb))){window.chess_fruit_respawn(a.oa,S7,window.__chessFreePos,hoF);}}}else M7(a.settings,2)?e=!0:M7(a.settings,10)&&d.Bea?e=!1:(e=a.settings.ka!==6&&(Q7(a.settings)||M7(a.settings,7)),e=a.Kc(k,!e,null));`
     );
   } else {
-    console.error("ChessMod: failed to find Vm respawn path");
+    console.error("ChessMod: failed to find Kc respawn path");
   }
 
   // After non-portal splice of eaten apple: Chess+Portal clears twin + respawns 2 pieces.
   let eat_splice = new RegExp(
-    /\(a\.wa\.ka\.splice\(k,1\),k--\)/
+    /\(a\.oa\.ka\.splice\(k,1\),k--\)/
   );
   if (code.match(eat_splice)) {
     code = code.assertReplace(
       eat_splice,
-      `(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a))`
+      `(a.oa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.oa,a))`
     );
   } else {
     console.error("ChessMod: failed to find eat splice for portal twin clear");
@@ -1802,12 +1815,12 @@ window.ChessMod.alterSnakeCode = function (code) {
 
   // Tally wave refill spawns 5 slots; Chess needs 10 pieces per wave.
   let tally_wave = new RegExp(
-    /var b=e7\(a\.settings,11\)\?10:5;/
+    /var b=M7\(a\.settings,11\)\?10:5;/
   );
   if (code.match(tally_wave)) {
     code = code.assertReplace(
       tally_wave,
-      `var b=(e7(a.settings,11)||(window.isChessActive&&window.isChessActive()))?10:5;`
+      `var b=(M7(a.settings,11)||(window.isChessActive&&window.isChessActive()))?10:5;`
     );
   } else {
     console.error("ChessMod: failed to find tally wave size");
@@ -1816,7 +1829,7 @@ window.ChessMod.alterSnakeCode = function (code) {
   // New piece placement after fruit eaten — handled by qaF pair spawn + chess_convert_new_apples
 
   // On play start with chess: set trophy icon (dice_doubler unused; pairing doubles)
-  let play_start = new RegExp(/a\.ub=a\.ob;a\.ka=a\.Ca;/);
+  let play_start = new RegExp(/c\.yb=c\.wb;c\.ka=c\.Ca;/);
   if (code.indexOf("updateCandyTrophySRC") >= 0) {
     code = code.assertReplace(
       /if\(window\.CurrentModeNum===window\.CANDY_MODE\)\{window\.updateCandyTrophySRC\(\);\}/,
@@ -1825,7 +1838,7 @@ window.ChessMod.alterSnakeCode = function (code) {
   } else if (code.match(play_start)) {
     code = code.assertReplace(
       play_start,
-      `a.ub=a.ob;a.ka=a.Ca;if(window.CurrentModeNum===window.CHESS_MODE){window.updateTrophySRC();}`
+      `c.yb=c.wb;c.ka=c.Ca;if(window.CurrentModeNum===window.CHESS_MODE){window.updateTrophySRC();}`
     );
   }
 

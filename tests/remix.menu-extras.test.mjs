@@ -102,23 +102,23 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
         function eatLast(ka) {
           g.settings.ka = ka;
           g.settings.Ca = ka;
-          g.wa.reset();
-          const snake = g.oa.ka;
+          g.oa.reset();
+          const snake = g.Yc.ka;
           for (let i = 0; i < snake.length; i++) {
             snake[i].x = 3;
             snake[i].y = 3;
           }
-          g.oa.direction = "RIGHT";
-          const apples = g.wa.ka;
+          g.Yc.direction = "RIGHT";
+          const apples = g.oa.ka;
           while (apples.length > 1) apples.pop();
           if (!apples.length) return { after: 0, scored: false };
           apples[0].pos.x = 4;
           apples[0].pos.y = 3;
-          const scoreBefore = g.Sh;
+          const scoreBefore = g.Bi;
           g.tick();
           return {
-            after: g.wa.ka.length,
-            scored: g.Sh > scoreBefore,
+            after: g.oa.ka.length,
+            scored: g.Bi > scoreBefore,
             ka: g.settings.ka,
           };
         }
@@ -181,7 +181,7 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
         g.settings.Ca = window.BLUE_DICE_COUNT;
         for (const c of root.children) c.classList.remove("tuJOWd");
         blue.classList.add("tuJOWd");
-        g.wa.reset();
+        g.oa.reset();
         window.remixRefreshHudCountIcon(window.BLUE_DICE_COUNT, blue.src);
         const disp = document.body.getElementsByClassName("UJhXPd wSwbef EWyEF")[0];
         const visible = disp
@@ -231,8 +231,8 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
       await h.start({ mode: "classic", count: COUNT.DICE, size: SIZE.NORMAL });
       const probe = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        g.nj = true;
-        g.ub = true;
+        g.uj = true;
+        g.Za = true;
         g.lj = true;
 
         const root = document.querySelector("#count");
@@ -242,8 +242,8 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
         if (!root || !disp || !root.children[4] || !root.children[5]) {
           return { ok: false, reason: "missing count UI" };
         }
-        if (!g.menu || typeof g.menu.Jb !== "function") {
-          return { ok: false, reason: "no menu.Jb" };
+        if (!g.menu || typeof g.menu.Ob !== "function") {
+          return { ok: false, reason: "no menu.Ob" };
         }
 
         // Leave a die overlay like the old buggy MoreMenu cleanup did.
@@ -256,7 +256,7 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
         for (const c of root.children) c.classList.remove("tuJOWd", "DqMRee");
         root.children[5].classList.add("DqMRee", "tuJOWd");
         g.settings.Ca = 5;
-        g.menu.Jb();
+        g.menu.Ob();
 
         const srcs = [...disp.children]
           .filter((img) => {
@@ -276,7 +276,7 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
           srcs: srcs.map((s) => s.slice(-30)),
           patched:
             Function.prototype.toString
-              .call(g.menu.Jb)
+              .call(g.menu.Ob)
               .indexOf("while(appleCountDisplay.children.length>2)") >= 0,
         };
       });
@@ -299,8 +299,8 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
         if (window.pudding_settings) window.pudding_settings.TopBar = true;
         const g = window.__remixGame;
         // Die so the death/scoreboard UI is up, then change count without play.
-        g.nj = true;
-        g.ub = true;
+        g.uj = true;
+        g.Za = true;
         g.lj = true;
         if (g.menu && typeof g.menu.show === "function") {
           try {
@@ -416,20 +416,20 @@ describe("Cat Speed + Dice counts (browser)", { skip: !runBrowser }, () => {
         function eatLast(ka) {
           g.settings.ka = ka;
           g.settings.Ca = ka;
-          g.wa.reset();
-          const snake = g.oa.ka;
+          g.oa.reset();
+          const snake = g.Yc.ka;
           for (let i = 0; i < snake.length; i++) {
             snake[i].x = 3;
             snake[i].y = 3;
           }
-          g.oa.direction = "RIGHT";
-          const apples = g.wa.ka;
+          g.Yc.direction = "RIGHT";
+          const apples = g.oa.ka;
           while (apples.length > 1) apples.pop();
           if (!apples.length) return 0;
           apples[0].pos.x = 4;
           apples[0].pos.y = 3;
           g.tick();
-          return g.wa.ka.length;
+          return g.oa.ka.length;
         }
         const live = [];
         for (let i = 0; i < 12; i++) live.push(eatLast(window.BLACK_DICE_COUNT));
@@ -680,21 +680,21 @@ async function assertSokobanKeyBlackDiceStartsLikeDice(launch) {
     const probe = await h.page.evaluate(() => {
       const g = window.__remixGame;
       function apples() {
-        return (g.wa.ka || [])
+        return (g.oa.ka || [])
           .map((a) => ({ x: a.pos.x, y: a.pos.y }))
           .sort((p, q) => p.x - q.x || p.y - q.y);
       }
       function snap(mode, ka, size) {
-        g.settings.ub = mode;
-        g.settings.ob = mode;
+        g.settings.yb = mode;
+        g.settings.wb = mode;
         g.settings.ka = ka;
         g.settings.Ca = ka;
         if (typeof size === "number") {
           g.settings.Aa = size;
-          g.settings.Sa = size;
+          g.settings.Ua = size;
         }
         window.CurrentModeNum = mode;
-        g.wa.reset();
+        g.oa.reset();
         return apples();
       }
       const black = window.BLACK_DICE_COUNT;
@@ -745,7 +745,7 @@ async function assertKeyModeStartsWithKeyAndBlock(launch) {
     const probe = await h.page.evaluate(() => {
       const g = window.__remixGame;
       function keyBox() {
-        if (g.Ba && Array.isArray(g.Ba.keys)) return g.Ba;
+        if (g.uL && Array.isArray(g.uL.keys)) return g.uL;
         const keys = Object.keys(g);
         for (let i = 0; i < keys.length; i++) {
           const v = g[keys[i]];
@@ -764,8 +764,8 @@ async function assertKeyModeStartsWithKeyAndBlock(launch) {
             if (!set || typeof set.values !== "function") continue;
             try {
               for (const v of set.values()) {
-                if (v && v.yNa != null && v.pos) {
-                  const rec = { x: v.pos.x, y: v.pos.y, type: v.yNa };
+                if (v && v.oOa != null && v.pos) {
+                  const rec = { x: v.pos.x, y: v.pos.y, type: v.oOa };
                   const id = rec.x + "," + rec.y + "," + rec.type;
                   if (!out._seen) out._seen = new Set();
                   if (out._seen.has(id)) continue;
@@ -780,12 +780,12 @@ async function assertKeyModeStartsWithKeyAndBlock(launch) {
         return out;
       }
       function snap(ka) {
-        g.settings.ub = 8;
-        g.settings.ob = 8;
+        g.settings.yb = 8;
+        g.settings.wb = 8;
         g.settings.ka = ka;
         g.settings.Ca = ka;
         window.CurrentModeNum = 8;
-        g.nj = false;
+        g.uj = false;
         g.reset();
         const kb = keyBox();
         const keys = kb
@@ -793,13 +793,13 @@ async function assertKeyModeStartsWithKeyAndBlock(launch) {
               x: k.pos.x,
               y: k.pos.y,
               type: k.type,
-              bx: k.r7a && k.r7a.x,
-              by: k.r7a && k.r7a.y,
+              bx: k.q7a && k.q7a.x,
+              by: k.q7a && k.q7a.y,
             }))
           : [];
         const blocks = keyblocks();
         return {
-          apples: (g.wa.ka || []).length,
+          apples: (g.oa.ka || []).length,
           keys,
           blocks,
         };
@@ -893,41 +893,41 @@ describe("Walls spawn every apple", { skip: !runBrowser }, () => {
       const probe = await h.page.evaluate(() => {
         const g = window.__remixGame;
         function wallCount() {
-          const map = g.Ca && g.Ca.Aa;
+          const map = g.Tw && g.Tw.wa;
           if (map && typeof map.size === "number") return map.size;
           return -1;
         }
         function revive() {
-          g.nj = false;
-          const snake = g.oa.ka;
+          g.uj = false;
+          const snake = g.Yc.ka;
           for (let i = 0; i < snake.length; i++) {
             snake[i].x = 6;
             snake[i].y = 8;
           }
-          g.oa.direction = "RIGHT";
+          g.Yc.direction = "RIGHT";
         }
         function startWall() {
-          g.settings.ub = 1;
-          g.settings.ob = 1;
+          g.settings.yb = 1;
+          g.settings.wb = 1;
           window.CurrentModeNum = 1;
-          g.wa.reset();
-          g.Sh = 0;
+          g.oa.reset();
+          g.Bi = 0;
           revive();
         }
         function eatOne() {
-          const apples = g.wa.ka;
+          const apples = g.oa.ka;
           if (!apples.length) return false;
           revive();
-          const head = g.oa.ka[0];
+          const head = g.Yc.ka[0];
           apples[0].pos.x = head.x + 1;
           apples[0].pos.y = head.y;
-          const before = g.Sh;
+          const before = g.Bi;
           for (let i = 0; i < 6; i++) {
-            if (g.nj) revive();
+            if (g.uj) revive();
             g.tick();
-            if (g.Sh > before) return true;
+            if (g.Bi > before) return true;
           }
-          return g.Sh > before;
+          return g.Bi > before;
         }
         function eatTwo(everyApple) {
           window.pudding_settings.WallEveryApple = !!everyApple;

@@ -144,9 +144,9 @@ window.fear_mode_selected = function fear_mode_selected() {
   const g = window.__remixGame;
   const mode =
     g && g.settings
-      ? g.settings.ub != null
-        ? g.settings.ub
-        : g.settings.ob
+      ? g.settings.yb != null
+        ? g.settings.yb
+        : g.settings.wb
       : null;
   return (
     mode === window.FEAR_MODE ||
@@ -157,7 +157,7 @@ window.fear_mode_selected = function fear_mode_selected() {
 
 window.fear_has_slot_ghost = function fear_has_slot_ghost(game) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!list) return false;
   for (let i = 0; i < list.length; i++) {
     if (list[i] && list[i].__slotFearGhost) return true;
@@ -215,7 +215,7 @@ window.fear_key = function fear_key(x, y) {
 };
 
 window.fear_head = function fear_head(game) {
-  const snake = game && game.oa;
+  const snake = game && game.Yc;
   return snake && snake.ka && snake.ka[0];
 };
 
@@ -224,8 +224,8 @@ window.fear_box = function fear_box(game) {
   const box =
     g &&
     ((g.ka && g.ka.oa) ||
-      (g.wa && g.wa.oa && g.wa.oa.oa) ||
-      (g.oa && g.oa.oa));
+      (g.oa && g.oa.oa && g.oa.oa.oa) ||
+      (g.Yc && g.Yc.oa));
   return box
     ? { width: box.width | 0, height: box.height | 0 }
     : null;
@@ -234,8 +234,8 @@ window.fear_box = function fear_box(game) {
 window.fear_wraps = function fear_wraps(game) {
   const g = game || window.__remixGame;
   try {
-    if (typeof e7 === "function" && g && g.settings) {
-      return !!(e7(g.settings, 4) || e7(g.settings, 21));
+    if (typeof M7 === "function" && g && g.settings) {
+      return !!(M7(g.settings, 4) || M7(g.settings, 21));
     }
   } catch (_e) {}
   return !!(
@@ -263,7 +263,7 @@ window.fear_step = function fear_step(pos, dir, game) {
 
 window.fear_wall_keys = function fear_wall_keys(game) {
   const keys = new Set();
-  const walls = game && game.Ca && game.Ca.Aa;
+  const walls = game && game.Tw && game.Tw.wa;
   if (!walls || typeof walls.values !== "function") return keys;
   try {
     for (const wall of walls.values()) {
@@ -280,7 +280,7 @@ window.fear_is_ghost = function fear_is_ghost(fruit) {
   return !!(
     fruit.__fearGhost ||
     fruit.__slotFearGhost ||
-    (fruit.Oka && window.fear_mode_selected())
+    (fruit.Bea && window.fear_mode_selected())
   );
 };
 
@@ -292,10 +292,10 @@ window.fear_capture_ghost_type = function fear_capture_ghost_type(fruit) {
   if (
     fruit.__slotFearGhost ||
     fruit.__fearGhost ||
-    (fruit.Oka && window.fear_mode_selected())
+    (fruit.Bea && window.fear_mode_selected())
   ) {
     fruit.__fearGhost = true;
-    fruit.Oka = false;
+    fruit.Bea = false;
     return true;
   }
   return false;
@@ -324,7 +324,7 @@ window.fear_sync_fruit_type = function fear_sync_fruit_type(fruit) {
 
 window.fear_sync_fruit_types = function fear_sync_fruit_types(game) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!list) return;
   for (let i = 0; i < list.length; i++) {
     window.fear_sync_fruit_type(list[i]);
@@ -341,8 +341,8 @@ window.fear_owner_id = function fear_owner_id(fruit) {
 window.fear_is_moving_mode = function fear_is_moving_mode(game) {
   const g = game || window.__remixGame;
   try {
-    if (typeof e7 === "function" && g && g.settings) {
-      if (e7(g.settings, 6) || e7(g.settings, 18)) return true;
+    if (typeof M7 === "function" && g && g.settings) {
+      if (M7(g.settings, 6) || M7(g.settings, 18)) return true;
     }
   } catch (_e) {}
   return !!(
@@ -381,7 +381,7 @@ window.fear_fruit_near_corner = function fear_fruit_near_corner(x, y, game) {
 window.fear_regroup_ten = function fear_regroup_ten(game) {
   if (window.__fearTenSide != null) return;
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!window.fear_mode_selected() || !list || !g.settings) return;
   // Keep every count layout, including 10a, in its native Poison-pair
   // positions. Fear only swaps the paired bad fruit to the ghost atlas.
@@ -390,7 +390,7 @@ window.fear_regroup_ten = function fear_regroup_ten(game) {
 
 window.fear_initialize_layout = function fear_initialize_layout(game) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!window.fear_mode_selected() || !list || window.__fearLayoutReady) return;
   window.fear_regroup_ten(g);
   if (!list.some(function (fruit) {
@@ -417,8 +417,8 @@ window.fear_initialize_layout = function fear_initialize_layout(game) {
         const firstGhost = Math.random() < 0.5;
         a.__fearGhost = firstGhost;
         b.__fearGhost = !firstGhost;
-        a.Oka = false;
-        b.Oka = false;
+        a.Bea = false;
+        b.Bea = false;
       }
     }
   }
@@ -428,9 +428,9 @@ window.fear_initialize_layout = function fear_initialize_layout(game) {
       window.__fearSeenFruits.add(list[i]);
     }
   }
-  if (window.__fearWaveGhostFill && g.wa) {
+  if (window.__fearWaveGhostFill && g.oa) {
     try {
-      window.fear_wave_ghost_fill(g.wa);
+      window.fear_wave_ghost_fill(g.oa);
     } catch (_e) {
       window.__fearWaveGhostFill = false;
     }
@@ -439,7 +439,7 @@ window.fear_initialize_layout = function fear_initialize_layout(game) {
 
 window.fear_pair_new_fruits = function fear_pair_new_fruits(game) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!window.fear_mode_selected() || !list) return;
   const freshObjects = [];
   for (let i = 0; i < list.length; i++) {
@@ -451,11 +451,11 @@ window.fear_pair_new_fruits = function fear_pair_new_fruits(game) {
   for (let i = 0; i + 1 < freshObjects.length; i += 2) {
     const a = freshObjects[i];
     const b = freshObjects[i + 1];
-    if (!!a.Oka !== !!b.Oka) {
+    if (!!a.Bea !== !!b.Bea) {
       // Native poison pair: Oka marks the bad twin.
-      a.__fearGhost = !!a.Oka;
-      b.__fearGhost = !!b.Oka;
-    } else if (a.Oka && b.Oka) {
+      a.__fearGhost = !!a.Bea;
+      b.__fearGhost = !!b.Bea;
+    } else if (a.Bea && b.Bea) {
       const firstGhost = Math.random() < 0.5;
       a.__fearGhost = firstGhost;
       b.__fearGhost = !firstGhost;
@@ -466,8 +466,8 @@ window.fear_pair_new_fruits = function fear_pair_new_fruits(game) {
       a.__fearGhost = false;
       b.__fearGhost = false;
     }
-    if (window.fear_is_ghost(a)) a.Oka = false;
-    if (window.fear_is_ghost(b)) b.Oka = false;
+    if (window.fear_is_ghost(a)) a.Bea = false;
+    if (window.fear_is_ghost(b)) b.Bea = false;
     window.fear_sync_fruit_type(a);
     window.fear_sync_fruit_type(b);
   }
@@ -480,7 +480,7 @@ window.fear_position_occupied = function fear_position_occupied(
   except
 ) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (list) {
     for (let i = 0; i < list.length; i++) {
       const fruit = list[i];
@@ -493,7 +493,7 @@ window.fear_position_occupied = function fear_position_occupied(
       }
     }
   }
-  const snake = g && g.oa && g.oa.ka;
+  const snake = g && g.Yc && g.Yc.ka;
   if (snake) {
     for (let i = 0; i < snake.length; i++) {
       if (
@@ -636,7 +636,7 @@ window.fear_direction_safe = function fear_direction_safe(
   if (!next) return false;
   const key = window.fear_key(next.x, next.y);
   if (window.fear_wall_keys(game).has(key)) return false;
-  const body = game && game.oa && game.oa.ka;
+  const body = game && game.Yc && game.Yc.ka;
   if (body) {
     for (let i = 1; i < body.length; i++) {
       if (
@@ -656,7 +656,7 @@ window.fear_choose_direction = function fear_choose_direction(
   cell,
   owner
 ) {
-  const snake = game && game.oa;
+  const snake = game && game.Yc;
   const head = window.fear_head(game);
   const facing = (snake && snake.direction) || window.head_dir || "RIGHT";
   if (!owner || !owner.fruit || !owner.fruit.pos || !head) return facing;
@@ -704,7 +704,7 @@ window.fear_choose_direction = function fear_choose_direction(
 
 window.fear_rebuild_grid = function fear_rebuild_grid(game) {
   const g = game || window.__remixGame;
-  const mgr = g && g.wa;
+  const mgr = g && g.oa;
   const list = mgr && mgr.ka;
   if (!list) {
     window.__fearGrid = new Map();
@@ -757,7 +757,7 @@ window.fear_rebuild_grid = function fear_rebuild_grid(game) {
   for (const cell of grid.values()) {
     cell.direction =
       cell.owners.length > 1
-        ? (g.oa && g.oa.direction) || window.head_dir || "RIGHT"
+        ? (g.Yc && g.Yc.direction) || window.head_dir || "RIGHT"
         : window.fear_choose_direction(g, cell, cell.owners[0]);
     cell.__fearArrow = true;
   }
@@ -769,7 +769,7 @@ window.fear_rebuild_grid = function fear_rebuild_grid(game) {
 
 window.fear_layout_signature = function fear_layout_signature(game) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!list) return "";
   const parts = [];
   for (let i = 0; i < list.length; i++) {
@@ -790,17 +790,17 @@ window.fear_layout_signature = function fear_layout_signature(game) {
 };
 
 window.fear_apply_direction = function fear_apply_direction(game, dir) {
-  const snake = game && game.oa;
+  const snake = game && game.Yc;
   if (!snake || !dir || dir === "NONE") return;
   const x = Math.round(+window.fear_head(game).x);
   const y = Math.round(+window.fear_head(game).y);
   const rows = [];
   rows[y] = [];
-  rows[y][x] = { direction: dir, wm: true };
+  rows[y][x] = { direction: dir, Rm: true };
   const manager = {
     ka: rows,
-    settings: { ub: -1, ob: -1, Qa: false },
-    oa: game && game.oa && game.oa.oa,
+    settings: { yb: -1, wb: -1, La: false },
+    oa: game && game.Yc && game.Yc.oa,
   };
   if (typeof window.__fearNativeArrowStep === "function") {
     const result = window.__fearNativeArrowStep(
@@ -814,18 +814,18 @@ window.fear_apply_direction = function fear_apply_direction(game, dir) {
   } else if (dir === window.fear_opposite(snake.direction)) {
     // Unit-test/unsupported-build fallback mirrors Arrow mode's reverse-arrow
     // collision. Live games always use the exposed native adapter.
-    if (game && typeof game.Oa === "function") game.Oa();
+    if (game && typeof game.Ka === "function") game.Ka();
     return "CRASH";
   } else if (typeof window.__fearNativeTurn === "function") {
     window.__fearNativeTurn(snake, dir);
   } else {
     // Unit-test/unsupported-build fallback only. Live games use S6E.
     snake.direction = dir;
-    snake.Qb = true;
-    snake.yb = "NONE";
-    snake.Ga = "NONE";
-    if (snake.Fb) snake.kc = snake.direction;
-    snake.Fb = false;
+    snake.Ob = true;
+    snake.Lb = "NONE";
+    snake.Ia = "NONE";
+    if (snake.yb) snake.Zb = snake.direction;
+    snake.yb = false;
   }
   window.head_dir = snake.direction;
   return dir;
@@ -847,14 +847,14 @@ window.fear_native_arrow_feedback = function fear_native_arrow_feedback(
   const y = Math.round(+cell.y);
   const rows = [];
   rows[y] = [];
-  rows[y][x] = { direction: dir, wm: true };
+  rows[y][x] = { direction: dir, Rm: true };
   // h7 clears this disposable tile and plays the same directional sound as a
   // real Arrow-mode collision. The persistent Fear grid is left untouched.
   window.__fearNativeArrowConsume(
     {
       ka: rows,
-      settings: { ub: -1, ob: -1, Qa: false },
-      oa: game && game.oa && game.oa.oa,
+      settings: { yb: -1, wb: -1, La: false },
+      oa: game && game.Yc && game.Yc.oa,
     },
     { x: x, y: y },
     true
@@ -867,7 +867,7 @@ window.fear_resolve_cell_direction = function fear_resolve_cell_direction(
 ) {
   if (!cell || !cell.owners || !cell.owners.length) return "NONE";
   const facing =
-    (game && game.oa && game.oa.direction) ||
+    (game && game.Yc && game.Yc.direction) ||
     window.head_dir ||
     cell.direction;
   if (cell.owners.length > 1) {
@@ -880,7 +880,7 @@ window.fear_resolve_cell_direction = function fear_resolve_cell_direction(
 };
 
 window.fear_remove_ghosts = function fear_remove_ghosts(game, owners) {
-  const list = game && game.wa && game.wa.ka;
+  const list = game && game.oa && game.oa.ka;
   if (!list) return 0;
   const remove = new Set();
   for (let i = 0; i < owners.length; i++) {
@@ -900,8 +900,8 @@ window.fear_remove_ghosts = function fear_remove_ghosts(game, owners) {
 
 window.fear_win_if_empty = function fear_win_if_empty(game, mgr) {
   const g = game || window.__remixGame;
-  const manager = mgr || (g && g.wa);
-  if (!g || g.nj || !manager || !manager.ka || manager.ka.length) return false;
+  const manager = mgr || (g && g.oa);
+  if (!g || g.uj || !manager || !manager.ka || manager.ka.length) return false;
   if (
     window.isSlotMachineActive &&
     window.isSlotMachineActive() &&
@@ -913,8 +913,8 @@ window.fear_win_if_empty = function fear_win_if_empty(game, mgr) {
     window.bombFruit_trigger_win(g);
     return true;
   }
-  g.ub = true;
-  g.nj = true;
+  g.Za = true;
+  g.uj = true;
   return true;
 };
 
@@ -960,12 +960,12 @@ window.fear_process_arrow = function fear_process_arrow(game, cell) {
     window.fear_expire();
   }
   window.fear_rebuild_grid(game);
-  window.fear_win_if_empty(game, game && game.wa);
+  window.fear_win_if_empty(game, game && game.oa);
   return true;
 };
 
 window.fear_find_fruit = function fear_find_fruit(game, pos) {
-  const list = game && game.wa && game.wa.ka;
+  const list = game && game.oa && game.oa.ka;
   if (!list || !pos) return null;
   for (let i = 0; i < list.length; i++) {
     const f = list[i];
@@ -982,7 +982,7 @@ window.fear_find_fruit = function fear_find_fruit(game, pos) {
 };
 
 window.fear_reconcile_pairs = function fear_reconcile_pairs(game, trimExcess) {
-  const list = game && game.wa && game.wa.ka;
+  const list = game && game.oa && game.oa.ka;
   if (!list) return;
   const groups = new Map();
   for (let i = 0; i < list.length; i++) {
@@ -1025,7 +1025,7 @@ window.fear_reconcile_pairs = function fear_reconcile_pairs(game, trimExcess) {
 };
 
 window.fear_remove_fresh_pair = function fear_remove_fresh_pair(game, fruit) {
-  const list = game && game.wa && game.wa.ka;
+  const list = game && game.oa && game.oa.ka;
   if (!list || !fruit || window.fear_is_ghost(fruit)) return 0;
   window.fear_reconcile_pairs(game, true);
   // Already missing ghosts vs fruit: never despawn another ghost on this eat.
@@ -1071,19 +1071,19 @@ window.fear_before_native_fruit_eat =
       window.fear_direct_contact(game, fruit);
       // The native branch has already retained this object in `d`. Mark that
       // stale reference as poison so it cannot score, grow, or trigger refill.
-      fruit.Oka = true;
+      fruit.Bea = true;
       return Math.max(0, nativeIndex | 0);
     }
     window.fear_remove_fresh_pair(game, fruit);
-    const updated = game.wa && game.wa.ka
-      ? game.wa.ka.indexOf(fruit)
+    const updated = game.oa && game.oa.ka
+      ? game.oa.ka.indexOf(fruit)
       : -1;
     return updated >= 0 ? updated : nativeIndex;
   };
 
 window.fear_board_counts = function fear_board_counts(game) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!list) return { ghosts: 0, fresh: 0, list: null };
   window.fear_sync_fruit_types(g);
   let ghosts = 0;
@@ -1106,7 +1106,7 @@ window.fear_mark_new_as_ghosts = function fear_mark_new_as_ghosts(
     const fruit = list[i];
     if (!fruit) continue;
     fruit.__fearGhost = true;
-    fruit.Oka = false;
+    fruit.Bea = false;
     if (fruit.slotMode != null) delete fruit.slotMode;
     window.__fearSeenFruits.add(fruit);
     window.fear_sync_fruit_type(fruit);
@@ -1251,7 +1251,7 @@ window.fear_wave_ghost_fill = function fear_wave_ghost_fill(mgr, nativeTopUp) {
 /** Max sequenceNumber among edible (non-ghost) fruit; 0 if none. */
 window.fear_tally_max_fruit_index = function fear_tally_max_fruit_index(game) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!list) return 0;
   let max = 0;
   for (let i = 0; i < list.length; i++) {
@@ -1378,14 +1378,14 @@ window.fear_should_wave_ghost_fill = function fear_should_wave_ghost_fill(
 /** Edible fruit left — mirrors patched r7E poison/Fear branch (skips ghosts). */
 window.fear_edible_fruit_count = function fear_edible_fruit_count(game) {
   const g = game || window.__remixGame;
-  const list = g && g.wa && g.wa.ka;
+  const list = g && g.oa && g.oa.ka;
   if (!list) return 0;
   let c = 0;
   for (let i = 0; i < list.length; i++) {
     const d = list[i];
     if (!d) continue;
-    if (d.Lh === false) continue;
-    if (d.Oka || (window.fear_is_ghost && window.fear_is_ghost(d))) continue;
+    if (d.Xg === false) continue;
+    if (d.Bea || (window.fear_is_ghost && window.fear_is_ghost(d))) continue;
     c++;
   }
   return c;
@@ -1395,7 +1395,7 @@ window.fear_edible_fruit_count = function fear_edible_fruit_count(game) {
 window.fear_stamp_ghost_tally_from_pairs =
   function fear_stamp_ghost_tally_from_pairs(game) {
     const g = game || window.__remixGame;
-    const list = g && g.wa && g.wa.ka;
+    const list = g && g.oa && g.oa.ka;
     if (!list) return;
     for (let i = 0; i < list.length; i++) {
       const ghost = list[i];
@@ -1431,8 +1431,8 @@ window.fear_find_free_pos = function fear_find_free_pos(mgr, except) {
           : null;
   const board =
     (mgr && mgr.oa) ||
-    (g && g.oa) ||
-    (g && g.wa && g.wa.oa) ||
+    (g && g.Yc) ||
+    (g && g.oa && g.oa.oa) ||
     null;
   if (typeof free === "function" && board) {
     for (let attempt = 0; attempt < 24; attempt++) {
@@ -1482,7 +1482,7 @@ window.fear_find_free_pos = function fear_find_free_pos(mgr, except) {
 
 window.fear_relocate_one_ghost = function fear_relocate_one_ghost(game, mgr) {
   const g = game || window.__remixGame;
-  const list = (mgr && mgr.ka) || (g && g.wa && g.wa.ka);
+  const list = (mgr && mgr.ka) || (g && g.oa && g.oa.ka);
   if (!list || !list.length) return false;
   const ghosts = [];
   for (let i = 0; i < list.length; i++) {
@@ -1490,7 +1490,7 @@ window.fear_relocate_one_ghost = function fear_relocate_one_ghost(game, mgr) {
   }
   if (!ghosts.length) return false;
   const ghost = ghosts[(Math.random() * ghosts.length) | 0];
-  const next = window.fear_find_free_pos(mgr || (g && g.wa), ghost);
+  const next = window.fear_find_free_pos(mgr || (g && g.oa), ghost);
   if (!next || !ghost.pos) return false;
   if (
     Math.round(+ghost.pos.x) === next.x &&
@@ -1557,7 +1557,7 @@ window.fear_native_ghost_top_up =
 window.fear_direct_contact = function fear_direct_contact(game, fruit) {
   if (!fruit) return false;
   const head = window.fear_head(game);
-  const snake = game && game.oa;
+  const snake = game && game.Yc;
   const facing = (snake && snake.direction) || window.head_dir || "RIGHT";
   const virtual = {
     x: Math.round(+head.x),
@@ -1577,13 +1577,13 @@ window.fear_direct_contact = function fear_direct_contact(game, fruit) {
   } else {
     window.fear_expire();
   }
-  window.fear_win_if_empty(game, game && game.wa);
+  window.fear_win_if_empty(game, game && game.oa);
   return true;
 };
 
 window.fear_tick_logic = function fear_tick_logic(game) {
   const g = game || window.__remixGame;
-  if (!g || !g.wa || !g.oa || g.nj) return;
+  if (!g || !g.oa || !g.Yc || g.uj) return;
   window.__remixGame = g;
   window.__fearRefreshedMove = false;
   const head = window.fear_head(g);
@@ -1628,13 +1628,13 @@ window.fear_tick_logic = function fear_tick_logic(game) {
 
   // Prevent the missing-arrow fallback from ever entering a ghost. During
   // Fear, direct entry into ordinary fruit behaves like its temporary arrow.
-  const facing = (g.oa && g.oa.direction) || window.head_dir || "RIGHT";
+  const facing = (g.Yc && g.Yc.direction) || window.head_dir || "RIGHT";
   const next = window.fear_step(head, facing, g);
   const target = window.fear_find_fruit(g, next);
   if (
     target &&
     (window.fear_is_ghost(target) ||
-      ((window.fearTurnsRemaining | 0) > 0 && !target.Oka))
+      ((window.fearTurnsRemaining | 0) > 0 && !target.Bea))
   ) {
     window.fear_direct_contact(g, target);
   }
@@ -1644,8 +1644,8 @@ window.fear_tick_logic = function fear_tick_logic(game) {
 };
 
 window.fear_draw_arrows = function fear_draw_arrows(board) {
-  const game = board.wb || window.__remixGame;
-  if (!game || game.nj) return;
+  const game = board.ub || window.__remixGame;
+  if (!game || game.uj) return;
   // Fruit may move or be spawned after the pre-move Fear tick. Reconcile once
   // when its rounded tile layout changes, before any arrow pixels are drawn.
   if (window.fear_layout_signature(game) !== window.__fearGridSignature) {
@@ -1659,8 +1659,9 @@ window.fear_draw_arrows = function fear_draw_arrows(board) {
   // Native q4E/r4E Arrow-mode geometry.
   const pixel = (function () {
     try {
-      return typeof $6 === "function" && board.settings
-        ? !!$6(board.settings)
+      // v14: v13's $6(settings) pixel check became settings.RM().
+      return board.settings && typeof board.settings.RM === "function"
+        ? !!board.settings.RM()
         : false;
     } catch (_e) {
       return false;
@@ -1756,7 +1757,7 @@ window.fear_after_respawn = function fear_after_respawn(mgr) {
             window.__fearTallyGhostFillScheduled = false;
             if (!window.isFearActive || !window.isFearActive()) return;
             const game = window.__remixGame;
-            const appleMgr = game && game.wa;
+            const appleMgr = game && game.oa;
             if (!appleMgr) return;
             window.__fearWaveGhostFill = true;
             const counts = window.fear_board_counts(game);
@@ -1827,56 +1828,57 @@ window.FearMod.alterSnakeCode = function (code) {
   // direction lookup, reverse-arrow crash, turn transition, and tile consume.
   fearReplace(
     "native Arrow collision exposure",
-    /S6E=function\(a,b\)\{a\.direction=b;a\.Qb=!0;a\.yb="NONE";a\.Ga="NONE";a\.Fb&&\(a\.kc=a\.direction\);a\.Fb=!1\}/,
-    'S6E=(window.__fearNativeArrowConsume=h7,window.__fearNativeTurn=function(a,b){a.direction=b;a.Qb=!0;a.yb="NONE";a.Ga="NONE";a.Fb&&(a.kc=a.direction);a.Fb=!1},window.__fearNativeArrowStep=function(a,b,c,d){var e=U3E(b,d);if(e==="NONE")return e;if(e===Z6(c.direction)){a&&typeof a.Oa==="function"&&a.Oa();return"CRASH"}S6E(c,e);h7(b,d,!0);return e},window.__fearNativeTurn)'
+    /PrF=function\(a,b\)\{a\.direction=b;a\.Ob=!0;a\.Lb="NONE";a\.Ia="NONE";a\.yb&&\(a\.Zb=a\.direction\);a\.yb=!1\}/,
+    'PrF=(window.__fearNativeArrowConsume=T7,window.__fearNativeTurn=function(a,b){a.direction=b;a.Ob=!0;a.Lb="NONE";a.Ia="NONE";a.yb&&(a.Zb=a.direction);a.yb=!1},window.__fearNativeArrowStep=function(a,b,c,d){var e=loF(b,d);if(e==="NONE")return e;if(e===K7(c.direction)){a&&typeof a.Ka==="function"&&a.Ka();return"CRASH"}PrF(c,e);T7(b,d,!0);return e},window.__fearNativeTurn)'
   );
 
   // Keep handles so post-respawn can top-up / relocate ghosts.
   fearReplace(
     "expose native e4E",
-    /,e4E=function\(a\)\{/,
-    ",e4E=window.__fearE4E=function(a){"
+    /,uoF=function\(a\)\{/,
+    ",uoF=window.__fearE4E=function(a){"
   );
-  fearReplace(
-    "expose native d4E",
-    /,d4E=function\(a,b,c\)\{/,
-    ",d4E=window.__fearFreePos=function(a,b,c){"
-  );
+  // v14 inlined v13's d4E(board,b,c){return board.Ga(b,c,void 0)} at every
+  // call site as board.Ba(b,c,void 0); there is no function left to patch,
+  // so expose an equivalent adapter directly.
+  window.__fearFreePos = function (a, b, c) {
+    return a.Ba(b, c, void 0);
+  };
   fearReplace(
     "expose native r7E",
-    /,r7E=function\(/,
-    ",r7E=window.__fearR7E=window.r7E=function("
+    /,nsF=function\(/,
+    ",nsF=window.__fearR7E=window.r7E=function("
   ) ||
     fearReplace(
       "expose native r7E (spaced)",
-      /,\s*r7E\s*=\s*function\s*\(/,
-      ",r7E=window.__fearR7E=window.r7E=function("
+      /,\s*nsF\s*=\s*function\s*\(/,
+      ",nsF=window.__fearR7E=window.r7E=function("
     );
   fearReplace(
     "expose native t7E",
-    /,t7E=function\(([^)]*)\)\{/,
-    ",t7E=window.__fearT7E=window.t7E=function($1){if(window.isFearActive&&window.isFearActive())window.__fearWaveGhostFill=!0;"
+    /,psF=function\(([^)]*)\)\{/,
+    ",psF=window.__fearT7E=window.t7E=function($1){if(window.isFearActive&&window.isFearActive())window.__fearWaveGhostFill=!0;"
   ) ||
     fearReplace(
       "expose native t7E (spaced)",
-      /,\s*t7E\s*=\s*function\s*\(([^)]*)\)\s*\{/,
-      ",t7E=window.__fearT7E=window.t7E=function($1){if(window.isFearActive&&window.isFearActive())window.__fearWaveGhostFill=!0;"
+      /,\s*psF\s*=\s*function\s*\(([^)]*)\)\s*\{/,
+      ",psF=window.__fearT7E=window.t7E=function($1){if(window.isFearActive&&window.isFearActive())window.__fearWaveGhostFill=!0;"
     );
 
   // Treat full Fear / Fear blender as native Poison for pair counts and refill.
   fearReplace(
     "e7 poison clone",
     /if\(!r&&b===1&&\(\(window\.isTempWallsActive&&window\.isTempWallsActive\(\)\)\|\|\(window\.tempWalls_has_any&&window\.tempWalls_has_any\(window\.__remixGame\)\)\)\)return!0;return r\}/,
-    "if(!r&&b===1&&((window.isTempWallsActive&&window.isTempWallsActive())||(window.tempWalls_has_any&&window.tempWalls_has_any(window.__remixGame))))return!0;if(!r&&b===10&&window.FEAR_MODE!=null){if(a.ub===window.FEAR_MODE||a.ub==='fear'||a.ob==='fear')return!0;if((a.ub===22||a.ub==='blender')&&a.rSa&&a.rSa.has(window.FEAR_MODE))return!0;if(a.Qa&&a.Lc&&(a.Lc.has(window.FEAR_MODE)||a.Lc.has('fear')))return!0;}return r}"
+    "if(!r&&b===1&&((window.isTempWallsActive&&window.isTempWallsActive())||(window.tempWalls_has_any&&window.tempWalls_has_any(window.__remixGame))))return!0;if(!r&&b===10&&window.FEAR_MODE!=null){if(a.yb===window.FEAR_MODE||a.yb==='fear'||a.wb==='fear')return!0;if((a.yb===22||a.yb==='blender')&&a.NSa&&a.NSa.has(window.FEAR_MODE))return!0;if(a.La&&a.jd&&(a.jd.has(window.FEAR_MODE)||a.jd.has('fear')))return!0;}return r}"
   );
 
   // Draw ghost art for Fear Oka only; normal Poison/custom poison stays intact.
   const poisonDraw =
-    /([a-zA-Z0-9_$])=([a-zA-Z0-9_$])\.Oka\?E3E\(this\.([a-zA-Z0-9_$]{1,8})\[([a-zA-Z0-9_$])\],\2\.([a-zA-Z0-9_$]{1,8})\)\.ka\.canvas:this\.\3\[\4\]\.uH\(\2\.\5\)/;
+    /([a-zA-Z0-9_$])=([a-zA-Z0-9_$])\.Bea\?WnF\(this\.([a-zA-Z0-9_$]{1,8})\[([a-zA-Z0-9_$])\],\2\.([a-zA-Z0-9_$]{1,8})\)\.ka\.canvas:this\.\3\[\4\]\.lJ\(\2\.\5\)/;
   if (poisonDraw.test(code)) {
     code = code.assertReplace(
       poisonDraw,
-      "$1=(window.fear_sync_fruit_type&&window.fear_sync_fruit_type($2),window.fear_is_ghost&&window.fear_is_ghost($2)?this.$3[$4].uH($2.$5):($2.Oka?E3E(this.$3[$4],$2.$5).ka.canvas:this.$3[$4].uH($2.$5)))"
+      "$1=(window.fear_sync_fruit_type&&window.fear_sync_fruit_type($2),window.fear_is_ghost&&window.fear_is_ghost($2)?this.$3[$4].lJ($2.$5):($2.Bea?WnF(this.$3[$4],$2.$5).ka.canvas:this.$3[$4].lJ($2.$5)))"
     );
   } else {
     console.error("FearMod: failed to find poison draw");
@@ -1892,49 +1894,49 @@ window.FearMod.alterSnakeCode = function (code) {
   // is applied. S6E then clears yb/Ga exactly like a real forced arrow turn.
   fearReplace(
     "Fear tick at native Arrow timing",
-    /if\(e7\(this\.settings,16\)\)\{var Mb=this\.oa;let fd=Mb\.ka\[0\];if\(!e7\(Mb\.settings,11\)\|\|T3E\(Mb\.Rb,fd\)\)\{var Kb=U3E\(Mb\.Rb,fd\);Kb!=="NONE"&&\(Kb!==Z6\(Mb\.direction\)&&S6E\(Mb,Kb\),h7\(Mb\.Rb,fd,!0\)\)\}\}/,
+    /if\(M7\(this\.settings,16\)\)\{var pc=this\.Yc;let sc=pc\.ka\[0\];if\(!M7\(pc\.settings,11\)\|\|koF\(pc\.Qb,sc\)\)\{var Lb=loF\(pc\.Qb,sc\);Lb!=="NONE"&&\(Lb!==K7\(pc\.direction\)&&PrF\(pc,Lb\),T7\(pc\.Qb,sc,!0\)\)\}\}/,
     '$&if(window.isFearActive&&window.isFearActive()){try{window.fear_tick_logic(this);}catch(_fr){console.error("FearMod: tick failed",_fr);}}'
   );
 
   fearReplace(
     "Fear paired fruit before native eat",
-    /if\(e\|\|f\)\{g=d\.Oka;/,
-    "if(e||f){if(window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(a))k=window.fear_before_native_fruit_eat(a,d,k);g=d.Oka;"
+    /if\(e\|\|f\)\{g=d\.Bea;/,
+    "if(e||f){if(window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(a))k=window.fear_before_native_fruit_eat(a,d,k);g=d.Bea;"
   );
 
   // Ghost mode removes the paired ghost just before this eat loop. Do not let
   // Poison's Oka-based helper remove a second, unrelated fruit afterward.
   fearReplace(
     "skip native poison pair removal for Fear",
-    /e7\(a\.settings,10\)&&i4E\(a\.wa,([a-zA-Z0-9_$]{1,6}),([a-zA-Z0-9_$]{1,6}),a\.Lc\.bind\(a\)\)&&\1--/,
-    "e7(a.settings,10)&&!(window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(a))&&i4E(a.wa,$1,$2,a.Lc.bind(a))&&$1--"
+    /M7\(a\.settings,10\)&&zoF\(a\.oa,([a-zA-Z0-9_$]{1,6}),([a-zA-Z0-9_$]{1,6}),a\.Cc\.bind\(a\)\)&&\1--/,
+    "M7(a.settings,10)&&!(window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(a))&&zoF(a.oa,$1,$2,a.Cc.bind(a))&&$1--"
   );
 
   fearReplace(
     "conditional Fear poison twin spawn",
-    /e7\(a\.settings,10\)&&!f((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&e4E\(a\)/,
-    "e7(a.settings,10)&&!f$1&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+    /M7\(a\.settings,10\)&&!f((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&uoF\(a\)/,
+    "M7(a.settings,10)&&!f$1&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,uoF):uoF(a))"
   );
 
   fearReplace(
     "conditional Fear poison top-up",
-    /b<a\.ka\.length\/2((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&e4E\(a\)/,
-    "b<a.ka.length/2$1&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,e4E):e4E(a))"
+    /b<a\.ka\.length\/2((?:&&!\((?:[^()]|\([^()]*\))*\))?)&&uoF\(a\)/,
+    "b<a.ka.length/2$1&&((window.fear_uses_ghost_pairs&&window.fear_uses_ghost_pairs(window.__remixGame))?window.fear_native_ghost_top_up(a,uoF):uoF(a))"
   );
 
   // Tally empty-count (r7E) only skips Oka. Fear clears Oka on ghosts for atlas
   // draw, which made ghosts block the next tally wave like Bomb's length check.
   const r7EGhostSkip =
-    /if\s*\(\s*e7\s*\(\s*b\.settings\s*,\s*10\s*\)\s*\|\|\s*e7\s*\(\s*b\.settings\s*,\s*11\s*\)\s*\)\s*for\s*\(\s*(?:var|let|const)\s+d\s+of\s+b\.ka\s*\)\s*!d\.Oka\s*&&\s*d\.Lh\s*&&\s*c\+\+/;
+    /if\s*\(\s*M7\s*\(\s*b\.settings\s*,\s*10\s*\)\s*\|\|\s*M7\s*\(\s*b\.settings\s*,\s*11\s*\)\s*\)\s*for\s*\(\s*(?:var|let|const)\s+d\s+of\s+b\.ka\s*\)\s*!d\.Bea\s*&&\s*d\.Xg\s*&&\s*c\+\+/;
   const r7EGhostRepl =
-    "if(e7(b.settings,10)||e7(b.settings,11))for(var d of b.ka)!(d.Oka||window.fear_is_ghost&&window.fear_is_ghost(d))&&d.Lh&&c++";
+    "if(M7(b.settings,10)||M7(b.settings,11))for(var d of b.ka)!(d.Bea||window.fear_is_ghost&&window.fear_is_ghost(d))&&d.Xg&&c++";
   if (
     !fearReplace("r7E ignore Fear ghosts like poison", r7EGhostSkip, r7EGhostRepl)
   ) {
     // Compact fallback (no whitespace flexibility).
     fearReplace(
       "r7E ignore Fear ghosts like poison (compact)",
-      /if\(e7\(b\.settings,10\)\|\|e7\(b\.settings,11\)\)for\(var d of b\.ka\)!d\.Oka&&d\.Lh&&c\+\+/,
+      /if\(M7\(b\.settings,10\)\|\|M7\(b\.settings,11\)\)for\(var d of b\.ka\)!d\.Bea&&d\.Xg&&c\+\+/,
       r7EGhostRepl
     );
   }
@@ -1953,8 +1955,8 @@ window.FearMod.alterSnakeCode = function (code) {
 
   fearReplace(
     "deathscreen Fear icon",
-    /\(a\.settings\.ob===window\.TEMP_WALLS_MODE\)\?window\.TEMP_WALLS_ICON:/,
-    "(a.settings.ob===window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON:(a.settings.ob===window.FEAR_MODE)?window.FEAR_ICON:"
+    /\(a\.settings\.wb===window\.TEMP_WALLS_MODE\)\?window\.TEMP_WALLS_ICON:/,
+    "(a.settings.wb===window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON:(a.settings.wb===window.FEAR_MODE)?window.FEAR_ICON:"
   );
   fearReplace(
     "blender Fear icon",

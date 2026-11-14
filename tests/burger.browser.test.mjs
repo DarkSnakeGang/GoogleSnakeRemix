@@ -6,12 +6,12 @@ const runBrowser = process.env.RUN_BROWSER_TESTS === "1";
 async function eatFreshAhead(page) {
   return page.evaluate(() => {
     const g = window.__remixGame;
-    const apples = g.wa.ka;
-    const fresh = apples.find((a) => a && !a.Oka);
+    const apples = g.oa.ka;
+    const fresh = apples.find((a) => a && !a.Bea);
     if (!fresh) return { ok: false, reason: "no fresh" };
 
-    const head = g.oa.ka[0];
-    const dir = g.oa.direction || "RIGHT";
+    const head = g.Yc.ka[0];
+    const dir = g.Yc.direction || "RIGHT";
     const next = { x: head.x, y: head.y };
     if (dir === "RIGHT") next.x += 1;
     else if (dir === "LEFT") next.x -= 1;
@@ -21,26 +21,26 @@ async function eatFreshAhead(page) {
     fresh.pos.x = next.x;
     fresh.pos.y = next.y;
 
-    const beforePoisons = apples.filter((a) => a.Oka).length;
-    const beforeScore = g.Sh;
-    const beforeLen = g.oa.Ta;
-    const beforeFresh = apples.filter((a) => !a.Oka).length;
+    const beforePoisons = apples.filter((a) => a.Bea).length;
+    const beforeScore = g.Bi;
+    const beforeLen = g.Yc.ka.length;
+    const beforeFresh = apples.filter((a) => !a.Bea).length;
 
     g.tick();
 
     return {
       ok: true,
       beforePoisons,
-      afterPoisons: g.wa.ka.filter((a) => a.Oka).length,
+      afterPoisons: g.oa.ka.filter((a) => a.Bea).length,
       scoreBefore: beforeScore,
-      scoreAfter: g.Sh,
+      scoreAfter: g.Bi,
       lenBefore: beforeLen,
-      lenAfter: g.oa.Ta,
+      lenAfter: g.Yc.ka.length,
       beforeFresh,
-      afterFresh: g.wa.ka.filter((a) => !a.Oka).length,
-      afterTotal: g.wa.ka.length,
+      afterFresh: g.oa.ka.filter((a) => !a.Bea).length,
+      afterTotal: g.oa.ka.length,
       fruitsEaten: window.burger_fruits_eaten,
-      ja: g.oa.Ja,
+      ja: g.Yc.Ca,
     };
   });
 }
@@ -48,11 +48,11 @@ async function eatFreshAhead(page) {
 async function eatPoisonAhead(page) {
   return page.evaluate(() => {
     const g = window.__remixGame;
-    const poison = g.wa.ka.find((a) => a && a.Oka);
+    const poison = g.oa.ka.find((a) => a && a.Bea);
     if (!poison) return { ok: false, reason: "no poison" };
 
-    const head = g.oa.ka[0];
-    const dir = g.oa.direction || "RIGHT";
+    const head = g.Yc.ka[0];
+    const dir = g.Yc.direction || "RIGHT";
     const next = { x: head.x, y: head.y };
     if (dir === "RIGHT") next.x += 1;
     else if (dir === "LEFT") next.x -= 1;
@@ -62,21 +62,21 @@ async function eatPoisonAhead(page) {
     poison.pos.x = next.x;
     poison.pos.y = next.y;
 
-    const beforeScore = g.Sh;
-    const beforeLen = g.oa.Ta;
-    const beforePoisons = g.wa.ka.filter((a) => a.Oka).length;
+    const beforeScore = g.Bi;
+    const beforeLen = g.Yc.ka.length;
+    const beforePoisons = g.oa.ka.filter((a) => a.Bea).length;
 
     g.tick();
 
     return {
       ok: true,
       scoreBefore: beforeScore,
-      scoreAfter: g.Sh,
+      scoreAfter: g.Bi,
       lenBefore: beforeLen,
-      lenAfter: g.oa.Ta,
+      lenAfter: g.Yc.ka.length,
       beforePoisons,
-      afterPoisons: g.wa.ka.filter((a) => a.Oka).length,
-      ja: g.oa.Ja,
+      afterPoisons: g.oa.ka.filter((a) => a.Bea).length,
+      ja: g.Yc.Ca,
     };
   });
 }
@@ -89,12 +89,12 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       await h.start({ mode: "burger", count: COUNT.ONE, size: SIZE.NORMAL });
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const a = g.wa.ka[0];
+        const a = g.oa.ka[0];
         a.burgerTimer = 5;
         a.burgerTimerMax = 30;
         a.burgerGrey = 80;
-        const head = g.oa.ka[0];
-        const dir = g.oa.direction || "RIGHT";
+        const head = g.Yc.ka[0];
+        const dir = g.Yc.direction || "RIGHT";
         const next = { x: head.x, y: head.y };
         if (dir === "RIGHT") next.x += 1;
         else if (dir === "LEFT") next.x -= 1;
@@ -103,15 +103,15 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         a.pos.x = next.x;
         a.pos.y = next.y;
         g.tick();
-        const fresh = g.wa.ka.find((x) => x && !x.Oka);
-        const expected = 25 + g.oa.ka.length;
+        const fresh = g.oa.ka.find((x) => x && !x.Bea);
+        const expected = 25 + g.Yc.ka.length;
         return {
           sameRef: fresh === a,
           timer: fresh ? fresh.burgerTimer : null,
           max: fresh ? fresh.burgerTimerMax : null,
           grey: fresh ? fresh.burgerGrey : null,
           expected,
-          score: g.Sh | 0,
+          score: g.Bi | 0,
         };
       });
       assert.equal(result.sameRef, true, JSON.stringify(result));
@@ -177,45 +177,45 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
             typeof window.__uaF === "function"
               ? window.__uaF
               : window.__l4E;
-          if (typeof pair === "function") pair(g.wa);
+          if (typeof pair === "function") pair(g.oa);
           // Race: settings already Burger, CurrentModeNum still classic.
           const saved = window.CurrentModeNum;
           window.CurrentModeNum = 0;
-          for (let i = 0; i < g.wa.ka.length; i++) g.wa.ka[i].Oka = false;
-          if (typeof pair === "function") pair(g.wa);
-          const racePoisons = g.wa.ka.filter((a) => a.Oka).length;
+          for (let i = 0; i < g.oa.ka.length; i++) g.oa.ka[i].Bea = false;
+          if (typeof pair === "function") pair(g.oa);
+          const racePoisons = g.oa.ka.filter((a) => a.Bea).length;
           // Harder race: __remixGame missing (pre-tick). Gates must use settings.
           window.__remixGame = null;
-          for (let i = 0; i < g.wa.ka.length; i++) {
-            g.wa.ka[i].Oka = false;
-            g.wa.ka[i].burgerTimer = null;
-            g.wa.ka[i].burgerTimerMax = null;
+          for (let i = 0; i < g.oa.ka.length; i++) {
+            g.oa.ka[i].Bea = false;
+            g.oa.ka[i].burgerTimer = null;
+            g.oa.ka[i].burgerTimerMax = null;
           }
-          if (typeof pair === "function") pair(g.wa);
+          if (typeof pair === "function") pair(g.oa);
           // Simulate an ungated native l4E that already paired Okas.
-          for (let i = 0; i + 1 < g.wa.ka.length; i += 2) {
-            g.wa.ka[i].Oka = true;
-            g.wa.ka[i + 1].Oka = false;
+          for (let i = 0; i + 1 < g.oa.ka.length; i += 2) {
+            g.oa.ka[i].Bea = true;
+            g.oa.ka[i + 1].Bea = false;
           }
-          const noGamePoisonsBefore = g.wa.ka.filter((a) => a.Oka).length;
+          const noGamePoisonsBefore = g.oa.ka.filter((a) => a.Bea).length;
           const viaSettings = !!(
             window.isBurgerSettings && window.isBurgerSettings(g.settings)
           );
           if (viaSettings && window.burger_sanitize_start) {
-            window.burger_sanitize_start(g.wa, g);
+            window.burger_sanitize_start(g.oa, g);
           } else if (viaSettings && window.burger_assign_timers_all) {
-            window.burger_assign_timers_all(g.wa.ka, g);
+            window.burger_assign_timers_all(g.oa.ka, g);
           }
-          const noGamePoisons = g.wa.ka.filter((a) => a.Oka).length;
-          const timers = g.wa.ka.filter(
-            (a) => a && !a.Oka && a.burgerTimer != null
+          const noGamePoisons = g.oa.ka.filter((a) => a.Bea).length;
+          const timers = g.oa.ka.filter(
+            (a) => a && !a.Bea && a.burgerTimer != null
           ).length;
           window.__remixGame = g;
           window.CurrentModeNum = saved;
-          for (let i = 0; i < g.wa.ka.length; i++) g.wa.ka[i].Oka = false;
+          for (let i = 0; i < g.oa.ka.length; i++) g.oa.ka[i].Bea = false;
           return {
-            apples: g.wa.ka.length,
-            poisons: g.wa.ka.filter((a) => a.Oka).length,
+            apples: g.oa.ka.length,
+            poisons: g.oa.ka.filter((a) => a.Bea).length,
             racePoisons,
             noGamePoisonsBefore,
             noGamePoisons,
@@ -268,8 +268,8 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       await h.start({ mode: "burger", count: COUNT.ONE, size: SIZE.NORMAL });
       await h.page.evaluate(() => {
         // Freeze movement so this tick only ages/expires timers.
-        window.__remixGame.oa.direction = "NONE";
-        const a = window.__remixGame.wa.ka[0];
+        window.__remixGame.Yc.direction = "NONE";
+        const a = window.__remixGame.oa.ka[0];
         a.burgerTimer = 1;
         a.burgerTimerMax = 20;
       });
@@ -309,8 +309,8 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       await h.start({ mode: "burger", count: COUNT.THREE, size: SIZE.NORMAL });
       // Force one expire so a poison piles up; leave another fresh mid-timer.
       await h.page.evaluate(() => {
-        window.__remixGame.oa.direction = "NONE";
-        const fresh = window.__remixGame.wa.ka.filter((x) => !x.Oka);
+        window.__remixGame.Yc.direction = "NONE";
+        const fresh = window.__remixGame.oa.ka.filter((x) => !x.Bea);
         fresh[0].burgerTimer = 1;
         fresh[0].burgerTimerMax = 10;
         fresh[1].burgerTimer = 17;
@@ -320,10 +320,10 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       await h.tick(1);
       const mid = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const kept = g.wa.ka.find((a) => a && a._burgerKeep && !a.Oka);
-        const poison = g.wa.ka.find((a) => a && a.Oka);
+        const kept = g.oa.ka.find((a) => a && a._burgerKeep && !a.Bea);
+        const poison = g.oa.ka.find((a) => a && a.Bea);
         return {
-          poisons: g.wa.ka.filter((a) => a.Oka).length,
+          poisons: g.oa.ka.filter((a) => a.Bea).length,
           keptTimer: kept ? kept.burgerTimer : null,
           poisonTimer: poison ? poison.burgerTimer : null,
           poisonMax: poison ? poison.burgerTimerMax : null,
@@ -339,11 +339,11 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
 
       const eat = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        g.oa.direction = "RIGHT";
-        const fresh = g.wa.ka.find((a) => a && !a.Oka && !a._burgerKeep);
+        g.Yc.direction = "RIGHT";
+        const fresh = g.oa.ka.find((a) => a && !a.Bea && !a._burgerKeep);
         if (!fresh) return { ok: false, reason: "no non-kept fresh" };
-        const head = g.oa.ka[0];
-        const dir = g.oa.direction || "RIGHT";
+        const head = g.Yc.ka[0];
+        const dir = g.Yc.direction || "RIGHT";
         const next = { x: head.x, y: head.y };
         if (dir === "RIGHT") next.x += 1;
         else if (dir === "LEFT") next.x -= 1;
@@ -351,15 +351,15 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         else if (dir === "DOWN") next.y += 1;
         fresh.pos.x = next.x;
         fresh.pos.y = next.y;
-        const scoreBefore = g.Sh;
-        const poisonsBefore = g.wa.ka.filter((a) => a.Oka).length;
+        const scoreBefore = g.Bi;
+        const poisonsBefore = g.oa.ka.filter((a) => a.Bea).length;
         g.tick();
         return {
           ok: true,
           scoreBefore,
-          scoreAfter: g.Sh,
+          scoreAfter: g.Bi,
           poisonsBefore,
-          afterPoisons: g.wa.ka.filter((a) => a.Oka).length,
+          afterPoisons: g.oa.ka.filter((a) => a.Bea).length,
         };
       });
       assert.equal(eat.ok, true, JSON.stringify(eat));
@@ -372,13 +372,13 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
 
       const after = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const kept = g.wa.ka.find((a) => a && a._burgerKeep && !a.Oka);
-        const poison = g.wa.ka.find((a) => a && a.Oka);
+        const kept = g.oa.ka.find((a) => a && a._burgerKeep && !a.Bea);
+        const poison = g.oa.ka.find((a) => a && a.Bea);
         return {
           keptTimer: kept ? kept.burgerTimer : null,
           poisonTimer: poison ? poison.burgerTimer : null,
-          timers: g.wa.ka.filter((a) => !a.Oka).map((a) => a.burgerTimer),
-          length: g.oa.ka.length,
+          timers: g.oa.ka.filter((a) => !a.Bea).map((a) => a.burgerTimer),
+          length: g.Yc.ka.length,
         };
       });
       // Eat tick ages every eligible fruit/poison by 1.
@@ -406,7 +406,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
     try {
       await h.start({ mode: "burger", count: COUNT.ONE, size: SIZE.NORMAL });
       await h.page.evaluate(() => {
-        const a = window.__remixGame.wa.ka[0];
+        const a = window.__remixGame.oa.ka[0];
         a.burgerTimer = 1;
         a.burgerTimerMax = 10;
       });
@@ -424,8 +424,8 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
             : document.querySelector("#apple").children.length - 1;
         const lastType = base + fruits.length;
         return {
-          poisonTypes: window.__remixGame.wa.ka
-            .filter((a) => a.Oka)
+          poisonTypes: window.__remixGame.oa.ka
+            .filter((a) => a.Bea)
             .map((a) => a.type),
           skullType,
           skullIsLast: skullIdx === fruits.length - 1 || skullType === lastType,
@@ -457,7 +457,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
     try {
       await h.start({ mode: "burger", count: COUNT.FIVE, size: SIZE.NORMAL });
       await h.page.evaluate(() => {
-        for (const a of window.__remixGame.wa.ka.slice(0, 3)) {
+        for (const a of window.__remixGame.oa.ka.slice(0, 3)) {
           a.burgerTimer = 1;
           a.burgerTimerMax = 10;
         }
@@ -466,22 +466,22 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
 
       const eaten = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const head = g.oa.ka[0];
-        const dir = g.oa.direction || "RIGHT";
+        const head = g.Yc.ka[0];
+        const dir = g.Yc.direction || "RIGHT";
         const next = { x: head.x, y: head.y };
         if (dir === "RIGHT") next.x += 1;
         else if (dir === "LEFT") next.x -= 1;
         else if (dir === "UP") next.y -= 1;
         else if (dir === "DOWN") next.y += 1;
 
-        const fresh = g.wa.ka.find((a) => !a.Oka);
+        const fresh = g.oa.ka.find((a) => !a.Bea);
         fresh.pos.x = next.x;
         fresh.pos.y = next.y;
 
         const before = {
-          eatenIndex: g.wa.ka.indexOf(fresh),
-          poisons: g.wa.ka.filter((a) => a.Oka).length,
-          score: g.Sh,
+          eatenIndex: g.oa.ka.indexOf(fresh),
+          poisons: g.oa.ka.filter((a) => a.Bea).length,
+          score: g.Bi,
         };
         let error = null;
         try {
@@ -492,10 +492,10 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         return {
           before,
           error,
-          poisons: g.wa.ka.filter((a) => a.Oka).length,
-          fresh: g.wa.ka.filter((a) => !a.Oka).length,
-          holes: g.wa.ka.filter((a) => !a).length,
-          score: g.Sh,
+          poisons: g.oa.ka.filter((a) => a.Bea).length,
+          fresh: g.oa.ka.filter((a) => !a.Bea).length,
+          holes: g.oa.ka.filter((a) => !a).length,
+          score: g.Bi,
         };
       });
 
@@ -534,7 +534,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
     try {
       await h.start({ mode: "burger", count: COUNT.ONE, size: SIZE.NORMAL });
       await h.page.evaluate(() => {
-        const a = window.__remixGame.wa.ka[0];
+        const a = window.__remixGame.oa.ka[0];
         a.burgerTimer = 1;
         a.burgerTimerMax = 10;
       });
@@ -544,7 +544,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(s.apples.filter((a) => !a.Oka).length, 1);
 
       await h.page.evaluate(() => {
-        const p = window.__remixGame.wa.ka.find((a) => a.Oka);
+        const p = window.__remixGame.oa.ka.find((a) => a.Bea);
         p.burgerTimer = 1;
       });
       await h.tick(1);
@@ -570,7 +570,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
     try {
       await h.start({ mode: "burger", count: COUNT.ONE, size: SIZE.NORMAL });
       await h.page.evaluate(() => {
-        const a = window.__remixGame.wa.ka[0];
+        const a = window.__remixGame.oa.ka[0];
         a.burgerTimer = 1;
         a.burgerTimerMax = 10;
       });
@@ -599,24 +599,24 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         const H = box.height;
         // Pad body length to the late-game threshold (timers/late use segments).
         const need = W * H - 5;
-        while (g.oa.ka.length < need) g.oa.ka.push({ x: -1, y: -1 });
+        while (g.Yc.ka.length < need) g.Yc.ka.push({ x: -1, y: -1 });
         const orig = window.burger_find_spawn_pos;
         window.burger_find_spawn_pos = () => null;
-        g.wa.ka.length = 1;
-        const a = g.wa.ka[0];
-        a.Oka = false;
+        g.oa.ka.length = 1;
+        const a = g.oa.ka[0];
+        a.Bea = false;
         a.burgerTimer = 1;
         a.burgerTimerMax = 5;
-        g.nj = false;
+        g.uj = false;
         g.lj = false;
         window.burger_tick_logic();
-        const won = !!(g.nj || g.lj);
-        const freshLeft = g.wa.ka.filter((x) => !x.Oka).length;
+        const won = !!(g.uj || g.lj);
+        const freshLeft = g.oa.ka.filter((x) => !x.Bea).length;
         window.burger_find_spawn_pos = orig;
         return {
           won,
           freshLeft,
-          poison: g.wa.ka.filter((x) => x.Oka).length,
+          poison: g.oa.ka.filter((x) => x.Bea).length,
           late: window.burger_late_game(g),
           WH: W * H,
         };
@@ -639,8 +639,8 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         const box = g.ka.oa;
         const need = box.width * box.height - 5;
-        while (g.oa.ka.length < need) g.oa.ka.push({ x: -1, y: -1 });
-        const head = g.oa.ka[0];
+        while (g.Yc.ka.length < need) g.Yc.ka.push({ x: -1, y: -1 });
+        const head = g.Yc.ka[0];
         const banned = new Set([
           `${head.x},${head.y - 1}`,
           `${head.x},${head.y + 1}`,
@@ -676,15 +676,21 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       assert.equal(five.poisons, 0);
       let s = await h.state();
       const expected = 25 + s.snake.length;
-      assert.ok(s.apples.every((a) => a.burgerTimer === expected));
+      // The live game keeps ticking after start(); allow up to two ticks of
+      // countdown, but every fruit must share the same length-based roll.
+      const near = (t, want) => t <= want && t >= want - 2;
+      assert.ok(
+        s.apples.every((a) => near(a.burgerTimer, expected) && a.burgerTimer === s.apples[0].burgerTimer),
+        JSON.stringify(s.apples.map((a) => a.burgerTimer))
+      );
 
       await h.start({ mode: "burger", count: COUNT.DICE, size: SIZE.NORMAL });
       s = await h.state();
       assert.ok(s.apples.length >= 1);
       const diceExpected = 25 + s.snake.length;
       assert.ok(
-        s.apples.every((a) => !a.Oka && a.burgerTimer === diceExpected),
-        "dice fresh have timers"
+        s.apples.every((a) => !a.Oka && near(a.burgerTimer, diceExpected)),
+        "dice fresh have timers: " + JSON.stringify(s.apples.map((a) => a.burgerTimer))
       );
     } finally {
       await h.close();
@@ -703,12 +709,12 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
       // Poison pairing must not run on tally either.
       const afterUaF = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        if (typeof window.__uaF === "function") window.__uaF(g.wa);
+        if (typeof window.__uaF === "function") window.__uaF(g.oa);
         return {
-          poisons: g.wa.ka.filter((a) => a.Oka).length,
-          apples: g.wa.ka.length,
-          seqs: g.wa.ka.map((a) => a.sequenceNumber),
-          cur: g.wa.wa,
+          poisons: g.oa.ka.filter((a) => a.Bea).length,
+          apples: g.oa.ka.length,
+          seqs: g.oa.ka.map((a) => a.sequenceNumber),
+          cur: g.oa.wa,
         };
       });
       assert.equal(afterUaF.poisons, 0, JSON.stringify(afterUaF));
@@ -717,13 +723,13 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
 
       const advanced = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const cur = g.wa.wa;
-        const target = g.wa.ka.find(
-          (a) => a && !a.Oka && a.sequenceNumber === cur
+        const cur = g.oa.wa;
+        const target = g.oa.ka.find(
+          (a) => a && !a.Bea && a.sequenceNumber === cur
         );
         if (!target) return { ok: false, reason: "no current fresh", cur };
-        const head = g.oa.ka[0];
-        const dir = g.oa.direction || "RIGHT";
+        const head = g.Yc.ka[0];
+        const dir = g.Yc.direction || "RIGHT";
         const next = { x: head.x, y: head.y };
         if (dir === "RIGHT") next.x += 1;
         else if (dir === "LEFT") next.x -= 1;
@@ -736,11 +742,11 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         return {
           ok: true,
           before,
-          after: g.wa.wa,
-          score: g.Sh,
-          poisons: g.wa.ka.filter((a) => a.Oka).length,
-          openFresh: g.wa.ka.filter(
-            (a) => a && !a.Oka && a.sequenceNumber === g.wa.wa
+          after: g.oa.wa,
+          score: g.Bi,
+          poisons: g.oa.ka.filter((a) => a.Bea).length,
+          openFresh: g.oa.ka.filter(
+            (a) => a && !a.Bea && a.sequenceNumber === g.oa.wa
           ).length,
         };
       });
@@ -771,15 +777,15 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         window.chess_blending = true;
         window.burger_blending = true;
         window.CurrentModeNum = 22;
-        g.settings.ob = 22;
-        g.settings.ub = 22;
-        if (!g.settings.ZSa) g.settings.ZSa = new Set();
-        g.settings.ZSa.add(window.CHESS_MODE);
-        g.settings.ZSa.add(window.BURGER_MODE);
-        g.wa.reset();
-        window.appleArray = g.wa.ka;
+        g.settings.wb = 22;
+        g.settings.yb = 22;
+        if (!g.settings.NSa) g.settings.NSa = new Set();
+        g.settings.NSa.add(window.CHESS_MODE);
+        g.settings.NSa.add(window.BURGER_MODE);
+        g.oa.reset();
+        window.appleArray = g.oa.ka;
 
-        const piece = g.wa.ka.find((a) => a && a.isPiece && !a.Oka);
+        const piece = g.oa.ka.find((a) => a && a.isPiece && !a.Bea);
         if (!piece) {
           return { ok: false, reason: "no piece after chess blender reset" };
         }
@@ -793,14 +799,14 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
         // Opposite color carrier should not unlock a poison.
         window.head_state = "rook";
         window.head_color = color === "w" ? "b" : "w";
-        window.appleArray = g.wa.ka;
+        window.appleArray = g.oa.ka;
         const unlocked = window.capture_attempt(px, py);
 
         return {
           ok: true,
           wasPiece,
           isPiece: !!piece.isPiece,
-          Oka: !!piece.Oka,
+          Bea: !!piece.Bea,
           chessPiece: piece.ChessPiece,
           chessColor: piece.ChessColor,
           unlocked,
@@ -811,7 +817,7 @@ describe("burger mode (browser)", { skip: !runBrowser }, () => {
 
       assert.equal(probe.ok, true, JSON.stringify(probe));
       assert.equal(probe.wasPiece, true, JSON.stringify(probe));
-      assert.equal(probe.Oka, true, JSON.stringify(probe));
+      assert.equal(probe.Bea, true, JSON.stringify(probe));
       assert.equal(probe.isPiece, false, "poison must not stay a piece");
       assert.equal(probe.chessPiece, undefined, JSON.stringify(probe));
       assert.equal(probe.chessColor, undefined, JSON.stringify(probe));

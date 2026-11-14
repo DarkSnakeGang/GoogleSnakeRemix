@@ -695,7 +695,7 @@ describe("Custom fruit (browser)", { skip: !runBrowser }, () => {
                 : document.querySelector("#apple").children.length);
 
         const g = window.__remixGame;
-        const apples = g && g.wa && g.wa.ka ? g.wa.ka : [];
+        const apples = g && g.oa && g.oa.ka ? g.oa.ka : [];
         // Force respawn apples under the selected custom type.
         if (apples.length && typeof window.CUSTOM_FRUIT_TYPE === "number") {
           apples.forEach(function (a) {

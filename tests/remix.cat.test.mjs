@@ -20,8 +20,8 @@ describe("Cat Mode (offline)", () => {
     assert.match(cat, /cat_peaceful_ticks/);
     assert.match(cat, /cat_try_spend_life/);
     assert.match(cat, /cat_wrap_head_if_needed/);
-    assert.match(cat, /Sc\(a\)\{if\(window\.isCatActive/);
-    assert.match(cat, /i7\(this\.ka,a\)/);
+    assert.match(cat, /Hl\(a\)\{if\(window\.isCatActive/);
+    assert.match(cat, /U7\(this\.ka,a\)/);
     assert.match(cat, /try\{window\.cat_tick_logic\(this\);\}/);
     assert.doesNotMatch(
       cat,
@@ -149,12 +149,12 @@ describe("Cat Mode (browser)", { skip: !runBrowser }, () => {
         const cap = window.cat_max_score(g);
         const expect = (sz.width | 0) * (sz.height | 0) - 3;
 
-        g.nj = false;
+        g.uj = false;
         g.lj = false;
-        g.Sh = expect - 1;
+        g.Bi = expect - 1;
         const noWin = window.cat_check_score_win(g);
-        const nj1 = !!g.nj;
-        g.Sh = expect;
+        const nj1 = !!g.uj;
+        g.Bi = expect;
         const won = window.cat_check_score_win(g);
 
         // Custom / other sizes: formula is automatic from board box.
@@ -174,7 +174,7 @@ describe("Cat Mode (browser)", { skip: !runBrowser }, () => {
           noWin,
           nj1,
           won,
-          nj2: !!g.nj,
+          nj2: !!g.uj,
           smallCap,
           largeCap,
           customCap,
@@ -219,10 +219,10 @@ describe("Cat Mode (browser)", { skip: !runBrowser }, () => {
       const after5 = await h.page.evaluate(() => {
         const g = window.__remixGame;
         for (let i = 0; i < 5; i++) {
-          g.Sh = (g.Sh | 0) + 1;
+          g.Bi = (g.Bi | 0) + 1;
           window.cat_on_apple_eaten(g);
         }
-        return { lives: window.cat_lives, sh: g.Sh };
+        return { lives: window.cat_lives, sh: g.Bi };
       });
       assert.equal(after5.lives, 1, JSON.stringify(after5));
 
@@ -234,7 +234,7 @@ describe("Cat Mode (browser)", { skip: !runBrowser }, () => {
           lives: window.cat_lives,
           grace: window.cat_peaceful_ticks,
           expectedGrace: Math.ceil(
-            ((g.Sh | 0) + (window.CAT_GRACE_EXTRA | 3)) / 2
+            ((g.Bi | 0) + (window.CAT_GRACE_EXTRA | 3)) / 2
           ),
         };
       });
@@ -296,24 +296,24 @@ describe("Cat Mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.cat_lives = 1;
         window.cat_peaceful_ticks = 0;
-        const snake = g.oa.ka;
+        const snake = g.Yc.ka;
         for (let i = 0; i < snake.length; i++) {
           snake[i].x = 1;
           snake[i].y = 7;
         }
-        g.oa.direction = "LEFT";
-        g.nj = false;
-        const w = g.Ca.wa[0].length;
+        g.Yc.direction = "LEFT";
+        g.uj = false;
+        const w = g.Tw.oa[0].length;
 
         g.tick(); // 1 → 0
-        const atEdge = { x: g.oa.ka[0].x, y: g.oa.ka[0].y };
+        const atEdge = { x: g.Yc.ka[0].x, y: g.Yc.ka[0].y };
         g.tick(); // should wrap to w-1, not sit at -1
         const after = {
-          x: g.oa.ka[0].x,
-          y: g.oa.ka[0].y,
+          x: g.Yc.ka[0].x,
+          y: g.Yc.ka[0].y,
           lives: window.cat_lives,
           grace: window.cat_peaceful_ticks,
-          dead: !!g.nj,
+          dead: !!g.uj,
           width: w,
         };
         return { atEdge, after };

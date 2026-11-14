@@ -819,7 +819,8 @@ window.ultraSetSizeSetting = function ultraSetSizeSetting(sizeIndex) {
   }
   const g = window.__remixGame || window.megaWholeSnakeObject;
   if (g && g.settings) {
-    if ("Sa" in g.settings) g.settings.Sa = sizeIndex;
+    // v14: size menu index is settings.Ua (v13 Sa); Aa is the effective size.
+    if ("Ua" in g.settings) g.settings.Ua = sizeIndex;
     if ("Aa" in g.settings) g.settings.Aa = sizeIndex;
   }
 };
@@ -908,6 +909,18 @@ window.ultraPatchChallengeSpeedrunWin = function ultraPatchChallengeSpeedrunWin(
       return code.replace(patterns[i], repl);
     }
   }
+  // v14: if(nsF(this)===0){mqF.WIN.play();<TimeKeeper insert>this.Za=this.uj=!0;vsF(this.header);
+  // ...;this.wb=this.ticks}else if
+  // Slot Machine may append `&&!(...)` to the win condition first.
+  const v14 =
+    /if\((\w+)\(this\)===0([^{]*?)\)\{(\w+)\.WIN\.play\(\);([\s\S]*?)this\.(\w+)=this\.(\w+)=!0;([\s\S]*?)this\.(\w+)=this\.ticks\}else if/;
+  if (code.match(v14)) {
+    return code.replace(
+      v14,
+      "if($1(this)===0$2){if(window.tryChallengeSpeedrunAdvance&&window.tryChallengeSpeedrunAdvance(this)){this.$5=this.$6=!0;}else{$3.WIN.play();$4this.$5=this.$6=!0;$7this.$8=this.ticks}}else if"
+    );
+  }
+  console.error("RemixUltraMod: failed to patch Challenge Speedrun win");
   return code;
 };
 
@@ -949,8 +962,8 @@ window.ultraSyncWallCoordsFromBoard = function ultraSyncWallCoordsFromBoard() {
     if (
       !size &&
       window.__remixGame &&
-      window.__remixGame.wa &&
-      window.__remixGame.wa.oa
+      window.__remixGame.oa &&
+      window.__remixGame.oa.oa
     ) {
       // fall through
     }
@@ -1410,7 +1423,7 @@ window.ultraSetIndicator = function ultraSetIndicator() {
   if (!parent) return;
   for (const el of [...parent.querySelectorAll("div")]) {
     const t = (el.textContent || "").trim();
-    // Match bare or versioned labels (Pudding-style "… v13").
+    // Match bare or versioned labels (Pudding-style "… v14").
     if (/^(Remix Mod|Level Editor Mod|Remix Ultra)( v\d+)?(\s*\|.*)?$/.test(t)) {
       el.remove();
     }
@@ -1420,7 +1433,7 @@ window.ultraSetIndicator = function ultraSetIndicator() {
   modIndicator.id = "remix-ultra-indicator";
   modIndicator.style =
     "position:absolute;font-family:Arial,sans-serif;color:white;font-size:14px;padding-top:4px;padding-left:30px;user-select: none;";
-  modIndicator.textContent = "Remix Ultra v13";
+  modIndicator.textContent = "Remix Ultra v14";
   if (canvasNode) parent.insertBefore(modIndicator, canvasNode);
   else parent.appendChild(modIndicator);
   if (
@@ -1435,9 +1448,10 @@ window.ultraSetIndicator = function ultraSetIndicator() {
 
 window.ultraAppleManager = function ultraAppleManager() {
   const game = window.__remixGame || window.megaWholeSnakeObject;
-  if (game && game.wa && Array.isArray(game.wa.ka)) return game.wa;
-  if (window.wholeSnakeObject && window.wholeSnakeObject.wa && Array.isArray(window.wholeSnakeObject.wa.ka)) {
-    return window.wholeSnakeObject.wa;
+  // v14: the game's apple manager is `oa` (v13 `wa`).
+  if (game && game.oa && Array.isArray(game.oa.ka)) return game.oa;
+  if (window.wholeSnakeObject && window.wholeSnakeObject.oa && Array.isArray(window.wholeSnakeObject.oa.ka)) {
+    return window.wholeSnakeObject.oa;
   }
   return null;
 };
@@ -1450,7 +1464,7 @@ window.ultraAssignNewApples = function ultraAssignNewApples(added) {
   if (window.isChessActive && window.isChessActive() && typeof window.chess_assign_piece === "function") {
     for (let i = start; i < mgr.ka.length; i++) {
       const a = mgr.ka[i];
-      if (!a || a.isPiece || a.Oka || a.nba instanceof Set) continue;
+      if (!a || a.isPiece || a.Bea || a.h7 instanceof Set) continue;
       window.chess_assign_piece(a);
     }
     if (typeof window.ultraSyncChessPlaceState === "function") {
@@ -1459,7 +1473,7 @@ window.ultraAssignNewApples = function ultraAssignNewApples(added) {
   }
   if (window.isBurgerActive && window.isBurgerActive() && typeof window.burger_assign_timer === "function") {
     for (let i = start; i < mgr.ka.length; i++) {
-      if (mgr.ka[i] && !mgr.ka[i].Oka) window.burger_assign_timer(mgr.ka[i]);
+      if (mgr.ka[i] && !mgr.ka[i].Bea) window.burger_assign_timer(mgr.ka[i]);
     }
   }
   window.ultraStripUnwantedFruitShields(mgr.ka.slice(start));
@@ -1478,7 +1492,7 @@ window.ultraAssignAllBoardApples = function ultraAssignAllBoardApples() {
     let first = -1;
     for (let i = 0; i < mgr.ka.length; i++) {
       const a = mgr.ka[i];
-      if (!a || a.isPiece || a.Oka) continue;
+      if (!a || a.isPiece || a.Bea) continue;
       window.chess_assign_piece(a);
       converted++;
       if (first < 0) first = i;
@@ -1488,11 +1502,7 @@ window.ultraAssignAllBoardApples = function ultraAssignAllBoardApples() {
       typeof window.chess_sanitize_spawns === "function"
     ) {
       const freePos =
-        window.__remixGame && typeof window.__remixGame.Tb === "function"
-          ? function (board, excl, radius) {
-              return window.__remixGame.Tb(excl, radius);
-            }
-          : null;
+        typeof window.__chessFreePos === "function" ? window.__chessFreePos : null;
       window.chess_sanitize_spawns(mgr, freePos, first);
     }
   }
@@ -1503,7 +1513,7 @@ window.ultraAssignAllBoardApples = function ultraAssignAllBoardApples() {
   ) {
     for (let i = 0; i < mgr.ka.length; i++) {
       const a = mgr.ka[i];
-      if (a && !a.Oka && a.burgerTimer == null) {
+      if (a && !a.Bea && a.burgerTimer == null) {
         window.burger_assign_timer(a);
       }
     }
@@ -2605,28 +2615,28 @@ window.ultraStripUnwantedFruitShields = function ultraStripUnwantedFruitShields(
   }
   for (let i = 0; i < list.length; i++) {
     const a = list[i];
-    if (a && !a.isPiece && !a.__ultraKeepShield) a.nba = undefined;
+    if (a && !a.isPiece && !a.__ultraKeepShield) a.h7 = undefined;
   }
 };
 
 window.ultraInstallFruitShieldSpawnGate = function ultraInstallFruitShieldSpawnGate() {
   const g = window.__remixGame;
-  if (!g || !g.wa) return;
-  if (typeof g.wa.reset === "function" && !g.wa.reset.__ultraShieldGate) {
-    const origReset = g.wa.reset;
-    g.wa.reset = function () {
+  if (!g || !g.oa) return;
+  if (typeof g.oa.reset === "function" && !g.oa.reset.__ultraShieldGate) {
+    const origReset = g.oa.reset;
+    g.oa.reset = function () {
       const r = origReset.apply(this, arguments);
       window.ultraStripUnwantedFruitShields(this.ka);
       return r;
     };
-    g.wa.reset.__ultraShieldGate = true;
+    g.oa.reset.__ultraShieldGate = true;
   }
   function wrapTick(obj) {
     if (!obj || typeof obj.tick !== "function" || obj.tick.__ultraShieldGate) return;
     const origTick = obj.tick;
     const wrapped = function () {
       const r = origTick.apply(this, arguments);
-      const list = (this && this.wa && this.wa.ka) || (window.__remixGame && window.__remixGame.wa && window.__remixGame.wa.ka);
+      const list = (this && this.oa && this.oa.ka) || (window.__remixGame && window.__remixGame.oa && window.__remixGame.oa.ka);
       window.ultraStripUnwantedFruitShields(list);
       return r;
     };
@@ -3099,8 +3109,25 @@ window.ultraWithLeRegexFallbacks = function ultraWithLeRegexFallbacks(fn) {
   }
 };
 
+// Game v14's snake.js wraps lines at different spots than v13, and the patches
+// are written against one-line code. Dropping the newlines (keeping a space
+// where two identifier characters would otherwise merge) leaves the v14 AST
+// unchanged. A newline before a `//` comment stays: the trailing
+// `});\n// Google Inc.` is what appendCodeWithinSnakeModule anchors on.
+// The v14 branches of Pudding / More Menu / Visibility / Level Editor flatten
+// too; the shared flag makes only the first one run, because code inserted by
+// later mods can rely on its own line breaks.
+window.ultraFlattenSnakeCode = function (code) {
+  if (window.__snakeV14Flattened) return code;
+  window.__snakeV14Flattened = true;
+  return code.replace(/([\w$]?)\n(?!\/\/)(?=([\w$]?))/g, function (m, a, b) {
+    return a && b ? a + " " : a;
+  });
+};
+
 window.RemixUltraMod.alterSnakeCode = function (code) {
   return window.ultraQuietFinderLogs(function () {
+    code = window.ultraFlattenSnakeCode(code);
     code = window.remixBaseAlterSnakeCode(code);
     // Apply Cat before LE so the tick/reset speed cases exist even if LE
     // rewrites reset(). Re-apply after LE in case that rewrite dropped them.

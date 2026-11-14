@@ -5,7 +5,7 @@ window.MexicoMod = {};
 ////////////////////////////////////////////////////////////////////
 
 window.MexicoMod.runCodeBefore = function () {
-  console.log("Adding Mexico Mode (v13)");
+  console.log("Adding Mexico Mode (v14)");
 
   window.MEXICO_ICON = "data:image/png;base64,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";
 
@@ -85,7 +85,7 @@ window.MexicoMod.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.MexicoMod.alterSnakeCode = function (code) {
-  console.log("Coding Mexico Mode into the game (v13)");
+  console.log("Coding Mexico Mode into the game (v14)");
   // Soft-fail debug stash for harness probes (no behavior change).
   if (window.RemixDebug) window.__remixPreMexicoCode = code;
 
@@ -110,9 +110,9 @@ window.MexicoMod.alterSnakeCode = function (code) {
     const g = window.__remixGame;
     const mode =
       g && g.settings
-        ? g.settings.ub != null
-          ? g.settings.ub
-          : g.settings.ob
+        ? g.settings.yb != null
+          ? g.settings.yb
+          : g.settings.wb
         : null;
     if (mode === window.MEXICO_MODE) return true;
     if (mode === 22 && window.mexico_blending) return true;
@@ -135,17 +135,16 @@ window.MexicoMod.alterSnakeCode = function (code) {
 
   window.mexico_trigger_win = function mexico_trigger_win(game) {
     if (!game) return;
-    if (game.nj || game.lj) return;
+    if (game.uj) return;
     try {
-      if (typeof Q4E !== "undefined" && Q4E.rWd && Q4E.rWd.play) Q4E.rWd.play();
-      else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
+      if (typeof mqF !== "undefined" && mqF.WIN && mqF.WIN.play) mqF.WIN.play();
     } catch (_e) {}
-    game.nj = true;
-    game.lj = true;
+    // v14: game over is uj (v13 nj), win is Za (v13 ub), as in the native win.
+    game.Za = true;
+    game.uj = true;
     try {
-      const score = game.Sh != null ? game.Sh : game.Oh;
-      if (typeof A7E === "function") A7E(game.menu, 1400, score);
-      else if (typeof vdF === "function") vdF(game.menu, 1400, score);
+      const score = game.Bi;
+      if (typeof wsF === "function") wsF(game.menu, 1400, score);
     } catch (_e2) {}
   };
 
@@ -165,7 +164,7 @@ window.MexicoMod.alterSnakeCode = function (code) {
     const ka = g.settings.ka | 0;
     if (ka === 6) return true;
     if (ka === 4) return true;
-    if (ka === 5 && !g.kc) return true;
+    if (ka === 5 && !g.Qb) return true;
     if (typeof window.remixIsDiceLike === "function") {
       try {
         if (window.remixIsDiceLike(ka)) return true;
@@ -174,7 +173,7 @@ window.MexicoMod.alterSnakeCode = function (code) {
     return false;
   };
 
-  // Native Portal twin co-eat does not fire for Mexico (e7 bit-2 force is not
+  // Native Portal twin co-eat does not fire for Mexico (M7 bit-2 force is not
   // enough once we take the Mexico eat branch). Note+clear the even/odd twin
   // ourselves — same idea as Chess portal combo, without Chess respawn.
   window.mexico_note_fruit_twin = function mexico_note_fruit_twin(
@@ -301,8 +300,8 @@ window.MexicoMod.alterSnakeCode = function (code) {
       const pick =
         typeof pickType === "function"
           ? pickType
-          : typeof Q3E === "function"
-            ? Q3E
+          : typeof hoF === "function"
+            ? hoF
             : typeof window.__chessPickType === "function"
               ? window.__chessPickType
               : null;
@@ -362,20 +361,20 @@ window.MexicoMod.alterSnakeCode = function (code) {
     if (!mgr || !mgr.ka || mgr.ka.length > 0) return 0;
     if (!window.mexico_is_wave_count(g)) return 0;
     const make =
-      typeof g7 === "function"
-        ? g7
+      typeof S7 === "function"
+        ? S7
         : typeof window.__chessMakeApple === "function"
           ? window.__chessMakeApple
           : null;
     const freePos =
-      typeof d4E === "function"
-        ? d4E
+      typeof window.chess_native_free_pos === "function"
+        ? window.chess_native_free_pos
         : typeof window.__chessFreePos === "function"
           ? window.__chessFreePos
           : null;
     const pickType =
-      typeof Q3E === "function"
-        ? Q3E
+      typeof hoF === "function"
+        ? hoF
         : typeof window.__chessPickType === "function"
           ? window.__chessPickType
           : null;
@@ -389,7 +388,7 @@ window.MexicoMod.alterSnakeCode = function (code) {
     };
     let added = 0;
     try {
-      if (ka === 5 && !g.kc) {
+      if (ka === 5 && !g.Qb) {
         added = window.mexico_spawn_n_pairs(
           mgr,
           make,
@@ -398,7 +397,7 @@ window.MexicoMod.alterSnakeCode = function (code) {
           24,
           null
         );
-        if (added > 0) g.kc = true;
+        if (added > 0) g.Qb = true;
       } else if (
         (window.remixIsDiceLike && window.remixIsDiceLike(ka)) ||
         ka === 4
@@ -467,8 +466,8 @@ window.MexicoMod.alterSnakeCode = function (code) {
     }
     if (!h) {
       const g = window.__remixGame;
-      if (g && g.Ca && Array.isArray(g.Ca.wa) && g.Ca.wa.length) {
-        h = g.Ca.wa.length;
+      if (g && g.Tw && Array.isArray(g.Tw.oa) && g.Tw.oa.length) {
+        h = g.Tw.oa.length;
       }
     }
     return Math.floor((h | 0) / 2);
@@ -489,30 +488,30 @@ window.MexicoMod.alterSnakeCode = function (code) {
   // True if pos sits on a wall cell (incl. Mexico mid-row walls).
   window.mexico_pos_on_wall = function mexico_pos_on_wall(game, pos) {
     if (!pos || pos.x == null || pos.y == null) return false;
-    const walls = game && game.Ca;
-    if (!walls || !Array.isArray(walls.wa) || !walls.wa[pos.y]) return false;
-    return (walls.wa[pos.y][pos.x] | 0) > 0;
+    const walls = game && game.Tw;
+    if (!walls || !Array.isArray(walls.oa) || !walls.oa[pos.y]) return false;
+    return (walls.oa[pos.y][pos.x] | 0) > 0;
   };
 
-  // One-shot middle row — never enables Wall Mode spawn (e7 bit 1).
+  // One-shot middle row — never enables Wall Mode spawn (M7 bit 1).
   window.mexico_place_mid_walls = function mexico_place_mid_walls(game) {
     if (!game || window.__mexicoWallDone) return;
-    const walls = game.Ca;
-    if (!walls || !walls.Aa || !Array.isArray(walls.wa) || !walls.wa.length) {
+    const walls = game.Tw;
+    if (!walls || !walls.wa || !Array.isArray(walls.oa) || !walls.oa.length) {
       console.error("MexicoMod: wall manager missing");
       return;
     }
-    const h = walls.wa.length;
-    const w = walls.wa[0] ? walls.wa[0].length : 0;
+    const h = walls.oa.length;
+    const w = walls.oa[0] ? walls.oa[0].length : 0;
     if (!w) return;
     const mid = Math.floor(h / 2);
     for (let x = 0; x < w; x++) {
-      if (walls.wa[mid] && walls.wa[mid][x] > 0) continue;
+      if (walls.oa[mid] && walls.oa[mid][x] > 0) continue;
       const pos = window.mexico_make_pos(x, mid);
-      const obj = { pos: pos, wm: false, m0: false, Lh: true };
+      const obj = { pos: pos, Rm: false, e9: false, Xg: true };
       try {
-        walls.Aa.set(window.mexico_serial_coord(pos), obj);
-        if (walls.wa[mid]) walls.wa[mid][x]++;
+        walls.wa.set(window.mexico_serial_coord(pos), obj);
+        if (walls.oa[mid]) walls.oa[mid][x]++;
       } catch (_e) {}
     }
     window.__mexicoWallDone = true;
@@ -525,7 +524,7 @@ window.MexicoMod.alterSnakeCode = function (code) {
     half
   ) {
     const game = window.__remixGame;
-    const mid = window.mexico_mid_y(board || (game && game.Ca));
+    const mid = window.mexico_mid_y(board || (game && game.Tw));
     const ok = function (p) {
       if (!p || p.y == null) return false;
       if (p.y === mid) return false;
@@ -556,8 +555,8 @@ window.MexicoMod.alterSnakeCode = function (code) {
       }
     }
     const nativeFree =
-      game && typeof game.Rb === "function"
-        ? game.Rb.bind(game)
+      game && typeof game.Lb === "function"
+        ? game.Lb.bind(game)
         : game && typeof game.Tb === "function"
           ? game.Tb.bind(game)
           : null;
@@ -576,9 +575,9 @@ window.MexicoMod.alterSnakeCode = function (code) {
         height = sz.height | 0;
       }
     }
-    if ((!width || !height) && game && game.Ca && game.Ca.wa) {
-      height = game.Ca.wa.length;
-      width = game.Ca.wa[0] ? game.Ca.wa[0].length : 0;
+    if ((!width || !height) && game && game.Tw && game.Tw.oa) {
+      height = game.Tw.oa.length;
+      width = game.Tw.oa[0] ? game.Tw.oa[0].length : 0;
     }
     if (!width || !height) return null;
     const y0 = half === "top" ? 0 : mid + 1;
@@ -609,7 +608,7 @@ window.MexicoMod.alterSnakeCode = function (code) {
     if (!mgr || !mgr.ka) return 0;
     if (typeof makeApple !== "function") return 0;
     const game = window.__remixGame;
-    if (game && (game.Sh | 0) >= 1 && !window.__mexicoWallDone) {
+    if (game && (game.Bi | 0) >= 1 && !window.__mexicoWallDone) {
       window.mexico_place_mid_walls(game);
     }
     const board = mgr.oa;
@@ -674,12 +673,12 @@ window.MexicoMod.alterSnakeCode = function (code) {
     if (!mgr || !mgr.ka) return;
     if (!window.isMexicoActive || !window.isMexicoActive()) return;
     const game = window.__remixGame;
-    if (game && (game.Sh | 0) >= 1 && !window.__mexicoWallDone) {
+    if (game && (game.Bi | 0) >= 1 && !window.__mexicoWallDone) {
       window.mexico_place_mid_walls(game);
     }
     // Native portal may leave a singleton when the twin half fails — drop it.
     // Win only if that leaves the board empty (not on a transient empty between
-    // j4E clearing the eaten pair and bomb/dice f4E pushing new pairs).
+    // AoF clearing the eaten pair and bomb/dice voF pushing new pairs).
     if (mgr.ka.length % 2 !== 0) {
       mgr.ka.pop();
       window.appleArray = mgr.ka;
@@ -688,11 +687,14 @@ window.MexicoMod.alterSnakeCode = function (code) {
     if (!mgr.ka.length) return;
     if (!count || count < 1) return;
     const board = mgr.oa;
-    const mid = window.mexico_mid_y(board || (game && game.Ca));
+    const mid = window.mexico_mid_y(board || (game && game.Tw));
     let start = Math.max(0, mgr.ka.length - count);
     // Keep start on a pair boundary so we never orphan a twin.
     if (start % 2 !== 0) start -= 1;
-    const freePos = typeof d4E === "function" ? d4E : null;
+    const freePos =
+      typeof window.chess_native_free_pos === "function"
+        ? window.chess_native_free_pos
+        : null;
 
     // Portal pairs are consecutive even/odd indices: even → top, odd → bottom.
     // Relocate when wrong half OR illegal (snake / other fruit / wall). If a
@@ -747,8 +749,8 @@ window.MexicoMod.alterSnakeCode = function (code) {
     // Twins must share a type (portal exit cue). Only fix mismatched new pairs;
     // do not reshuffle types of fruit already on the board.
     const pick =
-      typeof Q3E === "function"
-        ? Q3E
+      typeof hoF === "function"
+        ? hoF
         : typeof window.__chessPickType === "function"
           ? window.__chessPickType
           : null;
@@ -775,98 +777,98 @@ window.MexicoMod.alterSnakeCode = function (code) {
     if (!window.isMexicoActive || !window.isMexicoActive()) return;
     const g = game || window.__remixGame;
     if (!g) return;
-    if (window.__mexicoLastSh != null && g.Sh > window.__mexicoLastSh) {
-      if ((g.Sh | 0) >= 1 && !window.__mexicoWallDone) {
+    if (window.__mexicoLastSh != null && g.Bi > window.__mexicoLastSh) {
+      if ((g.Bi | 0) >= 1 && !window.__mexicoWallDone) {
         window.mexico_place_mid_walls(g);
       }
       // Do NOT re-constrain the whole board here — that relocates existing fruit.
-      // New apples are half-placed in f4E via mexico_constrain_new_apples(a, g)
+      // New apples are half-placed in voF via mexico_constrain_new_apples(a, g)
       // for the newly added count only.
       // Tally/Dice/Bomb-first: empty after last wave unit → plant a new wave.
       // Win only if the board is still empty after that attempt.
-      if (g.wa && g.wa.ka && g.wa.ka.length === 0) {
+      if (g.oa && g.oa.ka && g.oa.ka.length === 0) {
         try {
           if (window.mexico_is_wave_count(g)) {
-            window.mexico_refill_wave(g.wa, g);
+            window.mexico_refill_wave(g.oa, g);
           }
-          if (g.wa.ka.length === 0) {
-            window.mexico_win_if_empty(g, g.wa);
+          if (g.oa.ka.length === 0) {
+            window.mexico_win_if_empty(g, g.oa);
           }
         } catch (_e) {}
       }
     }
-    window.__mexicoLastSh = g.Sh;
+    window.__mexicoLastSh = g.Bi;
   };
 
   // Force Portal physics. Also force Wall Mode bit for collision with the
   // one-shot mid-row walls — spawn is gated off separately (see RemixInit
   // remixPatchWallEveryApple / remixMexicoBlocksWallSpawn).
   mexicoReplace(
-    "e7 portal + wall collide",
+    "M7 portal + wall collide",
     /if\(!r&&b===21&&window\.isCatActive&&window\.isCatActive\(\)&&\(window\.cat_peaceful_ticks\|0\)>0\)return!0;return r\}/,
     "if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;if(!r&&b===2&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===1&&window.isMexicoActive&&window.isMexicoActive())return!0;return r}"
   );
 
   mexicoReplace(
-    "Y3E mexico",
-    /Y3E\(this\.settings\)\|\|!!\(window\.isChessActive&&window\.isChessActive\(\)\)/,
-    "Y3E(this.settings)||!!(window.isChessActive&&window.isChessActive())||!!(window.isMexicoActive&&window.isMexicoActive())"
+    "ooF mexico",
+    /ooF\(this\.settings\)\|\|!!\(window\.isChessActive&&window\.isChessActive\(\)\)/,
+    "ooF(this.settings)||!!(window.isChessActive&&window.isChessActive())||!!(window.isMexicoActive&&window.isMexicoActive())"
   );
   mexicoReplace(
     "pair-splice mexico",
-    /\(e7\(this\.settings,2\)\|\|\(window\.isChessActive&&window\.isChessActive\(\)\)\)/,
-    "(e7(this.settings,2)||(window.isChessActive&&window.isChessActive())||(window.isMexicoActive&&window.isMexicoActive()))"
+    /\(M7\(this\.settings,2\)\|\|\(window\.isChessActive&&window\.isChessActive\(\)\)\)/,
+    "(M7(this.settings,2)||(window.isChessActive&&window.isChessActive())||(window.isMexicoActive&&window.isMexicoActive()))"
   );
   mexicoReplace(
-    "f4E portal pair mexico",
-    /\(e7\(a\.settings,2\)\|\|\(window\.isChessActive&&window\.isChessActive\(\)\)\)&&!f\?/,
-    "(e7(a.settings,2)||(window.isChessActive&&window.isChessActive())||(window.isMexicoActive&&window.isMexicoActive()))&&!f?"
+    "voF portal pair mexico",
+    /\(M7\(a\.settings,2\)\|\|\(window\.isChessActive&&window\.isChessActive\(\)\)\)&&!f\?/,
+    "(M7(a.settings,2)||(window.isChessActive&&window.isChessActive())||(window.isMexicoActive&&window.isMexicoActive()))&&!f?"
   );
 
   mexicoReplace(
-    "f4E mexico constrain",
+    "voF mexico constrain",
     /if\(window\.isChessActive&&window\.isChessActive\(\)&&g>0\)\{window\.chess_convert_new_apples\(a,g\);\}/,
     "if(window.isChessActive&&window.isChessActive()&&g>0){window.chess_convert_new_apples(a,g);}if(window.isMexicoActive&&window.isMexicoActive()&&g>0){try{window.mexico_constrain_new_apples(a,g);}catch(_mx){}}"
   );
 
-  // Mexico uses native Portal twin respawn (j4E) for normal counts.
+  // Mexico uses native Portal twin respawn (AoF) for normal counts.
   // Always note the even/odd twin so splice clears the pair (native portal
-  // co-eat does not run on the Mexico eat branch). Wave counts skip j4E —
+  // co-eat does not run on the Mexico eat branch). Wave counts skip AoF —
   // existing fruit stay; empty after last pair refills in after_fruit_splice/tick.
   mexicoReplace(
     "eat respawn mexico as portal",
-    /e=!1;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{window\.__chessMakeApple=g7;window\.__chessFreePos=d4E;window\.__chessPickType=Q3E;e=!1;if\(window\.just_ate==='fruit'&&!\(e7\(a\.settings,8\)\|\|e7\(a\.settings,9\)\)\)\{if\(window\.chess_portal_combo&&window\.chess_portal_combo\(\)\)\{window\.chess_portal_note_fruit_twin\(a\.wa,k\);\}else if\(!\(a\.settings\.ka===4\|\|a\.settings\.ka===6\|\|\(a\.settings\.ka===5&&!a\.kc\)\)\)\{window\.chess_fruit_respawn\(a\.wa,g7,d4E,Q3E\);if\(window\.isBurgerActive&&window\.isBurgerActive\(\)&&window\.just_ate==='fruit'\)\{window\.burger_after_respawn\(a\);\}\}\}\}else e7\(a\.settings,2\)\?e=!0:/,
-    "e=!1;if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;e=!1;if(window.just_ate==='fruit'&&!(e7(a.settings,8)||e7(a.settings,9))){if(window.chess_portal_combo&&window.chess_portal_combo()){window.chess_portal_note_fruit_twin(a.wa,k);}else if(!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.kc))){window.chess_fruit_respawn(a.wa,g7,d4E,Q3E);if(window.isBurgerActive&&window.isBurgerActive()&&window.just_ate==='fruit'){window.burger_after_respawn(a);}}}}else if(window.isMexicoActive&&window.isMexicoActive()){window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;e=!1;if(window.just_ate==='fruit'&&!(e7(a.settings,8)||e7(a.settings,9))){window.mexico_note_fruit_twin&&window.mexico_note_fruit_twin(a.wa,k);if(!(window.mexico_is_wave_count&&window.mexico_is_wave_count(a))){e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a);}}}else e7(a.settings,2)?e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a):"
+    /e=!1;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{window\.__chessMakeApple=S7;window\.__chessFreePos=window\.chess_native_free_pos;window\.__chessPickType=hoF;e=!1;if\(window\.just_ate==='fruit'&&!\(M7\(a\.settings,8\)\|\|M7\(a\.settings,9\)\)\)\{if\(window\.chess_portal_combo&&window\.chess_portal_combo\(\)\)\{window\.chess_portal_note_fruit_twin\(a\.oa,k\);\}else if\(!\(a\.settings\.ka===4\|\|a\.settings\.ka===6\|\|\(a\.settings\.ka===5&&!a\.Qb\)\)\)\{window\.chess_fruit_respawn\(a\.oa,S7,window\.__chessFreePos,hoF\);if\(window\.isBurgerActive&&window\.isBurgerActive\(\)&&window\.just_ate==='fruit'\)\{window\.burger_after_respawn\(a\);\}\}\}\}else M7\(a\.settings,2\)\?e=!0:/,
+    "e=!1;if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=S7;window.__chessFreePos=window.chess_native_free_pos;window.__chessPickType=hoF;e=!1;if(window.just_ate==='fruit'&&!(M7(a.settings,8)||M7(a.settings,9))){if(window.chess_portal_combo&&window.chess_portal_combo()){window.chess_portal_note_fruit_twin(a.oa,k);}else if(!(a.settings.ka===4||a.settings.ka===6||(a.settings.ka===5&&!a.Qb))){window.chess_fruit_respawn(a.oa,S7,window.__chessFreePos,hoF);if(window.isBurgerActive&&window.isBurgerActive()&&window.just_ate==='fruit'){window.burger_after_respawn(a);}}}}else if(window.isMexicoActive&&window.isMexicoActive()){window.__chessMakeApple=S7;window.__chessFreePos=window.chess_native_free_pos;window.__chessPickType=hoF;e=!1;if(window.just_ate==='fruit'&&!(M7(a.settings,8)||M7(a.settings,9))){window.mexico_note_fruit_twin&&window.mexico_note_fruit_twin(a.oa,k);if(!(window.mexico_is_wave_count&&window.mexico_is_wave_count(a))){e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a);}}}else M7(a.settings,2)?e=!window.cat_allows_pair_spawn||window.cat_allows_pair_spawn(a):"
   );
 
   // After Chess portal twin hook: also clear Mexico's noted twin.
   mexicoReplace(
     "eat splice mexico twin clear",
-    /\(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\)\)/,
-    "(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.wa,a),0))"
+    /\(a\.oa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.oa,a\)\)/,
+    "(a.oa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.oa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.oa,a),0))"
   );
 
-  // j4E sits inside a ternary — must not insert `;` statements. Comma-op only.
+  // AoF sits inside a ternary — must not insert `;` statements. Comma-op only.
   // Constrain only the board after a successful pair plant — never relocate the
   // whole board, and never invent a wave refill here (tick handles empty).
   mexicoReplace(
-    "j4E mexico constrain pair",
-    /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\)/,
-    "j4E(a.wa,k,d,a.Vm.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.wa.ka.length>0&&(window.mexico_constrain_new_apples(a.wa,2),0)"
+    "AoF mexico constrain pair",
+    /AoF\(a\.oa,k,d,a\.Kc\.bind\(a\)\)/,
+    "AoF(a.oa,k,d,a.Kc.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.oa.ka.length>0&&(window.mexico_constrain_new_apples(a.oa,2),0)"
   );
 
   // Tally wave: 5 portal units = 10 apples (match Chess), so pairs stay even.
   if (
     !mexicoReplace(
       "tally wave size mexico after chess",
-      /var b=\(e7\(a\.settings,11\)\|\|\(window\.isChessActive&&window\.isChessActive\(\)\)\)\?10:5;/,
-      "var b=(e7(a.settings,11)||(window.isChessActive&&window.isChessActive())||(window.isMexicoActive&&window.isMexicoActive()))?10:5;"
+      /var b=\(M7\(a\.settings,11\)\|\|\(window\.isChessActive&&window\.isChessActive\(\)\)\)\?10:5;/,
+      "var b=(M7(a.settings,11)||(window.isChessActive&&window.isChessActive())||(window.isMexicoActive&&window.isMexicoActive()))?10:5;"
     )
   ) {
     mexicoReplace(
       "tally wave size mexico",
-      /var b=e7\(a\.settings,11\)\?10:5;/,
-      "var b=(e7(a.settings,11)||(window.isMexicoActive&&window.isMexicoActive()))?10:5;"
+      /var b=M7\(a\.settings,11\)\?10:5;/,
+      "var b=(M7(a.settings,11)||(window.isMexicoActive&&window.isMexicoActive()))?10:5;"
     );
   }
 
@@ -919,11 +921,11 @@ window.MexicoMod.alterSnakeCode = function (code) {
   if (code.indexOf("window.MEXICO_MODE)?window.MEXICO_ICON") < 0) {
     mexicoReplace(
       "deathscreen Zb mexico icon",
-      /\(a\.settings\.ob===window\.CAT_MODE\)\?window\.CAT_ICON:/,
-      "(a.settings.ob===window.CAT_MODE)?window.CAT_ICON:(a.settings.ob===window.MEXICO_MODE)?window.MEXICO_ICON:"
+      /\(a\.settings\.wb===window\.CAT_MODE\)\?window\.CAT_ICON:/,
+      "(a.settings.wb===window.CAT_MODE)?window.CAT_ICON:(a.settings.wb===window.MEXICO_MODE)?window.MEXICO_ICON:"
     );
     mexicoReplace(
-      "blender b3E mexico icon",
+      "blender PmF mexico icon",
       /\(c===window\.CAT_MODE\)\?window\.CAT_ICON:/,
       "(c===window.CAT_MODE)?window.CAT_ICON:(c===window.MEXICO_MODE)?window.MEXICO_ICON:"
     );

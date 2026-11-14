@@ -179,11 +179,11 @@ describe("Ultra Place export / sizes", () => {
     assert.match(ultra, /Pudding Fruit/);
     assert.match(ultra, /ultra-place-tab/);
     assert.match(ultra, /Yx,y/);
-    assert.match(ultra, /xL: 2/);
+    assert.match(ultra, /gM: 2/);
     assert.match(ultra, /ultraMineManager/);
     assert.match(ultra, /ultraStatueManager/);
     assert.match(ultra, /ultraArrowManager/);
-    assert.match(ultra, /wm: false/);
+    assert.match(ultra, /Rm: false/);
     assert.match(ultra, /ultraPlaceEraseIcon/);
     assert.match(ultra, /category === "erase"/);
     assert.match(ultra, /ultraSyncChessPlaceState/);
@@ -375,7 +375,7 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
     }
   });
 
-  it("poison place sets Oka and keyblock sets yNa", async () => {
+  it("poison place sets Bea and keyblock sets oOa", async () => {
     const h = await launchUltra({ seed: 42, headless: true });
     try {
       const { COUNT, SIZE } = await import("../tools/harness.mjs");
@@ -405,25 +405,25 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
           window.placeStatue(5, 5, false);
         }
         const apples =
-          window.wholeSnakeObject && window.wholeSnakeObject.wa && window.wholeSnakeObject.wa.ka
-            ? window.wholeSnakeObject.wa.ka
+          window.wholeSnakeObject && window.wholeSnakeObject.oa && window.wholeSnakeObject.oa.ka
+            ? window.wholeSnakeObject.oa.ka
             : [];
-        const poison = apples.find((a) => a && a.Oka);
+        const poison = apples.find((a) => a && a.Bea);
         const piece = apples.find((a) => a && a.isPiece);
         const pieceShielded = !!(
           piece &&
-          piece.nba &&
-          typeof piece.nba.has === "function" &&
-          piece.nba.size > 0
+          piece.h7 &&
+          typeof piece.h7.has === "function" &&
+          piece.h7.size > 0
         );
         const shielded = apples.find(
-          (a) => a && !a.isPiece && a.nba && a.nba.has && a.nba.has("UP") && a.nba.has("LEFT")
+          (a) => a && !a.isPiece && a.h7 && a.h7.has && a.h7.has("UP") && a.h7.has("LEFT")
         );
         const walls =
-          window.wholeSnakeObject && window.wholeSnakeObject.Ca && window.wholeSnakeObject.Ca.Aa
-            ? [...window.wholeSnakeObject.Ca.Aa.values()]
+          window.wholeSnakeObject && window.wholeSnakeObject.Tw && window.wholeSnakeObject.Tw.wa
+            ? [...window.wholeSnakeObject.Tw.wa.values()]
             : [];
-        const block = walls.find((w) => w && w.yNa === 3);
+        const block = walls.find((w) => w && w.oOa === 3);
         const names = window.ultraPlaceNames || {};
         const soko = names.sokoContainer && window.wholeSnakeObject[names.sokoContainer];
         const goals = soko && names.sokoGoalSet && soko[names.sokoGoalSet];
@@ -431,8 +431,8 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
         return {
           hasPoisonFn: typeof window.placePoison === "function",
           hasKeyblockFn: typeof window.placeKeyblock === "function",
-          oka: !!(poison && poison.Oka),
-          yNa: block ? block.yNa : null,
+          oka: !!(poison && poison.Bea),
+          oOa: block ? block.oOa : null,
           goals: goals && typeof goals.size === "number" ? goals.size : -1,
           isPiece: !!(piece && piece.isPiece),
           chessPiece: piece && piece.ChessPiece,
@@ -445,7 +445,7 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
       assert.equal(probe.hasPoisonFn, true);
       assert.equal(probe.hasKeyblockFn, true);
       assert.equal(probe.oka, true, JSON.stringify(probe));
-      assert.equal(probe.yNa, 3, JSON.stringify(probe));
+      assert.equal(probe.oOa, 3, JSON.stringify(probe));
       assert.ok(probe.goals >= 1, JSON.stringify(probe));
       assert.equal(probe.isPiece, true, JSON.stringify(probe));
       assert.equal(probe.chessPiece, "knight", JSON.stringify(probe));
@@ -465,7 +465,7 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
       await h.start({ mode: "classic", count: COUNT.ONE, size: SIZE.NORMAL });
       const probe = await h.page.evaluate(() => {
         function shieldSize(a) {
-          return a && a.nba && typeof a.nba.size === "number" ? a.nba.size : 0;
+          return a && a.h7 && typeof a.h7.size === "number" ? a.h7.size : 0;
         }
         const off =
           typeof window.getAppleSpawnPointOffset === "function"
@@ -475,8 +475,8 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
         window.head_state = "OPEN";
         window.placeChessPiece(2 + off.x, 3 + off.y, "w", "knight");
         const apples =
-          window.wholeSnakeObject && window.wholeSnakeObject.wa && window.wholeSnakeObject.wa.ka
-            ? window.wholeSnakeObject.wa.ka
+          window.wholeSnakeObject && window.wholeSnakeObject.oa && window.wholeSnakeObject.oa.ka
+            ? window.wholeSnakeObject.oa.ka
             : [];
         const openPiece = apples.find((a) => a && a.isPiece && a.ChessPiece === "knight");
         const openShields = shieldSize(openPiece);
@@ -502,7 +502,7 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
           chessMode: window.CHESS_MODE,
           settingsMode:
             window.wholeSnakeObject && window.wholeSnakeObject.settings
-              ? window.wholeSnakeObject.settings.ub
+              ? window.wholeSnakeObject.settings.yb
               : null,
           openPiece: !!(openPiece && openPiece.isPiece),
           openShields,
@@ -569,8 +569,8 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
           mineContainer: names.mineContainer || null,
           err,
           count: afterFn.length,
-          xL: placed ? placed.xL : null,
-          X1a: placed ? placed.X1a : null,
+          gM: placed ? placed.gM : null,
+          nLa: placed ? placed.nLa : null,
           beforeClick,
           afterClick,
         };
@@ -579,8 +579,8 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
       assert.equal(probe.err, null, JSON.stringify(probe));
       assert.ok(probe.mineContainer, JSON.stringify(probe));
       assert.ok(probe.count >= 1, JSON.stringify(probe));
-      assert.ok(probe.xL >= 2, JSON.stringify(probe));
-      assert.equal(probe.X1a, -1, JSON.stringify(probe));
+      assert.ok(probe.gM >= 2, JSON.stringify(probe));
+      assert.equal(probe.nLa, -1, JSON.stringify(probe));
       assert.equal(probe.wrapped, true, JSON.stringify(probe));
       assert.ok(probe.afterClick > probe.beforeClick, JSON.stringify(probe));
     } finally {
@@ -640,16 +640,16 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
           statueContainer: names.statueContainer || null,
           err,
           count: list.length,
-          wm: plain ? plain.wm : null,
-          plainPdb: plain && plain.WQ ? plain.WQ.pdb : null,
-          pdb: cracked && cracked.WQ ? cracked.WQ.pdb : null,
-          zeroStrPdb: zeroStr && zeroStr.WQ ? zeroStr.WQ.pdb : null,
-          hasWQ: !!(plain && plain.WQ),
+          Rm: plain ? plain.Rm : null,
+          plainPdb: plain && plain.iR ? plain.iR.Pcb : null,
+          Pcb: cracked && cracked.iR ? cracked.iR.Pcb : null,
+          zeroStrPdb: zeroStr && zeroStr.iR ? zeroStr.iR.Pcb : null,
+          hasWQ: !!(plain && plain.iR),
           beforeClick,
           afterClick: afterList.length,
           clickPdb: clickPlaced.length
             ? clickPlaced.every(function (s) {
-                return s.WQ && s.WQ.pdb === false;
+                return s.iR && s.iR.Pcb === false;
               })
             : null,
         };
@@ -658,9 +658,9 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
       assert.equal(probe.err, null, JSON.stringify(probe));
       assert.ok(probe.statueContainer, JSON.stringify(probe));
       assert.ok(probe.count >= 3, JSON.stringify(probe));
-      assert.equal(probe.wm, false, JSON.stringify(probe));
+      assert.equal(probe.Rm, false, JSON.stringify(probe));
       assert.equal(probe.plainPdb, false, JSON.stringify(probe));
-      assert.equal(probe.pdb, true, JSON.stringify(probe));
+      assert.equal(probe.Pcb, true, JSON.stringify(probe));
       assert.equal(probe.zeroStrPdb, false, JSON.stringify(probe));
       assert.equal(probe.hasWQ, true, JSON.stringify(probe));
       assert.equal(probe.wrapped, true, JSON.stringify(probe));
@@ -719,7 +719,7 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
           arrowContainer: names.arrowContainer || null,
           err,
           direction: cell && cell.direction,
-          wm: cell && cell.wm,
+          Rm: cell && cell.Rm,
           color: cell && cell.color,
           clickDir,
         };
@@ -728,7 +728,7 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
       assert.equal(probe.err, null, JSON.stringify(probe));
       assert.ok(probe.arrowContainer, JSON.stringify(probe));
       assert.equal(probe.direction, "UP", JSON.stringify(probe));
-      assert.equal(probe.wm, false, JSON.stringify(probe));
+      assert.equal(probe.Rm, false, JSON.stringify(probe));
       assert.ok(probe.color, JSON.stringify(probe));
       assert.equal(probe.wrapped, true, JSON.stringify(probe));
       assert.equal(probe.clickDir, "RIGHT", JSON.stringify(probe));
@@ -767,32 +767,32 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
           err = String(e && e.message ? e.message : e);
         }
         const apples =
-          window.wholeSnakeObject && window.wholeSnakeObject.wa && window.wholeSnakeObject.wa.ka
-            ? window.wholeSnakeObject.wa.ka
+          window.wholeSnakeObject && window.wholeSnakeObject.oa && window.wholeSnakeObject.oa.ka
+            ? window.wholeSnakeObject.oa.ka
             : [];
         const placed = apples.find(
-          (a) => a && a.nba && a.nba.has && a.nba.has("UP")
+          (a) => a && a.h7 && a.h7.has && a.h7.has("UP")
         );
         window.mousePlaceMode = { category: "shield", type: -1, extra: "LEFT" };
         clickBoard();
-        const after = window.wholeSnakeObject.wa.ka || [];
+        const after = window.wholeSnakeObject.oa.ka || [];
         const clicked = after.find(
-          (a) => a && a.nba && a.nba.has && a.nba.has("LEFT")
+          (a) => a && a.h7 && a.h7.has && a.h7.has("LEFT")
         );
         return {
           wrapped: !!(window.placeAppleAtMouse && window.placeAppleAtMouse.__ultraPlace),
           hasFn: typeof window.placeShield === "function",
           err,
-          hasUp: !!(placed && placed.nba.has("UP")),
-          wm: placed ? placed.wm : null,
-          clickLeft: !!(clicked && clicked.nba.has("LEFT")),
-          clickWm: clicked ? clicked.wm : null,
+          hasUp: !!(placed && placed.h7.has("UP")),
+          Rm: placed ? placed.Rm : null,
+          clickLeft: !!(clicked && clicked.h7.has("LEFT")),
+          clickWm: clicked ? clicked.Rm : null,
         };
       });
       assert.equal(probe.hasFn, true, JSON.stringify(probe));
       assert.equal(probe.err, null, JSON.stringify(probe));
       assert.equal(probe.hasUp, true, JSON.stringify(probe));
-      assert.equal(probe.wm, false, JSON.stringify(probe));
+      assert.equal(probe.Rm, false, JSON.stringify(probe));
       assert.equal(probe.wrapped, true, JSON.stringify(probe));
       assert.equal(probe.clickLeft, true, JSON.stringify(probe));
       assert.equal(probe.clickWm, false, JSON.stringify(probe));
@@ -825,8 +825,8 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
         const keyBox = names.keyContainer && g[names.keyContainer];
         const beforeKeys = keyBox && keyBox.keys ? keyBox.keys.length : -1;
         const wallsBefore =
-          g.Ca && g.Ca.Aa ? [...g.Ca.Aa.values()].filter((w) => w && w.yNa != null).length : 0;
-        const applesBefore = g.wa && g.wa.ka ? g.wa.ka.length : 0;
+          g.Tw && g.Tw.wa ? [...g.Tw.wa.values()].filter((w) => w && w.oOa != null).length : 0;
+        const applesBefore = g.oa && g.oa.ka ? g.oa.ka.length : 0;
 
         window.mousePlaceMode = { category: "key", type: 4 };
         clickBoard();
@@ -838,9 +838,9 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
         window.mousePlaceMode = { category: "keyblock", type: 7 };
         clickBoard();
         const wallsAfterBlock =
-          g.Ca && g.Ca.Aa ? [...g.Ca.Aa.values()].filter((w) => w && w.yNa != null) : [];
-        const yNa = wallsAfterBlock.length
-          ? wallsAfterBlock[wallsAfterBlock.length - 1].yNa
+          g.Tw && g.Tw.wa ? [...g.Tw.wa.values()].filter((w) => w && w.oOa != null) : [];
+        const oOa = wallsAfterBlock.length
+          ? wallsAfterBlock[wallsAfterBlock.length - 1].oOa
           : null;
 
         if (typeof window.injectChessFruits === "function") window.injectChessFruits();
@@ -852,7 +852,7 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
           ChessPiece: "knight",
         };
         clickBoard();
-        const apples = g.wa && g.wa.ka ? g.wa.ka : [];
+        const apples = g.oa && g.oa.ka ? g.oa.ka : [];
         const piece = apples.find((a) => a && a.isPiece);
 
         return {
@@ -862,7 +862,7 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
           keyType,
           wallsBefore,
           keyblocks: wallsAfterBlock.length,
-          yNa,
+          oOa,
           applesBefore,
           applesAfter: apples.length,
           isPiece: !!(piece && piece.isPiece),
@@ -870,9 +870,9 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
           chessActive: !!(window.isChessActive && window.isChessActive()),
           pieceShielded: !!(
             piece &&
-            piece.nba &&
-            typeof piece.nba.has === "function" &&
-            piece.nba.size > 0
+            piece.h7 &&
+            typeof piece.h7.has === "function" &&
+            piece.h7.size > 0
           ),
         };
       });
@@ -880,7 +880,7 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
       assert.ok(probe.afterKey > probe.beforeKeys, JSON.stringify(probe));
       assert.equal(probe.keyType, 4, JSON.stringify(probe));
       assert.ok(probe.keyblocks > probe.wallsBefore, JSON.stringify(probe));
-      assert.equal(probe.yNa, 7, JSON.stringify(probe));
+      assert.equal(probe.oOa, 7, JSON.stringify(probe));
       assert.equal(probe.isPiece, true, JSON.stringify(probe));
       assert.equal(probe.chessPiece, "knight", JSON.stringify(probe));
       assert.equal(probe.chessActive, true, JSON.stringify(probe));
@@ -921,8 +921,8 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
         }
         const gates = names.gateContainer && game[names.gateContainer];
         const bridges = names.bridgeContainer && game[names.bridgeContainer];
-        const gate = gates && Array.isArray(gates.pfa)
-          ? gates.pfa.find((g) => g && g.Upa && g.Upa.x === 4 && g.Upa.y === 4)
+        const gate = gates && Array.isArray(gates.gga)
+          ? gates.gga.find((g) => g && g.Hqa && g.Hqa.x === 4 && g.Hqa.y === 4)
           : null;
         const bridge = bridges && bridges.oa && bridges.oa[2] ? bridges.oa[2][2] : null;
         const minesBefore =
@@ -949,8 +949,8 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
           window.ultraEmptyCell(4, 4);
           window.ultraEmptyCell(5, 5);
         }
-        const gateAfter = gates && Array.isArray(gates.pfa)
-          ? gates.pfa.find((g) => g && g.Upa && g.Upa.x === 4 && g.Upa.y === 4)
+        const gateAfter = gates && Array.isArray(gates.gga)
+          ? gates.gga.find((g) => g && g.Hqa && g.Hqa.x === 4 && g.Hqa.y === 4)
           : null;
         const bridgeAfter = bridges && bridges.oa && bridges.oa[2] ? bridges.oa[2][2] : null;
 
@@ -961,9 +961,9 @@ describe("Ultra Place (browser)", { skip: !runBrowser }, () => {
           err,
           hasGateFn: typeof window.placeGate === "function",
           hasBridgeFn: typeof window.placeBridge === "function",
-          gateWm: gate ? gate.wm : null,
+          gateWm: gate ? gate.Rm : null,
           gateVertical: gate ? gate.vertical : null,
-          bridgeWm: bridge ? bridge.wm : null,
+          bridgeWm: bridge ? bridge.Rm : null,
           bridgeColor: bridge ? !!bridge.color : null,
           minesBefore,
           minesAfterPlace,

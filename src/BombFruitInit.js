@@ -5,7 +5,7 @@ window.BombFruitMod = {};
 ////////////////////////////////////////////////////////////////////
 
 window.BombFruitMod.runCodeBefore = function () {
-  console.log("Adding Bomb Fruit Mode (v13)");
+  console.log("Adding Bomb Fruit Mode (v14)");
 
   window.BOMB_FRUIT_ICON =
     "https://www.google.com/logos/fnbx/snake_arcade/v18/count_05.png";
@@ -85,7 +85,7 @@ window.BombFruitMod.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.BombFruitMod.alterSnakeCode = function (code) {
-  console.log("Coding Bomb Fruit Mode into the game (v13)");
+  console.log("Coding Bomb Fruit Mode into the game (v14)");
 
   function bfReplace(label, re, replacement) {
     if (!code.match(re)) {
@@ -108,9 +108,9 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     const g = window.__remixGame;
     const mode =
       g && g.settings
-        ? g.settings.ub != null
-          ? g.settings.ub
-          : g.settings.ob
+        ? g.settings.yb != null
+          ? g.settings.yb
+          : g.settings.wb
         : null;
     if (mode === window.BOMB_FRUIT_MODE) return true;
     if (mode === 22 && window.bomb_fruit_blending) return true;
@@ -188,9 +188,9 @@ window.BombFruitMod.alterSnakeCode = function (code) {
 
   window.bombFruit_chebyshev = function bombFruit_chebyshev(a, b) {
     if (!a || !b) return Infinity;
-    if (typeof T2E === "function") {
+    if (typeof GmF === "function") {
       try {
-        return T2E(a.x, a.y, b.x, b.y);
+        return GmF(a.x, a.y, b.x, b.y);
       } catch (_e) {}
     }
     return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
@@ -433,7 +433,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     const list = (mgr && mgr.ka) || window.appleArray;
     if (!list) return;
     for (let i = 0; i < list.length; i++) {
-      if (list[i]) list[i].nba = undefined;
+      if (list[i]) list[i].h7 = undefined;
     }
   };
 
@@ -442,21 +442,21 @@ window.BombFruitMod.alterSnakeCode = function (code) {
    */
   window.bombFruit_trigger_win = function bombFruit_trigger_win(game) {
     if (!game) return;
-    if (game.nj) return;
+    if (game.uj) return;
     try {
       const winBank =
-        (typeof s5E !== "undefined" && s5E) || window.__bombFruitS5E;
+        (typeof mqF !== "undefined" && mqF) || window.__bombFruitS5E;
       if (winBank && winBank.WIN && winBank.WIN.play) winBank.WIN.play();
-      else if (typeof Q4E !== "undefined" && Q4E.rWd && Q4E.rWd.play)
-        Q4E.rWd.play();
+      else if (typeof KpF !== "undefined" && KpF.vZd && KpF.vZd.play)
+        KpF.vZd.play();
       else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
     } catch (_e) {}
     // Match native r7E===0 win: ub + nj (not lj / not nj-only death).
-    game.ub = true;
-    game.nj = true;
+    game.Za = true;
+    game.uj = true;
     try {
-      const score = game.Sh != null ? game.Sh : game.Oh;
-      if (typeof A7E === "function") A7E(game.menu, 1400, score);
+      const score = game.Bi != null ? game.Bi : game.Oh;
+      if (typeof wsF === "function") wsF(game.menu, 1400, score);
       else if (typeof vdF === "function") vdF(game.menu, 1400, score);
     } catch (_e2) {}
   };
@@ -467,10 +467,15 @@ window.BombFruitMod.alterSnakeCode = function (code) {
    * Spawn failure alone while siblings exist is not a win — keep playing.
    */
   window.bombFruit_win_if_empty = function bombFruit_win_if_empty(game, mgr) {
-    if (!game || game.nj) return false;
+    if (!game || game.uj) return false;
     if (!mgr || !mgr.ka || mgr.ka.length > 0) return false;
     window.bombFruit_trigger_win(game);
     return true;
+  };
+
+  // v14 inlined v13's d4E(board,b,c) as board.Ba(b,c,void 0).
+  window.bombFruit_nativeFreePos = function bombFruit_nativeFreePos(board, b, c) {
+    return board && typeof board.Ba === "function" ? board.Ba(b, c, void 0) : null;
   };
 
   window.bombFruit_find_spawn = function bombFruit_find_spawn(mgr, excludeIdx) {
@@ -479,7 +484,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     const freePos =
       window.__bombFruitFreePos ||
       window.__chessFreePos ||
-      (typeof d4E === "function" ? d4E : null);
+      window.bombFruit_nativeFreePos;
     const skip = new Set();
     if (excludeIdx != null) skip.add(excludeIdx);
     const occ =
@@ -495,7 +500,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
         ? window.chess_board_size(board)
         : null;
     if (!size || !size.width) return null;
-    const head = game && game.oa && game.oa.ka && game.oa.ka[0];
+    const head = game && game.Yc && game.Yc.ka && game.Yc.ka[0];
     const total = size.width * size.height;
     const start = Math.floor(Math.random() * total);
     for (let n = 0; n < total; n++) {
@@ -580,11 +585,11 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     const makeApple =
       window.__bombFruitMakeApple ||
       window.__chessMakeApple ||
-      (typeof g7 === "function" ? g7 : null);
+      (typeof S7 === "function" ? S7 : null);
     const pickType =
       window.__bombFruitPickType ||
       window.__chessPickType ||
-      (typeof Q3E === "function" ? Q3E : null);
+      (typeof hoF === "function" ? hoF : null);
     let dup;
     const lenBefore = mgr && mgr.ka ? mgr.ka.length : 0;
     if (typeof makeApple === "function") {
@@ -619,10 +624,10 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       if (template.sequenceNumber !== undefined) {
         dup.sequenceNumber = template.sequenceNumber;
       }
-      if (template.yNa !== undefined) dup.yNa = template.yNa;
-      if (template.Lh !== undefined) dup.Lh = template.Lh;
+      if (template.oOa !== undefined) dup.oOa = template.oOa;
+      if (template.Xg !== undefined) dup.Xg = template.Xg;
     }
-    dup.wm = true;
+    dup.Rm = true;
     dup.cM = 0;
     dup.nD = 0;
     dup.bombX1a = -1;
@@ -633,11 +638,11 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   window.bombFruit_inlineY6E = function bombFruit_inlineY6E(snake) {
     if (!snake) return;
     try {
-      snake.yb = "NONE";
-      snake.Qb = false;
-      if (snake.Ga !== "NONE") {
-        snake.direction = snake.Ga;
-        snake.Ga = "NONE";
+      snake.Lb = "NONE";
+      snake.Ob = false;
+      if (snake.Ia !== "NONE") {
+        snake.direction = snake.Ia;
+        snake.Ia = "NONE";
       }
     } catch (_e) {}
   };
@@ -649,7 +654,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
    * does not leave the head oscillating between old and new facing.
    */
   window.bombFruit_mineStyleDeath = function bombFruit_mineStyleDeath(game) {
-    if (!game || game.nj) return;
+    if (!game || game.uj) return;
     // Same gap as native A6E: this path never hits Oa(), so spend Cat life here.
     if (
       window.isCatActive &&
@@ -663,15 +668,15 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     window.__bombFruitOrphans = [];
     try {
       const deathBank =
-        (typeof s5E !== "undefined" && s5E) || window.__bombFruitS5E;
-      if (deathBank && deathBank.Ktc && deathBank.Ktc.play) deathBank.Ktc.play();
+        (typeof mqF !== "undefined" && mqF) || window.__bombFruitS5E;
+      if (deathBank && deathBank.Nuc && deathBank.Nuc.play) deathBank.Nuc.play();
     } catch (_s) {}
     try {
-      if (typeof game.Ub === "function") game.Ub();
+      if (typeof game.yb === "function") game.yb();
     } catch (_u) {}
-    const snake = game.oa;
+    const snake = game.Yc;
     try {
-      if (typeof y6E === "function") y6E(snake);
+      if (typeof srF === "function") srF(snake);
       else window.bombFruit_inlineY6E(snake);
     } catch (_y) {
       window.bombFruit_inlineY6E(snake);
@@ -679,21 +684,21 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     if (snake) {
       // Lock facing after turn ticks (A6E does not do this — Bomb Fruit needs it).
       try {
-        snake.Ca = snake.direction;
+        snake.Ka = snake.direction;
       } catch (_ca) {}
-      snake.Ka = 0;
+      snake.Ga = 0;
     }
     try {
-      if (typeof game.Dc === "function") game.Dc();
+      if (typeof game.Wb === "function") game.Wb();
       else {
-        game.nj = true;
-        game.lj = true;
-        const score = game.Sh != null ? game.Sh : game.Oh;
-        if (typeof A7E === "function") A7E(game.menu, 1400, score);
+        game.Za = true;
+        game.uj = true;
+        const score = game.Bi != null ? game.Bi : game.Oh;
+        if (typeof wsF === "function") wsF(game.menu, 1400, score);
         else if (typeof vdF === "function") vdF(game.menu, 1400, score);
       }
     } catch (_d) {
-      game.nj = true;
+      game.uj = true;
     }
     return false;
   };
@@ -703,14 +708,14 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     if (!Ma || !pos || !Ma.ka) return;
     try {
       const boomBank =
-        (typeof t6E !== "undefined" && t6E) || window.__bombFruitT6E;
+        (typeof nrF !== "undefined" && nrF) || window.__bombFruitT6E;
       if (boomBank) {
         const pack = [
-          boomBank.evc,
-          boomBank.fvc,
-          boomBank.gvc,
-          boomBank.hvc,
-          boomBank.ivc,
+          boomBank.Zvc,
+          boomBank.awc,
+          boomBank.bwc,
+          boomBank.cwc,
+          boomBank.dwc,
         ];
         const snd = pack[Math.floor(Math.random() * 5)];
         if (snd && snd.play) snd.play();
@@ -718,12 +723,12 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     } catch (_s) {}
     try {
       const tile = Ma.ka.ka;
-      if (Ma.Ga && Ma.Ga.particles && typeof _ !== "undefined" && _.Od) {
+      if (Ma.Ba && Ma.Ba.particles && typeof _ !== "undefined" && _.Yd) {
         Ma.Ga.particles.push({
-          pos: new _.Od(pos.x * tile, pos.y * tile),
-          He: new _.Od(Math.random() * 20 - 10, Math.random() * -20),
+          pos: new _.Yd(pos.x * tile, pos.y * tile),
+          Ce: new _.Yd(Math.random() * 20 - 10, Math.random() * -20),
           angle: 0,
-          s_: Math.random() * 20 - 10,
+          l0: Math.random() * 20 - 10,
           size: 1,
           type: 2,
         });
@@ -738,7 +743,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     const pos = apple.pos
       ? { x: apple.pos.x, y: apple.pos.y }
       : null;
-    const head = game.oa && game.oa.ka && game.oa.ka[0];
+    const head = game.Yc && game.Yc.ka && game.Yc.ka[0];
     const inBlast =
       pos && head && window.bombFruit_chebyshev(head, pos) <= 1;
 
@@ -753,7 +758,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
 
     // Mine-style boom SFX/particles (same pipeline as A6E).
     try {
-      window.bombFruit_mineBoomFx(game.Ma, pos);
+      window.bombFruit_mineBoomFx(game.Ga, pos);
     } catch (_fx) {}
 
     // Restore list to "others only" (drop the detonating middle fruit alone).
@@ -761,9 +766,9 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     for (let i = 0; i < others.length; i++) mgr.ka.push(others[i]);
     window.appleArray = mgr.ka;
 
-    if (inBlast && !game.nj && !game.lj) {
+    if (inBlast && !game.uj && !game.lj) {
       window.bombFruit_mineStyleDeath(game);
-      if (game.nj || game.lj) return;
+      if (game.uj || game.lj) return;
       // Cat life absorbed the blast — keep going and refill the detonated fruit.
     }
 
@@ -796,13 +801,13 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   window.bombFruit_orphan_boom = function bombFruit_orphan_boom(game, orphan) {
     if (!game || !orphan) return;
     const pos = { x: orphan.x, y: orphan.y };
-    const head = game.oa && game.oa.ka && game.oa.ka[0];
+    const head = game.Yc && game.Yc.ka && game.Yc.ka[0];
     const dist = window.bombFruit_chebyshev(head, pos);
     try {
-      window.bombFruit_mineBoomFx(game.Ma, pos);
+      window.bombFruit_mineBoomFx(game.Ga, pos);
     } catch (_fx) {}
     // Center of the old blast (the eaten tile) stays safe — ring kills.
-    if (dist > 0 && dist <= 1 && !game.nj && !game.lj) {
+    if (dist > 0 && dist <= 1 && !game.uj && !game.lj) {
       window.bombFruit_mineStyleDeath(game);
     }
   };
@@ -824,7 +829,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   window.bombFruit_tick_zones = function bombFruit_tick_zones(game, mgr) {
     const zones = window.bombFruit_zones();
     if (!zones.length) return;
-    const head = game.oa && game.oa.ka && game.oa.ka[0];
+    const head = game.Yc && game.Yc.ka && game.Yc.ka[0];
     if (!head) return;
     const fruitKeys = new Set();
     if (mgr && mgr.ka) {
@@ -879,7 +884,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
           } else {
             window.bombFruit_orphan_boom(game, z);
           }
-          if (game.nj || game.lj) {
+          if (game.uj || game.lj) {
             window.__bombFruitOrphans = [];
             return;
           }
@@ -910,8 +915,8 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   window.bombFruit_tick_logic = function bombFruit_tick_logic(game) {
     if (!window.isBombFruitActive || !window.isBombFruitActive()) return;
     const g = game || window.__remixGame;
-    if (!g || g.nj) return;
-    const mgr = g.wa;
+    if (!g || g.uj) return;
+    const mgr = g.oa;
     if (!mgr || !mgr.ka) return;
 
     if (!window.__bombFruitBootstrapped) {
@@ -922,9 +927,10 @@ window.BombFruitMod.alterSnakeCode = function (code) {
       // Capture native freePos early (eat path also sets these) so boom
       // spawns use d4E(..., 2) with e7(...,15) Shield head radius.
       try {
-        if (typeof g7 === "function") window.__bombFruitMakeApple = g7;
-        if (typeof d4E === "function") window.__bombFruitFreePos = d4E;
-        if (typeof Q3E === "function") window.__bombFruitPickType = Q3E;
+        if (typeof S7 === "function") window.__bombFruitMakeApple = S7;
+        if (!window.__bombFruitFreePos)
+          window.__bombFruitFreePos = window.bombFruit_nativeFreePos;
+        if (typeof hoF === "function") window.__bombFruitPickType = hoF;
       } catch (_cap) {}
       // Do NOT constrain at start — keep native 1a/3a/5a/10a/tally layout.
       // Spawn radius applies only to new fruits (eat / boom refill).
@@ -945,7 +951,7 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     window.bombFruit_clear_shields(mgr);
 
     window.bombFruit_tick_zones(g, mgr);
-    if (g.nj) return;
+    if (g.uj) return;
 
     // Mirror zone arm state onto fruit for legacy/debug reads.
     window.bombFruit_refresh_snap(mgr);
@@ -959,12 +965,12 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     frac
   ) {
     if (!board || !board.ka || !pos) return;
-    const tile = board.wb && board.wb.ka && board.wb.ka.ka;
+    const tile = board.ub && board.ub.ka && board.ub.ka.ka;
     if (!tile) return;
     const ctx = board.ka;
     const px =
-      typeof _ !== "undefined" && _ && typeof _.Od === "function"
-        ? new _.Od(pos.x * tile, pos.y * tile)
+      typeof _ !== "undefined" && _ && typeof _.Yd === "function"
+        ? new _.Yd(pos.x * tile, pos.y * tile)
         : { x: pos.x * tile, y: pos.y * tile };
     const side = tile * 3;
     ctx.globalAlpha = 1;
@@ -972,27 +978,27 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     ctx.lineWidth = tile / 12;
     ctx.lineDashOffset = tile / 8;
     ctx.setLineDash([tile / 4, tile / 4]);
-    if (typeof B5E === "function") {
-      B5E(board, px, 0, 0, side);
+    if (typeof uqF === "function") {
+      uqF(board, px, 0, 0, side);
     } else {
       ctx.beginPath();
       ctx.rect(px.x + tile / 2 - side / 2, px.y + tile / 2 - side / 2, side, side);
       ctx.stroke();
     }
-    if (bombX1a > 0 && !(game && game.nj)) {
+    if (bombX1a > 0 && !(game && game.uj)) {
       const arm = window.BOMB_FRUIT_ARM_TICKS;
       const f = (arm - (bombX1a - (frac || 0))) / arm;
       const pulseSide = side * f;
       let alpha = 0.15;
-      if (typeof U2E === "function") {
+      if (typeof HmF === "function") {
         try {
-          alpha = U2E(f) * 0.15;
+          alpha = HmF(f) * 0.15;
         } catch (_e) {}
       }
       ctx.globalAlpha = alpha;
       ctx.fillStyle = "#f23606";
-      if (typeof C5E === "function") {
-        C5E(board, px, 0, 0, pulseSide);
+      if (typeof vqF === "function") {
+        vqF(board, px, 0, 0, pulseSide);
       } else {
         ctx.fillRect(
           px.x + tile / 2 - pulseSide / 2,
@@ -1032,13 +1038,13 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     if (!window.isBombFruitActive || !window.isBombFruitActive()) return;
     const boxes = window.checkboxes && window.checkboxes.checkboxStatuses;
     if (boxes && boxes.mineRadius === false) return;
-    const game = (board && board.wb) || window.__remixGame;
-    if (game && game.nj) return;
+    const game = (board && board.ub) || window.__remixGame;
+    if (game && game.uj) return;
     if (!board || !board.ka) return;
     // Menu / pre-start: apples exist but tick hasn't run — plant zones now.
     // Prune only before play so count changes drop stale rings; during play
     // tick owns linger/armed zones.
-    const mgr = (game && game.wa) || (board.wb && board.wb.wa);
+    const mgr = (game && game.oa) || (board.ub && board.ub.oa);
     if (mgr && mgr.ka && mgr.ka.length) {
       window.bombFruit_plant_layout_zones(
         mgr,
@@ -1127,13 +1133,13 @@ window.BombFruitMod.alterSnakeCode = function (code) {
     !bfReplace(
       "e7 shield spawn physics",
       /if\(!r&&b===2&&window\.isMexicoActive&&window\.isMexicoActive\(\)\)return!0;if\(!r&&b===1&&window\.isMexicoActive&&window\.isMexicoActive\(\)\)return!0;return r\}/,
-      "if(!r&&b===2&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===1&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.ub===window.BOMB_FRUIT_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BOMB_FRUIT_MODE))return!0;}return r}"
+      "if(!r&&b===2&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===1&&window.isMexicoActive&&window.isMexicoActive())return!0;if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.yb===window.BOMB_FRUIT_MODE)return!0;if(a.yb===22&&a.NSa&&a.NSa.has(window.BOMB_FRUIT_MODE))return!0;}return r}"
     )
   ) {
     bfReplace(
       "e7 shield spawn physics fallback",
       /if\(!r&&b===21&&window\.isCatActive&&window\.isCatActive\(\)&&\(window\.cat_peaceful_ticks\|0\)>0\)return!0;return r\}/,
-      "if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.ub===window.BOMB_FRUIT_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BOMB_FRUIT_MODE))return!0;}return r}"
+      "if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.yb===window.BOMB_FRUIT_MODE)return!0;if(a.yb===22&&a.NSa&&a.NSa.has(window.BOMB_FRUIT_MODE))return!0;}return r}"
     );
   }
 
@@ -1156,20 +1162,20 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   // it for Bomb Fruit so fruit radii render without enabling real mines.
   bfReplace(
     "D5E call gate classic",
-    /!e7\(this\.settings,4\)&&e7\(this\.settings,12\)&&D5E\(this\.Ja,a\)/,
-    "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive())&&D5E(this.Ja,a)"
+    /!M7\(this\.settings,4\)&&M7\(this\.settings,12\)&&wqF\(this\.Ia,a\)/,
+    "!M7(this.settings,4)&&(M7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive())&&wqF(this.Ia,a)"
   );
   bfReplace(
     "D5E call gate pixel",
-    /e7\(this\.settings,12\)&&D5E\(this\.Ja,dd\)/,
-    "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive())&&D5E(this.Ja,dd)"
+    /M7\(this\.settings,12\)&&wqF\(this\.Ia,Ad\)/,
+    "(M7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive())&&wqF(this.Ia,Ad)"
   );
 
   // --- Draw hook: D5E is the mines/FX board pass (Visibility gates #f23606) ---
   bfReplace(
     "D5E bomb fruit radii",
-    /D5E=function\(a,b\)\{for\(var c of a\.wb\.Ma\.Aa\)\{/,
-    "D5E=function(a,b){if(!window.__bombFruitS5E){try{window.__bombFruitS5E=s5E;window.__bombFruitT6E=t6E;window.__bombFruitX3E=x3E;}catch(_bfAud){}}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}for(var c of a.wb.Ma.Aa){"
+    /wqF=function\(a,b\)\{for\(var c of a\.ub\.Ga\.Aa\)\{/,
+    "wqF=function(a,b){if(!window.__bombFruitS5E){try{window.__bombFruitS5E=mqF;window.__bombFruitT6E=nrF;window.__bombFruitX3E=RnF;}catch(_bfAud){}}if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_drawRadii(a,b);}catch(_bf){}}for(var c of a.ub.Ga.Aa){"
   );
 
   // Root cause of eat flicker: Vm→c4E sets apple.xL=0, and native D5E draws
@@ -1177,15 +1183,16 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   // every respawn. Keep Bomb Fruit rings fully opaque (fruit sprite fade unchanged).
   bfReplace(
     "D5E apple radius no xL fade",
-    /d\.ka\.globalAlpha=Math\.min\(1,\(h\.xL\+f\)\/2\)\*e;d\.ka\.strokeStyle="#f23606"/,
-    'd.ka.globalAlpha=(window.isBombFruitActive&&window.isBombFruitActive()?1:Math.min(1,(h.xL+f)/2))*e;d.ka.strokeStyle="#f23606"'
+    /d\.ka\.globalAlpha=Math\.min\(1,\(h\.gM\+f\)\/2\)\*e;d\.ka\.strokeStyle="#f23606"/,
+    'd.ka.globalAlpha=(window.isBombFruitActive&&window.isBombFruitActive()?1:Math.min(1,(h.gM+f)/2))*e;d.ka.strokeStyle="#f23606"'
   );
 
-  // Capture apple helpers early on eat (before Chess branch).
+  // Capture apple helpers early on eat (before Chess branch). Mirror whatever
+  // Chess captured (v14: S7 / free-pos shim, since d4E was inlined / hoF).
   bfReplace(
     "eat capture helpers",
-    /e=!1;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{window\.__chessMakeApple=g7;window\.__chessFreePos=d4E;window\.__chessPickType=Q3E;/,
-    "e=!1;if(window.isBombFruitActive&&window.isBombFruitActive()){window.__bombFruitMakeApple=g7;window.__bombFruitFreePos=d4E;window.__bombFruitPickType=Q3E;}if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=g7;window.__chessFreePos=d4E;window.__chessPickType=Q3E;"
+    /e=!1;if\(window\.isChessActive&&window\.isChessActive\(\)\)\{window\.__chessMakeApple=([^;]+?);window\.__chessFreePos=([^;]+?);window\.__chessPickType=([^;]+?);/,
+    "e=!1;if(window.isBombFruitActive&&window.isBombFruitActive()){window.__bombFruitMakeApple=$1;window.__bombFruitFreePos=$2;window.__bombFruitPickType=$3;}if(window.isChessActive&&window.isChessActive()){window.__chessMakeApple=$1;window.__chessFreePos=$2;window.__chessPickType=$3;"
   );
 
   if (
@@ -1207,14 +1214,14 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   if (
     !bfReplace(
       "j4E bomb fruit after mexico",
-      /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&a\.wa\.ka\.length>0&&\(window\.mexico_constrain_new_apples\(a\.wa,2\),0\)/,
-      "j4E(a.wa,k,d,a.Vm.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.wa.ka.length>0&&(window.mexico_constrain_new_apples(a.wa,2),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0)"
+      /AoF\(a\.oa,k,d,a\.Kc\.bind\(a\)\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&a\.oa\.ka\.length>0&&\(window\.mexico_constrain_new_apples\(a\.oa,2\),0\)/,
+      "AoF(a.oa,k,d,a.Kc.bind(a)),window.isMexicoActive&&window.isMexicoActive()&&a.oa.ka.length>0&&(window.mexico_constrain_new_apples(a.oa,2),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.oa,0,!1),0)"
     )
   ) {
     bfReplace(
       "j4E bomb fruit",
-      /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\)/,
-      "j4E(a.wa,k,d,a.Vm.bind(a)),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0)"
+      /AoF\(a\.oa,k,d,a\.Kc\.bind\(a\)\)/,
+      "AoF(a.oa,k,d,a.Kc.bind(a)),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.oa,0,!1),0)"
     );
   }
 
@@ -1222,8 +1229,8 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   // behind keeps its radius; new cell gets its own).
   bfReplace(
     "Vm clear shields + sync zones",
-    /e=window\.isCatActive&&window\.isCatActive\(\)&&window\.cat_allows_fruit_spawn&&!window\.cat_allows_fruit_spawn\(a,1,1\)\?!1:a\.Vm\(k,!e,null\)\);/,
-    "e=window.isCatActive&&window.isCatActive()&&window.cat_allows_fruit_spawn&&!window.cat_allows_fruit_spawn(a,1,1)?!1:a.Vm(k,!e,null));if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_clear_shields(a.wa);window.bombFruit_sync_fruit_bombs(a.wa);}catch(_bf){}}"
+    /e=window\.isCatActive&&window\.isCatActive\(\)&&window\.cat_allows_fruit_spawn&&!window\.cat_allows_fruit_spawn\(a,1,1\)\?!1:a\.Kc\(k,!e,null\)\);/,
+    "e=window.isCatActive&&window.isCatActive()&&window.cat_allows_fruit_spawn&&!window.cat_allows_fruit_spawn(a,1,1)?!1:a.Kc(k,!e,null));if(window.isBombFruitActive&&window.isBombFruitActive()){try{window.bombFruit_clear_shields(a.oa);window.bombFruit_sync_fruit_bombs(a.oa);}catch(_bf){}}"
   );
 
   // Classic Vm fail splices the eaten apple — board may be empty before
@@ -1231,14 +1238,14 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   if (
     !bfReplace(
       "splice empty win after mexico twin",
-      /\(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&\(window\.mexico_after_fruit_splice\(a\.wa,a\),0\)\)/,
-      "(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.wa,a),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
+      /\(a\.oa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.oa,a\),window\.isMexicoActive&&window\.isMexicoActive\(\)&&\(window\.mexico_after_fruit_splice\(a\.oa,a\),0\)\)/,
+      "(a.oa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.oa,a),window.isMexicoActive&&window.isMexicoActive()&&(window.mexico_after_fruit_splice(a.oa,a),0),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.oa,0,!1),0))"
     )
   ) {
     bfReplace(
       "splice empty win after chess portal",
-      /\(a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.wa,a\)\)/,
-      "(a.wa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.wa,a),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0))"
+      /\(a\.oa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice&&window\.chess_portal_after_fruit_splice\(a\.oa,a\)\)/,
+      "(a.oa.ka.splice(k,1),k--,window.chess_portal_after_fruit_splice&&window.chess_portal_after_fruit_splice(a.oa,a),window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.oa,0,!1),0))"
     );
   }
 
@@ -1284,8 +1291,8 @@ window.BombFruitMod.alterSnakeCode = function (code) {
   if (code.indexOf("window.BOMB_FRUIT_MODE)?window.BOMB_FRUIT_ICON") < 0) {
     bfReplace(
       "deathscreen Zb bomb fruit icon",
-      /\(a\.settings\.ob===window\.MEXICO_MODE\)\?window\.MEXICO_ICON:/,
-      "(a.settings.ob===window.MEXICO_MODE)?window.MEXICO_ICON:(a.settings.ob===window.BOMB_FRUIT_MODE)?window.BOMB_FRUIT_ICON:"
+      /\(a\.settings\.wb===window\.MEXICO_MODE\)\?window\.MEXICO_ICON:/,
+      "(a.settings.wb===window.MEXICO_MODE)?window.MEXICO_ICON:(a.settings.wb===window.BOMB_FRUIT_MODE)?window.BOMB_FRUIT_ICON:"
     );
     bfReplace(
       "blender b3E bomb fruit icon",

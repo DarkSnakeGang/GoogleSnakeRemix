@@ -129,8 +129,8 @@ window.RemixSpeedInfo.runCodeBefore = function () {
             null;
           if (g) {
             if (id === "count" && typeof g.Ca === "number") return g.Ca | 0;
-            if (id === "speed" && typeof g.Oa === "number") return g.Oa | 0;
-            if (id === "size" && typeof g.Sa === "number") return g.Sa | 0;
+            if (id === "speed" && typeof g.Ra === "number") return g.Ra | 0;
+            if (id === "size" && typeof g.Ua === "number") return g.Ua | 0;
           }
         } catch (_set) {}
       }

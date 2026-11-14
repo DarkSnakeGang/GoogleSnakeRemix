@@ -30,18 +30,18 @@ describe("Bomb Fruit mode (offline)", () => {
     assert.match(init, /bombFruit_sync_fruit_bombs/);
     assert.match(init, /bombFruit_orphan_boom/);
     assert.match(init, /bombFruit_after_respawn\(a,g,!0\)/);
-    assert.match(init, /bombFruit_after_respawn\(a\.wa,0,!1\)/);
+    assert.match(init, /bombFruit_after_respawn\(a\.oa,0,!1\)/);
     assert.match(init, /bombFruit_win_if_empty/);
     assert.match(init, /bombFruit_clear_shields/);
     assert.match(init, /__bombFruitZones/);
     assert.match(init, /bombFruit_ensure_zone/);
     assert.match(init, /bombFruit_plant_layout_zones/);
     assert.match(init, /BOMB_FRUIT_ZONE_LINGER/);
-    assert.match(init, /snake\.Ca\s*=\s*snake\.direction/);
-    assert.match(init, /y6E\(snake\)/);
-    assert.match(init, /isBombFruitActive\(\)\?1:Math\.min\(1,\(h\.xL\+f\)\/2\)/);
+    assert.match(init, /snake\.Ka\s*=\s*snake\.direction/);
+    assert.match(init, /srF\(snake\)/);
+    assert.match(init, /isBombFruitActive\(\)\?1:Math\.min\(1,\(h\.gM\+f\)\/2\)/);
     assert.match(init, /b===15&&window\.BOMB_FRUIT_MODE/);
-    assert.match(init, /game\.ub\s*=\s*true/);
+    assert.match(init, /game\.Za\s*=\s*true/);
     assert.match(init, /same end state as Shield/);
 
     for (const [name, body] of [
@@ -55,12 +55,12 @@ describe("Bomb Fruit mode (offline)", () => {
       assert.match(body, /count_05\.png/, name);
       assert.match(
         body,
-        /e7\(this\.settings,12\)\|\|window\.isBombFruitActive/,
-        name + " D5E call gate"
+        /M7\(this\.settings,12\)\|\|window\.isBombFruitActive/,
+        name + " wqF call gate"
       );
       assert.match(body, /bombFruit_sync_fruit_bombs/, name + " eat detach");
       assert.match(body, /__bombFruitOrphans/, name + " orphan list");
-      assert.match(body, /b===15&&window\.BOMB_FRUIT_MODE/, name + " shield e7");
+      assert.match(body, /b===15&&window\.BOMB_FRUIT_MODE/, name + " shield M7");
       assert.match(body, /bombFruit_clear_shields/, name + " no shield bars");
     }
   });
@@ -98,29 +98,29 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
         const mode = window.BOMB_FRUIT_MODE;
         window.CurrentModeNum = mode;
         const g = window.__remixGame;
-        g.settings.ub = mode;
-        g.settings.ob = mode;
+        g.settings.yb = mode;
+        g.settings.wb = mode;
         window.bombFruit_reset_state();
-        g.wa.reset();
-        const before = g.wa.ka.length;
-        const apple = g.wa.ka[0];
-        for (let i = 0; i < g.oa.ka.length; i++) {
-          g.oa.ka[i].x = apple.pos.x - 1;
-          g.oa.ka[i].y = apple.pos.y;
+        g.oa.reset();
+        const before = g.oa.ka.length;
+        const apple = g.oa.ka[0];
+        for (let i = 0; i < g.Yc.ka.length; i++) {
+          g.Yc.ka[i].x = apple.pos.x - 1;
+          g.Yc.ka[i].y = apple.pos.y;
         }
-        g.oa.direction = "RIGHT";
-        g.nj = false;
+        g.Yc.direction = "RIGHT";
+        g.uj = false;
         g.lj = false;
-        g.ub = false;
-        const sh0 = g.Sh | 0;
-        for (let t = 0; t < 25 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
-        if (!g.nj) g.tick();
+        g.Za = false;
+        const sh0 = g.Bi | 0;
+        for (let t = 0; t < 25 && (g.Bi | 0) === sh0 && !g.uj; t++) g.tick();
+        if (!g.uj) g.tick();
         return {
           before,
-          after: g.wa.ka.length,
-          sh: g.Sh | 0,
-          nj: !!g.nj,
-          ub: !!g.ub,
+          after: g.oa.ka.length,
+          sh: g.Bi | 0,
+          nj: !!g.uj,
+          ub: !!g.Za,
         };
       });
       assert.equal(bomb.before, 1, JSON.stringify(bomb));
@@ -151,29 +151,29 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
         const mode = window.BOMB_FRUIT_MODE;
         window.CurrentModeNum = mode;
         const g = window.__remixGame;
-        g.settings.ub = mode;
-        g.settings.ob = mode;
+        g.settings.yb = mode;
+        g.settings.wb = mode;
         window.bombFruit_reset_state();
-        g.wa.reset();
-        const before = g.wa.ka.length;
-        const apple = g.wa.ka[0];
-        for (let i = 0; i < g.oa.ka.length; i++) {
-          g.oa.ka[i].x = apple.pos.x - 1;
-          g.oa.ka[i].y = apple.pos.y;
+        g.oa.reset();
+        const before = g.oa.ka.length;
+        const apple = g.oa.ka[0];
+        for (let i = 0; i < g.Yc.ka.length; i++) {
+          g.Yc.ka[i].x = apple.pos.x - 1;
+          g.Yc.ka[i].y = apple.pos.y;
         }
-        g.oa.direction = "RIGHT";
-        g.nj = false;
+        g.Yc.direction = "RIGHT";
+        g.uj = false;
         g.lj = false;
-        g.ub = false;
-        const sh0 = g.Sh | 0;
-        for (let t = 0; t < 25 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
-        if (!g.nj) g.tick();
+        g.Za = false;
+        const sh0 = g.Bi | 0;
+        for (let t = 0; t < 25 && (g.Bi | 0) === sh0 && !g.uj; t++) g.tick();
+        if (!g.uj) g.tick();
         return {
           before,
-          after: g.wa.ka.length,
-          sh: g.Sh | 0,
-          nj: !!g.nj,
-          ub: !!g.ub,
+          after: g.oa.ka.length,
+          sh: g.Bi | 0,
+          nj: !!g.uj,
+          ub: !!g.Za,
         };
       });
       assert.equal(dice.before, 1, JSON.stringify(dice));
@@ -199,11 +199,11 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
         const mode = window.BOMB_FRUIT_MODE;
         window.CurrentModeNum = mode;
         const g = window.__remixGame;
-        g.settings.ub = mode;
-        g.settings.ob = mode;
+        g.settings.yb = mode;
+        g.settings.wb = mode;
         window.bombFruit_reset_state();
         // No tick — simulate menu board paint.
-        const mgr = g.wa;
+        const mgr = g.oa;
         const appleN = mgr.ka.length;
         window.bombFruit_plant_layout_zones(mgr, true);
         const zones = window.__bombFruitZones || [];
@@ -254,13 +254,13 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
 
         // Synthetic apple + head for arm/boom without full play
         const game = window.__remixGame;
-        if (!game || !game.wa || !game.wa.ka || !game.wa.ka.length) {
+        if (!game || !game.oa || !game.oa.ka || !game.oa.ka.length) {
           return { hasTrophy, blend: !!blend, mode, err: "no apples yet" };
         }
-        const apple = game.wa.ka[0];
+        const apple = game.oa.ka[0];
         window.bombFruit_init_apple(apple);
         apple.bombX1a = -1;
-        const head = game.oa.ka[0];
+        const head = game.Yc.ka[0];
         // Place head adjacent (Chebyshev 1) to arm
         const ax = apple.pos.x;
         const ay = apple.pos.y;
@@ -279,12 +279,12 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
           }
           window.bombFruit_tick_logic(game);
           ticks++;
-          if (game.nj || game.lj) {
+          if (game.uj || game.lj) {
             died = true;
             break;
           }
         }
-        if (game.nj || game.lj) died = true;
+        if (game.uj || game.lj) died = true;
 
         return {
           hasTrophy,
@@ -302,9 +302,9 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
           ),
           active: window.isBombFruitActive(),
           finalX1a: apple.bombX1a,
-          deathKa: game.oa ? game.oa.Ka | 0 : -1,
-          deathCa: game.oa ? game.oa.Ca : null,
-          deathDir: game.oa ? game.oa.direction : null,
+          deathKa: game.Yc ? game.Yc.Ga | 0 : -1,
+          deathCa: game.Yc ? game.Yc.Ka : null,
+          deathDir: game.Yc ? game.Yc.direction : null,
         };
       });
       assert.equal(r.hasTrophy, true, JSON.stringify(r));
@@ -337,25 +337,26 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
         const mode = window.BOMB_FRUIT_MODE;
         window.CurrentModeNum = mode;
         const g = window.__remixGame;
-        g.settings.ub = mode;
-        g.settings.ob = mode;
+        g.settings.yb = mode;
+        g.settings.wb = mode;
         window.bombFruit_reset_state();
         window.__bombFruitBootstrapped = true;
-        g.nj = false;
-        g.ub = false;
-        const snake = g.oa;
-        // Simulate last living tick was a turn: direction updated, Ca still old.
+        g.uj = false;
+        g.Za = false;
+        const snake = g.Yc;
+        // Simulate last living tick was a turn: direction updated, Ka still old.
+        // (v14 snake: Ka = last facing, Ia = queued turn, Lb/Ob = turn lock, Ga = counter.)
         snake.direction = "DOWN";
-        snake.Ca = "RIGHT";
-        snake.Ga = "NONE";
-        snake.yb = "NONE";
-        snake.Qb = false;
+        snake.Ka = "RIGHT";
+        snake.Ia = "NONE";
+        snake.Lb = "NONE";
+        snake.Ob = false;
         window.bombFruit_mineStyleDeath(g);
         return {
-          nj: !!g.nj,
-          Ka: snake.Ka | 0,
+          nj: !!g.uj,
+          Ka: snake.Ga | 0,
           direction: snake.direction,
-          Ca: snake.Ca,
+          Ca: snake.Ka,
           freeze: !!window.__bombFruitDeathFreeze,
           tickPatched: Function.prototype.toString
             .call(g.tick)
@@ -387,10 +388,10 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
         window.__bombFruitLastPos = new WeakMap();
 
         const game = window.__remixGame;
-        if (!game || !game.wa || !game.wa.ka || !game.wa.ka.length) {
+        if (!game || !game.oa || !game.oa.ka || !game.oa.ka.length) {
           return { err: "no apples" };
         }
-        const apple = game.wa.ka[0];
+        const apple = game.oa.ka[0];
         window.bombFruit_init_apple(apple);
         const oldX = apple.pos.x;
         const oldY = apple.pos.y;
@@ -408,7 +409,7 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
           apple.pos.y = newY;
         }
 
-        window.bombFruit_sync_fruit_bombs(game.wa);
+        window.bombFruit_sync_fruit_bombs(game.oa);
 
         const orphans = window.__bombFruitOrphans || [];
         return {
@@ -457,10 +458,10 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
             const mode = window.BOMB_FRUIT_MODE;
             window.CurrentModeNum = mode;
             const g = window.__remixGame;
-            g.settings.ob = mode;
+            g.settings.wb = mode;
             window.bombFruit_reset_state();
             window.__bombFruitBootstrapped = true;
-            const mgr = g.wa;
+            const mgr = g.oa;
             window.bombFruit_init_all(mgr);
             const n = mgr.ka.length;
             // Every apple gets a radius draw path (field present).
@@ -468,7 +469,7 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
               (a) => a && a.pos && (a.bombX1a === -1 || a.bombX1a == null || a.bombX1a >= -1)
             );
             window.bombFruit_init_all(mgr);
-            const head = g.oa.ka[0];
+            const head = g.Yc.ka[0];
             head.x = 0;
             head.y = 0;
             if (!mgr.ka.length) {
@@ -511,8 +512,8 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
         const mode = window.BOMB_FRUIT_MODE;
         window.CurrentModeNum = mode;
         const g = window.__remixGame;
-        g.settings.ob = mode;
-        const mgr = g.wa;
+        g.settings.wb = mode;
+        const mgr = g.oa;
         const snap = mgr.ka.map((a) => ({
           x: a.pos.x,
           y: a.pos.y,
@@ -536,7 +537,7 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
           );
 
         // Explode one apple far from head; replacement keeps sequenceNumber.
-        const head = g.oa.ka[0];
+        const head = g.Yc.ka[0];
         head.x = 0;
         head.y = 0;
         const target = mgr.ka[0];
@@ -576,10 +577,10 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
         const mode = window.BOMB_FRUIT_MODE;
         window.CurrentModeNum = mode;
         const g = window.__remixGame;
-        g.settings.ob = mode;
+        g.settings.wb = mode;
         window.bombFruit_reset_state();
         window.__bombFruitBootstrapped = true;
-        const mgr = g.wa;
+        const mgr = g.oa;
         window.bombFruit_init_all(mgr);
         const apple = mgr.ka[0];
         apple.bombX1a = 3;
@@ -627,11 +628,11 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
         const mode = window.BOMB_FRUIT_MODE;
         window.CurrentModeNum = mode;
         const g = window.__remixGame;
-        g.settings.ub = mode;
-        g.settings.ob = mode;
+        g.settings.yb = mode;
+        g.settings.wb = mode;
         window.bombFruit_reset_state();
         window.__bombFruitBootstrapped = true;
-        const mgr = g.wa;
+        const mgr = g.oa;
         const apple = mgr.ka[0];
         window.bombFruit_init_apple(apple);
         apple.bombX1a = -1; // unarmed
@@ -681,11 +682,11 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
         const mode = window.BOMB_FRUIT_MODE;
         window.CurrentModeNum = mode;
         const g = window.__remixGame;
-        g.settings.ub = mode;
-        g.settings.ob = mode;
+        g.settings.yb = mode;
+        g.settings.wb = mode;
         window.bombFruit_reset_state();
         window.__bombFruitBootstrapped = true;
-        const mgr = g.wa;
+        const mgr = g.oa;
         window.bombFruit_init_all(mgr);
         window.bombFruit_sync_fruit_bombs(mgr);
         window.bombFruit_update_draw_cache(mgr);
@@ -693,7 +694,7 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
         // Simulate eat gap: apples cleared for a frame, game not over.
         // Zones stay — radii are cell-bound, not fruit-bound.
         const saved = mgr.ka.splice(0, mgr.ka.length);
-        g.nj = false;
+        g.uj = false;
         window.bombFruit_update_draw_cache(mgr);
         const mid = (window.__bombFruitDrawCache || []).map((e) => e.x + "," + e.y);
         // Restore fruit without sync — zones unchanged.
@@ -727,20 +728,20 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
         const mode = window.BOMB_FRUIT_MODE;
         window.CurrentModeNum = mode;
         const g = window.__remixGame;
-        g.settings.ob = mode;
-        g.settings.ub = mode;
+        g.settings.wb = mode;
+        g.settings.yb = mode;
         window.bombFruit_reset_state();
         window.__bombFruitBootstrapped = true;
-        const mgr = g.wa;
+        const mgr = g.oa;
         window.bombFruit_init_all(mgr);
 
         // Shield physics via e7(...,15): Rb(...,2) must ban Manhattan ≤3.
-        const head = g.oa.ka[0];
+        const head = g.Yc.ka[0];
         head.x = 8;
         head.y = 7;
         const free =
-          typeof g.Rb === "function"
-            ? g.Rb.bind(g)
+          typeof g.Lb === "function"
+            ? g.Lb.bind(g)
             : typeof g.Tb === "function"
               ? g.Tb.bind(g)
               : null;
@@ -756,7 +757,7 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
           dists.length > 0 && dists.every((d) => d > 3);
 
         window.bombFruit_clear_shields(mgr);
-        const noBars = mgr.ka.every((a) => !a || a.nba == null);
+        const noBars = mgr.ka.every((a) => !a || a.h7 == null);
 
         // Spawn fail with siblings still present → no win.
         head.x = 0;
@@ -766,15 +767,15 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
         window.bombFruit_explode(g, mgr, 0);
         const afterSiblings = {
           n: mgr.ka.length,
-          nj: !!g.nj,
-          ub: !!g.ub,
+          nj: !!g.uj,
+          ub: !!g.Za,
         };
 
         // Empty board + spawn fail → native-style win (ub+nj).
         mgr.ka.length = 0;
         window.appleArray = mgr.ka;
-        g.nj = false;
-        g.ub = false;
+        g.uj = false;
+        g.Za = false;
         const wonEmpty = window.bombFruit_win_if_empty(g, mgr);
         window.bombFruit_find_spawn = origFind;
         return {
@@ -783,8 +784,8 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
           noBars,
           afterSiblings,
           wonEmpty,
-          nj: !!g.nj,
-          ub: !!g.ub,
+          nj: !!g.uj,
+          ub: !!g.Za,
         };
       });
       assert.equal(r.shieldRadius, true, "Rb bans ≤3: " + JSON.stringify(r));
@@ -808,18 +809,18 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
         const mode = window.BOMB_FRUIT_MODE;
         window.CurrentModeNum = mode;
         const g = window.__remixGame;
-        g.settings.ob = mode;
-        g.settings.ub = mode;
+        g.settings.wb = mode;
+        g.settings.yb = mode;
         window.bombFruit_reset_state();
         window.__bombFruitBootstrapped = true;
-        const mgr = g.wa;
-        const head = g.oa.ka[0];
+        const mgr = g.oa;
+        const head = g.Yc.ka[0];
         head.x = 5;
         head.y = 4;
 
         const free =
-          typeof g.Rb === "function"
-            ? g.Rb.bind(g)
+          typeof g.Lb === "function"
+            ? g.Lb.bind(g)
             : typeof g.Tb === "function"
               ? g.Tb.bind(g)
               : null;
@@ -829,13 +830,13 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
           if (p) on.push(Math.abs(p.x - head.x) + Math.abs(p.y - head.y));
         }
 
-        g.settings.ub = 0;
+        g.settings.yb = 0;
         const off = [];
         for (let i = 0; i < 25 && free; i++) {
           const p = free(null, 2);
           if (p) off.push(Math.abs(p.x - head.x) + Math.abs(p.y - head.y));
         }
-        g.settings.ub = mode;
+        g.settings.yb = mode;
 
         // Soft find also refuses near-head cells.
         mgr.ka.length = 1;
@@ -848,16 +849,16 @@ describe("Bomb Fruit mode (browser)", { skip: !runBrowser }, () => {
 
         mgr.ka.length = 0;
         window.appleArray = mgr.ka;
-        g.nj = false;
-        g.ub = false;
+        g.uj = false;
+        g.Za = false;
         const won = window.bombFruit_win_if_empty(g, mgr);
         return {
           onMin: on.length ? Math.min(...on) : null,
           offMin: off.length ? Math.min(...off) : null,
           softOk,
           won,
-          ub: !!g.ub,
-          nj: !!g.nj,
+          ub: !!g.Za,
+          nj: !!g.uj,
         };
       });
       assert.ok(r.onMin != null && r.onMin > 3, "bomb on: " + JSON.stringify(r));

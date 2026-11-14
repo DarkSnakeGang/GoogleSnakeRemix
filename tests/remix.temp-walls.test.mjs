@@ -30,9 +30,9 @@ describe("Temp Walls mode (offline)", () => {
     assert.match(init, /TEMP_WALL_FADE_ORANGE\s*=\s*"#ff6600"/);
     assert.match(init, /tempWalls_drawPulse/);
     assert.match(init, /tempWalls_theme_brick/);
-    assert.match(init, /c7\(settings, settings\.oa, 3\)/);
+    assert.match(init, /P7\(settings, settings\.oa, 3\)/);
     assert.match(init, /tempWalls_drawPulse\(this\.Ka,"ka"\)/);
-    assert.match(init, /tempWalls_drawPulse\(td,"oa"\)/);
+    assert.match(init, /tempWalls_drawPulse\(Wc,"oa"\)/);
     assert.match(init, /tempWalls_has_fading/);
     assert.match(init, /tempWalls_win_if_empty/);
     assert.match(init, /__tempWall/);
@@ -93,10 +93,10 @@ window.TempWallsMod.alterSnakeCode("tick(){}");\n`,
     const w = sandbox.window;
     const wa = Array.from({ length: 12 }, () => Array(12).fill(0));
     const game = {
-      Ca: { wa, Aa: new Map() },
-      oa: { ka: [{ x: 0, y: 0 }] },
-      wa: { ka: [] },
-      Sh: 3,
+      Tw: { oa: wa, wa: new Map() },
+      Yc: { ka: [{ x: 0, y: 0 }] },
+      oa: { ka: [] },
+      Bi: 3,
     };
     w.__remixGame = game;
     w.CurrentModeNum = 50;
@@ -170,10 +170,10 @@ window.TempWallsMod.alterSnakeCode("tick(){}");\n`,
     const wa = Array.from({ length: 9 }, () => Array(10).fill(0));
     const Aa = new Map();
     const game = {
-      Ca: { wa, Aa },
-      oa: { ka: [{ x: 0, y: 0 }] },
-      wa: { ka: [] },
-      Sh: 0,
+      Tw: { oa: wa, wa: Aa },
+      Yc: { ka: [{ x: 0, y: 0 }] },
+      oa: { ka: [] },
+      Bi: 0,
     };
     w.__remixGame = game;
     w.CurrentModeNum = 99;

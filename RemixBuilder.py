@@ -10,21 +10,22 @@ CACHE = os.path.join(BASE, ".cache", "pudding-build")
 # MorePudding = PuddingMod + MoreMenuMod + VisibilityMod + MorePuddingInit.
 # Upstream MorePudding.js is often stale vs PuddingMod.js, so Remix rebuilds it
 # from the same parts MoreBuilder.py uses (mirrors GoogleSnakePudding).
-PUDDING_REPO = "https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakePudding/main"
+# Game v14: Pudding / More Menu / Visibility / Level Editor all come from their v14 branches.
+PUDDING_REPO = "https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakePudding/v14"
 PUDDINGMOD_URL = f"{PUDDING_REPO}/PuddingMod.js"
 MOREPUDDING_INIT_URL = f"{PUDDING_REPO}/MorePuddingInit.js"
 # Fallback only if a local rebuild is impossible.
 MOREPUDDING_URL = f"{PUDDING_REPO}/MorePudding.js"
 MOREMENU_URL = (
     "https://raw.githubusercontent.com/DarkSnakeGang/"
-    "GoogleSnakeCustomMenuStuff/main/modloadercode.js"
+    "GoogleSnakeCustomMenuStuff/v14/modloadercode.js"
 )
 VISIBILITY_URL = (
     "https://raw.githubusercontent.com/DarkSnakeGang/"
-    "GoogleSnakeDeleteStuffMod/main/VisibilityInit.js"
+    "GoogleSnakeDeleteStuffMod/v14/VisibilityInit.js"
 )
 BOOTSTRAP_URL = f"{PUDDING_REPO}/bootstrap-stripped.css"
-LEVEL_EDITOR_URL = "https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v13/modloadercode.js"
+LEVEL_EDITOR_URL = "https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeLevelEditor/v14/modloadercode.js"
 
 REMIX_PARTS = [
     "src/CandyInit.js",
@@ -68,7 +69,15 @@ ULTRA_PARTS = [
 ]
 
 
+# --offline reuses the upstream files already in .cache/pudding-build and the
+# LevelEditorInit.js on disk (fast rebuilds while iterating on src/).
+OFFLINE = "--offline" in sys.argv
+
+
 def download(url, dest):
+    if OFFLINE and os.path.exists(dest):
+        print(f"Offline: reusing {dest}")
+        return
     print(f"Downloading {url} -> {dest}")
     os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
     urllib.request.urlretrieve(url, dest)
@@ -105,6 +114,9 @@ def rebuild_morepudding(dest):
         for path in (pudding, more_menu, visibility, more_init):
             with open(path, "r", encoding="utf-8") as f:
                 out.write(f.read())
+            # Upstream More Menu (Nov 2026) ends on `}` of an assignment, so a
+            # bare join glues it to the next file's first statement.
+            out.write("\n;\n")
     print(f"Wrote rebuilt {dest} ({os.path.getsize(dest)} bytes)")
 
 

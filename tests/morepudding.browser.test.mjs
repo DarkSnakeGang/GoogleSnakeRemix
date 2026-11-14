@@ -271,8 +271,8 @@ describe("MorePudding base (browser)", { skip: !runBrowser }, () => {
         if (typeof window.saveSettings === "function") window.saveSettings();
 
         const g = window.__remixGame;
-        g.settings.ob = 2;
-        g.settings.ub = 2;
+        g.settings.wb = 2;
+        g.settings.yb = 2;
         g.settings.Ca = 2;
         g.settings.ka = 2;
         // Fruit setting index used by aaF (bowl = 24).
@@ -287,8 +287,8 @@ describe("MorePudding base (browser)", { skip: !runBrowser }, () => {
         const fruitKey = m && m[1];
         if (fruitKey) g.settings[fruitKey] = 24;
 
-        g.wa.reset();
-        const types = g.wa.ka.map((a) => a.type);
+        g.oa.reset();
+        const types = g.oa.ka.map((a) => a.type);
         const inPool = types.every((t) => pool.includes(t));
         const paired =
           types.length >= 2 &&
@@ -302,9 +302,9 @@ describe("MorePudding base (browser)", { skip: !runBrowser }, () => {
           ["burger", window.BURGER_MODE],
         ]) {
           window.CurrentModeNum = id;
-          g.settings.ob = id;
-          g.settings.ub = id;
-          g.wa.reset();
+          g.settings.wb = id;
+          g.settings.yb = id;
+          g.oa.reset();
           if (
             name === "burger" &&
             window.isBurgerActive &&
@@ -314,12 +314,12 @@ describe("MorePudding base (browser)", { skip: !runBrowser }, () => {
               typeof window.__uaF === "function"
                 ? window.__uaF
                 : window.__l4E;
-            if (typeof pair === "function") pair(g.wa);
+            if (typeof pair === "function") pair(g.oa);
           }
           modes[name] = {
-            apples: g.wa.ka.length,
-            pieces: g.wa.ka.filter((a) => a.isPiece).length,
-            poisons: g.wa.ka.filter((a) => a.nla).length,
+            apples: g.oa.ka.length,
+            pieces: g.oa.ka.filter((a) => a.isPiece).length,
+            poisons: g.oa.ka.filter((a) => a.Bea).length,
           };
         }
 
@@ -333,7 +333,7 @@ describe("MorePudding base (browser)", { skip: !runBrowser }, () => {
           inPool,
           paired,
           modes,
-          pick: window.pickCustomPortalType(g.wa),
+          pick: window.pickCustomPortalType(g.oa),
         };
       });
 

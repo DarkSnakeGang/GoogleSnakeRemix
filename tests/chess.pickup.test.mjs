@@ -65,10 +65,10 @@ function loadChessHelpers() {
   w.selectedFruit = 0;
   w.muted = true;
   w.appleArray = [];
-  w.chess_shield_field = "Oba";
+  w.chess_shield_field = "h7";
   w.shield_empty_all = function () {
     w.appleArray.forEach((a) => {
-      a.Oba = undefined;
+      a.h7 = undefined;
     });
   };
   w.capture_attempt = function (x, y) {

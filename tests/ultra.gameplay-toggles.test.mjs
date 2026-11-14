@@ -150,7 +150,7 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
     }
   });
 
-  it("shield-mode fruit get nba only when the shield-spawn toggle is on", async () => {
+  it("shield-mode fruit get h7 only when the shield-spawn toggle is on", async () => {
     const h = await launchUltra(82);
     try {
       const { COUNT, SIZE } = await import("../tools/harness.mjs");
@@ -158,26 +158,26 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
       const probe = await h.page.evaluate(() => {
         const g = window.__remixGame;
         function nbaSize(a) {
-          if (!a || !a.nba) return 0;
-          return typeof a.nba.size === "number" ? a.nba.size : 1;
+          if (!a || !a.h7) return 0;
+          return typeof a.h7.size === "number" ? a.h7.size : 1;
         }
         function fruitShields() {
-          return (g.wa.ka || [])
+          return (g.oa.ka || [])
             .filter((a) => a && !a.isPiece)
             .map((a) => nbaSize(a));
         }
         function startShield() {
-          g.settings.ub = 15;
-          g.settings.ob = 15;
+          g.settings.yb = 15;
+          g.settings.wb = 15;
           window.CurrentModeNum = 15;
-          g.wa.reset();
+          g.oa.reset();
           return fruitShields();
         }
         function eatSpawn() {
-          const apples = g.wa.ka;
+          const apples = g.oa.ka;
           if (!apples.length) return { ok: false, reason: "no apples" };
-          const head = g.oa.ka[0];
-          const dir = g.oa.direction || "RIGHT";
+          const head = g.Yc.ka[0];
+          const dir = g.Yc.direction || "RIGHT";
           const next = { x: head.x, y: head.y };
           if (dir === "RIGHT") next.x += 1;
           else if (dir === "LEFT") next.x -= 1;
@@ -188,11 +188,11 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
           );
           apples[0].pos.x = next.x;
           apples[0].pos.y = next.y;
-          apples[0].nba = undefined;
+          apples[0].h7 = undefined;
           window.ultraInstallFruitShieldSpawnGate();
           g.tick();
-          window.ultraStripUnwantedFruitShields(g.wa.ka);
-          const fresh = (g.wa.ka || []).filter(
+          window.ultraStripUnwantedFruitShields(g.oa.ka);
+          const fresh = (g.oa.ka || []).filter(
             (a) => a && !beforeKeys.has(a.pos.x + "," + a.pos.y)
           );
           return {
@@ -262,14 +262,14 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
       const probe = await h.page.evaluate(() => {
         const g = window.__remixGame;
         function nbaSize(a) {
-          if (!a || !a.nba) return 0;
-          return typeof a.nba.size === "number" ? a.nba.size : 1;
+          if (!a || !a.h7) return 0;
+          return typeof a.h7.size === "number" ? a.h7.size : 1;
         }
         function eatFruit() {
-          const apples = g.wa.ka;
+          const apples = g.oa.ka;
           if (!apples.length) return { ok: false, reason: "no apples" };
-          const head = g.oa.ka[0];
-          const dir = g.oa.direction || "RIGHT";
+          const head = g.Yc.ka[0];
+          const dir = g.Yc.direction || "RIGHT";
           const next = { x: head.x, y: head.y };
           if (dir === "RIGHT") next.x += 1;
           else if (dir === "LEFT") next.x -= 1;
@@ -283,11 +283,11 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
           target.pos.y = next.y;
           target.isPiece = false;
           target.type = 0;
-          target.nba = undefined;
+          target.h7 = undefined;
           window.head_state = "OPEN";
           window.shield_empty_all && window.shield_empty_all();
           g.tick();
-          const fresh = (g.wa.ka || []).filter(
+          const fresh = (g.oa.ka || []).filter(
             (a) => a && !beforeKeys.has(a.pos.x + "," + a.pos.y)
           );
           return {
@@ -302,7 +302,7 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
         window.pudding_settings.UltraShieldedFruitSpawn = false;
         const off = eatFruit();
         window.pudding_settings.UltraShieldedFruitSpawn = true;
-        g.wa.reset();
+        g.oa.reset();
         window.head_state = "OPEN";
         window.shield_empty_all && window.shield_empty_all();
         const on = eatFruit();
@@ -311,7 +311,7 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
       assert.ok(probe.off.ok && probe.off.added > 0, JSON.stringify(probe));
       assert.ok(
         probe.off.fruit.every((n) => n === 0),
-        "chess fruit should not inherit shield-mode nba " + JSON.stringify(probe)
+        "chess fruit should not inherit shield-mode h7 " + JSON.stringify(probe)
       );
       assert.ok(probe.on.ok && probe.on.added > 0, JSON.stringify(probe));
       assert.deepEqual(h.modErrors(), [], "no mod errors");
@@ -338,32 +338,32 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
           return n;
         }
         function reviveCenter() {
-          g.nj = false;
-          const snake = g.oa.ka;
+          g.uj = false;
+          const snake = g.Yc.ka;
           for (let i = 0; i < snake.length; i++) {
             snake[i].x = 8;
             snake[i].y = 10;
           }
-          g.oa.direction = "RIGHT";
+          g.Yc.direction = "RIGHT";
         }
         function startWall() {
-          g.settings.ub = 1;
-          g.settings.ob = 1;
+          g.settings.yb = 1;
+          g.settings.wb = 1;
           window.CurrentModeNum = 1;
           if (typeof window.ensureGameMode === "function") window.ensureGameMode(1);
-          g.wa.reset();
+          g.oa.reset();
           reviveCenter();
         }
         function eatAhead() {
-          const apples = g.wa.ka;
+          const apples = g.oa.ka;
           if (!apples.length) return;
-          const head = g.oa.ka[0];
+          const head = g.Yc.ka[0];
           apples[0].pos.x = head.x + 1;
           apples[0].pos.y = head.y;
         }
         function tickSafe(n) {
           for (let i = 0; i < n; i++) {
-            if (g.nj) break;
+            if (g.uj) break;
             g.tick();
           }
         }
@@ -376,7 +376,7 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
         eatAhead();
         tickSafe(20);
         const offAfter = wallCount();
-        const deadOff = !!g.nj;
+        const deadOff = !!g.uj;
 
         window.pudding_settings.UltraWallModeSpawn = true;
         window.ultraEnsureGameplayToggles();
@@ -389,7 +389,7 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
           tickSafe(8);
         }
         const onAfter = wallCount();
-        const deadOn = !!g.nj;
+        const deadOn = !!g.uj;
 
         window.pudding_settings.UltraWallModeSpawn = false;
         window.ultraEnsureGameplayToggles();
@@ -436,33 +436,33 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
           return ma && ma.oa && typeof ma.oa.size === "number" ? ma.oa.size : 0;
         }
         function reviveCenter() {
-          g.nj = false;
-          const snake = g.oa.ka;
+          g.uj = false;
+          const snake = g.Yc.ka;
           for (let i = 0; i < snake.length; i++) {
             snake[i].x = 8;
             snake[i].y = 10;
           }
-          g.oa.direction = "RIGHT";
+          g.Yc.direction = "RIGHT";
         }
         function startMine() {
-          g.settings.ub = 12;
-          g.settings.ob = 12;
+          g.settings.yb = 12;
+          g.settings.wb = 12;
           window.CurrentModeNum = 12;
           if (typeof window.ensureGameMode === "function") window.ensureGameMode(12);
-          g.wa.reset();
+          g.oa.reset();
           if (typeof window.emptyMines === "function") window.emptyMines();
           reviveCenter();
         }
         function eatAhead() {
-          const apples = g.wa.ka;
+          const apples = g.oa.ka;
           if (!apples.length) return;
-          const head = g.oa.ka[0];
+          const head = g.Yc.ka[0];
           apples[0].pos.x = head.x + 1;
           apples[0].pos.y = head.y;
         }
         function tickSafe(n) {
           for (let i = 0; i < n; i++) {
-            if (g.nj) break;
+            if (g.uj) break;
             g.tick();
           }
         }
@@ -536,7 +536,7 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
           const names = window.ultraPlaceNames || {};
           const game = window.wholeSnakeObject;
           const gates = names.gateContainer && game[names.gateContainer];
-          return gates && Array.isArray(gates.pfa) ? gates.pfa.length : 0;
+          return gates && Array.isArray(gates.gga) ? gates.gga.length : 0;
         }
         function bridgeCount() {
           const names = window.ultraPlaceNames || {};
@@ -548,7 +548,7 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
             const row = bridges.oa[y];
             if (!row) continue;
             for (let x = 0; x < row.length; x++) {
-              if (row[x] && (row[x].color || row[x].Lh)) n++;
+              if (row[x] && (row[x].color || row[x].Xg)) n++;
             }
           }
           return n;
@@ -560,24 +560,24 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
           return st && st.oa && typeof st.oa.size === "number" ? st.oa.size : 0;
         }
         function revive() {
-          g.nj = false;
-          const snake = g.oa.ka;
+          g.uj = false;
+          const snake = g.Yc.ka;
           for (let i = 0; i < snake.length; i++) {
             snake[i].x = 6;
             snake[i].y = 8;
           }
-          g.oa.direction = "RIGHT";
+          g.Yc.direction = "RIGHT";
         }
         function eatAhead() {
-          const apples = g.wa.ka;
+          const apples = g.oa.ka;
           if (!apples.length) return;
-          const head = g.oa.ka[0];
+          const head = g.Yc.ka[0];
           apples[0].pos.x = head.x + 1;
           apples[0].pos.y = head.y;
         }
         function tickSafe(n) {
           for (let i = 0; i < n; i++) {
-            if (g.nj) break;
+            if (g.uj) break;
             g.tick();
           }
         }
@@ -585,11 +585,11 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
           window.pudding_settings[spec.setting] = false;
           window.ultraEnsureGameplayToggles();
           const disableOff = !!window[spec.flag];
-          g.settings.ub = spec.mode;
-          g.settings.ob = spec.mode;
+          g.settings.yb = spec.mode;
+          g.settings.wb = spec.mode;
           window.CurrentModeNum = spec.mode;
           if (typeof window.ensureGameMode === "function") window.ensureGameMode(spec.mode);
-          g.wa.reset();
+          g.oa.reset();
           if (typeof window[spec.empty] === "function") window[spec.empty]();
           revive();
           const offBefore = spec.count();
@@ -603,7 +603,7 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
           window.pudding_settings[spec.setting] = true;
           window.ultraEnsureGameplayToggles();
           const disableOn = !!window[spec.flag];
-          g.wa.reset();
+          g.oa.reset();
           if (typeof window[spec.empty] === "function") window[spec.empty]();
           revive();
           const onBefore = spec.count();
@@ -773,38 +773,38 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
           return n;
         }
         function revive() {
-          g.nj = false;
-          const snake = g.oa.ka;
+          g.uj = false;
+          const snake = g.Yc.ka;
           for (let i = 0; i < snake.length; i++) {
             snake[i].x = 6;
             snake[i].y = 8;
           }
-          g.oa.direction = "RIGHT";
+          g.Yc.direction = "RIGHT";
         }
         function startWall() {
-          g.settings.ub = 1;
-          g.settings.ob = 1;
+          g.settings.yb = 1;
+          g.settings.wb = 1;
           window.CurrentModeNum = 1;
           if (typeof window.ensureGameMode === "function") window.ensureGameMode(1);
-          g.wa.reset();
+          g.oa.reset();
           if (typeof window.emptyWalls === "function") window.emptyWalls();
-          g.Sh = 0;
+          g.Bi = 0;
           revive();
         }
         function eatOne() {
-          const apples = g.wa.ka;
+          const apples = g.oa.ka;
           if (!apples.length) return false;
           revive();
-          const head = g.oa.ka[0];
+          const head = g.Yc.ka[0];
           apples[0].pos.x = head.x + 1;
           apples[0].pos.y = head.y;
-          const before = g.Sh;
+          const before = g.Bi;
           for (let i = 0; i < 6; i++) {
-            if (g.nj) revive();
+            if (g.uj) revive();
             g.tick();
-            if (g.Sh > before) return true;
+            if (g.Bi > before) return true;
           }
-          return g.Sh > before;
+          return g.Bi > before;
         }
         function eatTwo(everyApple) {
           window.pudding_settings.UltraWallModeSpawn = true;
@@ -818,7 +818,7 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
             everyApple: window.remixShouldSpawnWallEveryApple(),
             ate,
             delta: wallCount() - before,
-            dead: !!g.nj,
+            dead: !!g.uj,
           };
         }
         return {
@@ -847,18 +847,18 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.pudding_settings.UltraArrowTurnSpawn = false;
         window.ultraEnsureGameplayToggles();
-        g.settings.ub = 16;
-        g.settings.ob = 16;
+        g.settings.yb = 16;
+        g.settings.wb = 16;
         window.CurrentModeNum = 16;
         if (typeof window.ensureGameMode === "function") window.ensureGameMode(16);
-        g.wa.reset();
+        g.oa.reset();
         if (typeof window.emptyArrows === "function") window.emptyArrows();
-        const snake = g.oa.ka;
+        const snake = g.Yc.ka;
         for (let i = 0; i < snake.length; i++) {
           snake[i].x = 4;
           snake[i].y = 8;
         }
-        g.oa.direction = "RIGHT";
+        g.Yc.direction = "RIGHT";
         return {
           blockOff: window.ultraBlockNativeArrowTurns(),
           addArrow: window.ultraPlaceNames && window.ultraPlaceNames.addArrow,
@@ -876,7 +876,7 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
           for (let x = 0; x < (arrows.ka[y] || []).length; x++) {
             const c = arrows.ka[y][x];
             const d = c && c.direction;
-            if (d && d !== "NONE") out.push({ x, y, d, Lh: c.Lh });
+            if (d && d !== "NONE") out.push({ x, y, d, Xg: c.Xg });
           }
         }
         window.placeArrow(3, 3, "LEFT");
@@ -888,19 +888,19 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.pudding_settings.UltraArrowTurnSpawn = true;
         window.ultraEnsureGameplayToggles();
-        g.nj = false;
-        g.settings.ub = 16;
-        g.settings.ob = 16;
+        g.uj = false;
+        g.settings.yb = 16;
+        g.settings.wb = 16;
         window.CurrentModeNum = 16;
         if (typeof window.ensureGameMode === "function") window.ensureGameMode(16);
-        g.wa.reset();
+        g.oa.reset();
         if (typeof window.emptyArrows === "function") window.emptyArrows();
-        const snake = g.oa.ka;
+        const snake = g.Yc.ka;
         for (let i = 0; i < snake.length; i++) {
           snake[i].x = 4;
           snake[i].y = 8;
         }
-        g.oa.direction = "RIGHT";
+        g.Yc.direction = "RIGHT";
       });
       await h.dir("RIGHT");
       await h.tick(3);
@@ -914,7 +914,7 @@ describe("Ultra gameplay toggles (browser)", { skip: !runBrowser }, () => {
             for (let x = 0; x < (arrows.ka[y] || []).length; x++) {
               const c = arrows.ka[y][x];
               const d = c && c.direction;
-              if (d && d !== "NONE") out.push({ x, y, d, Lh: c.Lh });
+              if (d && d !== "NONE") out.push({ x, y, d, Xg: c.Xg });
             }
           }
         }

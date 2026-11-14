@@ -151,10 +151,10 @@ describe("chess legal spawn (browser)", { skip: !runBrowser }, () => {
           if (!g || !window.chess_fruit_respawn || !window.chess_is_legal_spawn) {
             return { ok: false, reason: "helpers missing" };
           }
-          if (!g.wa.ka.length) return { ok: false, reason: "no apples" };
-          const before = g.wa.ka.length;
+          if (!g.oa.ka.length) return { ok: false, reason: "no apples" };
+          const before = g.oa.ka.length;
           const added = window.chess_fruit_respawn(
-            g.wa,
+            g.oa,
             function makeApple(mgr) {
               const proto = mgr.ka[0];
               return {
@@ -162,22 +162,22 @@ describe("chess legal spawn (browser)", { skip: !runBrowser }, () => {
                 cM: 0,
                 type: -1,
                 Cm: false,
-                wm: false,
+                Rm: false,
                 Ee: proto.Ee && proto.Ee.clone ? proto.Ee.clone() : { x: 0, y: 0 },
                 RAb: { x: 0, y: 0 },
                 zL: { x: 1, y: 1 },
                 nla: false,
                 Gh: true,
                 light: 0,
-                Oba: undefined,
+                h7: undefined,
                 nD: 0,
               };
             },
             null,
             null
           );
-          const board = g.wa.oa;
-          const apples = g.wa.ka;
+          const board = g.oa.oa;
+          const apples = g.oa.ka;
           const illegal = [];
           for (let i = 0; i < apples.length; i++) {
             const occ = window.chess_occupied_keys(g, apples, new Set([i]));
@@ -189,7 +189,7 @@ describe("chess legal spawn (browser)", { skip: !runBrowser }, () => {
               });
             }
           }
-          const head = g.oa.ka[0];
+          const head = g.Yc.ka[0];
           const radiusBad = [];
           const fresh = added === 2 ? apples.slice(-2) : [];
           for (const a of fresh) {
@@ -205,7 +205,7 @@ describe("chess legal spawn (browser)", { skip: !runBrowser }, () => {
           const keys = apples.map((a) => `${a.pos.x},${a.pos.y}`);
           const delta = apples.length - before;
           const animated =
-            delta === 2 ? apples.slice(-2).every((a) => a.wm === true) : true;
+            delta === 2 ? apples.slice(-2).every((a) => a.Rm === true) : true;
           return {
             ok:
               illegal.length === 0 &&

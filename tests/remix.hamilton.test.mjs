@@ -114,7 +114,7 @@ describe("Hamilton tour (offline)", () => {
     globalThis.window = globalThis;
     const host = {
       id: "remix-ultra-indicator",
-      textContent: "Remix Ultra v13",
+      textContent: "Remix Ultra v14",
       dataset: {},
     };
     const hamEl = {
@@ -167,11 +167,11 @@ describe("Hamilton tour (offline)", () => {
     globalThis.remixGateHamiltonMod();
     globalThis.HamiltonMod.updateIndicator();
     assert.equal(hamEl.style.display, "none");
-    assert.match(host.textContent, /^Remix Ultra v13 \| White: 1/);
+    assert.match(host.textContent, /^Remix Ultra v14 \| White: 1/);
     assert.doesNotMatch(host.textContent, /Hamilton Mod/);
     globalThis.pudding_settings.Hamilton = false;
     globalThis.HamiltonMod.updateIndicator();
-    assert.equal(host.textContent, "Remix Ultra v13");
+    assert.equal(host.textContent, "Remix Ultra v14");
   });
 
   it("skips notifyWallSpawn re-solve while Selected Ham is chosen", () => {

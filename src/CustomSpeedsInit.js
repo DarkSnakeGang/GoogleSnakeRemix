@@ -288,17 +288,17 @@ window.CustomSpeeds.alterSnakeCode = function (code) {
   }
 
   // Flip A↔B when score increases (apple eaten). Current builds don't
-  // keep a stable `a.Sh++` token in tick, so detect Sh deltas at tick start.
+  // keep a stable `a.Bi++` (v13 a.Sh++) token in tick, so detect score deltas at tick start.
   if (code.indexOf("window.remixOnAppleEatenSpeedSwitch") < 0) {
     const tickHead = code.match(/tick\(\)\s*\{\s*window\.__remixGame\s*=\s*this\s*;/);
     if (tickHead) {
       code = code.assertReplace(
         tickHead[0],
         tickHead[0] +
-          "if(window.__remixLastSh!=null&&this.Sh>window.__remixLastSh){window.remixOnAppleEatenSpeedSwitch();}window.__remixLastSh=this.Sh;"
+          "if(window.__remixLastSh!=null&&this.Bi>window.__remixLastSh){window.remixOnAppleEatenSpeedSwitch();}window.__remixLastSh=this.Bi;"
       );
-    } else if (code.indexOf("a.Sh++;") >= 0) {
-      code = code.replace(/a\.Sh\+\+;/g, "a.Sh++;window.remixOnAppleEatenSpeedSwitch();");
+    } else if (code.indexOf("a.Bi++;") >= 0) {
+      code = code.replace(/a\.Bi\+\+;/g, "a.Bi++;window.remixOnAppleEatenSpeedSwitch();");
     } else {
       console.error("CustomSpeeds: failed to find apple eat / tick head hook");
     }

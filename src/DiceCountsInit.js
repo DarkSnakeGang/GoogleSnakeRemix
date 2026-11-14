@@ -513,12 +513,13 @@ window.DiceCounts.alterSnakeCode = function (code) {
 
   // Cluster-count state reset on play start — must run after the full
   // `var a,b,c` line; never splice into the b= declarator (semicolon breaks var).
+  // v14: `,c=…ka===2||…ka===6,d=c||…ka===3;` (v13 was `,c=…2||…3||…6;`).
   const clusterResetDeclarator =
-    /,c=this\.settings\.ka===2\|\|this\.settings\.ka===3\|\|this\.settings\.ka===6;/;
+    /,c=this\.settings\.ka===2\|\|this\.settings\.ka===6,d=c\|\|this\.settings\.ka===3;/;
   if (code.match(clusterResetDeclarator)) {
     code = code.assertReplace(
       clusterResetDeclarator,
-      ",c=this.settings.ka===2||this.settings.ka===3||this.settings.ka===6;window.remixIsClusterCount&&window.remixIsClusterCount(this.settings.ka)&&window.remixClusterCountReset&&window.remixClusterCountReset();"
+      ",c=this.settings.ka===2||this.settings.ka===6,d=c||this.settings.ka===3;window.remixIsClusterCount&&window.remixIsClusterCount(this.settings.ka)&&window.remixClusterCountReset&&window.remixClusterCountReset();"
     );
   } else {
     console.error("DiceCounts: failed to inject cluster-count reset on play start");
@@ -561,10 +562,10 @@ window.DiceCounts.alterSnakeCode = function (code) {
       diceRefill[0],
       `(window.remixIsDiceLike&&window.remixIsDiceLike(this.settings.ka))?odF(this)!==0||ecF(this.settings) && rdF(this)<=0||(tdF(this,this.settings.ka===4?Math.ceil(Math.random()*6):window.remixDiceSpawnCount(this.settings.ka,1)),odF(this)>0 && ${sound}.play())`
     );
-  } else if (code.match(/a\.settings\.ka===4\?r7E\(a\)===0&&s7E\(a\)/)) {
+  } else if (code.match(/a\.settings\.ka===4\?nsF\(a\)===0&&osF\(a\)/)) {
     code = code.assertReplace(
-      /a\.settings\.ka===4\?r7E\(a\)===0&&s7E\(a\)/,
-      `(window.remixIsDiceLike&&window.remixIsDiceLike(a.settings.ka))?r7E(a)===0&&(a.settings.ka===4?s7E(a):u7E(a,window.remixDiceSpawnCount(a.settings.ka,1)))`
+      /a\.settings\.ka===4\?nsF\(a\)===0&&osF\(a\)/,
+      `(window.remixIsDiceLike&&window.remixIsDiceLike(a.settings.ka))?nsF(a)===0&&(a.settings.ka===4?osF(a):qsF(a,window.remixDiceSpawnCount(a.settings.ka,1)))`
     );
   } else {
     console.error("DiceCounts: failed to find native dice tdF/s7E refill path");
@@ -689,10 +690,11 @@ window.DiceCounts.alterSnakeCode = function (code) {
     }
   }
 
-  if (code.indexOf("remixClusterCountPlayReset") < 0 && code.match(/a\.ub=a\.ob;a\.ka=a\.Ca;/)) {
+  // v14 settings apply: mode ub->yb / ob->wb, local var a->c.
+  if (code.indexOf("remixClusterCountPlayReset") < 0 && code.match(/c\.yb=c\.wb;c\.ka=c\.Ca;/)) {
     code = code.assertReplace(
-      /a\.ub=a\.ob;a\.ka=a\.Ca;/,
-      "a.ub=a.ob;a.ka=a.Ca;if(window.remixIsClusterCount&&window.remixIsClusterCount(a.ka)){try{window.remixClusterCountReset();}catch(_cc){}}/*remixClusterCountPlayReset*/"
+      /c\.yb=c\.wb;c\.ka=c\.Ca;/,
+      "c.yb=c.wb;c.ka=c.Ca;if(window.remixIsClusterCount&&window.remixIsClusterCount(c.ka)){try{window.remixClusterCountReset();}catch(_cc){}}/*remixClusterCountPlayReset*/"
     );
   }
 

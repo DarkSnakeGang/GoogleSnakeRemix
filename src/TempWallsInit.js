@@ -112,9 +112,9 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     const g = window.__remixGame;
     const mode =
       g && g.settings
-        ? g.settings.ub != null
-          ? g.settings.ub
-          : g.settings.ob
+        ? g.settings.yb != null
+          ? g.settings.yb
+          : g.settings.wb
         : null;
     if (mode === window.TEMP_WALLS_MODE) return true;
     if (mode === 22 && window.temp_walls_blending) return true;
@@ -160,9 +160,9 @@ window.TempWallsMod.alterSnakeCode = function (code) {
       const g = window.__remixGame;
       const mode =
         g && g.settings
-          ? g.settings.ub != null
-            ? g.settings.ub
-            : g.settings.ob
+          ? g.settings.yb != null
+            ? g.settings.yb
+            : g.settings.wb
           : null;
       if (mode === window.TEMP_WALLS_MODE) return true;
       if (mode === 22 && window.temp_walls_blending) return true;
@@ -191,10 +191,10 @@ window.TempWallsMod.alterSnakeCode = function (code) {
 
   window.tempWalls_has_any = function tempWalls_has_any(game) {
     const g = game || window.__remixGame;
-    const walls = g && g.Ca;
-    if (!walls || !walls.Aa || typeof walls.Aa.values !== "function") return false;
+    const walls = g && g.Tw;
+    if (!walls || !walls.wa || typeof walls.wa.values !== "function") return false;
     try {
-      for (const w of walls.Aa.values()) {
+      for (const w of walls.wa.values()) {
         if (w && w.__tempWall) return true;
       }
     } catch (_e) {}
@@ -204,10 +204,10 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   window.tempWalls_list = function tempWalls_list(game) {
     const out = [];
     const g = game || window.__remixGame;
-    const walls = g && g.Ca;
-    if (!walls || !walls.Aa || typeof walls.Aa.values !== "function") return out;
+    const walls = g && g.Tw;
+    if (!walls || !walls.wa || typeof walls.wa.values !== "function") return out;
     try {
-      for (const w of walls.Aa.values()) {
+      for (const w of walls.wa.values()) {
         if (w && w.__tempWall) out.push(w);
       }
     } catch (_e) {}
@@ -217,18 +217,18 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   window.tempWalls_cell_blocked = function tempWalls_cell_blocked(game, x, y) {
     const g = game || window.__remixGame;
     if (!g) return true;
-    const walls = g.Ca;
-    if (walls && Array.isArray(walls.wa) && walls.wa[y] && (walls.wa[y][x] | 0) > 0) {
+    const walls = g.Tw;
+    if (walls && Array.isArray(walls.oa) && walls.oa[y] && (walls.oa[y][x] | 0) > 0) {
       return true;
     }
-    const snake = g.oa && g.oa.ka;
+    const snake = g.Yc && g.Yc.ka;
     if (snake) {
       for (let i = 0; i < snake.length; i++) {
         const s = snake[i];
         if (s && (s.x | 0) === (x | 0) && (s.y | 0) === (y | 0)) return true;
       }
     }
-    const fruits = g.wa && g.wa.ka;
+    const fruits = g.oa && g.oa.ka;
     if (fruits) {
       for (let i = 0; i < fruits.length; i++) {
         const f = fruits[i];
@@ -242,18 +242,18 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   window.tempWalls_remove_one = function tempWalls_remove_one(game, wall) {
     const g = game || window.__remixGame;
     if (!g || !wall || !wall.pos) return;
-    const walls = g.Ca;
+    const walls = g.Tw;
     if (!walls) return;
     const x = wall.pos.x | 0;
     const y = wall.pos.y | 0;
     try {
-      if (walls.Aa && typeof walls.Aa.delete === "function") {
-        walls.Aa.delete(window.tempWalls_serial(wall.pos));
+      if (walls.wa && typeof walls.wa.delete === "function") {
+        walls.wa.delete(window.tempWalls_serial(wall.pos));
       }
     } catch (_e) {}
     try {
-      if (walls.wa && walls.wa[y] && (walls.wa[y][x] | 0) > 0) {
-        walls.wa[y][x]--;
+      if (walls.oa && walls.oa[y] && (walls.oa[y][x] | 0) > 0) {
+        walls.oa[y][x]--;
       }
     } catch (_e2) {}
   };
@@ -269,26 +269,26 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   window.tempWalls_place_at = function tempWalls_place_at(game, x, y) {
     const g = game || window.__remixGame;
     if (!g) return false;
-    const walls = g.Ca;
-    if (!walls || !walls.Aa || !Array.isArray(walls.wa) || !walls.wa.length) {
+    const walls = g.Tw;
+    if (!walls || !walls.wa || !Array.isArray(walls.oa) || !walls.oa.length) {
       return false;
     }
     const yi = y | 0;
     const xi = x | 0;
-    if (!walls.wa[yi] || xi < 0 || xi >= walls.wa[yi].length) return false;
-    if ((walls.wa[yi][xi] | 0) > 0) return false;
+    if (!walls.oa[yi] || xi < 0 || xi >= walls.oa[yi].length) return false;
+    if ((walls.oa[yi][xi] | 0) > 0) return false;
     const pos = window.tempWalls_make_pos(xi, yi);
     const obj = {
       pos: pos,
-      wm: false,
-      m0: false,
-      Lh: true,
+      Rm: false,
+      e9: false,
+      Xg: true,
       __tempWall: true,
       movesRemaining: window.TEMP_WALL_LIFESPAN | 35,
     };
     try {
-      walls.Aa.set(window.tempWalls_serial(pos), obj);
-      walls.wa[yi][xi]++;
+      walls.wa.set(window.tempWalls_serial(pos), obj);
+      walls.oa[yi][xi]++;
       if (window.slot_clear_arrow_at) {
         try {
           window.slot_clear_arrow_at(g, xi, yi);
@@ -314,18 +314,18 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     ) {
       key = window.__slotActivatedFruit || window.__slotEatenFruit;
     } else {
-      const sh = g.Sh | 0;
+      const sh = g.Bi | 0;
       if (sh <= 0) return 0;
       key = "sh:" + sh;
     }
     if (window.__tempWallsSpawnedForSh === key) return 0;
     window.__tempWallsSpawnedForSh = key;
-    const walls = g.Ca;
-    if (!walls || !Array.isArray(walls.wa) || !walls.wa.length) return 0;
-    const h = walls.wa.length;
-    const w = walls.wa[0] ? walls.wa[0].length : 0;
+    const walls = g.Tw;
+    if (!walls || !Array.isArray(walls.oa) || !walls.oa.length) return 0;
+    const h = walls.oa.length;
+    const w = walls.oa[0] ? walls.oa[0].length : 0;
     if (!w) return 0;
-    const head = g.oa && g.oa.ka && g.oa.ka[0];
+    const head = g.Yc && g.Yc.ka && g.Yc.ka[0];
     const minDist = window.TEMP_WALL_MIN_DIST | 6;
     const attempts = window.TEMP_WALL_SPAWN_ATTEMPTS | 15;
     const perEat = window.TEMP_WALL_PER_EAT | 2;
@@ -364,7 +364,7 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   };
 
   window.tempWalls_trigger_win = function tempWalls_trigger_win(game) {
-    if (!game || game.nj) return;
+    if (!game || game.uj) return;
     if (
       window.isSlotMachineActive &&
       window.isSlotMachineActive() &&
@@ -375,23 +375,23 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     }
     try {
       const winBank =
-        (typeof s5E !== "undefined" && s5E) || window.__bombFruitS5E;
+        (typeof mqF !== "undefined" && mqF) || window.__bombFruitS5E;
       if (winBank && winBank.WIN && winBank.WIN.play) winBank.WIN.play();
-      else if (typeof Q4E !== "undefined" && Q4E.rWd && Q4E.rWd.play)
-        Q4E.rWd.play();
+      else if (typeof KpF !== "undefined" && KpF.vZd && KpF.vZd.play)
+        KpF.vZd.play();
       else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
     } catch (_e) {}
-    game.ub = true;
-    game.nj = true;
+    game.Za = true;
+    game.uj = true;
     try {
-      const score = game.Sh != null ? game.Sh : game.Oh;
-      if (typeof A7E === "function") A7E(game.menu, 1400, score);
+      const score = game.Bi != null ? game.Bi : game.Oh;
+      if (typeof wsF === "function") wsF(game.menu, 1400, score);
       else if (typeof vdF === "function") vdF(game.menu, 1400, score);
     } catch (_e2) {}
   };
 
   window.tempWalls_win_if_empty = function tempWalls_win_if_empty(game, mgr) {
-    if (!game || game.nj) return false;
+    if (!game || game.uj) return false;
     if (!window.tempWalls_should_check_win()) return false;
     if (
       window.isSlotMachineActive &&
@@ -408,7 +408,7 @@ window.TempWallsMod.alterSnakeCode = function (code) {
 
   window.tempWalls_after_eat = function tempWalls_after_eat(mgr, allowEmptyWin) {
     const game = window.__remixGame;
-    if (!game || game.nj) return;
+    if (!game || game.uj) return;
     if (window.tempWalls_should_spawn()) {
       try {
         window.tempWalls_spawn_on_eat(game);
@@ -416,7 +416,7 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     }
     if (allowEmptyWin) {
       try {
-        window.tempWalls_win_if_empty(game, mgr || game.wa);
+        window.tempWalls_win_if_empty(game, mgr || game.oa);
       } catch (_e2) {}
     }
   };
@@ -425,7 +425,7 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     const g = game || window.__remixGame;
     if (!g) return;
     if (window.tempWalls_has_any(g)) {
-      const head = g.oa && g.oa.ka && g.oa.ka[0];
+      const head = g.Yc && g.Yc.ka && g.Yc.ka[0];
       if (head && head.x != null) {
         const key = (head.x | 0) + "," + (head.y | 0);
         if (
@@ -443,15 +443,15 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     }
     if (
       window.__tempWallsLastSh != null &&
-      (g.Sh | 0) > (window.__tempWallsLastSh | 0)
+      (g.Bi | 0) > (window.__tempWallsLastSh | 0)
     ) {
       // Slot Machine plants from slot_on_eating_fruit (no native f4E). Skip the
       // Sh-delta path so we don't plant a second batch after flags clear.
       if (!(window.isSlotMachineActive && window.isSlotMachineActive())) {
-      window.tempWalls_after_eat(g.wa, true);
+      window.tempWalls_after_eat(g.oa, true);
       }
     }
-    window.__tempWallsLastSh = g.Sh;
+    window.__tempWallsLastSh = g.Bi;
   };
 
   window.tempWalls_has_fading = function tempWalls_has_fading(game) {
@@ -499,15 +499,15 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     }
     let brick = "#578a34";
     try {
-      if (settings && typeof c7 === "function") {
-        brick = c7(settings, settings.oa, 3);
+      if (settings && typeof P7 === "function") {
+        brick = P7(settings, settings.oa, 3);
       }
     } catch (_e) {}
     return { brick: brick, mortar: brick };
   };
 
   window.tempWalls_tile_size = function tempWalls_tile_size(board) {
-    if (board && board.wb && board.wb.ka && board.wb.ka.ka) return board.wb.ka.ka;
+    if (board && board.ub && board.ub.ka && board.ub.ka.ka) return board.ub.ka.ka;
     const g = window.__remixGame;
     if (g && g.ka && g.ka.ka) return g.ka.ka;
     if (g && g.Ja && g.Ja.wb && g.Ja.wb.ka && g.Ja.wb.ka.ka) return g.Ja.wb.ka.ka;
@@ -517,8 +517,8 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   // Pulse fading temp walls on the same canvas layer the game just used for
   // solid walls: Ka.ka (classic / Temp Walls trophy) or Ka.oa (Dimension mode).
   window.tempWalls_drawPulse = function tempWalls_drawPulse(board, layer) {
-    const game = (board && board.wb) || window.__remixGame;
-    if (!game || game.nj) return;
+    const game = (board && board.ub) || window.__remixGame;
+    if (!game || game.uj) return;
     if (!window.tempWalls_has_fading(game)) return;
     if (!board) return;
 
@@ -529,7 +529,7 @@ window.TempWallsMod.alterSnakeCode = function (code) {
     let tile = 0;
     try {
       tile =
-        (board.wb && board.wb.ka && board.wb.ka.ka) ||
+        (board.ub && board.ub.ka && board.ub.ka.ka) ||
         window.tempWalls_tile_size(board) ||
         0;
     } catch (_t) {}
@@ -545,8 +545,9 @@ window.TempWallsMod.alterSnakeCode = function (code) {
 
     let pixel = false;
     try {
-      if (typeof $6 === "function" && board.settings) {
-        pixel = !!$6(board.settings);
+      // v14: v13's $6(settings) pixel check became settings.RM().
+      if (board.settings && typeof board.settings.RM === "function") {
+        pixel = !!board.settings.RM();
       }
     } catch (_p) {}
 
@@ -591,8 +592,8 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   if (
     !twReplace(
       "e7 wall collide after bomb fruit",
-      /if\(!r&&b===15&&window\.BOMB_FRUIT_MODE!=null\)\{if\(a\.ub===window\.BOMB_FRUIT_MODE\)return!0;if\(a\.ub===22&&a\.rSa&&a\.rSa\.has\(window\.BOMB_FRUIT_MODE\)\)return!0;\}return r\}/,
-      "if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.ub===window.BOMB_FRUIT_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BOMB_FRUIT_MODE))return!0;}if(!r&&b===1&&((window.isTempWallsActive&&window.isTempWallsActive())||(window.tempWalls_has_any&&window.tempWalls_has_any(window.__remixGame))))return!0;return r}"
+      /if\(!r&&b===15&&window\.BOMB_FRUIT_MODE!=null\)\{if\(a\.yb===window\.BOMB_FRUIT_MODE\)return!0;if\(a\.yb===22&&a\.NSa&&a\.NSa\.has\(window\.BOMB_FRUIT_MODE\)\)return!0;\}return r\}/,
+      "if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.yb===window.BOMB_FRUIT_MODE)return!0;if(a.yb===22&&a.NSa&&a.NSa.has(window.BOMB_FRUIT_MODE))return!0;}if(!r&&b===1&&((window.isTempWallsActive&&window.isTempWallsActive())||(window.tempWalls_has_any&&window.tempWalls_has_any(window.__remixGame))))return!0;return r}"
     )
   ) {
     twReplace(
@@ -617,8 +618,8 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   if (
     !twReplace(
       "wall render temp walls pulse",
-      /td\.oa\.restore\(\)\}var Fd=this\.Fb;let se=Fd\.wb\.nj\?0:Pc/,
-      'td.oa.restore()}try{window.tempWalls_drawPulse&&window.tempWalls_drawPulse(td,"oa");}catch(_tw){}var Fd=this.Fb;let se=Fd.wb.nj?0:Pc'
+      /Wc\.oa\.restore\(\)\}var Cc=this\.yb;let ve=Cc\.ub\.uj\?0:oc/,
+      'Wc.oa.restore()}try{window.tempWalls_drawPulse&&window.tempWalls_drawPulse(Wc,"oa");}catch(_tw){}var Cc=this.yb;let ve=Cc.ub.uj?0:oc'
     )
   ) {
     console.error("TempWallsMod: wall render pulse hook failed");
@@ -626,13 +627,13 @@ window.TempWallsMod.alterSnakeCode = function (code) {
 
   twReplace(
     "D5E call gate classic temp walls",
-    /!e7\(this\.settings,4\)&&\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)&&D5E\(this\.Ja,a\)/,
-    "!e7(this.settings,4)&&(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this))&&D5E(this.Ja,a)"
+    /!M7\(this\.settings,4\)&&\(M7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)&&wqF\(this\.Ia,a\)/,
+    "!M7(this.settings,4)&&(M7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this))&&wqF(this.Ia,a)"
   );
   twReplace(
     "D5E call gate pixel temp walls",
-    /\(e7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)&&D5E\(this\.Ja,dd\)/,
-    "(e7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this))&&D5E(this.Ja,dd)"
+    /\(M7\(this\.settings,12\)\|\|window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)&&wqF\(this\.Ia,Ad\)/,
+    "(M7(this.settings,12)||window.isBombFruitActive&&window.isBombFruitActive()||window.tempWalls_has_fading&&window.tempWalls_has_fading(this)||window.tempWalls_has_any&&window.tempWalls_has_any(this))&&wqF(this.Ia,Ad)"
   );
 
   if (
@@ -648,8 +649,8 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   if (
     !twReplace(
       "j4E temp walls after bomb fruit",
-      /window\.isBombFruitActive&&window\.isBombFruitActive\(\)&&\(window\.bombFruit_after_respawn\(a\.wa,0,!1\),0\)/,
-      "window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.wa,0,!1),0),(window.tempWalls_should_check_win&&window.tempWalls_should_check_win()&&(window.tempWalls_win_if_empty(window.__remixGame,a.wa),0))"
+      /window\.isBombFruitActive&&window\.isBombFruitActive\(\)&&\(window\.bombFruit_after_respawn\(a\.oa,0,!1\),0\)/,
+      "window.isBombFruitActive&&window.isBombFruitActive()&&(window.bombFruit_after_respawn(a.oa,0,!1),0),(window.tempWalls_should_check_win&&window.tempWalls_should_check_win()&&(window.tempWalls_win_if_empty(window.__remixGame,a.oa),0))"
     )
   ) {
     console.error("TempWallsMod: j4E hook failed");
@@ -691,8 +692,8 @@ window.TempWallsMod.alterSnakeCode = function (code) {
   if (code.indexOf("window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON") < 0) {
     twReplace(
       "deathscreen Zb temp walls icon",
-      /\(a\.settings\.ob===window\.BOMB_FRUIT_MODE\)\?window\.BOMB_FRUIT_ICON:/,
-      "(a.settings.ob===window.BOMB_FRUIT_MODE)?window.BOMB_FRUIT_ICON:(a.settings.ob===window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON:"
+      /\(a\.settings\.wb===window\.BOMB_FRUIT_MODE\)\?window\.BOMB_FRUIT_ICON:/,
+      "(a.settings.wb===window.BOMB_FRUIT_MODE)?window.BOMB_FRUIT_ICON:(a.settings.wb===window.TEMP_WALLS_MODE)?window.TEMP_WALLS_ICON:"
     );
     twReplace(
       "blender b3E temp walls icon",

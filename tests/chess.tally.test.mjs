@@ -18,13 +18,13 @@ describe("chess tally waves (browser)", { skip: !runBrowser }, () => {
       // board, which is what makes the game run its tally wave refill (sdF).
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const keep = g.wa.ka[0];
-        g.wa.ka.length = 0;
-        g.wa.ka.push(keep);
-        window.appleArray = g.wa.ka;
+        const keep = g.oa.ka[0];
+        g.oa.ka.length = 0;
+        g.oa.ka.push(keep);
+        window.appleArray = g.oa.ka;
 
-        const head = g.oa.ka[0];
-        const dir = g.oa.direction || "RIGHT";
+        const head = g.Yc.ka[0];
+        const dir = g.Yc.direction || "RIGHT";
         const next = { x: head.x, y: head.y };
         if (dir === "RIGHT") next.x += 1;
         else if (dir === "LEFT") next.x -= 1;
@@ -35,15 +35,15 @@ describe("chess tally waves (browser)", { skip: !runBrowser }, () => {
         keep.isPiece = true;
         if (!keep.ChessPiece) keep.ChessPiece = "pawn";
         if (!keep.ChessColor) keep.ChessColor = "w";
-        keep.Oba = undefined;
+        keep.h7 = undefined;
 
         // Tally only allows eating the apple whose sequenceNumber is current.
-        if (keep.sequenceNumber !== undefined) g.wa.wa = keep.sequenceNumber;
+        if (keep.sequenceNumber !== undefined) g.oa.wa = keep.sequenceNumber;
         window.head_state = "OPEN";
 
         g.tick();
 
-        const apples = g.wa.ka;
+        const apples = g.oa.ka;
         const seqs = apples.map((a) => a.sequenceNumber);
         const keys = apples.map((a) => `${a.pos.x},${a.pos.y}`);
         return {
@@ -52,8 +52,8 @@ describe("chess tally waves (browser)", { skip: !runBrowser }, () => {
           seqs,
           uniqueSeqs: new Set(seqs).size,
           duplicates: keys.length - new Set(keys).size,
-          counter: g.wa.wa,
-          won: !!(g.ub && g.lj),
+          counter: g.oa.wa,
+          won: !!(g.Za && g.lj),
         };
       });
 

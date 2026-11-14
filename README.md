@@ -1,6 +1,6 @@
 # GoogleSnakeRemix
 
-Remix Mod for Google Snake — adds **Chess Mode**, **Candy Mode**, **Burger Mode**, **Cat Mode**, and **Mexico Mode** on top of **More Pudding Mod**, targeting game **v13** (`googlesnakemods.com/v/current`).
+Remix Mod for Google Snake — adds **Chess Mode**, **Candy Mode**, **Burger Mode**, **Cat Mode**, and **Mexico Mode** on top of **More Pudding Mod**, targeting game **v14** (`googlesnakemods.com/v/current`). This is the `v14` branch; `main` still targets v13.
 
 ## Features
 
@@ -51,7 +51,7 @@ This downloads `MorePudding.js` (and bootstrap CSS) from [GoogleSnakePudding](ht
 20. `src/PauseInit.js`
 21. `src/RemixInit.js`
 
-Output: **`RemixMod.js`** at repo root (committed for raw-GitHub / custom URL use). The same command also writes **`RemixUltraMod.js`** (Remix + Level Editor v13 + Ultra modules). See RemixUltra below.
+Output: **`RemixMod.js`** at repo root (committed for raw-GitHub / custom URL use). The same command also writes **`RemixUltraMod.js`** (Remix + Level Editor v14 + Ultra modules). See RemixUltra below.
 
 For a fast local rebuild without re-downloading More Pudding: `node tools/splice_remix_bundles.cjs`.
 
@@ -71,19 +71,19 @@ More Pudding already bundles Pudding Mod, Visibility Mod and More Menu Mod and r
 
 On [googlesnakemods.com](https://googlesnakemods.com/v/current/), use custom URL / Mod Loader pointing at:
 
-`https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeRemix/main/RemixMod.js`
+`https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeRemix/v14/RemixMod.js`
 
 The exported API object is `window.RemixMod`.
 
 ## RemixUltra (Remix + Level Editor)
 
-A second loadable bundle that is Remix plus [Level Editor v13](https://github.com/DarkSnakeGang/GoogleSnakeLevelEditor/tree/v13). Remix itself is unchanged.
+A second loadable bundle that is Remix plus [Level Editor v14](https://github.com/DarkSnakeGang/GoogleSnakeLevelEditor/tree/v14). Remix itself is unchanged.
 
 **Desktop only** — Level Editor has no mobile support.
 
 Custom URL:
 
-`https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeRemix/main/RemixUltraMod.js`
+`https://raw.githubusercontent.com/DarkSnakeGang/GoogleSnakeRemix/v14/RemixUltraMod.js`
 
 API: `window.RemixUltraMod` (the bundle also aliases `window.RemixMod` to Ultra so a leftover custom-mod name of `RemixMod` still runs the Ultra chain).
 
@@ -201,8 +201,11 @@ npm run capture            # dump original ChessMod on /v/3
 
 ## Versions
 
-- Game: **v13**
+- Game: **v14** (this branch). v14 is a recompile of v13: same logic, renamed minified identifiers, optional chaining, different line wrapping.
+- Ultra flattens snake.js newlines once before patching (`ultraFlattenSnakeCode`, shared `window.__snakeV14Flattened` flag); all regexes target one-line code.
+- Upstream parts come from their `v14` branches: [Pudding](https://github.com/DarkSnakeGang/GoogleSnakePudding/tree/v14), [More Menu](https://github.com/DarkSnakeGang/GoogleSnakeCustomMenuStuff/tree/v14), [Visibility](https://github.com/DarkSnakeGang/GoogleSnakeDeleteStuffMod/tree/v14), [Level Editor](https://github.com/DarkSnakeGang/GoogleSnakeLevelEditor/tree/v14)
+- `python RemixBuilder.py --offline` rebuilds from the files already in `.cache/pudding-build` and `LevelEditorInit.js`
 - Legacy Chess last supported: v3; Candy: v5 (see ModLoader `mod-info.json`)
-- More Pudding (Pudding + Visibility + More Menu): current `main` (v13)
+- v13 build: git branch `main`
 - PauseMod: bundled via `PauseInit.js` (Q key)
 - Frozen v12 snapshot: git branch `v12`

@@ -23,7 +23,7 @@ describe("RemixUltra build artifacts", () => {
     assert.match(remix, /remix-visibility-settings/);
     assert.match(remix, /remixSettingsEl/);
     assert.match(remix, /var\(--ultra-btn/);
-    assert.match(remix, /\(b\.nla\|\|b\.Oka\)/);
+    assert.match(remix, /\(b\.nla\|\|b\.Bea\)/);
     assert.match(remix, /RemixSettings/);
     assert.match(remix, /remixShowDragonFruitCheckbox/);
     assert.match(remix, /remixInstallWallEveryAppleToggle/);
@@ -63,7 +63,7 @@ describe("RemixUltra build artifacts", () => {
     assert.match(ultra, /ULTRA_PRESET_PNG/);
     assert.match(ultra, /ULTRA_CHALLENGE_TXT/);
     assert.match(ultra, /setupMakePatternHtml/);
-    assert.match(ultra, /textContent = "Remix Ultra v13"/);
+    assert.match(ultra, /textContent = "Remix Ultra v14"/);
     assert.match(ultra, /window\.UltraPlace/);
     assert.match(
       ultra,
@@ -111,10 +111,10 @@ describe("RemixUltra build artifacts", () => {
     const re =
       /([$a-zA-Z0-9_]{1,8})\s*=\s*function\s*\(\s*a\s*,\s*b\s*\)\s*\{\s*return\s+[$a-zA-Z0-9_]{1,8}\s*\[\s*a\.settings\.wa\s*={2,3}\s*10(?:\s*\|\|\s*window\.isRainbow)?/;
     const puddingSnippet =
-      "l5E=function(a,b){return j3E[a.settings.wa==10||window.isRainbow?b?8:";
+      "eqF=function(a,b){return DnF[a.settings.wa==10||window.isRainbow?b?8:";
     const m = puddingSnippet.match(re);
     assert.ok(m, "bridgeColor regex must match pudding-transformed snippet");
-    assert.equal(m[1], "l5E");
+    assert.equal(m[1], "eqF");
   });
 });
 
@@ -164,7 +164,7 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       assert.equal(probe.le, true, JSON.stringify(probe));
       assert.equal(probe.keys.settings, "RemixUltraSettings");
       assert.equal(probe.keys.tk, "snake_timeKeeper_remix_ultra");
-      assert.deepEqual(probe.labels, ["Remix Ultra v13"], JSON.stringify(probe));
+      assert.deepEqual(probe.labels, ["Remix Ultra v14"], JSON.stringify(probe));
       assert.equal(probe.place, true);
       assert.equal(probe.tabs, true);
       assert.equal(probe.splitsTab, true);
@@ -583,10 +583,10 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
         const wall = pixels && pixels.find((p) => p && p.category === "wall");
         return {
           Aa: g && g.settings && g.settings.Aa,
-          Sa: g && g.settings && g.settings.Sa,
-          board: g && g.wa && g.wa.oa && g.wa.oa.oa && {
-            w: g.wa.oa.oa.width,
-            h: g.wa.oa.oa.height,
+          Sa: g && g.settings && g.settings.Ua,
+          board: g && g.ka && g.ka.oa && {
+            w: g.ka.oa.width,
+            h: g.ka.oa.height,
           },
           chosen: document.querySelector(".chosen-preset") &&
             document.querySelector(".chosen-preset").className,
@@ -675,7 +675,7 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
           // Tick may be shield-gate wrapped; presence of the advance helper is enough.
           advanceFn: typeof window.tryChallengeSpeedrunAdvance === "function",
           level: Number(window.otherPresetmanager && window.otherPresetmanager.challengelevel),
-          apples: g && g.wa && g.wa.ka ? g.wa.ka.length : -1,
+          apples: g && g.oa && g.oa.ka ? g.oa.ka.length : -1,
         };
       });
       assert.equal(hooked.speedrun, true, JSON.stringify(hooked));
@@ -685,7 +685,7 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
 
       await h.page.evaluate(() => {
         const g = window.__remixGame || window.megaWholeSnakeObject;
-        if (g && g.wa && g.wa.ka) g.wa.ka.length = 0;
+        if (g && g.oa && g.oa.ka) g.oa.ka.length = 0;
         if (g && typeof g.tick === "function") g.tick();
       });
       await h.page.waitForFunction(
@@ -702,7 +702,7 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
         return {
           level: Number(window.otherPresetmanager.challengelevel),
           select: sel && sel.value,
-          apples: g && g.wa && g.wa.ka ? g.wa.ka.length : -1,
+          apples: g && g.oa && g.oa.ka ? g.oa.ka.length : -1,
           hasWall: !!(
             wall &&
             typeof window.checkWall === "function" &&
@@ -980,12 +980,12 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
       await h.start({ mode: "burger", count: COUNT.ONE, size: SIZE.NORMAL });
       const after = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const fresh = g.wa.ka.find((a) => a && !a.Oka);
+        const fresh = g.oa.ka.find((a) => a && !a.Bea);
         if (!fresh) return { ok: false };
         fresh.burgerTimer = 1;
         fresh.burgerTimerMax = 20;
         g.tick();
-        const poisons = g.wa.ka.filter((a) => a.Oka);
+        const poisons = g.oa.ka.filter((a) => a.Bea);
         return {
           ok: true,
           poisons: poisons.length,
@@ -1031,8 +1031,8 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
         function appleInfo() {
           const apples =
             (window.wholeSnakeObject &&
-              window.wholeSnakeObject.wa &&
-              window.wholeSnakeObject.wa.ka) ||
+              window.wholeSnakeObject.oa &&
+              window.wholeSnakeObject.oa.ka) ||
             [];
           return {
             n: apples.length,
@@ -1206,7 +1206,7 @@ describe("RemixUltra (browser)", { skip: !runBrowser }, () => {
         Math.random = origRand;
         const off = window.getAppleSpawnPointOffset();
         window.blitPattern(list, off.x, off.y);
-        const apples = (g.wa && g.wa.ka) || [];
+        const apples = (g.oa && g.oa.ka) || [];
         return {
           apples: apples
             .map((a) => {

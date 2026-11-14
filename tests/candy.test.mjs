@@ -17,9 +17,9 @@ describe("candy/chess icons", () => {
     assert.doesNotMatch(chess, /i\.postimg\.cc/);
   });
 
-  it("deathscreen compares numeric settings.ob not padded string b", () => {
+  it("deathscreen compares numeric settings.wb not padded string b", () => {
     const candy = readFileSync(path.join(ROOT, "src", "CandyInit.js"), "utf8");
-    assert.match(candy, /a\.settings\.ob===window\.CANDY_MODE/);
-    assert.match(candy, /a\.settings\.ob===window\.CHESS_MODE/);
+    assert.match(candy, /a\.settings\.wb===window\.CANDY_MODE/);
+    assert.match(candy, /a\.settings\.wb===window\.CHESS_MODE/);
   });
 });

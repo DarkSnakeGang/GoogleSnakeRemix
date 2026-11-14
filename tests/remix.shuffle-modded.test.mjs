@@ -138,11 +138,11 @@ describe("shuffle incl. modded modes (pools)", () => {
   it("replaces the native shuffle function and leaves the following function intact", () => {
     const patch = loadPatch();
     const sample =
-      'a8E=function(a){if(a.visible){if(a.oa===\n"settings"){var b=Math.floor(Math.random()*24);b+=b>=a.settings.Fb?1:0;}_.Ow(a.qc)}},b8E=function(a){return a}';
+      'atF=function(a){if(a.visible){if(a.wa===\n"settings"){var b=Math.floor(Math.random()*24);b+=b>=a.settings.Nb?1:0;}_.cw(a.Cc)}},btF=function(a){return a}';
     const patched = patch(sample);
     assert.match(
       patched,
-      /a8E=function\(a\)\{if\(a\.visible\)\{window\._puddingSnakeMenu=a;if\(typeof window\.remixShuffleModdedRun==="function"\)window\.remixShuffleModdedRun\(\);_\.Ow\(a\.qc\)\}\},b8E=function/
+      /atF=function\(a\)\{if\(a\.visible\)\{window\._puddingSnakeMenu=a;if\(typeof window\.remixShuffleModdedRun==="function"\)window\.remixShuffleModdedRun\(\);_\.cw\(a\.Cc\)\}\},btF=function/
     );
     assert.equal(patch(patched), patched);
   });
@@ -244,9 +244,9 @@ async function exerciseShuffle(h, name) {
         el.classList.contains("tuJOWd")
       );
       return {
-        ob: menu.settings.ob,
+        ob: menu.settings.wb,
         selected,
-        name: window.modeToTxt?.[menu.settings.ob]?.name || "",
+        name: window.modeToTxt?.[menu.settings.wb]?.name || "",
       };
     });
   }
@@ -255,7 +255,7 @@ async function exerciseShuffle(h, name) {
   console.log(name + " shuffle landed on", landed);
   await page.evaluate(() => {
     const trophy = document.getElementById("trophy");
-    const selected = trophy.children[window._puddingSnakeMenu.settings.ob];
+    const selected = trophy.children[window._puddingSnakeMenu.settings.wb];
     if (selected && selected.scrollIntoView) {
       selected.scrollIntoView({ inline: "center", block: "nearest" });
     }
@@ -284,10 +284,10 @@ async function exerciseShuffle(h, name) {
 
   const daily = await page.evaluate(() => {
     const menu = window._puddingSnakeMenu;
-    const before = menu.settings.ob;
+    const before = menu.settings.wb;
     menu.settings.Ga = true;
     const ran = window.remixShuffleModdedRun(() => 0.2);
-    const after = menu.settings.ob;
+    const after = menu.settings.wb;
     menu.settings.Ga = false;
     return { ran, before, after };
   });
@@ -300,7 +300,7 @@ async function exerciseShuffle(h, name) {
   });
   const disabled = await page.evaluate(() => {
     const orig = document.querySelector('[jsname="qycu7d"]');
-    const ob = window._puddingSnakeMenu.settings.ob;
+    const ob = window._puddingSnakeMenu.settings.wb;
     orig.click();
     const ran = window.remixShuffleModdedRun(() => 0);
     return {
@@ -310,7 +310,7 @@ async function exerciseShuffle(h, name) {
       color: orig.style.color,
       ran,
       ob,
-      after: window._puddingSnakeMenu.settings.ob,
+      after: window._puddingSnakeMenu.settings.wb,
       buttons: document.querySelectorAll('[jsname="qycu7d"]').length,
     };
   });
@@ -337,13 +337,13 @@ async function exerciseShuffle(h, name) {
 
   const blend = await page.evaluate(() => {
     const menu = window._puddingSnakeMenu;
-    menu.oa = "combo";
+    menu.wa = "combo";
     window.candy_blending = false;
     window.fear_blending = false;
     const ok = window.remixShuffleModdedRun(() => 0);
-    const wall = menu.settings.Ua && menu.settings.Ua.get(1);
-    const peaceful = menu.settings.Ua && menu.settings.Ua.get(21);
-    menu.oa = "settings";
+    const wall = menu.settings.Za && menu.settings.Za.get(1);
+    const peaceful = menu.settings.Za && menu.settings.Za.get(21);
+    menu.wa = "settings";
     return {
       ok,
       candy: window.candy_blending,
@@ -372,7 +372,7 @@ async function openSettings(page) {
         !shuffle.classList.contains("LaTyvd") &&
         !document.getElementById("remix-shuffle-modded") &&
         window._puddingSnakeMenu &&
-        window._puddingSnakeMenu.oa === "settings"
+        window._puddingSnakeMenu.wa === "settings"
       );
     },
     null,

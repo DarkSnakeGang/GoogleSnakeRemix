@@ -23,7 +23,7 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /slot_dice_spawn_n/);
     assert.match(init, /slot_is_bomb_count/);
     assert.match(init, /slot_bomb_spawn_n/);
-    assert.match(init, /slot_is_bomb_count\(g\) && !g\.kc/);
+    assert.match(init, /slot_is_bomb_count\(g\) && !g\.Qb/);
     assert.match(init, /slot_is_tally_count/);
     assert.match(init, /slot_tally_spawn_n/);
     assert.match(init, /slot_index_tally_fruits/);
@@ -76,11 +76,11 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /timeKeeper/);
     assert.match(init, /slot_r7E_win_gate/);
     assert.match(init, /timeKeeper\.gotAll/);
-    assert.match(init, /ticks\s*\*\s*game\.Fb|game\.ticks\s*\*\s*game\.Fb/);
+    assert.match(init, /ticks\s*\*\s*game\.hb|game\.ticks\s*\*\s*game\.hb/);
     assert.match(init, /slot_record_all_timer_split/);
     assert.match(init, /SplitPanelOnSplit/);
     assert.match(init, /__slotS2E/);
-    assert.match(init, /header\.Aa,\s*"ALL"/);
+    assert.match(init, /header\.Ba,\s*"ALL"/);
     assert.match(init, /__slotEagerEndMenu/);
     assert.match(init, /__slotShowEndMenu/);
     assert.match(
@@ -94,7 +94,7 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /slot_freeze_burger_fresh_timers/);
     assert.match(init, /slot_burger_leftover_tick/);
     assert.match(init, /__slotBurgerPoison/);
-    assert.match(init, /burger_assign_timers_all\(g\.wa\.ka, g\)/);
+    assert.match(init, /burger_assign_timers_all\(g\.oa\.ka, g\)/);
     assert.match(init, /__slotBurgerSpawning/);
     assert.match(init, /burger_spawn_fresh\.__slotWrap/);
     assert.match(init, /burger_timer_roll\.__slotWrap/);
@@ -126,12 +126,12 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /slot_restore_shield_nba_after_chess_lock/);
     assert.match(init, /chess_peaceful_active/);
     assert.match(init, /Peaceful unlocks leftovers only when head is OPEN/);
-    assert.match(init, /__chessMakeApple=g7/);
+    assert.match(init, /__chessMakeApple=S7/);
     assert.match(init, /slot capture chess helpers on eat/);
     assert.match(init, /__slotNbaPrior/);
     assert.match(init, /Only while Shield is the active roll/);
     assert.match(init, /slot_g7_shield_gate/);
-    assert.match(init, /window\.__slotP3E=P3E/);
+    assert.match(init, /window\.__slotP3E=goF/);
     assert.match(init, /1–2 blocked dirs|1-2 blocked dirs/);
     assert.match(
       init,
@@ -183,9 +183,9 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /slot_soko_unlock_fruit/);
     assert.match(init, /slot_stamp_tally_unlock_index/);
     assert.match(init, /slot_tally_board_max_sequence/);
-    assert.match(init, /window\.__slotF4E=f4E/);
-    assert.match(init, /f4E\(a\.wa,c,b\.yNa,b\.Lh,b\.sequenceNumber,/);
-    assert.match(init, /f4E\(a\.oa,b\.r7a,b\.type,!0,b\.sequenceNumber,!0\)/);
+    assert.match(init, /window\.__slotF4E=voF/);
+    assert.match(init, /voF\(a\.oa,c,b\.oOa,b\.Xg,b\.sequenceNumber,/);
+    assert.match(init, /voF\(a\.oa,b\.q7a,b\.type,!0,b\.sequenceNumber,!0\)/);
     assert.match(init, /slot_poison_oka_gate/);
     assert.match(init, /slot_block_e4E/);
     assert.match(init, /slot_block_l4E/);
@@ -209,15 +209,15 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /slot_has_hotdog_walls/);
     assert.match(init, /slot_hotdog_B6E_filter/);
     assert.match(init, /slot_hotdog_F6E_guard/);
-    assert.match(init, /wall\.ty/);
+    assert.match(init, /wall\.wv/);
     assert.match(init, /__slotQ6E/);
     assert.match(init, /__slotE5E/);
-    assert.match(init, /try\{window\.__slotE5E=e5E;\}/);
+    assert.match(init, /try\{window\.__slotE5E=XpF;\}/);
     assert.match(init, /m === 9/);
     assert.match(init, /placeSokobox|aa\.oa\.add/);
     assert.match(init, /slot_has_mines/);
     assert.match(init, /disableMineMode/);
-    assert.match(init, /__slotActive\|0\)===12\)&&v6E/);
+    assert.match(init, /__slotActive\|0\)===12\)&&prF/);
     assert.match(init, /__slotAllowKeyPlant/);
     assert.match(init, /__slotAllowSokoPlant/);
     assert.match(init, /slot_skip_key_soko_goal/);
@@ -246,11 +246,11 @@ describe("Slot Machine mode (offline)", () => {
     );
     assert.match(
       init,
-      /disableStatueBodyPlant&&!\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)&&\(window\.__slotActive\|0\)===13\)\)return;for\(var c=a\.wa\.ka/
+      /disableStatueBodyPlant&&!\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)&&\(window\.__slotActive\|0\)===13\)\)return;for\(var c=a\.Yc\.ka/
     );
     assert.match(
       init,
-      /e7E\(a\.Ya\),\(!\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)\)\|\|\(window\.__slotActive\|0\)===13\)&&k7E\(a\.Ya/
+      /\$rF\(a\.Ra\),\(!\(window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)\)\|\|\(window\.__slotActive\|0\)===13\)&&fsF\(a\.Ra/
     );
     assert.match(init, /slot_draw_badge_at_fruit/);
     assert.match(init, /slot_sync_ultra_disables/);
@@ -266,8 +266,8 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /slot_clear_arrows_under_spawns/);
     assert.match(init, /slot_has_sokogoals/);
     assert.match(init, /bombFruit_win_if_empty\.__slotGate/);
-    assert.match(init, /f\.Oka\) continue; \/\/ poison/);
-    assert.match(init, /game\.ub\s*=\s*true/);
+    assert.match(init, /f\.Bea\) continue; \/\/ poison/);
+    assert.match(init, /game\.Za\s*=\s*true/);
     assert.match(init, /__slotEatenFruit/);
     assert.match(init, /__slotCatFruitEaten/);
     assert.match(init, /Cat badge: \+1 life immediately/);
@@ -324,7 +324,7 @@ describe("Slot Machine mode (offline)", () => {
     assert.match(init, /__slotFaceRef/);
     assert.match(init, /slot_yy_is_face_atlas/);
     assert.match(init, /slot_yy_resolve_face/);
-    assert.match(init, /snake\.Sc/);
+    assert.match(init, /snake\.Hl/);
     assert.match(init, /settings\.wa/);
     assert.match(init, /BOARD THEME/);
     assert.match(init, /updateAnimHeadColour/);
@@ -490,7 +490,7 @@ describe("Slot Machine mode (offline)", () => {
     assert.ok((w.cat_peaceful_ticks | 0) > 0);
   });
 
-  it("YY snake color flips wa/Sc not board theme oa + recolors face", () => {
+  it("YY snake color flips wa/Hl not board theme oa + recolors face", () => {
     const init = fs.readFileSync(
       path.join(ROOT, "src", "SlotMachineInit.js"),
       "utf8"
@@ -541,19 +541,20 @@ describe("Slot Machine mode (offline)", () => {
       Ba: mkSprite("die"),
       wa: mkSprite("tongue"),
     };
-    // Bridges look like game.Ga — must NOT be treated as face.
+    // Bridges look like game.wa — must NOT be treated as face.
     const bridges = { oa: new Map(), Aa: new Set() };
     assert.equal(w.slot_yy_is_face_atlas(realFace), true);
     assert.equal(w.slot_yy_is_face_atlas(bridges), false);
 
     w.__slotFaceRef = realFace;
-    assert.equal(w.slot_yy_resolve_face({ Ga: bridges }), realFace);
+    assert.equal(w.slot_yy_resolve_face({ wa: bridges }), realFace);
 
     const themeBefore = 3;
+    // v14 settings: snake colour wa/Ia/Ob/xc, board theme oa/Qb; snake head/shade Hl/kd.
     const g = {
-      settings: { wa: 0, Ja: 0, Jb: 0, kc: 0, oa: themeBefore, Mb: themeBefore },
-      oa: { Sc: "#4E7CF6", Yc: "#17439F" },
-      Ga: bridges,
+      settings: { wa: 0, Ia: 0, Ob: 0, xc: 0, oa: themeBefore, Qb: themeBefore },
+      Yc: { Hl: "#4E7CF6", kd: "#17439F" },
+      wa: bridges,
     };
     w.__remixGame = g;
     w.__slotYyColorBase = null;
@@ -562,10 +563,10 @@ describe("Slot Machine mode (offline)", () => {
 
     w.slot_flip_yy_snake_colors(g);
     assert.equal(g.settings.wa, 5, "partner orange index");
-    assert.equal(g.settings.Ja, 5);
+    assert.equal(g.settings.Ia, 5);
     assert.equal(g.settings.oa, themeBefore, "board theme untouched");
-    assert.equal(g.oa.Sc, "#F69C3C");
-    assert.equal(g.oa.Yc, "#EA7E0B");
+    assert.equal(g.Yc.Hl, "#F69C3C");
+    assert.equal(g.Yc.kd, "#EA7E0B");
     assert.ok(
       w.__slotA7Calls.some((c) => c.sprite === "blink" && c.to === "#F69C3C"),
       JSON.stringify(w.__slotA7Calls)
@@ -579,7 +580,7 @@ describe("Slot Machine mode (offline)", () => {
     w.slot_flip_yy_snake_colors(g);
     assert.equal(g.settings.wa, 0);
     assert.equal(g.settings.oa, themeBefore);
-    assert.equal(g.oa.Sc, "#4E7CF6");
+    assert.equal(g.Yc.Hl, "#4E7CF6");
   });
 
   it("portal/Mexico unique types do not rewrite existing fruit types", () => {
@@ -653,7 +654,7 @@ describe("Slot Machine mode (offline)", () => {
       ${extract("slot_clear_arrows_under_fruit")}
       ${extract("slot_board_has_playable_content")}
       ${extract("slot_win_if_empty")}
-      window.slot_trigger_win = function(g){ g.nj = true; g.ub = true; };
+      window.slot_trigger_win = function(g){ g.uj = true; g.Za = true; };
       window.slot_has_keys = function(g){ return !!(g && g.__hasKeys); };
       window.slot_has_sokoboxes = function(g){ return !!(g && g.__hasSoko); };
       window.slot_has_sokogoals = function(g){ return !!(g && g.__hasGoals); };
@@ -669,30 +670,30 @@ describe("Slot Machine mode (offline)", () => {
     // Arrow under fruit clears.
     const host = {
       ka: [
-        [{ direction: "NONE", wm: false }, { direction: "UP", wm: true }],
-        [{ direction: "LEFT", wm: true }, { direction: "NONE", wm: false }],
-        [{ direction: "RIGHT", wm: true }, { direction: "DOWN", wm: true }],
+        [{ direction: "NONE", Rm: false }, { direction: "UP", Rm: true }],
+        [{ direction: "LEFT", Rm: true }, { direction: "NONE", Rm: false }],
+        [{ direction: "RIGHT", Rm: true }, { direction: "DOWN", Rm: true }],
       ],
     };
     const game = {
       __arrowHost: host,
-      Ba: { keys: [{ pos: { x: 0, y: 2 } }] },
-      Aa: {
-        oa: new Set([{ pos: { x: 1, y: 2 } }]),
-        d_: new Set(),
+      uL: { keys: [{ pos: { x: 0, y: 2 } }] },
+      Oy: {
+        WJ: new Set([{ pos: { x: 1, y: 2 } }]),
+        targets: new Set(),
       },
-      Ca: { Aa: new Map([["w", { pos: { x: 0, y: 1 } }]]) },
-      Ma: { oa: new Set() },
-      Ya: { oa: new Map() },
-      Qa: { pfa: [], Yfa: [] },
-      Ga: { oa: [] },
-      wa: { ka: [{ pos: { x: 1, y: 0 } }] },
+      Tw: { wa: new Map([["w", { pos: { x: 0, y: 1 } }]]) },
+      Ga: { oa: new Set() },
+      Ra: { oa: new Map() },
+      Ca: { gga: [], Yfa: [] },
+      wa: { oa: [] },
+      oa: { ka: [{ pos: { x: 1, y: 0 } }] },
     };
     assert.equal(w.slot_clear_arrow_at(game, 1, 0), true);
     assert.equal(host.ka[0][1].direction, "NONE");
     // Reset arrow under fruit cell for under_fruit helper.
     host.ka[1][0].direction = "LEFT";
-    host.ka[1][0].wm = true;
+    host.ka[1][0].Rm = true;
     w.slot_clear_arrows_under_fruit(
       { ka: [{ pos: { x: 0, y: 1 } }] },
       game
@@ -701,33 +702,33 @@ describe("Slot Machine mode (offline)", () => {
 
     // Keys / soko / walls also clear via under_spawns.
     host.ka[2][0].direction = "RIGHT";
-    host.ka[2][0].wm = true;
+    host.ka[2][0].Rm = true;
     host.ka[2][1].direction = "DOWN";
-    host.ka[2][1].wm = true;
+    host.ka[2][1].Rm = true;
     host.ka[1][0].direction = "LEFT";
-    host.ka[1][0].wm = true;
-    w.slot_clear_arrows_under_spawns(game.wa, game);
+    host.ka[1][0].Rm = true;
+    w.slot_clear_arrows_under_spawns(game.oa, game);
     assert.equal(host.ka[2][0].direction, "NONE", "key clears arrow");
     assert.equal(host.ka[2][1].direction, "NONE", "sokobox clears arrow");
     assert.equal(host.ka[1][0].direction, "NONE", "wall clears arrow");
 
     // Poison-only board → empty for win.
-    const g = { nj: false, ub: false };
+    const g = { uj: false, Za: false };
     assert.equal(
       w.slot_board_has_playable_content(g, {
-        ka: [{ Oka: true, slotMode: 10 }],
+        ka: [{ Bea: true, slotMode: 10 }],
       }),
       false
     );
     assert.equal(
-      w.slot_win_if_empty(g, { ka: [{ Oka: true }] }),
+      w.slot_win_if_empty(g, { ka: [{ Bea: true }] }),
       true
     );
-    assert.equal(g.nj, true);
+    assert.equal(g.uj, true);
 
     // Chess / badged fruit / portals keep playing.
-    g.nj = false;
-    g.ub = false;
+    g.uj = false;
+    g.Za = false;
     assert.equal(
       w.slot_win_if_empty(g, {
         ka: [{ isPiece: true, ChessPiece: "pawn" }],
@@ -735,7 +736,7 @@ describe("Slot Machine mode (offline)", () => {
       false
     );
     assert.equal(
-      w.slot_win_if_empty(g, { ka: [{ slotMode: 1, Oka: false }] }),
+      w.slot_win_if_empty(g, { ka: [{ slotMode: 1, Bea: false }] }),
       false
     );
 
@@ -754,8 +755,8 @@ describe("Slot Machine mode (offline)", () => {
     // Fear badge: empty list is transient (awaiting ghost); ghosts-only wins.
     w.FEAR_MODE = 30;
     w.__slotActive = 30;
-    g.nj = false;
-    g.ub = false;
+    g.uj = false;
+    g.Za = false;
     assert.equal(w.slot_win_if_empty(g, { ka: [] }), false);
     assert.equal(
       w.slot_board_has_playable_content(g, {
@@ -769,7 +770,7 @@ describe("Slot Machine mode (offline)", () => {
       }),
       true
     );
-    assert.equal(g.nj, true);
+    assert.equal(g.uj, true);
     w.__slotActive = null;
   });
 
@@ -877,53 +878,57 @@ describe("Slot Machine mode (offline)", () => {
       /if\\\(!r&&b===15&&window\\\.BOMB_FRUIT_MODE!=null\\\)/
     );
     assert.match(init, /slot_eat_respawn/);
+    // v14: BombFruit's capture assignments are matched loosely (slotBombCaps).
     assert.match(
       init,
-      /isBombFruitActive\\\(\\\)\\\)\\\{window\\\.__bombFruitMakeApple=g7/
+      /isBombFruitActive\\\\\(\\\\\)\\\\\)\\\\\{\("\s*\+\s*slotBombCaps/
     );
 
     const e7Bomb =
-      /if\(!r&&b===15&&window\.BOMB_FRUIT_MODE!=null\)\{if\(a\.ub===window\.BOMB_FRUIT_MODE\)return!0;if\(a\.ub===22&&a\.rSa&&a\.rSa\.has\(window\.BOMB_FRUIT_MODE\)\)return!0;\}return r\}/;
+      /if\(!r&&b===15&&window\.BOMB_FRUIT_MODE!=null\)\{if\(a\.yb===window\.BOMB_FRUIT_MODE\)return!0;if\(a\.yb===22&&a\.NSa&&a\.NSa\.has\(window\.BOMB_FRUIT_MODE\)\)return!0;\}return r\}/;
     const sampleE7 =
-      "if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.ub===window.BOMB_FRUIT_MODE)return!0;if(a.ub===22&&a.rSa&&a.rSa.has(window.BOMB_FRUIT_MODE))return!0;}return r}";
+      "if(!r&&b===15&&window.BOMB_FRUIT_MODE!=null){if(a.yb===window.BOMB_FRUIT_MODE)return!0;if(a.yb===22&&a.NSa&&a.NSa.has(window.BOMB_FRUIT_MODE))return!0;}return r}";
     assert.ok(e7Bomb.test(sampleE7));
 
-    const appleRe =
-      /e=!1;if\(window\.isBombFruitActive&&window\.isBombFruitActive\(\)\)\{window\.__bombFruitMakeApple=g7;window\.__bombFruitFreePos=d4E;window\.__bombFruitPickType=Q3E;\}if\(window\.isChessActive&&window\.isChessActive\(\)\)\{/;
+    const appleRe = new RegExp(
+      "e=!1;if\\(window\\.isBombFruitActive&&window\\.isBombFruitActive\\(\\)\\)\\{" +
+        "window\\.__bombFruitMakeApple=[^;]*;window\\.__bombFruitFreePos=[^;]*;window\\.__bombFruitPickType=[^;]*;" +
+        "\\}if\\(window\\.isChessActive&&window\\.isChessActive\\(\\)\\)\\{"
+    );
     const sampleApple =
-      "e=!1;if(window.isBombFruitActive&&window.isBombFruitActive()){window.__bombFruitMakeApple=g7;window.__bombFruitFreePos=d4E;window.__bombFruitPickType=Q3E;}if(window.isChessActive&&window.isChessActive()){";
+      "e=!1;if(window.isBombFruitActive&&window.isBombFruitActive()){window.__bombFruitMakeApple=S7;window.__bombFruitFreePos=window.chess_native_free_pos;window.__bombFruitPickType=hoF;}if(window.isChessActive&&window.isChessActive()){";
     assert.ok(appleRe.test(sampleApple));
   });
 
-  it("alterSnakeCode soko/key unlock f4E passes no-pair flag under Slot", () => {
+  it("alterSnakeCode soko/key unlock voF passes no-pair flag under Slot", () => {
     const init = fs.readFileSync(
       path.join(ROOT, "src", "SlotMachineInit.js"),
       "utf8"
     );
-    // Portal-active f4E doubles unless the final arg is true — unlock must pass it.
+    // Portal-active voF doubles unless the final arg is true — unlock must pass it.
     assert.match(
       init,
-      /slot_soko_unlock_fruit=1\),f4E\(a\.wa,c,b\.yNa,b\.Lh,b\.sequenceNumber,window\.isSlotMachineActive/
+      /slot_soko_unlock_fruit=1\),voF\(a\.oa,c,b\.oOa,b\.Xg,b\.sequenceNumber,window\.isSlotMachineActive/
     );
     assert.match(
       init,
-      /slot_key_unlock_fruit=1,f4E\(a\.oa,b\.r7a,b\.type,!0,b\.sequenceNumber,!0\)/
+      /slot_key_unlock_fruit=1,voF\(a\.oa,b\.q7a,b\.type,!0,b\.sequenceNumber,!0\)/
     );
 
-    let soko = "c&&f4E(a.wa,c,b.yNa,b.Lh,b.sequenceNumber);";
+    let soko = "c&&voF(a.oa,c,b.oOa,b.Xg,b.sequenceNumber);";
     soko = soko.replace(
-      /c&&f4E\(a\.wa,c,b\.yNa,b\.Lh,b\.sequenceNumber\)/,
-      "c&&(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_soko_unlock_fruit=1),f4E(a.wa,c,b.yNa,b.Lh,b.sequenceNumber,window.isSlotMachineActive&&window.isSlotMachineActive()?!0:!1))"
+      /c&&voF\(a\.oa,c,b\.oOa,b\.Xg,b\.sequenceNumber\)/,
+      "c&&(window.isSlotMachineActive&&window.isSlotMachineActive()&&(window.slot_soko_unlock_fruit=1),voF(a.oa,c,b.oOa,b.Xg,b.sequenceNumber,window.isSlotMachineActive&&window.isSlotMachineActive()?!0:!1))"
     );
     assert.match(soko, /sequenceNumber,window\.isSlotMachineActive&&window\.isSlotMachineActive\(\)\?!0:!1\)/);
 
     let key =
-      "e7(a.settings,9)?d5E(a.Ca,{pos:b.r7a.clone(),prev:null,wm:!1,yNa:b.type,Lh:!0,sequenceNumber:b.sequenceNumber}):f4E(a.oa,b.r7a,b.type,!0,b.sequenceNumber)";
+      "M7(a.settings,9)?WpF(a.Oy,{pos:b.q7a.clone(),prev:null,Rm:!1,oOa:b.type,Xg:!0,sequenceNumber:b.sequenceNumber}):voF(a.oa,b.q7a,b.type,!0,b.sequenceNumber)";
     key = key.replace(
-      /e7\(a\.settings,9\)\?d5E\(a\.Ca,\{pos:b\.r7a\.clone\(\),prev:null,wm:!1,yNa:b\.type,Lh:!0,sequenceNumber:b\.sequenceNumber\}\):f4E\(a\.oa,b\.r7a,b\.type,!0,b\.sequenceNumber\)/,
-      "window.isSlotMachineActive&&window.isSlotMachineActive()?(window.slot_key_unlock_fruit=1,f4E(a.oa,b.r7a,b.type,!0,b.sequenceNumber,!0)):e7(a.settings,9)?d5E(a.Ca,{pos:b.r7a.clone(),prev:null,wm:!1,yNa:b.type,Lh:!0,sequenceNumber:b.sequenceNumber}):f4E(a.oa,b.r7a,b.type,!0,b.sequenceNumber)"
+      /M7\(a\.settings,9\)\?WpF\(a\.Oy,\{pos:b\.q7a\.clone\(\),prev:null,Rm:!1,oOa:b\.type,Xg:!0,sequenceNumber:b\.sequenceNumber\}\):voF\(a\.oa,b\.q7a,b\.type,!0,b\.sequenceNumber\)/,
+      "window.isSlotMachineActive&&window.isSlotMachineActive()?(window.slot_key_unlock_fruit=1,voF(a.oa,b.q7a,b.type,!0,b.sequenceNumber,!0)):M7(a.settings,9)?WpF(a.Oy,{pos:b.q7a.clone(),prev:null,Rm:!1,oOa:b.type,Xg:!0,sequenceNumber:b.sequenceNumber}):voF(a.oa,b.q7a,b.type,!0,b.sequenceNumber)"
     );
-    assert.match(key, /slot_key_unlock_fruit=1,f4E\(a\.oa,b\.r7a,b\.type,!0,b\.sequenceNumber,!0\)/);
+    assert.match(key, /slot_key_unlock_fruit=1,voF\(a\.oa,b\.q7a,b\.type,!0,b\.sequenceNumber,!0\)/);
   });
 });
 
@@ -940,19 +945,19 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.settings.ob = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.settings.wb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
+        g.oa.reset();
         if (typeof window.slot_after_layout === "function") {
-          window.slot_after_layout(g.wa);
+          window.slot_after_layout(g.oa);
         }
-        const fruits = (g.wa.ka || []).map((f) => ({
+        const fruits = (g.oa.ka || []).map((f) => ({
           slotMode: f.slotMode,
-          oka: !!f.Oka,
+          oka: !!f.Bea,
           piece: !!f.isPiece,
         }));
-        const first = g.wa.ka[0];
+        const first = g.oa.ka[0];
         const mode = first && first.slotMode;
         if (first) {
           window.slot_on_eating_fruit(g, first);
@@ -989,16 +994,16 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
         window.setSlotActive(16, g);
         const host = window.slot_arrow_host(g);
 
         function setArrow(x, y, dir) {
           host.ka[y][x].direction = dir;
-          host.ka[y][x].wm = true;
+          host.ka[y][x].Rm = true;
         }
         function arrowAt(x, y) {
           const c = host.ka[y] && host.ka[y][x];
@@ -1007,30 +1012,30 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
 
         // Fruit on arrow.
         setArrow(4, 4, "UP");
-        g.wa.ka.length = 0;
-        const fruit = window.slot_make_apple(g.wa, { x: 4, y: 4 });
+        g.oa.ka.length = 0;
+        const fruit = window.slot_make_apple(g.oa, { x: 4, y: 4 });
         window.assignSlotMode(fruit);
-        g.wa.ka.push(fruit);
-        window.slot_clear_arrows_under_spawns(g.wa, g);
+        g.oa.ka.push(fruit);
+        window.slot_clear_arrows_under_spawns(g.oa, g);
         const fruitCleared = !arrowAt(4, 4);
 
         // Key on arrow.
         setArrow(6, 6, "LEFT");
-        if (!g.Ba.keys) g.Ba.keys = [];
-        g.Ba.keys.length = 0;
-        g.Ba.keys.push({ pos: { x: 6, y: 6 } });
-        window.slot_clear_arrows_under_spawns(g.wa, g);
+        if (!g.uL.keys) g.uL.keys = [];
+        g.uL.keys.length = 0;
+        g.uL.keys.push({ pos: { x: 6, y: 6 } });
+        window.slot_clear_arrows_under_spawns(g.oa, g);
         const keyCleared = !arrowAt(6, 6);
 
         // Sokobox on arrow.
         setArrow(8, 8, "DOWN");
         try {
-          g.Aa.oa.clear();
+          g.Oy.WJ.clear();
         } catch (_e) {
-          g.Aa.oa = new Set();
+          g.Oy.WJ = new Set();
         }
-        g.Aa.oa.add({ pos: { x: 8, y: 8 }, wm: true });
-        window.slot_clear_arrows_under_spawns(g.wa, g);
+        g.Oy.WJ.add({ pos: { x: 8, y: 8 }, Rm: true });
+        window.slot_clear_arrows_under_spawns(g.oa, g);
         const sokoCleared = !arrowAt(8, 8);
 
         return { fruitCleared, keyCleared, sokoCleared };
@@ -1055,16 +1060,16 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.nj = false;
+        g.uj = false;
         g.reset();
         window.setSlotActive(16, g);
         const host = window.slot_arrow_host(g);
         host.ka[8][5].direction = "LEFT";
-        host.ka[8][5].wm = true;
+        host.ka[8][5].Rm = true;
         host.ka[7][5].direction = "UP";
-        host.ka[7][5].wm = true;
+        host.ka[7][5].Rm = true;
         const before = window.slot_count_arrows(g);
         const allowWhile = window.__slotAllowArrowTurns;
         window.setSlotActive(3, g); // Cheese — leave Arrow
@@ -1100,11 +1105,11 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
 
-        // Plain wall leftover (no .ty) — the native B6E crash case.
-        const wm = g.Ca;
+        // Plain wall leftover (no .wv) — the native B6E crash case.
+        const wm = g.Tw;
         const pos = { x: 3, y: 7 };
         if (typeof pos.clone !== "function") {
           pos.clone = function () {
@@ -1112,32 +1117,32 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           };
         }
         const key =
-          typeof Y6 === "function" ? Y6(pos) : ((pos.x | 0) << 16) | (pos.y | 0);
-        wm.Aa.set(key, { pos: pos, wm: true, m0: false, Lh: true });
-        if (wm.wa && wm.wa[pos.y]) wm.wa[pos.y][pos.x] = (wm.wa[pos.y][pos.x] | 0) + 1;
+          typeof J7 === "function" ? J7(pos) : ((pos.x | 0) << 16) | (pos.y | 0);
+        wm.wa.set(key, { pos: pos, Rm: true, e9: false, Xg: true });
+        if (wm.oa && wm.oa[pos.y]) wm.oa[pos.y][pos.x] = (wm.oa[pos.y][pos.x] | 0) + 1;
 
-        const fruit = g.wa.ka[0];
+        const fruit = g.oa.ka[0];
         fruit.slotMode = 17;
-        const body = g.oa.ka;
-        g.oa.direction = "RIGHT";
+        const body = g.Yc.ka;
+        g.Yc.direction = "RIGHT";
         fruit.pos.x = 10;
         fruit.pos.y = 8;
         for (let i = 0; i < body.length; i++) {
           body[i].x = 9 - i;
           body[i].y = 8;
         }
-        const sh0 = g.Sh | 0;
+        const sh0 = g.Bi | 0;
         let err = null;
         try {
-          for (let t = 0; t < 10 && !g.nj; t++) g.tick();
+          for (let t = 0; t < 10 && !g.uj; t++) g.tick();
         } catch (e) {
           err = String(e && e.message ? e.message : e);
         }
         return {
           err,
-          scored: (g.Sh | 0) > sh0,
+          scored: (g.Bi | 0) > sh0,
           active: window.__slotActive,
-          alive: !g.nj,
+          alive: !g.uj,
           hotdogWalls: window.slot_count_hotdog_walls(g),
         };
       });
@@ -1162,30 +1167,30 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.nj = false;
+        g.uj = false;
         g.reset();
         window.setSlotActive(17, g);
 
-        const wm = g.Ca;
+        const wm = g.Tw;
         const pos = { x: 4, y: 8 };
         if (typeof pos.clone !== "function") {
           pos.clone = function () {
             return { x: this.x, y: this.y };
           };
         }
-        // Plant a fake hotdog sidewall (ty marker) on the wall manager.
+        // Plant a fake hotdog sidewall (wv marker) on the wall manager.
         const key =
-          typeof Y6 === "function" ? Y6(pos) : ((pos.x | 0) << 16) | (pos.y | 0);
-        wm.Aa.set(key, {
+          typeof J7 === "function" ? J7(pos) : ((pos.x | 0) << 16) | (pos.y | 0);
+        wm.wa.set(key, {
           pos: pos,
-          wm: true,
-          m0: false,
-          Lh: true,
-          ty: { nea: 1, ETc: 1, rR: false },
+          Rm: true,
+          e9: false,
+          Xg: true,
+          wv: { k5: 1, QUc: 1, RR: false },
         });
-        if (wm.wa && wm.wa[pos.y]) wm.wa[pos.y][pos.x] = (wm.wa[pos.y][pos.x] | 0) + 1;
+        if (wm.oa && wm.oa[pos.y]) wm.oa[pos.y][pos.x] = (wm.oa[pos.y][pos.x] | 0) + 1;
 
         const before = window.slot_count_hotdog_walls(g);
         const activeWhile = window.__slotActive;
@@ -1220,14 +1225,14 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
         g.reset();
-        window.slot_after_layout(g.wa);
-        const fruits = (g.wa.ka || []).map((f) => ({
+        window.slot_after_layout(g.oa);
+        const fruits = (g.oa.ka || []).map((f) => ({
           slotMode: f.slotMode,
           portal: !!f.__slotPortal,
-          oka: !!f.Oka,
+          oka: !!f.Bea,
         }));
         return {
           active: window.__slotActive,
@@ -1236,7 +1241,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           fruits,
           e7_2:
             typeof e7 === "function" ? null : "scoped",
-          hasPortalPairs: window.slot_has_portal_pairs(g.wa),
+          hasPortalPairs: window.slot_has_portal_pairs(g.oa),
         };
       });
       assert.equal(result.active, null, JSON.stringify(result));
@@ -1261,28 +1266,28 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
 
         // Leave keys on the board (e7(8) true) — same sticky state that used
         // to make Y3E plant portal offsets on the next reset.
-        if (g.Ba && g.Ba.keys) g.Ba.keys.length = 0;
-        const fruit = g.wa.ka[0];
+        if (g.uL && g.uL.keys) g.uL.keys.length = 0;
+        const fruit = g.oa.ka[0];
         fruit.slotMode = 8;
-        const body = g.oa.ka;
-        g.oa.direction = "RIGHT";
+        const body = g.Yc.ka;
+        g.Yc.direction = "RIGHT";
         fruit.pos.x = 10;
         fruit.pos.y = 8;
         for (let i = 0; i < body.length; i++) {
           body[i].x = 9 - i;
           body[i].y = 8;
         }
-        const sh0 = g.Sh | 0;
-        for (let t = 0; t < 6 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
-        const keysBeforeReset = (g.Ba.keys || []).length | 0;
+        const sh0 = g.Bi | 0;
+        for (let t = 0; t < 6 && (g.Bi | 0) === sh0 && !g.uj; t++) g.tick();
+        const keysBeforeReset = (g.uL.keys || []).length | 0;
 
-        const baseX = Math.floor((3 * g.wa.oa.oa.width) / 4);
-        const baseY = Math.floor(g.wa.oa.oa.height / 2);
+        const baseX = Math.floor((3 * g.oa.oa.oa.width) / 4);
+        const baseY = Math.floor(g.oa.oa.oa.height / 2);
         const portalOffsets = [
           [-1, -2],
           [-1, 2],
@@ -1305,7 +1310,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
 
         window.slot_Y3E_gate = 0;
         g.reset();
-        const fruits = (g.wa.ka || []).map((f) => ({
+        const fruits = (g.oa.ka || []).map((f) => ({
           x: f.pos.x | 0,
           y: f.pos.y | 0,
         }));
@@ -1360,28 +1365,28 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
-        const fruit = g.wa.ka[0];
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
+        const fruit = g.oa.ka[0];
         fruit.slotMode = 10;
-        fruit.Oka = false;
-        const body = g.oa.ka;
-        g.oa.direction = "RIGHT";
+        fruit.Bea = false;
+        const body = g.Yc.ka;
+        g.Yc.direction = "RIGHT";
         fruit.pos.x = 10;
         fruit.pos.y = 8;
         for (let i = 0; i < body.length; i++) {
           body[i].x = 9 - i;
           body[i].y = 8;
         }
-        const sh0 = g.Sh | 0;
-        for (let t = 0; t < 8 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
-        const list = g.wa.ka || [];
-        const okas = list.filter((f) => f && f.Oka);
-        const safes = list.filter((f) => f && !f.Oka && !f.isPiece);
+        const sh0 = g.Bi | 0;
+        for (let t = 0; t < 8 && (g.Bi | 0) === sh0 && !g.uj; t++) g.tick();
+        const list = g.oa.ka || [];
+        const okas = list.filter((f) => f && f.Bea);
+        const safes = list.filter((f) => f && !f.Bea && !f.isPiece);
         return {
-          scored: (g.Sh | 0) > sh0,
-          won: !!g.nj && !!g.lj,
-          dead: !!g.nj && !g.lj,
+          scored: (g.Bi | 0) > sh0,
+          won: !!g.uj && !!g.lj,
+          dead: !!g.uj && !g.lj,
           active: window.__slotActive,
           afterFruit: list.length,
           okaCount: okas.length,
@@ -1415,46 +1420,46 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
-        while (g.wa.ka.length < 3) {
-          const p = window.slot_free_pos(g.wa) || { x: 5, y: 5 };
-          const f = window.slot_make_apple(g.wa, p);
-          f.Oka = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
+        while (g.oa.ka.length < 3) {
+          const p = window.slot_free_pos(g.oa) || { x: 5, y: 5 };
+          const f = window.slot_make_apple(g.oa, p);
+          f.Bea = false;
           f.slotMode = 1;
-          g.wa.ka.push(f);
+          g.oa.ka.push(f);
         }
-        for (let i = 0; i < g.wa.ka.length; i++) {
-          g.wa.ka[i].Oka = false;
-          g.wa.ka[i].slotMode = i === 0 ? 10 : 1;
+        for (let i = 0; i < g.oa.ka.length; i++) {
+          g.oa.ka[i].Bea = false;
+          g.oa.ka[i].slotMode = i === 0 ? 10 : 1;
         }
-        const fruit = g.wa.ka[0];
-        const body = g.oa.ka;
-        g.oa.direction = "RIGHT";
+        const fruit = g.oa.ka[0];
+        const body = g.Yc.ka;
+        g.Yc.direction = "RIGHT";
         fruit.pos.x = 10;
         fruit.pos.y = 8;
         for (let i = 0; i < body.length; i++) {
           body[i].x = 9 - i;
           body[i].y = 8;
         }
-        const before = g.wa.ka.length;
-        const sh0 = g.Sh | 0;
-        for (let t = 0; t < 8 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
+        const before = g.oa.ka.length;
+        const sh0 = g.Bi | 0;
+        for (let t = 0; t < 8 && (g.Bi | 0) === sh0 && !g.uj; t++) g.tick();
         // Native post-eat g4E/e4E/l4E must be no-ops under Slot.
         try {
-          if (typeof g4E === "function") g4E(g.wa);
+          if (typeof woF === "function") woF(g.oa);
         } catch (_e) {}
         try {
-          if (typeof e4E === "function") e4E(g.wa);
+          if (typeof uoF === "function") uoF(g.oa);
         } catch (_e2) {}
         try {
-          if (typeof l4E === "function") l4E(g.wa);
+          if (typeof BoF === "function") BoF(g.oa);
         } catch (_e3) {}
-        const list = g.wa.ka || [];
-        const okas = list.filter((f) => f && f.Oka);
-        const safes = list.filter((f) => f && !f.Oka && !f.isPiece);
+        const list = g.oa.ka || [];
+        const okas = list.filter((f) => f && f.Bea);
+        const safes = list.filter((f) => f && !f.Bea && !f.isPiece);
         return {
-          scored: (g.Sh | 0) > sh0,
+          scored: (g.Bi | 0) > sh0,
           active: window.__slotActive,
           before,
           after: list.length,
@@ -1490,42 +1495,42 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
         window.setSlotActive(6, g);
-        const fruits = g.wa.ka;
+        const fruits = g.oa.ka;
         for (let i = 0; i < fruits.length; i++) {
           const f = fruits[i];
           f.pos.x = 4.5 + i * 0.25;
           f.pos.y = 7.25;
-          f.He = { x: 0.5, y: -0.5 };
-          f.CAb = { x: 0.5, y: -0.5 };
-          f.iL = { x: 1, y: 1 };
+          f.Ce = { x: 0.5, y: -0.5 };
+          f.qXa = { x: 0.5, y: -0.5 };
+          f.YG = { x: 1, y: 1 };
         }
         window.setSlotActive(1, g); // leave winged → wall
         const afterWinged = fruits.map((f) => ({
           x: f.pos.x,
           y: f.pos.y,
-          hx: f.He && f.He.x,
-          hy: f.He && f.He.y,
-          ix: f.iL && f.iL.x,
-          iy: f.iL && f.iL.y,
+          hx: f.Ce && f.Ce.x,
+          hy: f.Ce && f.Ce.y,
+          ix: f.YG && f.YG.x,
+          iy: f.YG && f.YG.y,
         }));
 
         for (let i = 0; i < fruits.length; i++) {
           const f = fruits[i];
           f.pos.x = 3.5 + i * 0.5;
           f.pos.y = 6.75;
-          f.He = { x: -0.5, y: 0.5 };
-          f.iL = { x: 1, y: 1 };
+          f.Ce = { x: -0.5, y: 0.5 };
+          f.YG = { x: 1, y: 1 };
         }
         window.setSlotActive(18, g);
         window.setSlotActive(3, g); // leave magnet
         const afterMagnet = fruits.map((f) => ({
           x: f.pos.x,
           y: f.pos.y,
-          hx: f.He && f.He.x,
-          hy: f.He && f.He.y,
+          hx: f.Ce && f.Ce.x,
+          hy: f.Ce && f.Ce.y,
         }));
 
         const allInt = (arr) =>
@@ -1564,19 +1569,19 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
         window.setSlotActive(20, g); // bridges present
         // Plant a bridge cell and park fruit on it while magnet is on.
-        if (!g.Ga) return { error: "no Ga" };
-        if (!g.Ga.oa) g.Ga.oa = [];
+        if (!g.wa) return { error: "no Ga" };
+        if (!g.wa.oa) g.wa.oa = [];
         const bx = 5;
         const by = 5;
-        if (!g.Ga.oa[by]) g.Ga.oa[by] = [];
-        g.Ga.oa[by][bx] = { pos: { x: bx, y: by } };
+        if (!g.wa.oa[by]) g.wa.oa[by] = [];
+        g.wa.oa[by][bx] = { pos: { x: bx, y: by } };
 
         window.setSlotActive(18, g);
-        const f = g.wa.ka[0];
+        const f = g.oa.ka[0];
         if (!f || !f.pos) return { error: "no fruit" };
         f.pos.x = bx + 0.4;
         f.pos.y = by + 0.6;
@@ -1614,23 +1619,23 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
         window.slot_reset_state();
         window.setSlotActive(20, g);
 
-        if (!g.Ga) return { error: "no Ga" };
-        if (!g.Ga.oa) g.Ga.oa = [];
+        if (!g.wa) return { error: "no Ga" };
+        if (!g.wa.oa) g.wa.oa = [];
         // Cover a block of cells with bridges.
         for (let y = 4; y <= 8; y++) {
-          if (!g.Ga.oa[y]) g.Ga.oa[y] = [];
+          if (!g.wa.oa[y]) g.wa.oa[y] = [];
           for (let x = 4; x <= 8; x++) {
-            g.Ga.oa[y][x] = { pos: { x, y }, Lh: true };
+            g.wa.oa[y][x] = { pos: { x, y }, Xg: true };
           }
         }
 
         // Park an existing fruit on a bridge — tick must relocate it.
-        const parked = g.wa.ka[0];
+        const parked = g.oa.ka[0];
         if (!parked || !parked.pos) return { error: "no fruit" };
         parked.pos.x = 6;
         parked.pos.y = 6;
@@ -1642,7 +1647,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         );
 
         // Chess pieces used to be skipped by relocate — must move off too.
-        const piece = g.wa.ka[1] || parked;
+        const piece = g.oa.ka[1] || parked;
         if (typeof window.chess_assign_piece === "function") {
           window.chess_assign_piece(piece);
         } else {
@@ -1662,7 +1667,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         let freeOnBridge = 0;
         let freeOk = 0;
         for (let i = 0; i < 40; i++) {
-          const p = window.slot_free_pos(g.wa);
+          const p = window.slot_free_pos(g.oa);
           if (!p) continue;
           freeOk++;
           if (window.slot_pos_on_bridge(g, p.x, p.y)) freeOnBridge++;
@@ -1705,22 +1710,22 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
         g.lj = false;
-        g.ub = false;
+        g.Za = false;
         window.slot_reset_state();
         window.setSlotActive(20, g);
 
-        if (!g.Ga) return { error: "no Ga" };
-        if (!g.Ga.oa) g.Ga.oa = [];
+        if (!g.wa) return { error: "no Ga" };
+        if (!g.wa.oa) g.wa.oa = [];
         // Plant a bridge under the parked fruit so relocate runs.
         const bx = 1;
         const by = 1;
-        if (!g.Ga.oa[by]) g.Ga.oa[by] = [];
-        g.Ga.oa[by][bx] = { pos: { x: bx, y: by }, Lh: true };
+        if (!g.wa.oa[by]) g.wa.oa[by] = [];
+        g.wa.oa[by][bx] = { pos: { x: bx, y: by }, Xg: true };
 
-        const mgr = g.wa;
+        const mgr = g.oa;
         // Leave only one playable fruit so despawn can empty the board.
         while (mgr.ka && mgr.ka.length > 1) mgr.ka.pop();
         const before = (mgr.ka && mgr.ka.length) || 0;
@@ -1728,7 +1733,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const f = mgr.ka[0];
         f.pos.x = bx;
         f.pos.y = by;
-        f.Oka = false;
+        f.Bea = false;
 
         // Stub free_pos: every candidate is still a bridge cell. Relocate must
         // refuse those and despawn instead of parking on another bridge.
@@ -1754,7 +1759,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
 
         // Clear leftover keys/soko so empty fruit → win.
         try {
-          if (g.Ca && g.Ca.oa) g.Ca.oa.length = 0;
+          if (g.Tw && g.Tw.Yc) g.Tw.Yc.length = 0;
         } catch (_k) {}
         try {
           if (g.Za && g.Za.oa) g.Za.oa.length = 0;
@@ -1777,7 +1782,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           after,
           anyOnBridge,
           winCalls,
-          nj: !!g.nj,
+          nj: !!g.uj,
         };
       });
 
@@ -1805,23 +1810,23 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         // Let tick eager-capture A7E into __slotShowEndMenu.
         g.tick();
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
         g.lj = false;
-        g.ub = false;
+        g.Za = false;
         window.slot_reset_state();
         window.__slotWrapActives && window.__slotWrapActives();
         window.setSlotActive(21, g);
         window.cat_lives = 3;
 
         const cap = window.cat_max_score(g) | 0;
-        g.Sh = cap;
+        g.Bi = cap;
         g.Oh = cap;
-        g.wa.ka.length = 0;
-        const fruit = window.slot_make_apple(g.wa, { x: 2, y: 2 });
+        g.oa.ka.length = 0;
+        const fruit = window.slot_make_apple(g.oa, { x: 2, y: 2 });
         fruit.slotMode = 3;
-        g.wa.ka.push(fruit);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(fruit);
+        window.appleArray = g.oa.ka;
 
         window.__slotMenuCalls = 0;
         window.__slotGotAllCalls = 0;
@@ -1862,14 +1867,14 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           cap,
           showTypeBeforeWin: showType,
           scoreWin,
-          nj: !!g.nj,
+          nj: !!g.uj,
           lj: !!g.lj,
-          ub: !!g.ub,
+          ub: !!g.Za,
           menuCalls: window.__slotMenuCalls | 0,
           menuDelay: window.__slotMenuArgs && window.__slotMenuArgs[1],
           gotAllCalls: window.__slotGotAllCalls | 0,
           gotAllTime: window.__slotGotAllArgs && window.__slotGotAllArgs[0],
-          expectedTime: Math.floor((g.ticks | 0) * (g.Fb || 0)),
+          expectedTime: Math.floor((g.ticks | 0) * (g.hb || 0)),
           fruitCapped: (window.cat_score_room(g) | 0) === 0,
         };
       });
@@ -1901,17 +1906,17 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.settings.ob = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.settings.wb = window.SLOT_MACHINE_MODE;
         g.tick();
-        g.nj = false;
-        g.ub = false;
+        g.uj = false;
+        g.Za = false;
         g.lj = false;
         g.ticks = 40;
-        g.Sh = 5;
+        g.Bi = 5;
         window.slot_reset_state();
-        g.wa.ka.length = 0;
-        window.appleArray = g.wa.ka;
+        g.oa.ka.length = 0;
+        window.appleArray = g.oa.ka;
 
         window.__slotSplitCalls = [];
         const origSplit = window.SplitPanelOnSplit;
@@ -1923,18 +1928,18 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         };
 
         const beforeLabel =
-          g.header && g.header.Aa
-            ? g.header.Aa.textContent || g.header.Aa.innerText
-            : null;
-        const beforeTime =
           g.header && g.header.Ba
             ? g.header.Ba.textContent || g.header.Ba.innerText
+            : null;
+        const beforeTime =
+          g.header && g.header.Ca
+            ? g.header.Ca.textContent || g.header.Ca.innerText
             : null;
 
         window.slot_trigger_win(g);
 
-        const expected = g.ticks * g.Fb * 1e-3;
-        const expectedMs = Math.floor(g.ticks * g.Fb);
+        const expected = g.ticks * g.hb * 1e-3;
+        const expectedMs = Math.floor(g.ticks * g.hb);
         const mode = typeof getSelected === "function" ? getSelected("#trophy") : 0;
         const count = typeof getSelected === "function" ? getSelected("#count") : 0;
         const speed = typeof getSelected === "function" ? getSelected("#speed") : 0;
@@ -1952,12 +1957,12 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const list = document.getElementById("split-panel-list");
         const allRow = list && list.textContent;
         const afterLabel =
-          g.header && g.header.Aa
-            ? g.header.Aa.textContent || g.header.Aa.innerText
-            : null;
-        const afterTime =
           g.header && g.header.Ba
             ? g.header.Ba.textContent || g.header.Ba.innerText
+            : null;
+        const afterTime =
+          g.header && g.header.Ca
+            ? g.header.Ca.textContent || g.header.Ca.innerText
             : null;
         const hud = document.getElementsByClassName("Jc72He rc48Qb")[0];
         const hudText = hud ? hud.innerText : null;
@@ -1967,8 +1972,8 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         }
 
         return {
-          ub: !!g.ub,
-          nj: !!g.nj,
+          ub: !!g.Za,
+          nj: !!g.uj,
           expected,
           expectedMs,
           runAll,
@@ -2015,28 +2020,28 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
         g.lj = false;
         window.slot_reset_state();
         window.cat_lives = 1;
         window.cat_peaceful_ticks = 0;
         window.setSlotActive(12, g);
 
-        const head = g.oa && g.oa.ka && g.oa.ka[0];
+        const head = g.Yc && g.Yc.ka && g.Yc.ka[0];
         if (!head) return { error: "no head" };
 
         // Prefer real A6E if exposed; else mirror its Cat-aware kill gate.
         let usedA6E = false;
         let dcCalls = 0;
-        const origDc = typeof g.Dc === "function" ? g.Dc.bind(g) : null;
-        g.Dc = function () {
+        const origDc = typeof g.Wb === "function" ? g.Wb.bind(g) : null;
+        g.Wb = function () {
           dcCalls++;
           if (origDc) return origDc();
-          this.nj = true;
+          this.uj = true;
         };
 
-        if (typeof A6E === "function" && g.Ma) {
+        if (typeof urF === "function" && g.Ga) {
           usedA6E = true;
           const mine = {
             pos: {
@@ -2046,14 +2051,14 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
                 return { x: this.x, y: this.y };
               },
             },
-            X1a: 0,
-            Lh: true,
-            xL: 0,
+            nLa: 0,
+            Xg: true,
+            gM: 0,
           };
           try {
-            if (g.Ma.oa && typeof g.Ma.oa.add === "function") g.Ma.oa.add(mine);
-            else if (Array.isArray(g.Ma.oa)) g.Ma.oa.push(mine);
-            A6E(g.Ma, mine, false, g.Ub.bind(g), g.Dc.bind(g));
+            if (g.Ga.oa && typeof g.Ga.oa.add === "function") g.Ga.oa.add(mine);
+            else if (Array.isArray(g.Ga.oa)) g.Ga.oa.push(mine);
+            urF(g.Ga, mine, false, g.yb.bind(g), g.Wb.bind(g));
           } catch (e) {
             return { error: "A6E:" + String(e), usedA6E };
           }
@@ -2063,14 +2068,14 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
             window.isCatActive &&
             window.isCatActive() &&
             window.cat_try_spend_life(g);
-          if (!absorbed) g.Dc();
+          if (!absorbed) g.Wb();
         }
 
         return {
           usedA6E,
           livesAfter: window.cat_lives | 0,
           grace: window.cat_peaceful_ticks | 0,
-          nj: !!g.nj,
+          nj: !!g.uj,
           dcCalls,
           catActive: !!(window.isCatActive && window.isCatActive()),
         };
@@ -2099,21 +2104,21 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
-        g.wa.ka.length = 0;
-        const mag = window.slot_make_apple(g.wa, { x: 5, y: 5 });
-        const other = window.slot_make_apple(g.wa, { x: 9, y: 5 });
+        g.oa.ka.length = 0;
+        const mag = window.slot_make_apple(g.oa, { x: 5, y: 5 });
+        const other = window.slot_make_apple(g.oa, { x: 9, y: 5 });
         mag.slotMode = 18;
         other.slotMode = 3;
-        g.wa.ka.push(mag, other);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(mag, other);
+        window.appleArray = g.oa.ka;
 
         // Bare spawn must still carry motion vectors.
-        const spawnHasMotion = !!(mag.He && mag.iL && mag.CAb);
+        const spawnHasMotion = !!(mag.Ce && mag.YG && mag.qXa);
 
         window.just_ate = "fruit";
         window.__slotEatenFruit = mag;
@@ -2121,8 +2126,8 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.__slotEating = true;
         window.slot_on_eating_fruit(g, mag);
         window.slot_eat_respawn(g);
-        const ix = g.wa.ka.indexOf(mag);
-        if (ix >= 0) g.wa.ka.splice(ix, 1);
+        const ix = g.oa.ka.indexOf(mag);
+        if (ix >= 0) g.oa.ka.splice(ix, 1);
 
         let tickErr = null;
         try {
@@ -2132,8 +2137,8 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         }
 
         const prey =
-          g.wa.ka.find((f) => f && f !== mag && !f.Oka && !f.isPiece) ||
-          g.wa.ka[0];
+          g.oa.ka.find((f) => f && f !== mag && !f.Bea && !f.isPiece) ||
+          g.oa.ka[0];
         let eatErr = null;
         try {
           window.just_ate = "fruit";
@@ -2142,16 +2147,16 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           window.__slotEating = true;
           window.slot_on_eating_fruit(g, prey);
           window.slot_eat_respawn(g);
-          const jx = g.wa.ka.indexOf(prey);
-          if (jx >= 0) g.wa.ka.splice(jx, 1);
+          const jx = g.oa.ka.indexOf(prey);
+          if (jx >= 0) g.oa.ka.splice(jx, 1);
           for (let i = 0; i < 8; i++) g.tick();
         } catch (e) {
           eatErr = String(e && e.message ? e.message : e);
         }
 
-        const fruits = (g.wa.ka || []).filter((f) => f && !f.Oka);
+        const fruits = (g.oa.ka || []).filter((f) => f && !f.Bea);
         const allMotion = fruits.every(
-          (f) => f.He && f.iL && f.CAb && typeof f.He.x === "number"
+          (f) => f.Ce && f.YG && f.qXa && typeof f.Ce.x === "number"
         );
 
         return {
@@ -2186,17 +2191,17 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
         window.cat_lives = 0;
         window.__slotCatFruitEaten = 0;
 
-        g.wa.ka.length = 0;
-        const a = window.slot_make_apple(g.wa, { x: 4, y: 4 });
-        const b = window.slot_make_apple(g.wa, { x: 6, y: 4 });
+        g.oa.ka.length = 0;
+        const a = window.slot_make_apple(g.oa, { x: 4, y: 4 });
+        const b = window.slot_make_apple(g.oa, { x: 6, y: 4 });
         a.slotMode = 26;
         b.slotMode = 26;
-        g.wa.ka.push(a, b);
+        g.oa.ka.push(a, b);
 
         window.slot_on_eating_fruit(g, a);
         const afterFirst = window.cat_lives | 0;
@@ -2232,43 +2237,43 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
-        const fruit = g.wa.ka[0];
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
+        const fruit = g.oa.ka[0];
         fruit.slotMode = 8;
-        const body = g.oa.ka;
-        g.oa.direction = "RIGHT";
+        const body = g.Yc.ka;
+        g.Yc.direction = "RIGHT";
         fruit.pos.x = 10;
         fruit.pos.y = 8;
         for (let i = 0; i < body.length; i++) {
           body[i].x = 9 - i;
           body[i].y = 8;
         }
-        if (g.Ba && g.Ba.keys) g.Ba.keys.length = 0;
-        const sh0 = g.Sh | 0;
-        const beforeFruit = g.wa.ka.length;
-        for (let t = 0; t < 6 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
-        const keys = (g.Ba.keys || []).map((k) => ({
+        if (g.uL && g.uL.keys) g.uL.keys.length = 0;
+        const sh0 = g.Bi | 0;
+        const beforeFruit = g.oa.ka.length;
+        for (let t = 0; t < 6 && (g.Bi | 0) === sh0 && !g.uj; t++) g.tick();
+        const keys = (g.uL.keys || []).map((k) => ({
           type: k.type,
           x: k.pos.x,
           y: k.pos.y,
-          bx: k.r7a && k.r7a.x,
-          by: k.r7a && k.r7a.y,
+          bx: k.q7a && k.q7a.x,
+          by: k.q7a && k.q7a.y,
         }));
         const blocks = [];
-        const map = g.Ca && g.Ca.Aa;
+        const map = g.Tw && g.Tw.wa;
         if (map && typeof map.values === "function") {
           for (const v of map.values()) {
-            if (v && v.yNa != null && v.pos) {
-              blocks.push({ x: v.pos.x, y: v.pos.y, type: v.yNa });
+            if (v && v.oOa != null && v.pos) {
+              blocks.push({ x: v.pos.x, y: v.pos.y, type: v.oOa });
             }
           }
         }
         return {
-          scored: (g.Sh | 0) > sh0,
+          scored: (g.Bi | 0) > sh0,
           active: window.__slotActive,
           beforeFruit,
-          afterFruit: g.wa.ka.length,
+          afterFruit: g.oa.ka.length,
           keys,
           blocks,
           matched:
@@ -2304,26 +2309,26 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
-        if (g.Ba && g.Ba.keys) g.Ba.keys.length = 0;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
+        if (g.uL && g.uL.keys) g.uL.keys.length = 0;
 
-        const fruit0 = g.wa.ka[0];
+        const fruit0 = g.oa.ka[0];
         fruit0.slotMode = 8;
-        const body = g.oa.ka;
-        g.oa.direction = "RIGHT";
+        const body = g.Yc.ka;
+        g.Yc.direction = "RIGHT";
         fruit0.pos.x = 10;
         fruit0.pos.y = 8;
         for (let i = 0; i < body.length; i++) {
           body[i].x = 9 - i;
           body[i].y = 8;
         }
-        const sh0 = g.Sh | 0;
-        for (let t = 0; t < 6 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
+        const sh0 = g.Bi | 0;
+        for (let t = 0; t < 6 && (g.Bi | 0) === sh0 && !g.uj; t++) g.tick();
 
-        const key = (g.Ba.keys || [])[0];
-        const blockPos = key && key.r7a
-          ? { x: key.r7a.x | 0, y: key.r7a.y | 0, type: key.type }
+        const key = (g.uL.keys || [])[0];
+        const blockPos = key && key.q7a
+          ? { x: key.q7a.x | 0, y: key.q7a.y | 0, type: key.type }
           : null;
         const flagsAfterEat = {
           eating: !!window.__slotEating,
@@ -2350,45 +2355,45 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         };
 
         // Native key unlock: fruit at keyblock, clear key + block.
-        if (g.Ba.keys) g.Ba.keys.length = 0;
-        const map = g.Ca && g.Ca.Aa;
+        if (g.uL.keys) g.uL.keys.length = 0;
+        const map = g.Tw && g.Tw.wa;
         if (map && typeof map.clear === "function") map.clear();
-        g.wa.ka.length = 0;
+        g.oa.ka.length = 0;
         window.__slotEating = false;
         window.__slotEatenMode = null;
         window.__slotRespawnedThisEat = true;
         window.__slotActivatedFruit = null;
 
         let unlockOk = false;
-        if (blockPos && typeof f4E === "function") {
+        if (blockPos && typeof voF === "function") {
           try {
-            f4E(g.wa, blockPos, blockPos.type, true, 0);
+            voF(g.oa, blockPos, blockPos.type, true, 0);
             unlockOk = true;
           } catch (_e) {}
         }
         if (!unlockOk && blockPos) {
-          const fruit = window.slot_make_apple(g.wa, blockPos);
+          const fruit = window.slot_make_apple(g.oa, blockPos);
           delete fruit.slotMode;
-          g.wa.ka.push(fruit);
-          window.slot_after_native_respawn(g.wa, 1, g);
+          g.oa.ka.push(fruit);
+          window.slot_after_native_respawn(g.oa, 1, g);
           unlockOk = true;
         }
 
-        const keysAfter = (g.Ba.keys || []).length | 0;
+        const keysAfter = (g.uL.keys || []).length | 0;
         let blocksAfter = 0;
         if (map && typeof map.values === "function") {
           for (const v of map.values()) {
-            if (v && v.yNa != null) blocksAfter++;
+            if (v && v.oOa != null) blocksAfter++;
           }
         }
-        const fruit = g.wa.ka[0];
+        const fruit = g.oa.ka[0];
         return {
           flagsAfterEat,
           rearmBlocked,
           unlockOk,
           keysAfter,
           blocksAfter,
-          fruitCount: g.wa.ka.length,
+          fruitCount: g.oa.ka.length,
           fruitBadge: fruit && fruit.slotMode,
           fruitAtBlock:
             !!fruit &&
@@ -2446,35 +2451,35 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
         window.setSlotActive(24, g); // Chess roll active
-        g.wa.ka.length = 0;
-        if (g.Ba && g.Ba.keys) g.Ba.keys.length = 0;
+        g.oa.ka.length = 0;
+        if (g.uL && g.uL.keys) g.uL.keys.length = 0;
 
         const pos = { x: 6, y: 6 };
         window.slot_key_unlock_fruit = 1;
         let planted = null;
-        if (typeof f4E === "function") {
+        if (typeof voF === "function") {
           try {
-            const before = g.wa.ka.length;
-            f4E(g.wa, pos, 0, true, 0, true);
-            planted = g.wa.ka[g.wa.ka.length - 1] || null;
-            if (planted && g.wa.ka.length === before) planted = null;
+            const before = g.oa.ka.length;
+            voF(g.oa, pos, 0, true, 0, true);
+            planted = g.oa.ka[g.oa.ka.length - 1] || null;
+            if (planted && g.oa.ka.length === before) planted = null;
           } catch (_e) {}
         }
         if (!planted) {
-          planted = window.slot_make_apple(g.wa, pos);
-          g.wa.ka.push(planted);
+          planted = window.slot_make_apple(g.oa, pos);
+          g.oa.ka.push(planted);
           // Simulate convert attempting to run under Chess roll + unlock flag.
           if (typeof window.chess_convert_new_apples === "function") {
-            window.chess_convert_new_apples(g.wa, 1);
+            window.chess_convert_new_apples(g.oa, 1);
           }
         }
         if (typeof window.slot_after_native_respawn === "function") {
-          window.slot_after_native_respawn(g.wa, 1, g);
+          window.slot_after_native_respawn(g.oa, 1, g);
         }
-        const f = g.wa.ka[g.wa.ka.length - 1];
+        const f = g.oa.ka[g.oa.ka.length - 1];
         return {
           active: window.__slotActive | 0,
           isPiece: !!(f && f.isPiece),
@@ -2511,12 +2516,12 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
-        const fruit = g.wa.ka[0];
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
+        const fruit = g.oa.ka[0];
         fruit.slotMode = 9;
-        const body = g.oa.ka;
-        g.oa.direction = "RIGHT";
+        const body = g.Yc.ka;
+        g.Yc.direction = "RIGHT";
         fruit.pos.x = 10;
         fruit.pos.y = 8;
         for (let i = 0; i < body.length; i++) {
@@ -2524,32 +2529,32 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           body[i].y = 8;
         }
         try {
-          if (g.Aa && g.Aa.oa && g.Aa.oa.clear) g.Aa.oa.clear();
-          if (g.Aa && g.Aa.d_ && g.Aa.d_.clear) g.Aa.d_.clear();
+          if (g.Oy && g.Oy.WJ && g.Oy.WJ.clear) g.Oy.WJ.clear();
+          if (g.Oy && g.Oy.targets && g.Oy.targets.clear) g.Oy.targets.clear();
         } catch (_e) {}
-        const sh0 = g.Sh | 0;
-        for (let t = 0; t < 6 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
+        const sh0 = g.Bi | 0;
+        for (let t = 0; t < 6 && (g.Bi | 0) === sh0 && !g.uj; t++) g.tick();
         const boxes = [];
         const goals = [];
         try {
-          if (g.Aa && g.Aa.oa) {
-            for (const b of g.Aa.oa) {
+          if (g.Oy && g.Oy.WJ) {
+            for (const b of g.Oy.WJ) {
               boxes.push({
                 x: b.pos && b.pos.x,
                 y: b.pos && b.pos.y,
               });
             }
           }
-          if (g.Aa && g.Aa.d_) {
-            for (const p of g.Aa.d_) {
+          if (g.Oy && g.Oy.targets) {
+            for (const p of g.Oy.targets) {
               goals.push({ x: p.x, y: p.y });
             }
           }
         } catch (_e2) {}
         return {
-          scored: (g.Sh | 0) > sh0,
+          scored: (g.Bi | 0) > sh0,
           active: window.__slotActive,
-          afterFruit: g.wa.ka.length,
+          afterFruit: g.oa.ka.length,
           boxes,
           goals,
           capturedE5: typeof window.__slotE5E,
@@ -2579,42 +2584,42 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
-        g.ub = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
+        g.Za = false;
         window.slot_reset_state();
         window.setSlotActive(9, g);
 
         // Clear fruit so win can trigger when box disappears.
-        g.wa.ka.length = 0;
-        window.appleArray = g.wa.ka;
+        g.oa.ka.length = 0;
+        window.appleArray = g.oa.ka;
         try {
-          if (g.Aa && g.Aa.oa && g.Aa.oa.clear) g.Aa.oa.clear();
-          if (g.Aa && g.Aa.d_ && g.Aa.d_.clear) g.Aa.d_.clear();
+          if (g.Oy && g.Oy.WJ && g.Oy.WJ.clear) g.Oy.WJ.clear();
+          if (g.Oy && g.Oy.targets && g.Oy.targets.clear) g.Oy.targets.clear();
         } catch (_e) {}
 
-        const body = g.oa.ka;
+        const body = g.Yc.ka;
         const mid = body[Math.min(2, body.length - 1)];
         if (!mid) return { error: "no body" };
 
         const box = {
           pos: { x: mid.x | 0, y: mid.y | 0 },
           prev: null,
-          wm: true,
-          Lh: true,
+          Rm: true,
+          Xg: true,
           sequenceNumber: 0,
         };
-        g.Aa.oa.add(box);
+        g.Oy.WJ.add(box);
 
         // With open board, resolve should relocate off the body.
         window.slot_soko_resolve_body_overlaps(g);
         const afterRelocate = {
-          size: g.Aa.oa.size | 0,
+          size: g.Oy.WJ.size | 0,
           onSnake: false,
           nearHead: false,
         };
-        if (g.Aa.oa.size) {
-          for (const b of g.Aa.oa) {
+        if (g.Oy.WJ.size) {
+          for (const b of g.Oy.WJ) {
             afterRelocate.onSnake = window.slot_soko_pos_on_snake(g, b.pos);
             afterRelocate.nearHead = !(
               window.chess_outside_spawn_radius &&
@@ -2626,21 +2631,21 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         }
 
         // Force fail path: park on body and stub free_pos → delete → win.
-        g.nj = false;
-        g.ub = false;
-        g.wa.ka.length = 0;
+        g.uj = false;
+        g.Za = false;
+        g.oa.ka.length = 0;
         try {
-          g.Aa.oa.clear();
-          g.Aa.d_.clear();
+          g.Oy.WJ.clear();
+          g.Oy.targets.clear();
         } catch (_e2) {}
         const box2 = {
           pos: { x: mid.x | 0, y: mid.y | 0 },
           prev: null,
-          wm: true,
-          Lh: true,
+          Rm: true,
+          Xg: true,
           sequenceNumber: 0,
         };
-        g.Aa.oa.add(box2);
+        g.Oy.WJ.add(box2);
         const saved = window.slot_free_pos;
         window.slot_free_pos = () => null;
         window.slot_soko_resolve_body_overlaps(g);
@@ -2648,8 +2653,8 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
 
         return {
           afterRelocate,
-          boxesAfterFail: g.Aa.oa.size | 0,
-          won: !!(g.ub && g.nj),
+          boxesAfterFail: g.Oy.WJ.size | 0,
+          won: !!(g.Za && g.uj),
         };
       });
       assert.equal(result.error, undefined, JSON.stringify(result));
@@ -2676,32 +2681,32 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
-        g.ub = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
+        g.Za = false;
         window.slot_reset_state();
 
         try {
-          if (g.Aa && g.Aa.oa && g.Aa.oa.clear) g.Aa.oa.clear();
-          if (g.Aa && g.Aa.d_ && g.Aa.d_.clear) g.Aa.d_.clear();
+          if (g.Oy && g.Oy.WJ && g.Oy.WJ.clear) g.Oy.WJ.clear();
+          if (g.Oy && g.Oy.targets && g.Oy.targets.clear) g.Oy.targets.clear();
         } catch (_e) {}
 
         // Keep fruit on the board while planting sokoban.
-        g.wa.ka.length = 0;
+        g.oa.ka.length = 0;
         const fruitPos = { x: 10, y: 6 };
-        const fruit = window.slot_make_apple(g.wa, fruitPos);
-        fruit.Lh = true;
+        const fruit = window.slot_make_apple(g.oa, fruitPos);
+        fruit.Xg = true;
         fruit.slotMode = 3;
-        g.wa.ka.push(fruit);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(fruit);
+        window.appleArray = g.oa.ka;
 
         // Hostile native plant: always drops the box on the fruit cell.
         window.__slotE5E = function (aa) {
           aa.oa.add({
             pos: window.slot_make_pos(fruitPos.x, fruitPos.y),
             prev: null,
-            wm: true,
-            Lh: true,
+            Rm: true,
+            Xg: true,
             sequenceNumber: 0,
           });
           aa.d_.add(window.slot_make_pos(fruitPos.x + 2, fruitPos.y));
@@ -2710,7 +2715,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const planted = window.slot_plant_special_unit(9, g);
         const boxes = [];
         try {
-          for (const b of g.Aa.oa) {
+          for (const b of g.Oy.WJ) {
             boxes.push({
               x: b.pos && (b.pos.x | 0),
               y: b.pos && (b.pos.y | 0),
@@ -2727,22 +2732,22 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const forced = {
           pos: window.slot_make_pos(fruitPos.x, fruitPos.y),
           prev: null,
-          wm: true,
-          Lh: true,
+          Rm: true,
+          Xg: true,
           sequenceNumber: 1,
         };
-        g.Aa.oa.add(forced);
+        g.Oy.WJ.add(forced);
         window.slot_soko_resolve_body_overlaps(g);
         let forcedOnFruit = false;
         try {
-          for (const b of g.Aa.oa) {
+          for (const b of g.Oy.WJ) {
             if (b === forced || (b.pos && (b.pos.x | 0) === fruitPos.x && (b.pos.y | 0) === fruitPos.y)) {
               forcedOnFruit = window.slot_soko_pos_on_fruit(g, b.pos);
             }
           }
           forcedOnFruit =
             forcedOnFruit ||
-            [...g.Aa.oa].some(
+            [...g.Oy.WJ].some(
               (b) =>
                 b &&
                 b.pos &&
@@ -2753,7 +2758,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
 
         return {
           planted,
-          fruitLeft: g.wa.ka.length,
+          fruitLeft: g.oa.ka.length,
           boxes,
           anyOnFruit: boxes.some((b) => b.onFruit),
           forcedStillOnFruit: forcedOnFruit,
@@ -2782,9 +2787,9 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
-        g.ub = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
+        g.Za = false;
         window.slot_reset_state();
         window.setSlotActive(9, g);
         window.cat_lives = 2;
@@ -2796,41 +2801,41 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.addEventListener("error", onErr);
 
         try {
-          if (g.Aa && g.Aa.oa && g.Aa.oa.clear) g.Aa.oa.clear();
-          if (g.Aa && g.Aa.d_ && g.Aa.d_.clear) g.Aa.d_.clear();
+          if (g.Oy && g.Oy.WJ && g.Oy.WJ.clear) g.Oy.WJ.clear();
+          if (g.Oy && g.Oy.targets && g.Oy.targets.clear) g.Oy.targets.clear();
         } catch (_e) {}
 
         // Arrow leftover so the U3E path is live during soko ticks.
         window.__slotAllowArrowTurns = true;
-        const arrowHost = (g.Aa && g.Aa.Ba) || g.Ka || (g.oa && g.oa.Rb);
+        const arrowHost = (g.Oy && g.Oy.wa) || g.Ba || (g.Yc && g.Yc.Qb);
         if (arrowHost && arrowHost.ka && arrowHost.ka[5] && arrowHost.ka[5][7]) {
           arrowHost.ka[5][7].direction = "RIGHT";
-          arrowHost.ka[5][7].wm = true;
-          arrowHost.ka[5][7].Lh = true;
+          arrowHost.ka[5][7].Rm = true;
+          arrowHost.ka[5][7].Xg = true;
         }
         window.__slotAllowArrowTurns = false;
 
-        g.wa.ka.length = 0;
-        const fruit = window.slot_make_apple(g.wa, { x: 8, y: 5 });
-        fruit.Lh = true;
+        g.oa.ka.length = 0;
+        const fruit = window.slot_make_apple(g.oa, { x: 8, y: 5 });
+        fruit.Xg = true;
         fruit.slotMode = 3;
-        g.wa.ka.push(fruit);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(fruit);
+        window.appleArray = g.oa.ka;
 
-        const Od = window._.Od;
+        const Od = window._.Yd;
         // Fractional y would crash unpatched U3E (m7 true, ka[y] undefined).
         const box = {
           pos: new Od(7.2, 5.4),
           prev: null,
-          wm: true,
-          Lh: true,
+          Rm: true,
+          Xg: true,
           sequenceNumber: 0,
         };
-        g.Aa.oa.add(box);
+        g.Oy.WJ.add(box);
 
-        const body = g.oa.ka;
-        g.oa.direction = "RIGHT";
-        g.oa.Ca = "RIGHT";
+        const body = g.Yc.ka;
+        g.Yc.direction = "RIGHT";
+        g.Yc.Ka = "RIGHT";
         for (let i = 0; i < body.length; i++) {
           body[i].x = 6 - i;
           body[i].y = 5;
@@ -2838,13 +2843,13 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
 
         let tickErr = null;
         try {
-          for (let t = 0; t < 5 && !g.nj; t++) g.tick();
+          for (let t = 0; t < 5 && !g.uj; t++) g.tick();
         } catch (e) {
           tickErr = String(e && e.stack ? e.stack : e);
         }
         window.removeEventListener("error", onErr);
 
-        const boxes = [...(g.Aa.oa || [])];
+        const boxes = [...(g.Oy.WJ || [])];
         const boxPos = boxes.map((b) =>
           b && b.pos ? [b.pos.x, b.pos.y] : null
         );
@@ -2859,11 +2864,11 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         return {
           tickErr,
           errs,
-          nj: !!g.nj,
+          nj: !!g.uj,
           boxes: boxes.length,
           boxPos,
           onFruit,
-          fruitLeft: g.wa.ka.filter((f) => f && !f.Oka && !f.isPiece).length,
+          fruitLeft: g.oa.ka.filter((f) => f && !f.Bea && !f.isPiece).length,
           u3eGuarded: !!window.slot_U3E_guard,
         };
       });
@@ -2891,11 +2896,11 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
         const statueCount = () => {
           try {
-            const map = g.Ya && g.Ya.oa;
+            const map = g.Ra && g.Ra.oa;
             if (!map) return 0;
             if (typeof map.size === "number") return map.size | 0;
             let n = 0;
@@ -2907,67 +2912,67 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         };
         const plantAt = (x, y, cracked) => {
           const pos =
-            typeof _ !== "undefined" && typeof _.Od === "function"
-              ? new _.Od(x, y)
+            typeof _ !== "undefined" && typeof _.Yd === "function"
+              ? new _.Yd(x, y)
               : { x, y };
           const key = (x << 16) | y;
           const cell = {
             pos,
-            wm: true,
-            m0: false,
-            Lh: true,
-            WQ: {
-              pdb: !!cracked,
-              O0b: 5,
-              xBb: -1,
+            Rm: true,
+            e9: false,
+            Xg: true,
+            iR: {
+              Pcb: !!cracked,
+              M0b: 5,
+              JAb: -1,
               color: "#888",
               type: 1,
               angle: 0,
-              tBc: 0,
-              sBc: 0,
+              jCc: 0,
+              iCc: 0,
             },
           };
-          g.Ya.oa.set(key, cell);
+          g.Ra.oa.set(key, cell);
           try {
-            if (g.Ya.Aa && typeof g.Ya.Aa.add === "function") {
-              g.Ya.Aa.add(key);
+            if (g.Ra.Aa && typeof g.Ra.Aa.add === "function") {
+              g.Ra.Aa.add(key);
             }
           } catch (_e) {}
           return cell;
         };
         const eatMode = (mode) => {
-          if (!g.wa.ka.length) {
-            const pos = window.slot_free_pos(g.wa, 0);
-            const f = window.slot_make_apple(g.wa, pos);
+          if (!g.oa.ka.length) {
+            const pos = window.slot_free_pos(g.oa, 0);
+            const f = window.slot_make_apple(g.oa, pos);
             f.slotMode = mode;
-            g.wa.ka.push(f);
+            g.oa.ka.push(f);
           } else {
-            g.wa.ka[0].slotMode = mode;
+            g.oa.ka[0].slotMode = mode;
           }
-          const fruit = g.wa.ka[0];
-          const body = g.oa.ka;
-          g.oa.direction = "RIGHT";
+          const fruit = g.oa.ka[0];
+          const body = g.Yc.ka;
+          g.Yc.direction = "RIGHT";
           fruit.pos.x = 10;
           fruit.pos.y = 8;
           for (let i = 0; i < body.length; i++) {
             body[i].x = 9 - i;
             body[i].y = 8;
           }
-          const sh0 = g.Sh | 0;
-          for (let t = 0; t < 8 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
-          return (g.Sh | 0) > sh0;
+          const sh0 = g.Bi | 0;
+          for (let t = 0; t < 8 && (g.Bi | 0) === sh0 && !g.uj; t++) g.tick();
+          return (g.Bi | 0) > sh0;
         };
 
         // Roll Statue so body-plant is allowed, then plant via native path.
         window.setSlotActive(13, g);
-        const body = g.oa.ka;
+        const body = g.Yc.ka;
         while (body.length < 8) {
           const tip = body[body.length - 1];
           const next = tip.clone();
           next.x = tip.x - 1;
           next.y = tip.y;
           body.push(next);
-          if (Array.isArray(g.oa.Sa)) g.oa.Sa.push(0);
+          if (Array.isArray(g.Yc.Ua)) g.Yc.Ua.push(0);
         }
         const scoredStatue = eatMode(13);
         const afterPlant = statueCount();
@@ -2981,7 +2986,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const hasAfter = window.slot_has_statues && window.slot_has_statues(g);
 
         // Seed cracked leftovers so e7E removes them on the next apple eat.
-        g.Ya.oa.clear();
+        g.Ra.oa.clear();
         plantAt(11, 8, true);
         plantAt(12, 8, true);
         plantAt(5, 5, true);
@@ -3039,11 +3044,11 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
         const mineCount = () => {
           try {
-            const set = g.Ma && g.Ma.oa;
+            const set = g.Ga && g.Ga.oa;
             if (!set) return 0;
             if (typeof set.size === "number") return set.size | 0;
             let n = 0;
@@ -3054,26 +3059,26 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           }
         };
         const eatMode = (mode) => {
-          if (!g.wa.ka.length) {
-            const pos = window.slot_free_pos(g.wa, 0);
-            const f = window.slot_make_apple(g.wa, pos);
+          if (!g.oa.ka.length) {
+            const pos = window.slot_free_pos(g.oa, 0);
+            const f = window.slot_make_apple(g.oa, pos);
             f.slotMode = mode;
-            g.wa.ka.push(f);
+            g.oa.ka.push(f);
           } else {
-            g.wa.ka[0].slotMode = mode;
+            g.oa.ka[0].slotMode = mode;
           }
-          const fruit = g.wa.ka[0];
-          const body = g.oa.ka;
-          g.oa.direction = "RIGHT";
+          const fruit = g.oa.ka[0];
+          const body = g.Yc.ka;
+          g.Yc.direction = "RIGHT";
           fruit.pos.x = 10;
           fruit.pos.y = 8;
           for (let i = 0; i < body.length; i++) {
             body[i].x = 9 - i;
             body[i].y = 8;
           }
-          const sh0 = g.Sh | 0;
-          for (let t = 0; t < 8 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
-          return (g.Sh | 0) > sh0;
+          const sh0 = g.Bi | 0;
+          for (let t = 0; t < 8 && (g.Bi | 0) === sh0 && !g.uj; t++) g.tick();
+          return (g.Bi | 0) > sh0;
         };
         const scoredMine = eatMode(12);
         const afterMine = mineCount();
@@ -3123,26 +3128,26 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
         // Plant a key then shove it off-grid (x=6, bad y) — native write is =6.
         window.__slotAllowKeyPlant = true;
         try {
           if (typeof window.placeKey === "function") {
             window.placeKey(6, 3, 0);
-          } else if (g.Ba && g.Ba.keys) {
-            g.Ba.keys.push({
+          } else if (g.uL && g.uL.keys) {
+            g.uL.keys.push({
               pos: { x: 6, y: 3 },
-              Lh: true,
+              Xg: true,
               type: 0,
             });
           }
         } catch (_e) {}
         window.__slotAllowKeyPlant = false;
-        const keys = (g.Ba && g.Ba.keys) || [];
+        const keys = (g.uL && g.uL.keys) || [];
         if (keys.length) {
           const k = keys[keys.length - 1];
-          k.Lh = true;
+          k.Xg = true;
           k.pos.x = 6;
           k.pos.y = 99; // oob row → wa[99] undefined, setting '6'
         }
@@ -3179,16 +3184,16 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
-        for (let i = 0; i < g.wa.ka.length; i++) {
-          const f = g.wa.ka[i];
-          f.Lh = true;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
+        for (let i = 0; i < g.oa.ka.length; i++) {
+          const f = g.oa.ka[i];
+          f.Xg = true;
           f.pos.x = 3.5 + i * 0.25;
           f.pos.y = 4.5;
-          if (f.He) {
-            f.He.x = 0;
-            f.He.y = 0;
+          if (f.Ce) {
+            f.Ce.x = 0;
+            f.Ce.y = 0;
           }
         }
         // Hotdog roll makes tick call n7E every frame.
@@ -3205,8 +3210,12 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           threw,
           hasGuard:
             !!window.slot_n7E_round_fruit || !!window.slot_n7E_grid_guard,
-          patched: /slot_n7E|_sfx|_sfy/.test(src),
-          alive: g.wa.ka.length,
+          // v14 split n7E: __n7E only wraps Ia(), and the fruit guard lives in the
+          // per-fruit grid writer, which sets slot_n7E_* when it runs.
+          patched:
+            /slot_n7E|_sfx|_sfy/.test(src) ||
+            (!!src && (!!window.slot_n7E_round_fruit || !!window.slot_n7E_grid_guard)),
+          alive: g.oa.ka.length,
         };
       });
       assert.equal(result.threw, null, JSON.stringify(result));
@@ -3233,55 +3242,55 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
-        while (g.wa.ka.length < 3) {
-          const p = window.slot_free_pos(g.wa) || { x: 5, y: 5 };
-          const f = window.slot_make_apple(g.wa, p);
-          f.Oka = false;
-          g.wa.ka.push(f);
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
+        while (g.oa.ka.length < 3) {
+          const p = window.slot_free_pos(g.oa) || { x: 5, y: 5 };
+          const f = window.slot_make_apple(g.oa, p);
+          f.Bea = false;
+          g.oa.ka.push(f);
         }
         const modes = [2, 1, 3];
-        for (let i = 0; i < g.wa.ka.length; i++) {
-          const f = g.wa.ka[i];
-          f.Oka = false;
+        for (let i = 0; i < g.oa.ka.length; i++) {
+          const f = g.oa.ka[i];
+          f.Bea = false;
           f.slotMode = modes[i];
           f.type = 4 + i;
           delete f.__slotPortal;
           delete f.__slotPortalPairId;
           delete f.__slotPortalTwin;
         }
-        const keepA = g.wa.ka[1];
-        const keepB = g.wa.ka[2];
+        const keepA = g.oa.ka[1];
+        const keepB = g.oa.ka[2];
         const keepModes = [keepA.slotMode | 0, keepB.slotMode | 0];
         const keepTypes = [keepA.type | 0, keepB.type | 0];
-        const fruit = g.wa.ka[0];
-        const body = g.oa.ka;
-        g.oa.direction = "RIGHT";
+        const fruit = g.oa.ka[0];
+        const body = g.Yc.ka;
+        g.Yc.direction = "RIGHT";
         fruit.pos.x = 10;
         fruit.pos.y = 8;
         for (let i = 0; i < body.length; i++) {
           body[i].x = 9 - i;
           body[i].y = 8;
         }
-        const sh0 = g.Sh | 0;
-        for (let t = 0; t < 8 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
+        const sh0 = g.Bi | 0;
+        for (let t = 0; t < 8 && (g.Bi | 0) === sh0 && !g.uj; t++) g.tick();
         // Native R3E would retype leftovers into even/odd pairs — must no-op.
         try {
-          if (typeof R3E === "function") R3E(g.wa);
+          if (typeof ioF === "function") ioF(g.oa);
         } catch (_e) {}
-        window.slot_ensure_unique_fruit_types(g.wa);
-        const portals = (g.wa.ka || []).filter((f) => f && f.__slotPortal);
-        const leftovers = (g.wa.ka || []).filter((f) => f && !f.__slotPortal);
+        window.slot_ensure_unique_fruit_types(g.oa);
+        const portals = (g.oa.ka || []).filter((f) => f && f.__slotPortal);
+        const leftovers = (g.oa.ka || []).filter((f) => f && !f.__slotPortal);
         const leftoverPortalFlags = leftovers.map((f) => !!f.__slotPortal);
         const leftoverModes = leftovers.map((f) => f.slotMode | 0);
         const twinIdxOrphan = leftovers.length
-          ? window.slot_portal_twin_index(g.wa, g.wa.ka.indexOf(leftovers[0]))
+          ? window.slot_portal_twin_index(g.oa, g.oa.ka.indexOf(leftovers[0]))
           : -2;
         return {
-          scored: (g.Sh | 0) > sh0,
+          scored: (g.Bi | 0) > sh0,
           active: window.__slotActive,
-          len: g.wa.ka.length,
+          len: g.oa.ka.length,
           portalCount: portals.length,
           leftoverCount: leftovers.length,
           leftoverPortalFlags,
@@ -3335,17 +3344,17 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        g.nj = false;
+        g.oa.reset();
+        g.uj = false;
         g.lj = false;
-        g.ub = false;
+        g.Za = false;
 
-        g.wa.ka.length = 0;
-        const a = window.slot_make_apple(g.wa, { x: 8, y: 8 });
-        const b = window.slot_make_apple(g.wa, { x: 12, y: 8 });
-        const extra = window.slot_make_apple(g.wa, { x: 4, y: 4 });
+        g.oa.ka.length = 0;
+        const a = window.slot_make_apple(g.oa, { x: 8, y: 8 });
+        const b = window.slot_make_apple(g.oa, { x: 12, y: 8 });
+        const extra = window.slot_make_apple(g.oa, { x: 4, y: 4 });
         window.slot_assign_pair(a, b);
         a.slotMode = 2;
         b.slotMode = 2;
@@ -3353,25 +3362,25 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         // Shield leftovers make e7(15) true under Slot.
         a.__slotShield = true;
         a.__ultraKeepShield = true;
-        a.nba = new Set(["UP"]); // open from left/right
+        a.h7 = new Set(["UP"]); // open from left/right
         b.__slotShield = true;
         b.__ultraKeepShield = true;
-        b.nba = new Set(["DOWN"]);
+        b.h7 = new Set(["DOWN"]);
         extra.__slotShield = true;
         extra.__ultraKeepShield = true;
-        extra.nba = new Set(["LEFT"]);
-        g.wa.ka.push(a, b, extra);
-        window.appleArray = g.wa.ka;
+        extra.h7 = new Set(["LEFT"]);
+        g.oa.ka.push(a, b, extra);
+        window.appleArray = g.oa.ka;
         window.setSlotActive(2, g);
         window.head_state = "OPEN";
 
-        const head = g.oa.ka[0];
-        g.oa.direction = "RIGHT";
+        const head = g.Yc.ka[0];
+        g.Yc.direction = "RIGHT";
         head.x = a.pos.x - 1;
         head.y = a.pos.y;
-        for (let i = 1; i < g.oa.ka.length; i++) {
-          g.oa.ka[i].x = head.x - i;
-          g.oa.ka[i].y = head.y;
+        for (let i = 1; i < g.Yc.ka.length; i++) {
+          g.Yc.ka[i].x = head.x - i;
+          g.Yc.ka[i].y = head.y;
         }
 
         const errors = [];
@@ -3382,7 +3391,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         try {
           for (let t = 0; t < 4; t++) {
             g.tick();
-            if (g.nj) break;
+            if (g.uj) break;
           }
         } catch (err) {
           threw = String(err && err.message ? err.message : err);
@@ -3393,9 +3402,9 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           threw,
           errors,
           hasPosErr: errors.some((e) => /reading 'pos'|reading \"pos\"/.test(e)),
-          len: g.wa.ka.length,
+          len: g.oa.ka.length,
           hasShields: !!(
-            window.slot_has_shields && window.slot_has_shields(g.wa)
+            window.slot_has_shields && window.slot_has_shields(g.oa)
           ),
         };
       });
@@ -3421,41 +3430,41 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
-        const keep = g.wa.ka[0];
-        g.wa.ka.length = 0;
-        g.wa.ka.push(keep);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
+        const keep = g.oa.ka[0];
+        g.oa.ka.length = 0;
+        g.oa.ka.push(keep);
         window.__slotEating = true;
         window.__slotEatenMode = 1; // Wall → single fruit respawn
-        window.slot_after_native_respawn(g.wa, 0, g);
-        const afterLen = g.wa.ka.length;
-        const stillHasKeep = g.wa.ka.indexOf(keep) >= 0;
+        window.slot_after_native_respawn(g.oa, 0, g);
+        const afterLen = g.oa.ka.length;
+        const stillHasKeep = g.oa.ka.indexOf(keep) >= 0;
 
         const savedFree = window.slot_free_pos;
         window.slot_free_pos = () => null;
-        g.wa.ka.length = 0;
-        g.nj = false;
+        g.oa.ka.length = 0;
+        g.uj = false;
         window.slotRespawn(2, g);
-        const won = !!g.nj;
+        const won = !!g.uj;
         window.slot_free_pos = savedFree;
 
         // Portal pair with a non-portal leftover at index 0 — even/odd mate
         // would be wrong; pair-id twin resolution must find the real exit.
-        g.wa.ka.length = 0;
-        g.nj = false;
-        const orphan = window.slot_make_apple(g.wa, { x: 1, y: 1 });
+        g.oa.ka.length = 0;
+        g.uj = false;
+        const orphan = window.slot_make_apple(g.oa, { x: 1, y: 1 });
         orphan.slotMode = 3;
         delete orphan.__slotPortal;
-        g.wa.ka.push(orphan);
+        g.oa.ka.push(orphan);
         window.slotRespawn(2, g);
-        const a = g.wa.ka.find((f) => f && f.__slotPortal);
+        const a = g.oa.ka.find((f) => f && f.__slotPortal);
         const b = a && a.__slotPortalTwin;
-        const ai = g.wa.ka.indexOf(a);
-        const bi = g.wa.ka.indexOf(b);
-        const twinIdx = window.slot_portal_twin_index(g.wa, ai);
+        const ai = g.oa.ka.indexOf(a);
+        const bi = g.oa.ka.indexOf(b);
+        const twinIdx = window.slot_portal_twin_index(g.oa, ai);
         const evenOdd = ai % 2 === 0 ? ai + 1 : ai - 1;
         window.__slotEatenFruit = a;
         window.__slotEatenMode = a && a.slotMode;
@@ -3463,24 +3472,24 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const sameType = !!(a && b && (a.type | 0) === (b.type | 0));
         const orphanTypeDiff =
           !!orphan && !!a && (orphan.type | 0) !== (a.type | 0);
-        window.slot_note_portal_twin(g.wa, a);
+        window.slot_note_portal_twin(g.oa, a);
         const noted = window.__slotPortalTwinToRemove === b;
-        g.wa.ka.splice(g.wa.ka.indexOf(a), 1);
-        window.slot_flush_portal_twin(g.wa);
+        g.oa.ka.splice(g.oa.ka.indexOf(a), 1);
+        window.slot_flush_portal_twin(g.oa);
         return {
           afterLen,
           stillHasKeep,
           won,
           noted,
-          twinGone: g.wa.ka.indexOf(b) < 0,
-          orphanAlive: g.wa.ka.indexOf(orphan) >= 0,
+          twinGone: g.oa.ka.indexOf(b) < 0,
+          orphanAlive: g.oa.ka.indexOf(orphan) >= 0,
           portalFlags,
           sameType,
           orphanTypeDiff,
           twinIdx,
           bi,
           evenOddWrong: twinIdx !== evenOdd && bi === twinIdx,
-          types: (g.wa.ka || []).map((f) => f && f.type),
+          types: (g.oa.ka || []).map((f) => f && f.type),
         };
       });
       assert.equal(result.portalFlags, true, JSON.stringify(result));
@@ -3519,41 +3528,41 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         g.reset();
-        g.nj = false;
-        g.wa.ka.length = 0;
-        const a = window.slot_make_apple(g.wa, { x: 6, y: 8 });
-        const b = window.slot_make_apple(g.wa, { x: 8, y: 8 });
+        g.uj = false;
+        g.oa.ka.length = 0;
+        const a = window.slot_make_apple(g.oa, { x: 6, y: 8 });
+        const b = window.slot_make_apple(g.oa, { x: 8, y: 8 });
         window.slot_assign_pair(a, b);
         a.slotMode = 2;
         b.slotMode = 2;
-        const c = window.slot_make_apple(g.wa, { x: 10, y: 8 });
+        const c = window.slot_make_apple(g.oa, { x: 10, y: 8 });
         c.slotMode = 1;
-        c.Oka = false;
+        c.Bea = false;
         c.isPiece = false;
-        g.wa.ka.push(a, b, c);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(a, b, c);
+        window.appleArray = g.oa.ka;
         window.setSlotActive(2, g);
-        const body = g.oa.ka;
-        g.oa.direction = "RIGHT";
+        const body = g.Yc.ka;
+        g.Yc.direction = "RIGHT";
         c.pos.x = 10;
         c.pos.y = 8;
         for (let i = 0; i < body.length; i++) {
           body[i].x = 9 - i;
           body[i].y = 8;
         }
-        const before = g.wa.ka.length;
-        const sh0 = g.Sh | 0;
-        for (let t = 0; t < 12 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
+        const before = g.oa.ka.length;
+        const sh0 = g.Bi | 0;
+        for (let t = 0; t < 12 && (g.Bi | 0) === sh0 && !g.uj; t++) g.tick();
         return {
           before,
-          after: g.wa.ka.length,
-          scored: (g.Sh | 0) > sh0,
-          wiped: g.wa.ka.length === 0,
+          after: g.oa.ka.length,
+          scored: (g.Bi | 0) > sh0,
+          wiped: g.oa.ka.length === 0,
           noWipe: !!window.slot_portal_no_wipe,
-          portalsLeft: (g.wa.ka || []).filter((f) => f && f.__slotPortal).length,
-          dead: !!g.nj && !g.lj,
+          portalsLeft: (g.oa.ka || []).filter((f) => f && f.__slotPortal).length,
+          dead: !!g.uj && !g.lj,
         };
       });
       assert.equal(result.scored, true, JSON.stringify(result));
@@ -3707,11 +3716,11 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         // Must run via apple-manager reset hook — do not call slot_after_layout
         // manually (pre-start board must already be unique).
         g.reset();
-        const fruits = (g.wa.ka || []).filter((f) => f && !f.Oka && !f.isPiece);
+        const fruits = (g.oa.ka || []).filter((f) => f && !f.Bea && !f.isPiece);
         const types = fruits.map((f) => f.type | 0);
         const unique = new Set(types);
         const badges = fruits.filter((f) => f.slotMode != null).length;
@@ -3721,7 +3730,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           allUnique: unique.size === types.length,
           badges,
           resetHooked: Function.prototype.toString
-            .call(Object.getPrototypeOf(g.wa).reset)
+            .call(Object.getPrototypeOf(g.oa).reset)
             .includes("slot_after_layout(this)"),
         };
       });
@@ -3746,26 +3755,26 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
         window.setSlotActive(15, g);
         // Simulate post-Shield-eat refill: eaten mode 15, new fruit rolls Wall.
-        g.wa.ka.length = 0;
+        g.oa.ka.length = 0;
         window.__slotBag = [1, 1, 1, 1, 1];
         window.slotRespawn(15, g);
-        const f = g.wa.ka[0];
-        const hasNba = !!(f && f.nba && typeof f.nba.has === "function");
-        const dirs = hasNba ? [...f.nba] : [];
+        const f = g.oa.ka[0];
+        const hasNba = !!(f && f.h7 && typeof f.h7.has === "function");
+        const dirs = hasNba ? [...f.h7] : [];
         // Leaving Shield must not keep forcing bars on a later non-shield roll.
         window.setSlotActive(1, g);
-        g.wa.ka.length = 0;
+        g.oa.ka.length = 0;
         window.__slotBag = [1, 1, 1];
         window.slotRespawn(1, g);
-        const afterLeave = g.wa.ka[0];
+        const afterLeave = g.oa.ka[0];
         const shieldedAfterLeave = !!(
           afterLeave &&
-          afterLeave.nba &&
-          typeof afterLeave.nba.has === "function"
+          afterLeave.h7 &&
+          typeof afterLeave.h7.has === "function"
         );
         return {
           badge: f && f.slotMode,
@@ -3815,29 +3824,29 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
         // Chess leftovers must not empty Shield bars.
         const piece = { pos: { x: 2, y: 2 }, isPiece: true, ChessColor: "w" };
-        g.wa.ka.push(piece);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(piece);
+        window.appleArray = g.oa.ka;
         window.head_state = "OPEN";
 
         window.setSlotActive(15, g);
         // Force a Shield-badge fruit (slotRespawn rolls a random next badge).
-        const pos = window.slot_free_pos(g.wa, 0) || { x: 5, y: 5 };
-        const shieldFruit = window.slot_make_apple(g.wa, pos);
+        const pos = window.slot_free_pos(g.oa, 0) || { x: 5, y: 5 };
+        const shieldFruit = window.slot_make_apple(g.oa, pos);
         window.assignSlotMode(shieldFruit, 15);
-        g.wa.ka.push(shieldFruit);
-        window.appleArray = g.wa.ka;
-        const shielded = g.wa.ka.find((f) => f && f.__slotShield);
+        g.oa.ka.push(shieldFruit);
+        window.appleArray = g.oa.ka;
+        const shielded = g.oa.ka.find((f) => f && f.__slotShield);
         const hasNba = !!(
           shielded &&
-          shielded.nba &&
-          typeof shielded.nba.has === "function"
+          shielded.h7 &&
+          typeof shielded.h7.has === "function"
         );
 
         // Chess tick / empty must preserve marked fruit shields.
@@ -3846,17 +3855,17 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         }
         const afterEmpty =
           shielded &&
-          shielded.nba &&
-          typeof shielded.nba.has === "function";
+          shielded.h7 &&
+          typeof shielded.h7.has === "function";
 
         // Ultra strip must not remove slot shields while Shield is rolled.
         if (typeof window.ultraStripUnwantedFruitShields === "function") {
-          window.ultraStripUnwantedFruitShields(g.wa.ka);
+          window.ultraStripUnwantedFruitShields(g.oa.ka);
         }
         const afterStrip =
           shielded &&
-          shielded.nba &&
-          typeof shielded.nba.has === "function";
+          shielded.h7 &&
+          typeof shielded.h7.has === "function";
 
         const spawnOk =
           typeof window.ultraShouldSpawnFruitShields === "function" &&
@@ -3865,12 +3874,12 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         // Chess convert must not run while Shield owns the roll.
         let convertSkipped = true;
         if (typeof window.chess_convert_new_apples === "function") {
-          const beforeLen = g.wa.ka.length;
-          const beforePieces = g.wa.ka.filter((f) => f && f.isPiece).length;
-          window.chess_convert_new_apples(g.wa, 1);
+          const beforeLen = g.oa.ka.length;
+          const beforePieces = g.oa.ka.filter((f) => f && f.isPiece).length;
+          window.chess_convert_new_apples(g.oa, 1);
           convertSkipped =
-            g.wa.ka.filter((f) => f && f.isPiece).length === beforePieces &&
-            g.wa.ka.length === beforeLen;
+            g.oa.ka.filter((f) => f && f.isPiece).length === beforePieces &&
+            g.oa.ka.length === beforeLen;
         }
 
         // Leaving Shield marks leftovers; Chess roll must NOT clear them.
@@ -3883,8 +3892,8 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const keptOnChess =
           !!(shielded &&
             shielded.__slotShield &&
-            shielded.nba &&
-            typeof shielded.nba.has === "function");
+            shielded.h7 &&
+            typeof shielded.h7.has === "function");
 
         return {
           hasNba,
@@ -3922,20 +3931,20 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
-        g.wa.ka.length = 0;
+        g.oa.ka.length = 0;
         window.setSlotActive(15, g);
         window.slotRespawn(15, g);
-        const shielded = g.wa.ka[0];
+        const shielded = g.oa.ka[0];
         const afterSpawn = !!(
           shielded &&
           shielded.__slotShield &&
-          shielded.nba &&
-          typeof shielded.nba.has === "function"
+          shielded.h7 &&
+          typeof shielded.h7.has === "function"
         );
 
         // Leave Shield via Wall badge eat / roll change.
@@ -3943,28 +3952,28 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const leftoverKept = !!(
           shielded &&
           shielded.__slotShield &&
-          shielded.nba &&
-          typeof shielded.nba.has === "function"
+          shielded.h7 &&
+          typeof shielded.h7.has === "function"
         );
         const e7Leftover = !!(
-          window.slot_has_shields && window.slot_has_shields(g.wa)
+          window.slot_has_shields && window.slot_has_shields(g.oa)
         );
 
         // New spawn after leave must be bare (force non-Shield badges).
-        const beforeLen = g.wa.ka.length;
+        const beforeLen = g.oa.ka.length;
         window.__slotBag = [1, 1, 1, 1, 1];
         window.slotRespawn(1, g);
-        const neu = g.wa.ka[g.wa.ka.length - 1];
+        const neu = g.oa.ka[g.oa.ka.length - 1];
         const newBare =
           !!neu &&
           neu !== shielded &&
           !neu.__slotShield &&
-          !(neu.nba && typeof neu.nba.has === "function");
+          !(neu.h7 && typeof neu.h7.has === "function");
         const leftoverStill =
           shielded &&
           shielded.__slotShield &&
-          shielded.nba &&
-          typeof shielded.nba.has === "function";
+          shielded.h7 &&
+          typeof shielded.h7.has === "function";
 
         return {
           afterSpawn,
@@ -3972,7 +3981,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           e7Leftover,
           newBare,
           leftoverStill,
-          grew: g.wa.ka.length > beforeLen,
+          grew: g.oa.ka.length > beforeLen,
           active: window.__slotActive | 0,
           newMode: neu && neu.slotMode,
         };
@@ -4003,12 +4012,12 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
-        const snake = g.oa && g.oa.ka;
+        const snake = g.Yc && g.Yc.ka;
         const head = snake && snake[0];
         if (!head) return { ok: false, reason: "no-head" };
 
@@ -4020,7 +4029,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
 
         const samples = [];
         for (let n = 0; n < 40; n++) {
-          const p = window.slot_free_pos(g.wa);
+          const p = window.slot_free_pos(g.oa);
           if (!p) {
             samples.push(null);
             continue;
@@ -4035,10 +4044,10 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         }
 
         // Also verify slotRespawn fruit lands legally.
-        g.wa.ka.length = 0;
+        g.oa.ka.length = 0;
         window.setSlotActive(3, g);
         window.slotRespawn(3, g);
-        const fruit = g.wa.ka[0];
+        const fruit = g.oa.ka[0];
         const fruitKey =
           fruit && fruit.pos
             ? (fruit.pos.x | 0) + "," + (fruit.pos.y | 0)
@@ -4087,22 +4096,22 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
         window.setSlotActive(1, g);
 
-        const wm = g.Ca;
-        if (!wm || !Array.isArray(wm.wa) || !wm.wa.length) {
+        const wm = g.Tw;
+        if (!wm || !Array.isArray(wm.oa) || !wm.oa.length) {
           return { error: "no wall grid" };
         }
-        const hgt = wm.wa.length;
-        const wid = wm.wa[0].length;
+        const hgt = wm.oa.length;
+        const wid = wm.oa[0].length;
         let wallCount = 0;
         for (let y = 2; y < Math.min(hgt - 2, 10); y++) {
           for (let x = 2; x < Math.min(wid - 2, 12); x++) {
-            wm.wa[y][x] = 1;
+            wm.oa[y][x] = 1;
             wallCount++;
           }
         }
@@ -4110,7 +4119,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const samples = [];
         let inWall = 0;
         for (let n = 0; n < 60; n++) {
-          const p = window.slot_free_pos(g.wa);
+          const p = window.slot_free_pos(g.oa);
           if (!p) {
             samples.push(null);
             continue;
@@ -4124,9 +4133,9 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           });
         }
 
-        g.wa.ka.length = 0;
+        g.oa.ka.length = 0;
         window.slotRespawn(3, g);
-        const fruit = g.wa.ka[0];
+        const fruit = g.oa.ka[0];
         const fruitInWall = !!(
           fruit &&
           fruit.pos &&
@@ -4165,12 +4174,12 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
-        const body = g.oa.ka;
+        const body = g.Yc.ka;
         const headDir = () => {
           const a = body[0];
           const b = body[1];
@@ -4183,22 +4192,22 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         };
 
         // Place snake moving right into a Twin badge.
-        g.oa.direction = "RIGHT";
-        g.oa.Ga = "NONE";
-        g.oa.Oa = false;
+        g.Yc.direction = "RIGHT";
+        g.Yc.Ia = "NONE";
+        g.Yc.Oa = false;
         for (let i = 0; i < body.length; i++) {
           body[i].x = 6 - i;
           body[i].y = 8;
         }
-        const fruit = g.wa.ka[0];
+        const fruit = g.oa.ka[0];
         fruit.slotMode = 5;
-        fruit.Oka = false;
+        fruit.Bea = false;
         fruit.pos.x = 7;
         fruit.pos.y = 8;
         const before = headDir();
-        const sh0 = g.Sh | 0;
-        for (let t = 0; t < 10 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
-        if (!g.nj) g.tick();
+        const sh0 = g.Bi | 0;
+        for (let t = 0; t < 10 && (g.Bi | 0) === sh0 && !g.uj; t++) g.tick();
+        if (!g.uj) g.tick();
         const afterTwin = headDir();
         const reversed = before != null && afterTwin != null && before !== afterTwin;
         const liveAfterTwin = !!window.__slotTwinLive;
@@ -4206,34 +4215,34 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         // Later non-twin eat must not reverse again.
         window.setSlotActive(3, g);
         window.__slotTwinLive = false;
-        g.oa.Oa = false;
+        g.Yc.Oa = false;
         const hx = body[0].x;
         const hy = body[0].y;
         for (let i = 0; i < body.length; i++) {
           body[i].x = hx - i;
           body[i].y = hy;
         }
-        g.oa.direction = "RIGHT";
-        g.oa.Ca = "RIGHT";
-        g.oa.Ga = "NONE";
+        g.Yc.direction = "RIGHT";
+        g.Yc.Ka = "RIGHT";
+        g.Yc.Ia = "NONE";
         const before2 = headDir();
-        g.wa.ka.length = 0;
-        const other = window.slot_make_apple(g.wa, { x: hx + 1, y: hy });
+        g.oa.ka.length = 0;
+        const other = window.slot_make_apple(g.oa, { x: hx + 1, y: hy });
         other.slotMode = 3;
-        other.Oka = false;
-        g.wa.ka.push(other);
-        const sh1 = g.Sh | 0;
-        for (let t = 0; t < 10 && (g.Sh | 0) === sh1 && !g.nj; t++) g.tick();
-        if (!g.nj) g.tick();
+        other.Bea = false;
+        g.oa.ka.push(other);
+        const sh1 = g.Bi | 0;
+        for (let t = 0; t < 10 && (g.Bi | 0) === sh1 && !g.uj; t++) g.tick();
+        if (!g.uj) g.tick();
         const afterOther = headDir();
         const reversedAgain =
           before2 != null && afterOther != null && before2 !== afterOther;
 
         return {
-          scoredTwin: (g.Sh | 0) > sh0,
+          scoredTwin: (g.Bi | 0) > sh0,
           reversed,
           liveAfterTwin,
-          scoredOther: (g.Sh | 0) > sh1,
+          scoredOther: (g.Bi | 0) > sh1,
           reversedAgain,
           liveFinal: !!window.__slotTwinLive,
           before,
@@ -4265,23 +4274,23 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
-        const keep = g.wa.ka[0] || window.slot_make_apple(g.wa, { x: 5, y: 5 });
-        keep.Oka = false;
+        const keep = g.oa.ka[0] || window.slot_make_apple(g.oa, { x: 5, y: 5 });
+        keep.Bea = false;
         keep.isPiece = false;
         keep.slotMode = 1;
-        g.wa.ka.length = 0;
-        g.wa.ka.push(keep);
-        const p1 = window.slot_make_apple(g.wa, { x: 8, y: 8 });
-        const p2 = window.slot_make_apple(g.wa, { x: 10, y: 8 });
+        g.oa.ka.length = 0;
+        g.oa.ka.push(keep);
+        const p1 = window.slot_make_apple(g.oa, { x: 8, y: 8 });
+        const p2 = window.slot_make_apple(g.oa, { x: 10, y: 8 });
         window.chess_assign_piece(p1);
         window.chess_assign_piece(p2);
-        g.wa.ka.push(p1, p2);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(p1, p2);
+        window.appleArray = g.oa.ka;
 
         // Contaminate pieces as if a prior Burger tick hit them.
         p1.burgerTimer = 3;
@@ -4292,7 +4301,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
 
         window.setSlotActive(25, g);
         window.burger_assign_timer(p1, g);
-        window.burger_assign_timers_all(g.wa.ka, g);
+        window.burger_assign_timers_all(g.oa.ka, g);
         const eligible = window.burger_apple_timer_eligible(g, p1);
         window.burger_expire_apple(g, p1);
         window.burger_make_poison(p2, g);
@@ -4310,13 +4319,13 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           active: window.__slotActive,
           p1Piece: !!p1.isPiece,
           p2Piece: !!p2.isPiece,
-          p1Oka: !!p1.Oka,
-          p2Oka: !!p2.Oka,
+          p1Oka: !!p1.Bea,
+          p2Oka: !!p2.Bea,
           p1Timer: p1.burgerTimer,
           p2Timer: p2.burgerTimer,
           eligible,
           keepTimed: keep.burgerTimer != null,
-          pieces: g.wa.ka.filter((f) => f && f.isPiece).length,
+          pieces: g.oa.ka.filter((f) => f && f.isPiece).length,
         };
       });
       assert.equal(result.active, 25, JSON.stringify(result));
@@ -4347,24 +4356,24 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
         window.slot_reset_state();
-        for (const f of g.wa.ka) {
-          f.Oka = false;
+        for (const f of g.oa.ka) {
+          f.Bea = false;
           f.isPiece = false;
           f.burgerTimer = null;
           f.burgerTimerMax = null;
           if (f.slotMode == null) window.assignSlotMode(f);
         }
         window.setSlotActive(25, g);
-        const afterArm = g.wa.ka.map((f) => ({
-          oka: !!f.Oka,
+        const afterArm = g.oa.ka.map((f) => ({
+          oka: !!f.Bea,
           t: f.burgerTimer,
           max: f.burgerTimerMax,
         }));
         // Contaminate with null again and tick — must re-arm, not poison.
-        for (const f of g.wa.ka) {
+        for (const f of g.oa.ka) {
           f.burgerTimer = null;
           f.burgerTimerMax = null;
         }
@@ -4375,12 +4384,12 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         }
         return {
           afterArm,
-          afterTick: g.wa.ka.map((f) => ({
-            oka: !!f.Oka,
+          afterTick: g.oa.ka.map((f) => ({
+            oka: !!f.Bea,
             t: f.burgerTimer,
             max: f.burgerTimerMax,
           })),
-          oka: g.wa.ka.filter((f) => f && f.Oka).length,
+          oka: g.oa.ka.filter((f) => f && f.Bea).length,
           spendPeaceful: (() => {
             window.setSlotActive(21, g);
             window.cat_lives = 0;
@@ -4421,29 +4430,29 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
-        g.wa.ka.length = 0;
-        const fresh = window.slot_make_apple(g.wa, { x: 4, y: 4 });
+        g.oa.ka.length = 0;
+        const fresh = window.slot_make_apple(g.oa, { x: 4, y: 4 });
         fresh.slotMode = 1;
-        fresh.Oka = false;
+        fresh.Bea = false;
         fresh.burgerTimer = 8;
         fresh.burgerTimerMax = 10;
         fresh.burgerGrey = 40;
-        const poison = window.slot_make_apple(g.wa, { x: 8, y: 4 });
-        poison.Oka = true;
+        const poison = window.slot_make_apple(g.oa, { x: 8, y: 4 });
+        poison.Bea = true;
         poison.__slotBurgerPoison = true;
         poison.burgerTimer = 3;
         poison.burgerTimerMax = 5;
         delete poison.slotMode;
-        const keep = window.slot_make_apple(g.wa, { x: 6, y: 6 });
+        const keep = window.slot_make_apple(g.oa, { x: 6, y: 6 });
         keep.slotMode = 3;
-        keep.Oka = false;
-        g.wa.ka.push(fresh, poison, keep);
-        window.appleArray = g.wa.ka;
+        keep.Bea = false;
+        g.oa.ka.push(fresh, poison, keep);
+        window.appleArray = g.oa.ka;
 
         // Leave Burger roll → freeze fresh, keep poison countdown.
         window.setSlotActive(25, g);
@@ -4460,23 +4469,23 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
 
         // Tick leftovers until poison despawns.
         let ticks = 0;
-        while (g.wa.ka.indexOf(poison) >= 0 && ticks < 10) {
+        while (g.oa.ka.indexOf(poison) >= 0 && ticks < 10) {
           window.slot_burger_leftover_tick(g);
           ticks++;
         }
         const afterDespawn = {
           ticks,
-          poisonGone: g.wa.ka.indexOf(poison) < 0,
-          freshStill: g.wa.ka.indexOf(fresh) >= 0,
-          freshStillFruit: !fresh.Oka,
-          okaLeft: g.wa.ka.filter((f) => f && f.Oka).length,
+          poisonGone: g.oa.ka.indexOf(poison) < 0,
+          freshStill: g.oa.ka.indexOf(fresh) >= 0,
+          freshStillFruit: !fresh.Bea,
+          okaLeft: g.oa.ka.filter((f) => f && f.Bea).length,
         };
 
         // Fresh fruit must not convert to poison after leave.
         for (let i = 0; i < 12; i++) window.slot_burger_leftover_tick(g);
         const noConvert = {
-          freshOka: !!fresh.Oka,
-          freshPresent: g.wa.ka.indexOf(fresh) >= 0,
+          freshOka: !!fresh.Bea,
+          freshPresent: g.oa.ka.indexOf(fresh) >= 0,
         };
 
         return { afterLeave, afterDespawn, noConvert };
@@ -4511,31 +4520,31 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
         const chess = window.CHESS_MODE != null ? window.CHESS_MODE | 0 : 24;
         // Leftover badged fruit + chess pieces (as after a Chess badge eat on 3a).
-        const keep = g.wa.ka[0] || window.slot_make_apple(g.wa, { x: 4, y: 4 });
-        keep.Oka = false;
+        const keep = g.oa.ka[0] || window.slot_make_apple(g.oa, { x: 4, y: 4 });
+        keep.Bea = false;
         keep.isPiece = false;
         keep.slotMode = 1;
-        delete keep.nba;
+        delete keep.h7;
         delete keep.__slotShield;
-        g.wa.ka.length = 0;
-        g.wa.ka.push(keep);
-        const p1 = window.slot_make_apple(g.wa, { x: 8, y: 8 });
-        const p2 = window.slot_make_apple(g.wa, { x: 10, y: 8 });
+        g.oa.ka.length = 0;
+        g.oa.ka.push(keep);
+        const p1 = window.slot_make_apple(g.oa, { x: 8, y: 8 });
+        const p2 = window.slot_make_apple(g.oa, { x: 10, y: 8 });
         window.chess_assign_piece(p1);
         window.chess_assign_piece(p2);
         p1.ChessColor = "b";
         p2.ChessColor = "w";
         p1.ChessPiece = "rook";
         p2.ChessPiece = "rook";
-        g.wa.ka.push(p1, p2);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(p1, p2);
+        window.appleArray = g.oa.ka;
         window.head_state = "OPEN";
         window.head_color = "NONE";
 
@@ -4544,10 +4553,10 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.just_ate = "piece";
         window.head_state = p1.ChessPiece;
         window.head_color = p1.ChessColor;
-        window.appleArray = g.wa.ka;
+        window.appleArray = g.oa.ka;
         window.shield_all();
 
-        const field = window.chess_shield_field || "nba";
+        const field = window.chess_shield_field || "h7";
         const locked = (f) =>
           !!(f && f[field] && typeof f[field].has === "function" && f[field].size >= 4);
         const afterPickup = {
@@ -4600,7 +4609,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
     }
   });
 
-  it("shield fruit restore prior nba after chess unlock", async () => {
+  it("shield fruit restore prior h7 after chess unlock", async () => {
     const { launchHarness, COUNT, SIZE } = await import("../tools/harness.mjs");
     const h = await launchHarness({ seed: 29, headless: true });
     try {
@@ -4613,36 +4622,36 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
-        g.wa.ka.length = 0;
-        const shielded = window.slot_make_apple(g.wa, { x: 4, y: 4 });
-        shielded.Oka = false;
+        g.oa.ka.length = 0;
+        const shielded = window.slot_make_apple(g.oa, { x: 4, y: 4 });
+        shielded.Bea = false;
         shielded.isPiece = false;
         shielded.slotMode = 15;
         shielded.__slotShield = true;
         shielded.__ultraKeepShield = true;
         // Partial P3E-like structure (not full 4-way).
-        shielded.nba = new Set(["UP", "LEFT"]);
-        const bare = window.slot_make_apple(g.wa, { x: 6, y: 4 });
+        shielded.h7 = new Set(["UP", "LEFT"]);
+        const bare = window.slot_make_apple(g.oa, { x: 6, y: 4 });
         bare.slotMode = 1;
-        delete bare.nba;
+        delete bare.h7;
         delete bare.__slotShield;
-        const p1 = window.slot_make_apple(g.wa, { x: 8, y: 8 });
-        const p2 = window.slot_make_apple(g.wa, { x: 10, y: 8 });
+        const p1 = window.slot_make_apple(g.oa, { x: 8, y: 8 });
+        const p2 = window.slot_make_apple(g.oa, { x: 10, y: 8 });
         window.chess_assign_piece(p1);
         window.chess_assign_piece(p2);
         p1.ChessColor = "b";
         p2.ChessColor = "w";
         p1.ChessPiece = "rook";
         p2.ChessPiece = "rook";
-        g.wa.ka.push(shielded, bare, p1, p2);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(shielded, bare, p1, p2);
+        window.appleArray = g.oa.ka;
 
-        const prior = [...shielded.nba].sort();
+        const prior = [...shielded.h7].sort();
         window.setSlotActive(1, g);
         window.head_state = p1.ChessPiece;
         window.head_color = p1.ChessColor;
@@ -4651,8 +4660,8 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.shield_all();
 
         const during = {
-          shieldedSize: shielded.nba && shielded.nba.size,
-          bareLocked: !!(bare.nba && bare.nba.size >= 4),
+          shieldedSize: shielded.h7 && shielded.h7.size,
+          bareLocked: !!(bare.h7 && bare.h7.size >= 4),
           saved: !!(shielded.__slotNbaPriorSaved && shielded.__slotNbaPrior),
           savedDirs: shielded.__slotNbaPrior
             ? [...shielded.__slotNbaPrior].sort()
@@ -4662,8 +4671,8 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.capture_attempt(p2.pos.x, p2.pos.y);
         const after = {
           head: window.head_state,
-          shieldedDirs: shielded.nba ? [...shielded.nba].sort() : null,
-          bareNba: bare.nba,
+          shieldedDirs: shielded.h7 ? [...shielded.h7].sort() : null,
+          bareNba: bare.h7,
           stillMarked: !!shielded.__slotShield,
           priorCleared: !shielded.__slotNbaPriorSaved,
         };
@@ -4701,17 +4710,17 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
-        g.wa.ka.length = 0;
-        const keep = window.slot_make_apple(g.wa, { x: 3, y: 3 });
+        g.oa.ka.length = 0;
+        const keep = window.slot_make_apple(g.oa, { x: 3, y: 3 });
         keep.isPiece = false;
         keep.slotMode = 1;
-        const p1 = window.slot_make_apple(g.wa, { x: 8, y: 8 });
-        const p2 = window.slot_make_apple(g.wa, { x: 10, y: 8 });
+        const p1 = window.slot_make_apple(g.oa, { x: 8, y: 8 });
+        const p2 = window.slot_make_apple(g.oa, { x: 10, y: 8 });
         window.chess_assign_piece(p1);
         window.chess_assign_piece(p2);
         // Contaminate piece with fruit-only state (bad badge / portal).
@@ -4720,9 +4729,9 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         p1.__slotShield = true;
         p2.ChessColor = "w";
         p2.ChessPiece = "rook";
-        g.wa.ka.push(keep, p1, p2);
-        window.appleArray = g.wa.ka;
-        window.slot_sanitize_chess_identity(g.wa);
+        g.oa.ka.push(keep, p1, p2);
+        window.appleArray = g.oa.ka;
+        window.slot_sanitize_chess_identity(g.oa);
         const afterSanitizePieces = {
           p1Mode: p1.slotMode,
           p1Portal: !!p1.__slotPortal,
@@ -4747,31 +4756,31 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
 
         // Sticky just_ate must not block fruit refill when eaten is a fruit.
         window.just_ate = "piece";
-        const fruit = window.slot_make_apple(g.wa, { x: 5, y: 5 });
+        const fruit = window.slot_make_apple(g.oa, { x: 5, y: 5 });
         fruit.isPiece = false;
         fruit.slotMode = 3;
-        g.wa.ka.push(fruit);
+        g.oa.ka.push(fruit);
         window.__slotEatenFruit = fruit;
         window.__slotEatenMode = 3;
         window.__slotEating = true;
         window.setSlotActive(3, g);
-        const beforeLen = g.wa.ka.length;
+        const beforeLen = g.oa.ka.length;
         window.slot_eat_respawn(g);
         const afterFruitEat = {
           justAte: window.just_ate,
-          grewOrStable: g.wa.ka.length >= beforeLen,
+          grewOrStable: g.oa.ka.length >= beforeLen,
           skippedBecauseSticky:
-            window.just_ate === "piece" && g.wa.ka.length === beforeLen,
+            window.just_ate === "piece" && g.oa.ka.length === beforeLen,
         };
 
         // Incomplete isPiece without ChessPiece → demoted to fruit.
-        const bogus = window.slot_make_apple(g.wa, { x: 12, y: 4 });
+        const bogus = window.slot_make_apple(g.oa, { x: 12, y: 4 });
         bogus.isPiece = true;
         delete bogus.ChessPiece;
         delete bogus.ChessColor;
         bogus.slotMode = 8;
-        g.wa.ka.push(bogus);
-        window.slot_sanitize_chess_identity(g.wa);
+        g.oa.ka.push(bogus);
+        window.slot_sanitize_chess_identity(g.oa);
         const bogusAfter = {
           isPiece: !!bogus.isPiece,
           hasBadge: bogus.slotMode != null,
@@ -4817,48 +4826,48 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
         // Board: leftover fruit + piece + unlock fruit (as after capture).
-        g.wa.ka.length = 0;
-        const keep = window.slot_make_apple(g.wa, { x: 3, y: 3 });
+        g.oa.ka.length = 0;
+        const keep = window.slot_make_apple(g.oa, { x: 3, y: 3 });
         keep.isPiece = false;
         keep.slotMode = 1;
-        const piece = window.slot_make_apple(g.wa, { x: 12, y: 8 });
+        const piece = window.slot_make_apple(g.oa, { x: 12, y: 8 });
         window.chess_assign_piece(piece);
         piece.ChessColor = "b";
         piece.ChessPiece = "rook";
-        const unlocked = window.slot_make_apple(g.wa, { x: 6, y: 4 });
+        const unlocked = window.slot_make_apple(g.oa, { x: 6, y: 4 });
         unlocked.isPiece = false;
         unlocked.__slotFromChessUnlock = true;
         // Force a non-chess badge so refill is exactly one fruit.
         unlocked.slotMode = 3;
         delete unlocked.ChessPiece;
         delete unlocked.ChessColor;
-        g.wa.ka.push(keep, piece, unlocked);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(keep, piece, unlocked);
+        window.appleArray = g.oa.ka;
         window.head_state = "OPEN";
         window.just_ate = "fruit";
 
         const before = {
-          fruits: g.wa.ka.filter((f) => f && !f.isPiece && !f.Oka).length,
-          pieces: g.wa.ka.filter((f) => f && f.isPiece).length,
+          fruits: g.oa.ka.filter((f) => f && !f.isPiece && !f.Bea).length,
+          pieces: g.oa.ka.filter((f) => f && f.isPiece).length,
         };
         window.slot_on_eating_fruit(g, unlocked);
         window.slot_eat_respawn(g);
-        const ix = g.wa.ka.indexOf(unlocked);
-        if (ix >= 0) g.wa.ka.splice(ix, 1);
-        window.appleArray = g.wa.ka;
+        const ix = g.oa.ka.indexOf(unlocked);
+        if (ix >= 0) g.oa.ka.splice(ix, 1);
+        window.appleArray = g.oa.ka;
         const after = {
-          fruits: g.wa.ka.filter((f) => f && !f.isPiece && !f.Oka).length,
-          pieces: g.wa.ka.filter((f) => f && f.isPiece).length,
-          badged: g.wa.ka.filter(
-            (f) => f && !f.isPiece && !f.Oka && f.slotMode != null
+          fruits: g.oa.ka.filter((f) => f && !f.isPiece && !f.Bea).length,
+          pieces: g.oa.ka.filter((f) => f && f.isPiece).length,
+          badged: g.oa.ka.filter(
+            (f) => f && !f.isPiece && !f.Bea && f.slotMode != null
           ).length,
-          nj: !!g.nj,
+          nj: !!g.uj,
         };
 
         // Native Chess Vm must not plant pieces for unlock fruit eats.
@@ -4866,22 +4875,22 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.__slotRespawnedThisEat = false;
         window.__slotAllowChessFruitRespawn = false;
         const denied = window.chess_fruit_respawn(
-          g.wa,
-          () => window.slot_make_apple(g.wa, { x: 0, y: 0 }),
+          g.oa,
+          () => window.slot_make_apple(g.oa, { x: 0, y: 0 }),
           () => null,
           () => 0
         );
 
         // Last unlock fruit + spawn fail → win.
-        g.nj = false;
-        g.ub = false;
-        g.wa.ka.length = 0;
-        const last = window.slot_make_apple(g.wa, { x: 5, y: 5 });
+        g.uj = false;
+        g.Za = false;
+        g.oa.ka.length = 0;
+        const last = window.slot_make_apple(g.oa, { x: 5, y: 5 });
         last.isPiece = false;
         last.__slotFromChessUnlock = true;
         last.slotMode = 3;
-        g.wa.ka.push(last);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(last);
+        window.appleArray = g.oa.ka;
         const origFree = window.slot_free_pos;
         window.slot_free_pos = () => null;
         window.just_ate = "fruit";
@@ -4890,19 +4899,19 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.__slotEating = true;
         window.__slotRespawnedThisEat = false;
         window.slot_eat_respawn(g);
-        const emptyWin = { nj: !!g.nj, ub: !!g.ub };
+        const emptyWin = { nj: !!g.uj, ub: !!g.Za };
         window.slot_free_pos = origFree;
 
         // Spawn fail with sibling fruit → keep playing.
-        g.nj = false;
-        g.ub = false;
-        g.wa.ka.length = 0;
-        const sib = window.slot_make_apple(g.wa, { x: 2, y: 2 });
+        g.uj = false;
+        g.Za = false;
+        g.oa.ka.length = 0;
+        const sib = window.slot_make_apple(g.oa, { x: 2, y: 2 });
         sib.slotMode = 1;
-        const u2 = window.slot_make_apple(g.wa, { x: 4, y: 2 });
+        const u2 = window.slot_make_apple(g.oa, { x: 4, y: 2 });
         u2.slotMode = 3;
         u2.__slotFromChessUnlock = true;
-        g.wa.ka.push(sib, u2);
+        g.oa.ka.push(sib, u2);
         window.slot_free_pos = () => null;
         window.__slotEatenFruit = u2;
         window.__slotEatenMode = 3;
@@ -4910,8 +4919,8 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.__slotRespawnedThisEat = false;
         window.slot_eat_respawn(g);
         const keepPlaying = {
-          nj: !!g.nj,
-          sibStill: g.wa.ka.includes(sib),
+          nj: !!g.uj,
+          sibStill: g.oa.ka.includes(sib),
         };
         window.slot_free_pos = origFree;
 
@@ -4947,28 +4956,28 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
         const chess = window.CHESS_MODE != null ? window.CHESS_MODE | 0 : 24;
         window.setSlotActive(chess, g);
-        g.wa.ka.length = 0;
+        g.oa.ka.length = 0;
 
         // Two pieces on board (as if Chess badge already spawned them).
-        const p1 = window.slot_make_apple(g.wa, { x: 8, y: 8 });
-        const p2 = window.slot_make_apple(g.wa, { x: 10, y: 8 });
+        const p1 = window.slot_make_apple(g.oa, { x: 8, y: 8 });
+        const p2 = window.slot_make_apple(g.oa, { x: 10, y: 8 });
         window.chess_assign_piece(p1);
         window.chess_assign_piece(p2);
         p1.ChessColor = "b";
         p2.ChessColor = "b";
-        g.wa.ka.push(p1, p2);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(p1, p2);
+        window.appleArray = g.oa.ka;
         window.head_state = "OPEN";
         window.head_color = "w";
 
-        const beforePiece = g.wa.ka.length;
+        const beforePiece = g.oa.ka.length;
         window.just_ate = "piece";
         window.__slotEatenFruit = null;
         window.__slotEatenMode = chess; // stale badge must not spawn on piece
@@ -4977,7 +4986,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const activatedOnPiece =
           window.__slotEating === true || window.__slotEatenFruit === p1;
         window.slot_eat_respawn(g);
-        const afterPiece = g.wa.ka.length;
+        const afterPiece = g.oa.ka.length;
         const spawnedOnPiece = afterPiece > beforePiece;
 
         // Unlock fruit must get a rolled badge (not forced Chess). Eating a
@@ -4993,22 +5002,22 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.__slotEatenFruit = p1;
         window.__slotEatenMode = 1;
         window.__slotEating = true;
-        const ix = g.wa.ka.indexOf(p1);
-        if (ix >= 0) g.wa.ka.splice(ix, 1);
-        const beforeUnlockEat = g.wa.ka.length;
-        const piecesBeforeUnlockEat = g.wa.ka.filter((f) => f && f.isPiece).length;
+        const ix = g.oa.ka.indexOf(p1);
+        if (ix >= 0) g.oa.ka.splice(ix, 1);
+        const beforeUnlockEat = g.oa.ka.length;
+        const piecesBeforeUnlockEat = g.oa.ka.filter((f) => f && f.isPiece).length;
         window.slot_eat_respawn(g);
-        const afterUnlockEat = g.wa.ka.length;
-        const piecesAfterUnlockEat = g.wa.ka.filter((f) => f && f.isPiece).length;
+        const afterUnlockEat = g.oa.ka.length;
+        const piecesAfterUnlockEat = g.oa.ka.filter((f) => f && f.isPiece).length;
 
         // Chess-badge fruit still respawns a piece pair.
         window.setSlotActive(chess, g);
-        g.wa.ka.length = 0;
+        g.oa.ka.length = 0;
         window.__slotEatenMode = chess;
         window.__slotEating = true;
         window.just_ate = "fruit";
         window.slot_eat_respawn(g);
-        const piecesAfterChessBadge = g.wa.ka.filter((f) => f && f.isPiece).length;
+        const piecesAfterChessBadge = g.oa.ka.filter((f) => f && f.isPiece).length;
 
         return {
           activatedOnPiece,
@@ -5025,7 +5034,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           piecesAfterChessBadge,
           chessFruitRespawnBlocked: (() => {
             window.just_ate = "piece";
-            const n = window.chess_fruit_respawn(g.wa, () => ({}), null, null);
+            const n = window.chess_fruit_respawn(g.oa, () => ({}), null, null);
             return n === 0;
           })(),
         };
@@ -5059,32 +5068,32 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
         try {
-          if (g.Aa && g.Aa.oa && g.Aa.oa.clear) g.Aa.oa.clear();
-          if (g.Aa && g.Aa.d_ && g.Aa.d_.clear) g.Aa.d_.clear();
+          if (g.Oy && g.Oy.WJ && g.Oy.WJ.clear) g.Oy.WJ.clear();
+          if (g.Oy && g.Oy.targets && g.Oy.targets.clear) g.Oy.targets.clear();
         } catch (_e) {}
 
         // Plant via badge eat (same path as real play).
-        const fruit0 = g.wa.ka[0];
+        const fruit0 = g.oa.ka[0];
         fruit0.slotMode = 9;
-        const body = g.oa.ka;
-        g.oa.direction = "RIGHT";
+        const body = g.Yc.ka;
+        g.Yc.direction = "RIGHT";
         fruit0.pos.x = 10;
         fruit0.pos.y = 8;
         for (let i = 0; i < body.length; i++) {
           body[i].x = 9 - i;
           body[i].y = 8;
         }
-        const sh0 = g.Sh | 0;
-        for (let t = 0; t < 6 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
+        const sh0 = g.Bi | 0;
+        for (let t = 0; t < 6 && (g.Bi | 0) === sh0 && !g.uj; t++) g.tick();
 
-        const boxesBefore = g.Aa.oa ? g.Aa.oa.size | 0 : 0;
-        const goalsBefore = g.Aa.d_ ? g.Aa.d_.size | 0 : 0;
+        const boxesBefore = g.Oy.WJ ? g.Oy.WJ.size | 0 : 0;
+        const goalsBefore = g.Oy.targets ? g.Oy.targets.size | 0 : 0;
         let goalPos = null;
         try {
-          for (const p of g.Aa.d_) {
+          for (const p of g.Oy.targets) {
             goalPos = { x: p.x, y: p.y };
             break;
           }
@@ -5093,37 +5102,37 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         // Simulate native X4E unlock: fruit at goal, clear box+goal.
         // Also force the sticky-eat state that used to make unlock call
         // slotRespawn(9) and plant another box+goal.
-        if (g.Aa.oa && g.Aa.oa.clear) g.Aa.oa.clear();
-        if (g.Aa.d_ && g.Aa.d_.clear) g.Aa.d_.clear();
-        g.wa.ka.length = 0;
+        if (g.Oy.WJ && g.Oy.WJ.clear) g.Oy.WJ.clear();
+        if (g.Oy.targets && g.Oy.targets.clear) g.Oy.targets.clear();
+        g.oa.ka.length = 0;
         window.__slotEating = true;
         window.__slotEatenMode = 9;
         window.__slotRespawnedThisEat = true;
         window.__slotActivatedFruit = null;
         const fruit = window.slot_make_apple(
-          g.wa,
+          g.oa,
           goalPos || { x: 6, y: 6 }
         );
         delete fruit.slotMode;
-        g.wa.ka.push(fruit);
-        window.slot_after_native_respawn(g.wa, 1, g);
+        g.oa.ka.push(fruit);
+        window.slot_after_native_respawn(g.oa, 1, g);
 
         // With e7(9) still on, native e5E must not re-plant without allow flag.
         const plant = window.__slotE5E;
         if (typeof plant === "function") {
           window.__slotAllowSokoPlant = false;
           try {
-            plant(g.Aa, 0, true, true);
+            plant(g.Oy, 0, true, true);
           } catch (_e3) {}
         }
         window.slot_tick_logic(g);
         return {
           boxesBefore,
           goalsBefore,
-          boxesAfter: g.Aa.oa ? g.Aa.oa.size | 0 : 0,
-          goalsAfter: g.Aa.d_ ? g.Aa.d_.size | 0 : 0,
-          fruitCount: g.wa.ka.length,
-          fruitBadge: g.wa.ka[0] && g.wa.ka[0].slotMode,
+          boxesAfter: g.Oy.WJ ? g.Oy.WJ.size | 0 : 0,
+          goalsAfter: g.Oy.targets ? g.Oy.targets.size | 0 : 0,
+          fruitCount: g.oa.ka.length,
+          fruitBadge: g.oa.ka[0] && g.oa.ka[0].slotMode,
           eatingCleared: !window.__slotEating && window.__slotEatenMode == null,
           hasE5: typeof window.__slotE5E,
           active: window.__slotActive,
@@ -5155,31 +5164,31 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
-        if (g.Ba && g.Ba.keys) g.Ba.keys.length = 0;
-        const fruit = g.wa.ka[0];
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
+        if (g.uL && g.uL.keys) g.uL.keys.length = 0;
+        const fruit = g.oa.ka[0];
         fruit.slotMode = 8;
-        const body = g.oa.ka;
-        g.oa.direction = "RIGHT";
+        const body = g.Yc.ka;
+        g.Yc.direction = "RIGHT";
         fruit.pos.x = 10;
         fruit.pos.y = 8;
         for (let i = 0; i < body.length; i++) {
           body[i].x = 9 - i;
           body[i].y = 8;
         }
-        const sh0 = g.Sh | 0;
-        for (let t = 0; t < 6 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
-        const afterBadge = (g.Ba.keys || []).length | 0;
+        const sh0 = g.Bi | 0;
+        for (let t = 0; t < 6 && (g.Bi | 0) === sh0 && !g.uj; t++) g.tick();
+        const afterBadge = (g.uL.keys || []).length | 0;
         // Native q6E while key roll is active must no-op without allow flag.
-        if (typeof q6E === "function" || window.__slotQ6E) {
-          const plant = window.__slotQ6E || q6E;
+        if (typeof jrF === "function" || window.__slotQ6E) {
+          const plant = window.__slotQ6E || jrF;
           window.__slotAllowKeyPlant = false;
           try {
-            plant(g.Ba, afterBadge, true);
+            plant(g.uL, afterBadge, true);
           } catch (_e) {}
         }
-        const afterGate = (g.Ba.keys || []).length | 0;
+        const afterGate = (g.uL.keys || []).length | 0;
         return {
           afterBadge,
           afterGate,
@@ -5214,7 +5223,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
 
         // Ultra defaults: all spawn toggles off.
@@ -5305,12 +5314,12 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         g.settings.ka = 4;
         g.settings.Ca = 4;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
         function eatBadge(fruit, mode) {
           fruit.slotMode = mode;
@@ -5320,39 +5329,39 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           window.__slotEating = true;
           window.setSlotActive(mode, g);
           window.slot_eat_respawn(g);
-          const ix = g.wa.ka.indexOf(fruit);
-          if (ix >= 0) g.wa.ka.splice(ix, 1);
-          window.appleArray = g.wa.ka;
+          const ix = g.oa.ka.indexOf(fruit);
+          if (ix >= 0) g.oa.ka.splice(ix, 1);
+          window.appleArray = g.oa.ka;
         }
 
         // Mid-board: two leftovers + eaten — must not plant a top-up fruit.
-        g.wa.ka.length = 0;
-        const a = window.slot_make_apple(g.wa, { x: 5, y: 5 });
-        const b = window.slot_make_apple(g.wa, { x: 7, y: 5 });
-        const c = window.slot_make_apple(g.wa, { x: 9, y: 5 });
+        g.oa.ka.length = 0;
+        const a = window.slot_make_apple(g.oa, { x: 5, y: 5 });
+        const b = window.slot_make_apple(g.oa, { x: 7, y: 5 });
+        const c = window.slot_make_apple(g.oa, { x: 9, y: 5 });
         window.assignSlotMode(a);
         window.assignSlotMode(b);
         window.assignSlotMode(c);
-        g.wa.ka.push(a, b, c);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(a, b, c);
+        window.appleArray = g.oa.ka;
         eatBadge(c, 3);
-        const midAfter = g.wa.ka.filter((f) => f && !f.Oka && !f.isPiece).length;
+        const midAfter = g.oa.ka.filter((f) => f && !f.Bea && !f.isPiece).length;
 
         // Last fruit: roll 1–6 badged fruits (simulate several eats).
         const rolls = [];
         for (let i = 0; i < 24; i++) {
-          g.wa.ka.length = 0;
-          const last = window.slot_make_apple(g.wa, { x: 6, y: 6 });
+          g.oa.ka.length = 0;
+          const last = window.slot_make_apple(g.oa, { x: 6, y: 6 });
           last.slotMode = 3;
-          g.wa.ka.push(last);
-          window.appleArray = g.wa.ka;
+          g.oa.ka.push(last);
+          window.appleArray = g.oa.ka;
           eatBadge(last, 3);
-          const n = g.wa.ka.filter((f) => f && !f.Oka && !f.isPiece).length;
+          const n = g.oa.ka.filter((f) => f && !f.Bea && !f.isPiece).length;
           rolls.push(n);
         }
 
-        const badged = g.wa.ka.every(
-          (f) => f && (f.isPiece || f.Oka || f.slotMode != null)
+        const badged = g.oa.ka.every(
+          (f) => f && (f.isPiece || f.Bea || f.slotMode != null)
         );
 
         return {
@@ -5399,13 +5408,13 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         g.settings.ka = 5;
         g.settings.Ca = 5;
-        g.kc = false;
+        g.Qb = false;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
         function eatBadge(fruit, mode) {
           fruit.slotMode = mode;
@@ -5415,53 +5424,53 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           window.__slotEating = true;
           window.setSlotActive(mode, g);
           window.slot_eat_respawn(g);
-          const ix = g.wa.ka.indexOf(fruit);
-          if (ix >= 0) g.wa.ka.splice(ix, 1);
-          window.appleArray = g.wa.ka;
+          const ix = g.oa.ka.indexOf(fruit);
+          if (ix >= 0) g.oa.ka.splice(ix, 1);
+          window.appleArray = g.oa.ka;
         }
 
         // Mid-board: leftovers remain — must not plant a top-up.
-        g.wa.ka.length = 0;
-        const a = window.slot_make_apple(g.wa, { x: 5, y: 5 });
-        const b = window.slot_make_apple(g.wa, { x: 7, y: 5 });
-        const c = window.slot_make_apple(g.wa, { x: 9, y: 5 });
+        g.oa.ka.length = 0;
+        const a = window.slot_make_apple(g.oa, { x: 5, y: 5 });
+        const b = window.slot_make_apple(g.oa, { x: 7, y: 5 });
+        const c = window.slot_make_apple(g.oa, { x: 9, y: 5 });
         window.assignSlotMode(a);
         window.assignSlotMode(b);
         window.assignSlotMode(c);
-        g.wa.ka.push(a, b, c);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(a, b, c);
+        window.appleArray = g.oa.ka;
         eatBadge(c, 3);
-        const midAfter = g.wa.ka.filter((f) => f && !f.Oka && !f.isPiece).length;
+        const midAfter = g.oa.ka.filter((f) => f && !f.Bea && !f.isPiece).length;
 
         // Last fruit: plant 24 once (kc).
-        g.wa.ka.length = 0;
-        g.kc = false;
-        const last = window.slot_make_apple(g.wa, { x: 6, y: 6 });
+        g.oa.ka.length = 0;
+        g.Qb = false;
+        const last = window.slot_make_apple(g.oa, { x: 6, y: 6 });
         last.slotMode = 3;
-        g.wa.ka.push(last);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(last);
+        window.appleArray = g.oa.ka;
         eatBadge(last, 3);
-        const afterBomb = g.wa.ka.filter((f) => f && !f.Oka && !f.isPiece).length;
-        const badged = g.wa.ka.every(
-          (f) => f && (f.isPiece || f.Oka || f.slotMode != null)
+        const afterBomb = g.oa.ka.filter((f) => f && !f.Bea && !f.isPiece).length;
+        const badged = g.oa.ka.every(
+          (f) => f && (f.isPiece || f.Bea || f.slotMode != null)
         );
-        const kcAfter = !!g.kc;
+        const kcAfter = !!g.Qb;
 
         // After kc: last fruit of the 24 plants 1 badge fruit (not win).
-        g.wa.ka.length = 0;
-        window.appleArray = g.wa.ka;
-        const lastOf24 = window.slot_make_apple(g.wa, { x: 4, y: 4 });
+        g.oa.ka.length = 0;
+        window.appleArray = g.oa.ka;
+        const lastOf24 = window.slot_make_apple(g.oa, { x: 4, y: 4 });
         lastOf24.slotMode = 3;
-        g.wa.ka.push(lastOf24);
-        window.appleArray = g.wa.ka;
-        g.nj = false;
-        g.ub = false;
+        g.oa.ka.push(lastOf24);
+        window.appleArray = g.oa.ka;
+        g.uj = false;
+        g.Za = false;
         eatBadge(lastOf24, 3);
-        const afterLastOf24 = g.wa.ka.filter(
-          (f) => f && !f.Oka && !f.isPiece
+        const afterLastOf24 = g.oa.ka.filter(
+          (f) => f && !f.Bea && !f.isPiece
         ).length;
-        const lastBadged = g.wa.ka.every(
-          (f) => f && (f.isPiece || f.Oka || f.slotMode != null)
+        const lastBadged = g.oa.ka.every(
+          (f) => f && (f.isPiece || f.Bea || f.slotMode != null)
         );
 
         return {
@@ -5471,7 +5480,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           kcAfter,
           afterLastOf24,
           lastBadged,
-          won: !!(g.ub && g.nj),
+          won: !!(g.Za && g.uj),
           isBomb: window.slot_is_bomb_count(g),
           spawnN: window.slot_bomb_spawn_n(g),
         };
@@ -5504,47 +5513,47 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         g.settings.ka = 5;
         g.settings.Ca = 5;
-        g.kc = false;
+        g.Qb = false;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
         // Empty board + Fear badge eat → 24-unit bomb wave with Fear FIFO.
-        g.wa.ka.length = 0;
-        const last = window.slot_make_apple(g.wa, { x: 6, y: 6 });
+        g.oa.ka.length = 0;
+        const last = window.slot_make_apple(g.oa, { x: 6, y: 6 });
         last.slotMode = window.FEAR_MODE;
-        g.wa.ka.push(last);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(last);
+        window.appleArray = g.oa.ka;
         window.just_ate = "fruit";
         window.__slotEatenFruit = last;
         window.__slotEatenMode = window.FEAR_MODE;
         window.__slotEating = true;
         window.setSlotActive(window.FEAR_MODE, g);
         window.slot_eat_respawn(g);
-        const ix = g.wa.ka.indexOf(last);
-        if (ix >= 0) g.wa.ka.splice(ix, 1);
-        window.appleArray = g.wa.ka;
+        const ix = g.oa.ka.indexOf(last);
+        if (ix >= 0) g.oa.ka.splice(ix, 1);
+        window.appleArray = g.oa.ka;
 
-        const ghosts = g.wa.ka.filter(
+        const ghosts = g.oa.ka.filter(
           (f) =>
             f &&
             (f.__slotFearGhost ||
               (window.fear_is_ghost && window.fear_is_ghost(f)))
         );
-        const fresh = g.wa.ka.filter(
+        const fresh = g.oa.ka.filter(
           (f) =>
             f &&
-            !f.Oka &&
+            !f.Bea &&
             !f.__slotFearGhost &&
             !(window.fear_is_ghost && window.fear_is_ghost(f))
         );
         return {
           ghosts: ghosts.length,
           fresh: fresh.length,
-          kc: !!g.kc,
+          kc: !!g.Qb,
           fearTrophy: !!(
             window.fear_mode_selected && window.fear_mode_selected()
           ),
@@ -5574,13 +5583,13 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         g.settings.ka = 5;
         g.settings.Ca = 5;
-        g.kc = true;
+        g.Qb = true;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
         function eatBadge(fruit, mode) {
           fruit.slotMode = mode;
@@ -5590,66 +5599,66 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           window.__slotEating = true;
           window.setSlotActive(mode, g);
           window.slot_eat_respawn(g);
-          const ix = g.wa.ka.indexOf(fruit);
-          if (ix >= 0) g.wa.ka.splice(ix, 1);
-          window.appleArray = g.wa.ka;
+          const ix = g.oa.ka.indexOf(fruit);
+          if (ix >= 0) g.oa.ka.splice(ix, 1);
+          window.appleArray = g.oa.ka;
         }
 
         function fruitCount() {
-          return g.wa.ka.filter((f) => f && !f.Oka && !f.isPiece).length;
+          return g.oa.ka.filter((f) => f && !f.Bea && !f.isPiece).length;
         }
 
         // Mid-board cheese after kc → 1 new badge fruit (net: leftovers + 1).
-        g.wa.ka.length = 0;
-        const cKeep = window.slot_make_apple(g.wa, { x: 5, y: 5 });
-        const cEat = window.slot_make_apple(g.wa, { x: 7, y: 5 });
+        g.oa.ka.length = 0;
+        const cKeep = window.slot_make_apple(g.oa, { x: 5, y: 5 });
+        const cEat = window.slot_make_apple(g.oa, { x: 7, y: 5 });
         window.assignSlotMode(cKeep);
         cEat.slotMode = 3;
-        g.wa.ka.push(cKeep, cEat);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(cKeep, cEat);
+        window.appleArray = g.oa.ka;
         eatBadge(cEat, 3);
         const cheeseAfter = fruitCount();
-        const cheeseBadged = g.wa.ka.every(
-          (f) => f && (f.isPiece || f.Oka || f.slotMode != null)
+        const cheeseBadged = g.oa.ka.every(
+          (f) => f && (f.isPiece || f.Bea || f.slotMode != null)
         );
 
         // Mid-board statue after kc → 1 new badge fruit.
-        g.wa.ka.length = 0;
-        const sKeep = window.slot_make_apple(g.wa, { x: 5, y: 6 });
-        const sEat = window.slot_make_apple(g.wa, { x: 7, y: 6 });
+        g.oa.ka.length = 0;
+        const sKeep = window.slot_make_apple(g.oa, { x: 5, y: 6 });
+        const sEat = window.slot_make_apple(g.oa, { x: 7, y: 6 });
         window.assignSlotMode(sKeep);
         sEat.slotMode = 13;
-        g.wa.ka.push(sKeep, sEat);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(sKeep, sEat);
+        window.appleArray = g.oa.ka;
         eatBadge(sEat, 13);
         const statueAfter = fruitCount();
-        const statueBadged = g.wa.ka.every(
-          (f) => f && (f.isPiece || f.Oka || f.slotMode != null)
+        const statueBadged = g.oa.ka.every(
+          (f) => f && (f.isPiece || f.Bea || f.slotMode != null)
         );
 
         // Key after kc: key+keyblock only — no extra badge fruit.
         // Stub plant helper (normally captured on native Vm); proves the key
         // branch returns without falling through to default fruit refill.
-        g.wa.ka.length = 0;
-        if (g.Ba && g.Ba.keys) g.Ba.keys.length = 0;
-        const kKeep = window.slot_make_apple(g.wa, { x: 5, y: 7 });
-        const kEat = window.slot_make_apple(g.wa, { x: 7, y: 7 });
+        g.oa.ka.length = 0;
+        if (g.uL && g.uL.keys) g.uL.keys.length = 0;
+        const kKeep = window.slot_make_apple(g.oa, { x: 5, y: 7 });
+        const kEat = window.slot_make_apple(g.oa, { x: 7, y: 7 });
         window.assignSlotMode(kKeep);
         kEat.slotMode = 8;
-        g.wa.ka.push(kKeep, kEat);
-        window.appleArray = g.wa.ka;
-        const keysBefore = (g.Ba && g.Ba.keys && g.Ba.keys.length) | 0;
+        g.oa.ka.push(kKeep, kEat);
+        window.appleArray = g.oa.ka;
+        const keysBefore = (g.uL && g.uL.keys && g.uL.keys.length) | 0;
         window.__slotQ6E = function (ba) {
           ba.keys = ba.keys || [];
           ba.keys.push({
             type: 0,
             pos: { x: 3, y: 3 },
-            r7a: { x: 4, y: 4 },
+            q7a: { x: 4, y: 4 },
           });
         };
         eatBadge(kEat, 8);
         const keyFruitAfter = fruitCount();
-        const keysAfter = (g.Ba && g.Ba.keys && g.Ba.keys.length) | 0;
+        const keysAfter = (g.uL && g.uL.keys && g.uL.keys.length) | 0;
 
         return {
           cheeseAfter,
@@ -5686,12 +5695,12 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         g.settings.ka = 6;
         g.settings.Ca = 6;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
         function eatBadge(fruit, mode) {
           fruit.slotMode = mode;
@@ -5701,30 +5710,30 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           window.__slotEating = true;
           window.setSlotActive(mode, g);
           window.slot_eat_respawn(g);
-          const ix = g.wa.ka.indexOf(fruit);
-          if (ix >= 0) g.wa.ka.splice(ix, 1);
-          window.appleArray = g.wa.ka;
+          const ix = g.oa.ka.indexOf(fruit);
+          if (ix >= 0) g.oa.ka.splice(ix, 1);
+          window.appleArray = g.oa.ka;
         }
 
-        g.wa.ka.length = 0;
-        const a = window.slot_make_apple(g.wa, { x: 5, y: 5 });
-        const b = window.slot_make_apple(g.wa, { x: 7, y: 5 });
-        const c = window.slot_make_apple(g.wa, { x: 9, y: 5 });
+        g.oa.ka.length = 0;
+        const a = window.slot_make_apple(g.oa, { x: 5, y: 5 });
+        const b = window.slot_make_apple(g.oa, { x: 7, y: 5 });
+        const c = window.slot_make_apple(g.oa, { x: 9, y: 5 });
         window.assignSlotMode(a);
         window.assignSlotMode(b);
         window.assignSlotMode(c);
-        g.wa.ka.push(a, b, c);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(a, b, c);
+        window.appleArray = g.oa.ka;
         eatBadge(c, 3);
-        const midAfter = g.wa.ka.filter((f) => f && !f.Oka && !f.isPiece).length;
+        const midAfter = g.oa.ka.filter((f) => f && !f.Bea && !f.isPiece).length;
 
-        g.wa.ka.length = 0;
-        const last = window.slot_make_apple(g.wa, { x: 6, y: 6 });
+        g.oa.ka.length = 0;
+        const last = window.slot_make_apple(g.oa, { x: 6, y: 6 });
         last.slotMode = 3;
-        g.wa.ka.push(last);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(last);
+        window.appleArray = g.oa.ka;
         eatBadge(last, 3);
-        const fruits = g.wa.ka.filter((f) => f && !f.Oka && !f.isPiece);
+        const fruits = g.oa.ka.filter((f) => f && !f.Bea && !f.isPiece);
         const seqs = fruits
           .map((f) => f.sequenceNumber | 0)
           .sort((x, y) => x - y);
@@ -5734,7 +5743,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           midAfter,
           afterTally: fruits.length,
           seqs,
-          tallyIndex: g.wa.wa | 0,
+          tallyIndex: g.oa.wa | 0,
           badged,
           isTally: window.slot_is_tally_count(g),
           spawnN: window.slot_tally_spawn_n(g),
@@ -5766,19 +5775,19 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         g.settings.ka = 6;
         g.settings.Ca = 6;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
         const chess = window.CHESS_MODE != null ? window.CHESS_MODE | 0 : 24;
         window.__slotSpecialStore = [chess];
-        g.wa.ka.length = 0;
+        g.oa.ka.length = 0;
         const plantStart = 0;
         const units = window.slot_plant_wave_units(g, 5, 3, { indexTally: true });
-        const list = g.wa.ka.filter((f) => f && !f.Oka);
+        const list = g.oa.ka.filter((f) => f && !f.Bea);
         const pieces = list.filter((f) => f.isPiece);
         const pieceSeqs = pieces.map((f) => f.sequenceNumber | 0);
         const allIndexed = list.every((f) => (f.sequenceNumber | 0) > 0);
@@ -5793,7 +5802,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           allIndexed,
           seqs,
           listLen: list.length,
-          tallyIndex: g.wa.wa | 0,
+          tallyIndex: g.oa.wa | 0,
         };
       });
 
@@ -5830,19 +5839,19 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         g.settings.ka = 6;
         g.settings.Ca = 6;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
         window.__slotSpecialStore = [2];
-        g.wa.ka.length = 0;
+        g.oa.ka.length = 0;
         const units = window.slot_plant_wave_units(g, 5, 3, {
           indexTally: true,
         });
-        const list = g.wa.ka.filter((f) => f && !f.Oka);
+        const list = g.oa.ka.filter((f) => f && !f.Bea);
         const portals = list.filter((f) => f.__slotPortal);
         const portalSeqs = portals.map((f) => f.sequenceNumber | 0);
         const uniquePortalSeq = new Set(portalSeqs);
@@ -5859,7 +5868,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           pairIdMatch:
             portals.length === 2 &&
             portals[0].__slotPortalPairId === portals[1].__slotPortalPairId,
-          tallyIndex: g.wa.wa | 0,
+          tallyIndex: g.oa.wa | 0,
         };
       });
 
@@ -5890,12 +5899,12 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         g.settings.ka = 6;
         g.settings.Ca = 6;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
         function eatBadge(fruit, mode) {
           fruit.slotMode = mode;
@@ -5905,24 +5914,24 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           window.__slotEating = true;
           window.setSlotActive(mode, g);
           window.slot_eat_respawn(g);
-          const ix = g.wa.ka.indexOf(fruit);
-          if (ix >= 0) g.wa.ka.splice(ix, 1);
-          window.appleArray = g.wa.ka;
+          const ix = g.oa.ka.indexOf(fruit);
+          if (ix >= 0) g.oa.ka.splice(ix, 1);
+          window.appleArray = g.oa.ka;
         }
 
         // Mid-board Mexico: store only — no pair plant (like Portal).
-        g.wa.ka.length = 0;
+        g.oa.ka.length = 0;
         window.__slotSpecialStore = [];
         window.__slotMexicoMidUp = false;
-        const keep = window.slot_make_apple(g.wa, { x: 5, y: 5 });
-        const mexEat = window.slot_make_apple(g.wa, { x: 7, y: 5 });
+        const keep = window.slot_make_apple(g.oa, { x: 5, y: 5 });
+        const mexEat = window.slot_make_apple(g.oa, { x: 7, y: 5 });
         window.assignSlotMode(keep);
         mexEat.slotMode = 27;
-        g.wa.ka.push(keep, mexEat);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(keep, mexEat);
+        window.appleArray = g.oa.ka;
         eatBadge(mexEat, 27);
-        const midFruit = g.wa.ka.filter((f) => f && !f.Oka && !f.isPiece).length;
-        const midMexicoPortals = g.wa.ka.filter(
+        const midFruit = g.oa.ka.filter((f) => f && !f.Bea && !f.isPiece).length;
+        const midMexicoPortals = g.oa.ka.filter(
           (f) => f && f.__slotMexicoPortal
         ).length;
         const midStore = (window.__slotSpecialStore || []).slice();
@@ -5931,11 +5940,11 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         // Empty board wave with stored Mexico: 1 Mexico unit + 4 badges.
         window.__slotSpecialStore = [27];
         window.__slotMexicoMidUp = false;
-        g.wa.ka.length = 0;
+        g.oa.ka.length = 0;
         const units = window.slot_plant_wave_units(g, 5, 3, {
           indexTally: true,
         });
-        const list = g.wa.ka.filter((f) => f && !f.Oka);
+        const list = g.oa.ka.filter((f) => f && !f.Bea);
         const mexPortals = list.filter((f) => f.__slotMexicoPortal);
         const mexSeqs = mexPortals.map((f) => f.sequenceNumber | 0);
         const uniqueMexSeq = new Set(mexSeqs);
@@ -5962,7 +5971,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
             mexPortals[0].__slotPortalPairId ===
               mexPortals[1].__slotPortalPairId,
           midUpAfterWave: !!window.__slotMexicoMidUp,
-          tallyIndex: g.wa.wa | 0,
+          tallyIndex: g.oa.wa | 0,
         };
       });
 
@@ -5998,12 +6007,12 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
-        g.wa.ka.length = 0;
-        window.appleArray = g.wa.ka;
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
+        g.oa.ka.length = 0;
+        window.appleArray = g.oa.ka;
         window.__slotMexicoMidUp = false;
 
         // Force every candidate cell to look like snake body → half search fails.
@@ -6013,14 +6022,14 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         };
         const blocked = window.slot_mexico_plant_portal_pair(g);
         const midAfterBlock = !!window.__slotMexicoMidUp;
-        const portalsAfterBlock = g.wa.ka.filter(
+        const portalsAfterBlock = g.oa.ka.filter(
           (f) => f && f.__slotMexicoPortal
         ).length;
         window.slot_soko_pos_on_snake = origOnSnake;
 
         // With normal snake occupancy, plant should succeed off the body.
         const ok = window.slot_mexico_plant_portal_pair(g);
-        const portals = g.wa.ka.filter((f) => f && f.__slotMexicoPortal);
+        const portals = g.oa.ka.filter((f) => f && f.__slotMexicoPortal);
         let onSnake = false;
         for (let i = 0; i < portals.length; i++) {
           if (window.slot_soko_pos_on_snake(g, portals[i].pos)) onSnake = true;
@@ -6035,7 +6044,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
             ? !window.slot_mexico_relocate_pair_halves(
                 portals[0],
                 portals[1],
-                g.wa
+                g.oa
               )
             : false;
         window.slot_soko_pos_on_snake = origOnSnake;
@@ -6044,7 +6053,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.__slotMexicoMidUp = false;
         window.slot_mexico_clear_mid(g);
         const mid = window.slot_mexico_mid_y(g) | 0;
-        const body = g.oa && g.oa.ka;
+        const body = g.Yc && g.Yc.ka;
         const midSegXs = [];
         if (body && body.length) {
           for (let i = 0; i < body.length; i++) {
@@ -6064,7 +6073,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         }
         window.__slotMexicoMidUp = false;
         const midPlanted = window.slot_mexico_place_partial_mid(g);
-        const walls = g.Ca && g.Ca.wa && g.Ca.wa[mid];
+        const walls = g.Tw && g.Tw.oa && g.Tw.oa[mid];
         let wallOnSnake = false;
         for (let i = 0; i < midSegXs.length; i++) {
           const wx = midSegXs[i] | 0;
@@ -6117,77 +6126,77 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         g.settings.ka = 6;
         g.settings.Ca = 6;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
         // Board with indexed fruits max=5 (portal pair shares 5).
-        g.wa.ka.length = 0;
-        const a = window.slot_make_apple(g.wa, { x: 4, y: 4 });
-        const b = window.slot_make_apple(g.wa, { x: 5, y: 4 });
-        const c = window.slot_make_apple(g.wa, { x: 6, y: 4 });
+        g.oa.ka.length = 0;
+        const a = window.slot_make_apple(g.oa, { x: 4, y: 4 });
+        const b = window.slot_make_apple(g.oa, { x: 5, y: 4 });
+        const c = window.slot_make_apple(g.oa, { x: 6, y: 4 });
         a.sequenceNumber = 3;
         b.sequenceNumber = 5;
         c.sequenceNumber = 5;
         window.slot_assign_pair(b, c);
         window.assignSlotMode(a);
-        g.wa.ka.push(a, b, c);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(a, b, c);
+        window.appleArray = g.oa.ka;
         // Current edible below board max → unlock still takes board max + 1.
-        g.wa.wa = 2;
+        g.oa.wa = 2;
 
         // Key unlock: new fruit inherits junk seq, then after_native stamps max+1.
-        const keyFruit = window.slot_make_apple(g.wa, { x: 8, y: 4 });
+        const keyFruit = window.slot_make_apple(g.oa, { x: 8, y: 4 });
         delete keyFruit.slotMode;
         keyFruit.sequenceNumber = 1;
-        g.wa.ka.push(keyFruit);
+        g.oa.ka.push(keyFruit);
         window.slot_key_unlock_fruit = 1;
         window.__slotRespawnedThisEat = true;
         window.__slotEating = false;
-        window.slot_after_native_respawn(g.wa, 1, g);
+        window.slot_after_native_respawn(g.oa, 1, g);
         const keySeq = keyFruit.sequenceNumber | 0;
         const keyBadged = keyFruit.slotMode != null;
 
         // Soko unlock similarly.
-        const sokoFruit = window.slot_make_apple(g.wa, { x: 9, y: 4 });
+        const sokoFruit = window.slot_make_apple(g.oa, { x: 9, y: 4 });
         delete sokoFruit.slotMode;
         sokoFruit.sequenceNumber = 2;
-        g.wa.ka.push(sokoFruit);
+        g.oa.ka.push(sokoFruit);
         window.slot_soko_unlock_fruit = 1;
-        window.slot_after_native_respawn(g.wa, 1, g);
+        window.slot_after_native_respawn(g.oa, 1, g);
         const sokoSeq = sokoFruit.sequenceNumber | 0;
         const sokoBadged = sokoFruit.slotMode != null;
 
         // Empty board + advanced snake tally: unlock must follow current index,
         // not reset to 1.
-        g.wa.ka.length = 0;
-        window.appleArray = g.wa.ka;
-        g.wa.wa = 4;
-        const emptyUnlock = window.slot_make_apple(g.wa, { x: 3, y: 3 });
+        g.oa.ka.length = 0;
+        window.appleArray = g.oa.ka;
+        g.oa.wa = 4;
+        const emptyUnlock = window.slot_make_apple(g.oa, { x: 3, y: 3 });
         delete emptyUnlock.slotMode;
         emptyUnlock.sequenceNumber = 1;
-        g.wa.ka.push(emptyUnlock);
+        g.oa.ka.push(emptyUnlock);
         window.slot_soko_unlock_fruit = 1;
-        window.slot_after_native_respawn(g.wa, 1, g);
+        window.slot_after_native_respawn(g.oa, 1, g);
         const emptySeq = emptyUnlock.sequenceNumber | 0;
 
         // Empty board + current ahead of boardNext; also current > board fruits.
-        g.wa.ka.length = 0;
-        const leftover = window.slot_make_apple(g.wa, { x: 2, y: 2 });
+        g.oa.ka.length = 0;
+        const leftover = window.slot_make_apple(g.oa, { x: 2, y: 2 });
         leftover.sequenceNumber = 2;
         window.assignSlotMode(leftover);
-        g.wa.ka.push(leftover);
-        window.appleArray = g.wa.ka;
-        g.wa.wa = 5;
-        const midUnlock = window.slot_make_apple(g.wa, { x: 1, y: 1 });
+        g.oa.ka.push(leftover);
+        window.appleArray = g.oa.ka;
+        g.oa.wa = 5;
+        const midUnlock = window.slot_make_apple(g.oa, { x: 1, y: 1 });
         delete midUnlock.slotMode;
         midUnlock.sequenceNumber = 1;
-        g.wa.ka.push(midUnlock);
+        g.oa.ka.push(midUnlock);
         window.slot_key_unlock_fruit = 1;
-        window.slot_after_native_respawn(g.wa, 1, g);
+        window.slot_after_native_respawn(g.oa, 1, g);
         const midSeq = midUnlock.sequenceNumber | 0;
 
         return {
@@ -6232,12 +6241,12 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         g.settings.ka = 4;
         g.settings.Ca = 4;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
         function eatBadge(fruit, mode) {
           fruit.slotMode = mode;
@@ -6247,43 +6256,43 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           window.__slotEating = true;
           window.setSlotActive(mode, g);
           window.slot_eat_respawn(g);
-          const ix = g.wa.ka.indexOf(fruit);
-          if (ix >= 0) g.wa.ka.splice(ix, 1);
-          window.appleArray = g.wa.ka;
+          const ix = g.oa.ka.indexOf(fruit);
+          if (ix >= 0) g.oa.ka.splice(ix, 1);
+          window.appleArray = g.oa.ka;
         }
 
         function fruitCount() {
-          return g.wa.ka.filter((f) => f && !f.Oka && !f.isPiece).length;
+          return g.oa.ka.filter((f) => f && !f.Bea && !f.isPiece).length;
         }
 
         // Mid-board portal: store only — no portal pair plant.
-        g.wa.ka.length = 0;
+        g.oa.ka.length = 0;
         window.__slotSpecialStore = [];
-        const keep = window.slot_make_apple(g.wa, { x: 5, y: 5 });
-        const portalEat = window.slot_make_apple(g.wa, { x: 7, y: 5 });
+        const keep = window.slot_make_apple(g.oa, { x: 5, y: 5 });
+        const portalEat = window.slot_make_apple(g.oa, { x: 7, y: 5 });
         window.assignSlotMode(keep);
         portalEat.slotMode = 2;
-        g.wa.ka.push(keep, portalEat);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(keep, portalEat);
+        window.appleArray = g.oa.ka;
         eatBadge(portalEat, 2);
         const midFruit = fruitCount();
-        const midPortals = g.wa.ka.filter((f) => f && f.__slotPortal).length;
+        const midPortals = g.oa.ka.filter((f) => f && f.__slotPortal).length;
         const midStore = (window.__slotSpecialStore || []).slice();
 
         // Queue portal, key, soko; force empty with cheese; roll fixed 2.
         window.__slotSpecialStore = [2, 8, 9];
-        g.wa.ka.length = 0;
-        if (g.Ba && g.Ba.keys) g.Ba.keys.length = 0;
-        const last = window.slot_make_apple(g.wa, { x: 6, y: 6 });
+        g.oa.ka.length = 0;
+        if (g.uL && g.uL.keys) g.uL.keys.length = 0;
+        const last = window.slot_make_apple(g.oa, { x: 6, y: 6 });
         last.slotMode = 3;
-        g.wa.ka.push(last);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(last);
+        window.appleArray = g.oa.ka;
         window.__slotQ6E = function (ba) {
           ba.keys = ba.keys || [];
           ba.keys.push({
             type: 0,
             pos: { x: 3, y: 3 },
-            r7a: { x: 4, y: 4 },
+            q7a: { x: 4, y: 4 },
           });
         };
         const origDice = window.slot_dice_spawn_n;
@@ -6293,29 +6302,29 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         eatBadge(last, 3);
         window.slot_dice_spawn_n = origDice;
 
-        const portalsAfter = g.wa.ka.filter((f) => f && f.__slotPortal).length;
-        const keysAfter = (g.Ba && g.Ba.keys && g.Ba.keys.length) | 0;
+        const portalsAfter = g.oa.ka.filter((f) => f && f.__slotPortal).length;
+        const keysAfter = (g.uL && g.uL.keys && g.uL.keys.length) | 0;
         const storeAfter = (window.__slotSpecialStore || []).slice();
         // Portal unit (2 fruits) + key unit (0 fruits) = 2 fruits if only those;
         // roll 2 = portal + key, so fruit count is portal pair only.
         const fruitsAfter = fruitCount();
 
         // Clear board + keys; leftover soko should lead next roll of 1.
-        g.wa.ka.length = 0;
-        if (g.Ba && g.Ba.keys) g.Ba.keys.length = 0;
-        window.appleArray = g.wa.ka;
-        const last2 = window.slot_make_apple(g.wa, { x: 4, y: 4 });
+        g.oa.ka.length = 0;
+        if (g.uL && g.uL.keys) g.uL.keys.length = 0;
+        window.appleArray = g.oa.ka;
+        const last2 = window.slot_make_apple(g.oa, { x: 4, y: 4 });
         last2.slotMode = 3;
-        g.wa.ka.push(last2);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(last2);
+        window.appleArray = g.oa.ka;
         window.__slotE5E = function (aa) {
           aa.oa = aa.oa || new Set();
           aa.d_ = aa.d_ || new Set();
           aa.oa.add({
             pos: { x: 2, y: 2 },
             prev: null,
-            wm: true,
-            Lh: true,
+            Rm: true,
+            Xg: true,
           });
           aa.d_.add({ x: 3, y: 2 });
         };
@@ -6333,46 +6342,46 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         g.settings.ka = 6;
         g.settings.Ca = 6;
         window.slot_reset_state();
-        g.wa.ka.length = 0;
-        if (g.Ba && g.Ba.keys) g.Ba.keys.length = 0;
-        if (g.Aa) {
+        g.oa.ka.length = 0;
+        if (g.uL && g.uL.keys) g.uL.keys.length = 0;
+        if (g.Oy) {
           try {
-            if (g.Aa.oa && typeof g.Aa.oa.clear === "function") g.Aa.oa.clear();
-            else g.Aa.oa = new Set();
-            if (g.Aa.d_ && typeof g.Aa.d_.clear === "function") g.Aa.d_.clear();
-            else g.Aa.d_ = new Set();
+            if (g.Oy.WJ && typeof g.Oy.WJ.clear === "function") g.Oy.WJ.clear();
+            else g.Oy.WJ = new Set();
+            if (g.Oy.targets && typeof g.Oy.targets.clear === "function") g.Oy.targets.clear();
+            else g.Oy.targets = new Set();
           } catch (_s) {
-            g.Aa.oa = new Set();
-            g.Aa.d_ = new Set();
+            g.Oy.WJ = new Set();
+            g.Oy.targets = new Set();
           }
         }
-        const tKeep = window.slot_make_apple(g.wa, { x: 5, y: 8 });
-        const tKey = window.slot_make_apple(g.wa, { x: 7, y: 8 });
+        const tKeep = window.slot_make_apple(g.oa, { x: 5, y: 8 });
+        const tKey = window.slot_make_apple(g.oa, { x: 7, y: 8 });
         window.assignSlotMode(tKeep);
         tKey.slotMode = 8;
-        g.wa.ka.push(tKeep, tKey);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(tKeep, tKey);
+        window.appleArray = g.oa.ka;
         eatBadge(tKey, 8);
         const tallyMidStore = (window.__slotSpecialStore || []).slice();
         const tallyMidFruit = fruitCount();
 
-        g.wa.ka.length = 0;
-        if (g.Ba && g.Ba.keys) g.Ba.keys.length = 0;
-        const tLast = window.slot_make_apple(g.wa, { x: 6, y: 8 });
+        g.oa.ka.length = 0;
+        if (g.uL && g.uL.keys) g.uL.keys.length = 0;
+        const tLast = window.slot_make_apple(g.oa, { x: 6, y: 8 });
         tLast.slotMode = 3;
-        g.wa.ka.push(tLast);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(tLast);
+        window.appleArray = g.oa.ka;
         window.__slotQ6E = function (ba) {
           ba.keys = ba.keys || [];
           ba.keys.push({
             type: 1,
             pos: { x: 1, y: 1 },
-            r7a: { x: 2, y: 1 },
+            q7a: { x: 2, y: 1 },
           });
         };
         eatBadge(tLast, 3);
-        const tallyKeys = (g.Ba && g.Ba.keys && g.Ba.keys.length) | 0;
-        const tallyFruits = g.wa.ka.filter((f) => f && !f.Oka && !f.isPiece);
+        const tallyKeys = (g.uL && g.uL.keys && g.uL.keys.length) | 0;
+        const tallyFruits = g.oa.ka.filter((f) => f && !f.Bea && !f.isPiece);
         const tallyStore = (window.__slotSpecialStore || []).slice();
 
         return {
@@ -6390,7 +6399,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           tallyKeys,
           tallyFruitCount: tallyFruits.length,
           tallyStore,
-          tallyIndex: g.wa.wa | 0,
+          tallyIndex: g.oa.wa | 0,
         };
       });
 
@@ -6428,13 +6437,13 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         g.settings.ka = 5;
         g.settings.Ca = 5;
-        g.kc = false;
+        g.Qb = false;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
 
         function eatBadge(fruit, mode) {
           fruit.slotMode = mode;
@@ -6444,47 +6453,47 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           window.__slotEating = true;
           window.setSlotActive(mode, g);
           window.slot_eat_respawn(g);
-          const ix = g.wa.ka.indexOf(fruit);
-          if (ix >= 0) g.wa.ka.splice(ix, 1);
-          window.appleArray = g.wa.ka;
+          const ix = g.oa.ka.indexOf(fruit);
+          if (ix >= 0) g.oa.ka.splice(ix, 1);
+          window.appleArray = g.oa.ka;
         }
 
         // Mid-board portal stores (no plant).
-        g.wa.ka.length = 0;
-        const a = window.slot_make_apple(g.wa, { x: 5, y: 5 });
-        const b = window.slot_make_apple(g.wa, { x: 7, y: 5 });
+        g.oa.ka.length = 0;
+        const a = window.slot_make_apple(g.oa, { x: 5, y: 5 });
+        const b = window.slot_make_apple(g.oa, { x: 7, y: 5 });
         window.assignSlotMode(a);
         b.slotMode = 2;
-        g.wa.ka.push(a, b);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(a, b);
+        window.appleArray = g.oa.ka;
         eatBadge(b, 2);
         const midStore = (window.__slotSpecialStore || []).slice();
-        const midPortals = g.wa.ka.filter((f) => f && f.__slotPortal).length;
+        const midPortals = g.oa.ka.filter((f) => f && f.__slotPortal).length;
 
         // Empty with leftover key entity + stored portal → still plant 24 units.
-        g.wa.ka.length = 0;
-        g.kc = false;
-        if (g.Ba) {
-          g.Ba.keys = [
+        g.oa.ka.length = 0;
+        g.Qb = false;
+        if (g.uL) {
+          g.uL.keys = [
             {
               type: 0,
               pos: { x: 1, y: 1 },
-              r7a: { x: 2, y: 1 },
+              q7a: { x: 2, y: 1 },
             },
           ];
         }
         window.__slotSpecialStore = [2];
-        const last = window.slot_make_apple(g.wa, { x: 6, y: 6 });
+        const last = window.slot_make_apple(g.oa, { x: 6, y: 6 });
         last.slotMode = 3;
-        g.wa.ka.push(last);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(last);
+        window.appleArray = g.oa.ka;
         eatBadge(last, 3);
 
-        const portals = g.wa.ka.filter((f) => f && f.__slotPortal).length;
-        const fruits = g.wa.ka.filter((f) => f && !f.Oka && !f.isPiece).length;
+        const portals = g.oa.ka.filter((f) => f && f.__slotPortal).length;
+        const fruits = g.oa.ka.filter((f) => f && !f.Bea && !f.isPiece).length;
         // 1 portal unit (2 apples) + 23 badge = 25 fruits; 24 units.
         const storeLeft = (window.__slotSpecialStore || []).slice();
-        const keysLeft = (g.Ba && g.Ba.keys && g.Ba.keys.length) | 0;
+        const keysLeft = (g.uL && g.uL.keys && g.uL.keys.length) | 0;
 
         return {
           midStore,
@@ -6493,7 +6502,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           fruits,
           storeLeft,
           keysLeft,
-          kc: !!g.kc,
+          kc: !!g.Qb,
         };
       });
 
@@ -6520,43 +6529,43 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       });
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        g.Sh = 0;
+        g.Bi = 0;
         window.cat_check_score_win = () => false;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
         window.__slotWrapActives && window.__slotWrapActives();
         window.setSlotActive(21, g);
 
-        g.wa.ka.length = 0;
-        const piece = window.slot_make_apple(g.wa, { x: 5, y: 5 });
+        g.oa.ka.length = 0;
+        const piece = window.slot_make_apple(g.oa, { x: 5, y: 5 });
         piece.isPiece = true;
         piece.ChessPiece = "knight";
         piece.ChessColor = "b";
-        piece.nba = new Set(["UP", "DOWN", "LEFT", "RIGHT"]);
-        const other = window.slot_make_apple(g.wa, { x: 12, y: 12 });
+        piece.h7 = new Set(["UP", "DOWN", "LEFT", "RIGHT"]);
+        const other = window.slot_make_apple(g.oa, { x: 12, y: 12 });
         other.slotMode = 3;
-        g.wa.ka.push(piece, other);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(piece, other);
+        window.appleArray = g.oa.ka;
         window.head_state = "OPEN";
         window.shield_all();
         const afterShield =
-          piece.nba && typeof piece.nba.size === "number" ? piece.nba.size : 0;
+          piece.h7 && typeof piece.h7.size === "number" ? piece.h7.size : 0;
 
-        const head = g.oa.ka[0];
-        g.oa.direction = "RIGHT";
-        g.oa.Ca = "RIGHT";
+        const head = g.Yc.ka[0];
+        g.Yc.direction = "RIGHT";
+        g.Yc.Ka = "RIGHT";
         piece.pos.x = head.x + 1;
         piece.pos.y = head.y;
-        const before = g.wa.ka.length;
+        const before = g.oa.ka.length;
         g.tick();
         return {
           peaceful: window.chess_peaceful_active(g),
           afterShield,
           before,
-          after: g.wa.ka.length,
-          pieceGone: !g.wa.ka.includes(piece),
-          nj: !!g.nj,
+          after: g.oa.ka.length,
+          pieceGone: !g.oa.ka.includes(piece),
+          nj: !!g.uj,
           just_ate: window.just_ate,
           head_state: window.head_state,
         };
@@ -6586,48 +6595,48 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
-        g.nj = false;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
+        g.uj = false;
         window.slot_reset_state();
         window.__slotWrapActives && window.__slotWrapActives();
         // Peaceful roll while already carrying must not wipe Chess locks.
         window.setSlotActive(21, g);
         window.cat_peaceful_ticks = 40;
 
-        g.wa.ka.length = 0;
-        const white = window.slot_make_apple(g.wa, { x: 10, y: 8 });
+        g.oa.ka.length = 0;
+        const white = window.slot_make_apple(g.oa, { x: 10, y: 8 });
         white.isPiece = true;
         white.ChessPiece = "rook";
         white.ChessColor = "w";
         white.type = window.wrook != null ? window.wrook : 1;
-        const black = window.slot_make_apple(g.wa, { x: 12, y: 8 });
+        const black = window.slot_make_apple(g.oa, { x: 12, y: 8 });
         black.isPiece = true;
         black.ChessPiece = "pawn";
         black.ChessColor = "b";
         black.type = window.bpawn != null ? window.bpawn : 2;
-        const keep = window.slot_make_apple(g.wa, { x: 14, y: 10 });
+        const keep = window.slot_make_apple(g.oa, { x: 14, y: 10 });
         keep.isPiece = true;
         keep.ChessPiece = "bishop";
         keep.ChessColor = "w";
         keep.type = window.wbishop != null ? window.wbishop : 3;
-        g.wa.ka.push(white, black, keep);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(white, black, keep);
+        window.appleArray = g.oa.ka;
 
         window.head_state = "queen";
         window.head_color = "w";
         window.shield_all();
         const lockSize =
-          black.nba && typeof black.nba.size === "number" ? black.nba.size : 0;
+          black.h7 && typeof black.h7.size === "number" ? black.h7.size : 0;
 
         const counts = () => {
           let w = 0;
           let b = 0;
-          for (const f of g.wa.ka) {
+          for (const f of g.oa.ka) {
             if (!f || !f.isPiece) continue;
             if (f.ChessColor === "w") w++;
             if (f.ChessColor === "b") b++;
           }
-          return { w, b, n: g.wa.ka.filter((f) => f && f.isPiece).length };
+          return { w, b, n: g.oa.ka.filter((f) => f && f.isPiece).length };
         };
         const before = counts();
 
@@ -6637,20 +6646,20 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const eatenCell = { x: black.pos.x | 0, y: black.pos.y | 0 };
         window.chess_on_second_piece_eat(black);
         // Simulate native splice of the eaten apple.
-        const ix = g.wa.ka.indexOf(black);
-        if (ix >= 0) g.wa.ka.splice(ix, 1);
-        window.appleArray = g.wa.ka;
+        const ix = g.oa.ka.indexOf(black);
+        if (ix >= 0) g.oa.ka.splice(ix, 1);
+        window.appleArray = g.oa.ka;
         window.slot_free_pos = savedFree;
 
         const after = counts();
-        const atOld = g.wa.ka.some(
+        const atOld = g.oa.ka.some(
           (f) =>
             f &&
             f.pos &&
             (f.pos.x | 0) === eatenCell.x &&
             (f.pos.y | 0) === eatenCell.y
         );
-        const relocated = g.wa.ka.some(
+        const relocated = g.oa.ka.some(
           (f) =>
             f &&
             f.isPiece &&
@@ -6663,22 +6672,22 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         // Fail path: no free cell → opposite exit; eaten still spliced away.
         window.head_state = "rook";
         window.head_color = "w";
-        const opp = window.slot_make_apple(g.wa, { x: 11, y: 6 });
+        const opp = window.slot_make_apple(g.oa, { x: 11, y: 6 });
         opp.isPiece = true;
         opp.ChessPiece = "knight";
         opp.ChessColor = "b";
-        g.wa.ka.push(opp);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(opp);
+        window.appleArray = g.oa.ka;
         window.slot_free_pos = () => null;
         const savedFind = window.chess_find_legal_spawn;
         window.chess_find_legal_spawn = () => null;
         window.chess_on_second_piece_eat(opp);
-        const failIx = g.wa.ka.indexOf(opp);
-        if (failIx >= 0) g.wa.ka.splice(failIx, 1);
-        window.appleArray = g.wa.ka;
+        const failIx = g.oa.ka.indexOf(opp);
+        if (failIx >= 0) g.oa.ka.splice(failIx, 1);
+        window.appleArray = g.oa.ka;
         window.slot_free_pos = savedFree;
         window.chess_find_legal_spawn = savedFind;
-        const failAtOld = g.wa.ka.some(
+        const failAtOld = g.oa.ka.some(
           (f) =>
             f && f.pos && (f.pos.x | 0) === 11 && (f.pos.y | 0) === 6
         );
@@ -6723,22 +6732,22 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         g.settings.ka = 1; // 3a-ish board via manual fruit
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
         window.bombFruit_reset_state && window.bombFruit_reset_state();
 
-        g.wa.ka.length = 0;
-        const leftA = window.slot_make_apple(g.wa, { x: 4, y: 4 });
-        const leftB = window.slot_make_apple(g.wa, { x: 6, y: 4 });
-        const bomb = window.slot_make_apple(g.wa, { x: 8, y: 4 });
+        g.oa.ka.length = 0;
+        const leftA = window.slot_make_apple(g.oa, { x: 4, y: 4 });
+        const leftB = window.slot_make_apple(g.oa, { x: 6, y: 4 });
+        const bomb = window.slot_make_apple(g.oa, { x: 8, y: 4 });
         leftA.slotMode = 3;
         leftB.slotMode = 1;
         bomb.slotMode = 28;
-        g.wa.ka.push(leftA, leftB, bomb);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(leftA, leftB, bomb);
+        window.appleArray = g.oa.ka;
 
         // Prior bomb plant on this fruit (idle ring + snap) — eat must not
         // leave a linger radius on the old cell or zone leftovers.
@@ -6761,31 +6770,31 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.__slotEatenMode = 28;
         window.__slotEating = true;
         window.setSlotActive(28, g);
-        const beforeLen = g.wa.ka.length;
+        const beforeLen = g.oa.ka.length;
         window.slot_eat_respawn(g);
-        const ix = g.wa.ka.indexOf(bomb);
-        if (ix >= 0) g.wa.ka.splice(ix, 1);
-        window.appleArray = g.wa.ka;
+        const ix = g.oa.ka.indexOf(bomb);
+        if (ix >= 0) g.oa.ka.splice(ix, 1);
+        window.appleArray = g.oa.ka;
 
         // Simulate tick/draw paths that used to zone every apple.
         if (typeof window.bombFruit_tick_logic === "function") {
           window.bombFruit_tick_logic(g);
         }
         if (typeof window.bombFruit_plant_layout_zones === "function") {
-          window.bombFruit_plant_layout_zones(g.wa, false);
+          window.bombFruit_plant_layout_zones(g.oa, false);
         }
         if (typeof window.bombFruit_after_respawn === "function") {
-          window.bombFruit_after_respawn(g.wa, 1, false);
+          window.bombFruit_after_respawn(g.oa, 1, false);
         }
         if (typeof window.bombFruit_refresh_snap === "function") {
-          window.bombFruit_refresh_snap(g.wa);
+          window.bombFruit_refresh_snap(g.oa);
         }
 
         const zones = window.__bombFruitZones || [];
         const zoneKeys = new Set(
           zones.map((z) => (z ? z.x + "," + z.y : ""))
         );
-        const fruits = g.wa.ka.filter((f) => f && !f.Oka && !f.isPiece);
+        const fruits = g.oa.ka.filter((f) => f && !f.Bea && !f.isPiece);
         const marked = fruits.filter((f) => f.__slotBombPlant);
         const unmarked = fruits.filter((f) => !f.__slotBombPlant);
         const unmarkedZoned = unmarked.filter((f) => {
@@ -6844,19 +6853,19 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
         window.bombFruit_reset_state && window.bombFruit_reset_state();
 
-        g.wa.ka.length = 0;
-        const left = window.slot_make_apple(g.wa, { x: 4, y: 4 });
-        const bombBadge = window.slot_make_apple(g.wa, { x: 8, y: 4 });
+        g.oa.ka.length = 0;
+        const left = window.slot_make_apple(g.oa, { x: 4, y: 4 });
+        const bombBadge = window.slot_make_apple(g.oa, { x: 8, y: 4 });
         left.slotMode = 3;
         bombBadge.slotMode = 28;
-        g.wa.ka.push(left, bombBadge);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(left, bombBadge);
+        window.appleArray = g.oa.ka;
 
         window.just_ate = "fruit";
         window.__slotEatenFruit = bombBadge;
@@ -6864,11 +6873,11 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.__slotEating = true;
         window.setSlotActive(28, g);
         window.slot_eat_respawn(g);
-        const ix = g.wa.ka.indexOf(bombBadge);
-        if (ix >= 0) g.wa.ka.splice(ix, 1);
-        window.appleArray = g.wa.ka;
+        const ix = g.oa.ka.indexOf(bombBadge);
+        if (ix >= 0) g.oa.ka.splice(ix, 1);
+        window.appleArray = g.oa.ka;
 
-        const plantsAfterArm = g.wa.ka.filter((f) => f && f.__slotBombPlant);
+        const plantsAfterArm = g.oa.ka.filter((f) => f && f.__slotBombPlant);
         const plant = plantsAfterArm[0];
         const plantPos = plant && plant.pos
           ? { x: plant.pos.x | 0, y: plant.pos.y | 0 }
@@ -6890,17 +6899,17 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.__slotEating = true;
         window.setSlotActive(3, g);
         window.slot_eat_respawn(g);
-        const lix = g.wa.ka.indexOf(left);
-        if (lix >= 0) g.wa.ka.splice(lix, 1);
-        window.appleArray = g.wa.ka;
+        const lix = g.oa.ka.indexOf(left);
+        if (lix >= 0) g.oa.ka.splice(lix, 1);
+        window.appleArray = g.oa.ka;
         if (typeof window.bombFruit_after_respawn === "function") {
-          window.bombFruit_after_respawn(g.wa, 1, false);
+          window.bombFruit_after_respawn(g.oa, 1, false);
         }
         if (typeof window.bombFruit_tick_logic === "function") {
           window.bombFruit_tick_logic(g);
         }
 
-        const fruits = g.wa.ka.filter((f) => f && !f.Oka && !f.isPiece);
+        const fruits = g.oa.ka.filter((f) => f && !f.Bea && !f.isPiece);
         const marked = fruits.filter((f) => f.__slotBombPlant);
         const unmarked = fruits.filter((f) => !f.__slotBombPlant);
         const unmarkedZoned = unmarked.filter((f) => {
@@ -6959,13 +6968,13 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         const g = window.__remixGame;
         window.__remixGame = g;
         window.CurrentModeNum = window.SLOT_MACHINE_MODE;
-        g.settings.ub = window.SLOT_MACHINE_MODE;
+        g.settings.yb = window.SLOT_MACHINE_MODE;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
         window.bombFruit_reset_state && window.bombFruit_reset_state();
 
-        const head = g.oa && g.oa.ka && g.oa.ka[0];
+        const head = g.Yc && g.Yc.ka && g.Yc.ka[0];
         if (!head) return { error: "no head" };
         // Leftovers deliberately inside Manhattan ≤3 of head — sync used to
         // treat them as brandNew and relocate via spawn radius.
@@ -6982,15 +6991,15 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           y: head.y | 0,
         };
 
-        g.wa.ka.length = 0;
-        const leftA = window.slot_make_apple(g.wa, nearA);
-        const leftB = window.slot_make_apple(g.wa, nearB);
-        const bomb = window.slot_make_apple(g.wa, bombPos);
+        g.oa.ka.length = 0;
+        const leftA = window.slot_make_apple(g.oa, nearA);
+        const leftB = window.slot_make_apple(g.oa, nearB);
+        const bomb = window.slot_make_apple(g.oa, bombPos);
         leftA.slotMode = 3;
         leftB.slotMode = 1;
         bomb.slotMode = 28;
-        g.wa.ka.push(leftA, leftB, bomb);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(leftA, leftB, bomb);
+        window.appleArray = g.oa.ka;
 
         window.bombFruit_init_apple(bomb);
         window.bombFruit_ensure_zone(bomb.pos.x, bomb.pos.y, -1);
@@ -7024,21 +7033,21 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.__slotEating = true;
         window.setSlotActive(28, g);
         window.slot_eat_respawn(g);
-        const ix = g.wa.ka.indexOf(bomb);
-        if (ix >= 0) g.wa.ka.splice(ix, 1);
-        window.appleArray = g.wa.ka;
+        const ix = g.oa.ka.indexOf(bomb);
+        if (ix >= 0) g.oa.ka.splice(ix, 1);
+        window.appleArray = g.oa.ka;
 
         if (typeof window.bombFruit_after_respawn === "function") {
-          window.bombFruit_after_respawn(g.wa, 1, false);
+          window.bombFruit_after_respawn(g.oa, 1, false);
         }
         if (typeof window.bombFruit_sync_fruit_bombs === "function") {
-          window.bombFruit_sync_fruit_bombs(g.wa);
+          window.bombFruit_sync_fruit_bombs(g.oa);
         }
         if (typeof window.bombFruit_tick_logic === "function") {
           window.bombFruit_tick_logic(g);
         }
         if (typeof window.bombFruit_refresh_snap === "function") {
-          window.bombFruit_refresh_snap(g.wa);
+          window.bombFruit_refresh_snap(g.oa);
         }
 
         return {
@@ -7053,7 +7062,7 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
           movedB:
             (leftB.pos.x | 0) !== beforeB.x || (leftB.pos.y | 0) !== beforeB.y,
           snapLen: (window.__bombFruitAppleSnap || []).length,
-          fruitLen: g.wa.ka.filter((f) => f && !f.Oka && !f.isPiece).length,
+          fruitLen: g.oa.ka.filter((f) => f && !f.Bea && !f.isPiece).length,
           syncGated: !!(
             window.bombFruit_sync_fruit_bombs &&
             window.bombFruit_sync_fruit_bombs.__slotGate
@@ -7086,22 +7095,22 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
       const result = await h.page.evaluate(() => {
         const g = window.__remixGame;
         window.slot_reset_state();
-        g.wa.reset();
-        window.slot_after_layout(g.wa);
+        g.oa.reset();
+        window.slot_after_layout(g.oa);
         const origFree = window.slot_free_pos;
         window.slot_free_pos = () => null;
 
         // --- siblings present: spawn fail must not win ---
-        g.nj = false;
-        g.ub = false;
+        g.uj = false;
+        g.Za = false;
         g.lj = false;
-        g.wa.ka.length = 0;
-        const a = window.slot_make_apple(g.wa, { x: 4, y: 4 });
-        const b = window.slot_make_apple(g.wa, { x: 6, y: 4 });
+        g.oa.ka.length = 0;
+        const a = window.slot_make_apple(g.oa, { x: 4, y: 4 });
+        const b = window.slot_make_apple(g.oa, { x: 6, y: 4 });
         a.slotMode = 1;
         b.slotMode = 3;
-        g.wa.ka.push(a, b);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(a, b);
+        window.appleArray = g.oa.ka;
         window.just_ate = "fruit";
         window.__slotEatenFruit = a;
         window.__slotEatenMode = 1;
@@ -7109,20 +7118,20 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         window.setSlotActive(1, g);
         window.slot_eat_respawn(g);
         const withSiblings = {
-          nj: !!g.nj,
-          ub: !!g.ub,
-          len: g.wa.ka.filter((f) => f && f !== a).length,
+          nj: !!g.uj,
+          ub: !!g.Za,
+          len: g.oa.ka.filter((f) => f && f !== a).length,
         };
 
         // --- last fruit + spawn fail: win immediately (pre-splice) ---
-        g.nj = false;
-        g.ub = false;
+        g.uj = false;
+        g.Za = false;
         g.lj = false;
-        g.wa.ka.length = 0;
-        const last = window.slot_make_apple(g.wa, { x: 8, y: 5 });
+        g.oa.ka.length = 0;
+        const last = window.slot_make_apple(g.oa, { x: 8, y: 5 });
         last.slotMode = 1;
-        g.wa.ka.push(last);
-        window.appleArray = g.wa.ka;
+        g.oa.ka.push(last);
+        window.appleArray = g.oa.ka;
         window.just_ate = "fruit";
         window.__slotEatenFruit = last;
         window.__slotEatenMode = 1;
@@ -7155,11 +7164,11 @@ describe("Slot Machine mode (browser)", { skip: !runBrowser }, () => {
         };
         window.slot_eat_respawn(g);
         const lastFruit = {
-          nj: !!g.nj,
-          ub: !!g.ub,
+          nj: !!g.uj,
+          ub: !!g.Za,
           lj: !!g.lj,
           // eaten still in ka until native splice
-          lenIncludingEaten: g.wa.ka.length,
+          lenIncludingEaten: g.oa.ka.length,
           timerStopped: !!(
             window.timeKeeper && window.timeKeeper.playing === false
           ),

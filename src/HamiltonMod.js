@@ -898,8 +898,10 @@ window.HamiltonMod.alterSnakeCode = function (code) {
       "window.wallCoords=[];window.HamiltonMod&&window.HamiltonMod.onGameReset();"
     );
   } else {
-    // Stock / lightly patched dumps: ";this.reset()}}" or "this.reset();;;;}}"
-    const reset_regex = /;?this\.reset\(\);*\}{2}/;
+    // Stock dumps. v13's settings-apply method ended ";this.reset()}}"; in v14
+    // it is a standalone function ending ";a.reset();return!0}" (the old
+    // `this.reset()}}` shape now only matches an unrelated touch handler).
+    const reset_regex = /;?a\.reset\(\);*return!0\}/;
     window.catchError(reset_regex, code);
     if (!window.wallCoords) window.wallCoords = [];
     code = code.assertReplace(

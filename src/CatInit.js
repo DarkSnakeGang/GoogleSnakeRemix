@@ -5,7 +5,7 @@ window.CatMod = {};
 ////////////////////////////////////////////////////////////////////
 
 window.CatMod.runCodeBefore = function () {
-  console.log("Adding Cat Mode (v13)");
+  console.log("Adding Cat Mode (v14)");
 
   window.CAT_PEACEFUL_ALPHA = 0.75;
   window.CAT_LIFE_EVERY = 5;
@@ -157,7 +157,7 @@ window.CatMod.runCodeBefore = function () {
 ////////////////////////////////////////////////////////////////////
 
 window.CatMod.alterSnakeCode = function (code) {
-  console.log("Coding Cat Mode into the game (v13)");
+  console.log("Coding Cat Mode into the game (v14)");
 
   // Never abort the whole Ultra/Remix alter chain on a missed optional patch.
   function catReplace(label, re, replacement) {
@@ -181,9 +181,9 @@ window.CatMod.alterSnakeCode = function (code) {
     const g = window.__remixGame;
     const mode =
       g && g.settings
-        ? g.settings.ub != null
-          ? g.settings.ub
-          : g.settings.ob
+        ? g.settings.yb != null
+          ? g.settings.yb
+          : g.settings.wb
         : null;
     if (mode === window.CAT_MODE) return true;
     if (mode === 22 && window.cat_blending) return true;
@@ -205,10 +205,10 @@ window.CatMod.alterSnakeCode = function (code) {
 
   window.cat_on_apple_eaten = function cat_on_apple_eaten(game) {
     if (!window.isCatActive || !window.isCatActive()) return;
-    const sh = (game && game.Sh) | 0;
+    const sh = (game && game.Bi) | 0;
     const every = window.CAT_LIFE_EVERY | 5;
     const max = window.CAT_MAX_LIVES | 9;
-    // +1 life every 5 apples (not floor(Sh/5) — spending must stick).
+    // +1 life every 5 apples (not floor(Bi/5) — spending must stick).
     if (sh > 0 && sh % every === 0) {
       window.cat_lives = Math.min(max, (window.cat_lives | 0) + 1);
     }
@@ -218,8 +218,8 @@ window.CatMod.alterSnakeCode = function (code) {
   };
 
   // Spend a life instead of dying. Returns true if death should be cancelled.
-  // Oa() runs after the fatal cell is already applied, so border hits land
-  // off-board (e.g. x=-1) before e7(21) can wrap. Re-apply Peaceful wrap
+  // Ka() runs after the fatal cell is already applied, so border hits land
+  // off-board (e.g. x=-1) before M7(21) can wrap. Re-apply Peaceful wrap
   // immediately so the same tick teleports like native Peaceful.
   window.cat_board_size = function cat_board_size(game) {
     const g = game || window.__remixGame;
@@ -230,14 +230,14 @@ window.CatMod.alterSnakeCode = function (code) {
         height: g.ka.oa.height | 0,
       };
     }
-    if (g && g.Ca && Array.isArray(g.Ca.wa) && g.Ca.wa.length) {
+    if (g && g.Tw && Array.isArray(g.Tw.oa) && g.Tw.oa.length) {
       return {
-        width: g.Ca.wa[0] ? g.Ca.wa[0].length : 0,
-        height: g.Ca.wa.length,
+        width: g.Tw.oa[0] ? g.Tw.oa[0].length : 0,
+        height: g.Tw.oa.length,
       };
     }
     if (typeof window.chess_board_size === "function" && g) {
-      const board = g.ka || g.wa || g;
+      const board = g.ka || g.oa || g;
       return window.chess_board_size(board) || { width: 0, height: 0 };
     }
     return { width: 0, height: 0 };
@@ -257,7 +257,7 @@ window.CatMod.alterSnakeCode = function (code) {
     const g = game || window.__remixGame;
     if (!g) return false;
     try {
-      if (typeof e7 === "function" && g.settings && e7(g.settings, 2)) return true;
+      if (typeof M7 === "function" && g.settings && M7(g.settings, 2)) return true;
     } catch (_e) {}
     if (window.isChessActive && window.isChessActive()) return true;
     if (window.isMexicoActive && window.isMexicoActive()) return true;
@@ -277,7 +277,7 @@ window.CatMod.alterSnakeCode = function (code) {
     if (!g) return 0;
     const cap = window.cat_max_score(g) | 0;
     if (!cap) return 0;
-    const score = (g.Sh != null ? g.Sh : g.Oh) | 0;
+    const score = g.Bi | 0;
     return Math.max(0, cap - score);
   };
 
@@ -300,7 +300,7 @@ window.CatMod.alterSnakeCode = function (code) {
     const g = game || window.__remixGame;
     if (!g) return 0;
     const max = window.cat_max_apples_on_board(g);
-    const cur = (g.wa && g.wa.ka && g.wa.ka.length) | 0;
+    const cur = (g.oa && g.oa.ka && g.oa.ka.length) | 0;
     const rem = aboutToRemove == null ? 1 : aboutToRemove | 0;
     const after = Math.max(0, cur - rem);
     return Math.max(0, max - after);
@@ -325,30 +325,30 @@ window.CatMod.alterSnakeCode = function (code) {
   window.cat_enforce_fruit_cap = function cat_enforce_fruit_cap(game) {
     if (!window.isCatActive || !window.isCatActive()) return 0;
     const g = game || window.__remixGame;
-    if (!g || !g.wa || !Array.isArray(g.wa.ka)) return 0;
+    if (!g || !g.oa || !Array.isArray(g.oa.ka)) return 0;
     const paired = window.cat_pair_scoring(g);
     let max = window.cat_max_apples_on_board(g);
     if (paired) max -= max % 2;
     let removed = 0;
-    while (g.wa.ka.length > max) {
-      if (paired && g.wa.ka.length >= 2) {
-        g.wa.ka.pop();
-        g.wa.ka.pop();
+    while (g.oa.ka.length > max) {
+      if (paired && g.oa.ka.length >= 2) {
+        g.oa.ka.pop();
+        g.oa.ka.pop();
         removed += 2;
       } else {
-        g.wa.ka.pop();
+        g.oa.ka.pop();
         removed++;
       }
     }
-    window.appleArray = g.wa.ka;
+    window.appleArray = g.oa.ka;
     return removed;
   };
 
   window.cat_trigger_win = function cat_trigger_win(game) {
     if (!game) return;
-    if (game.nj || game.lj) return;
+    if (game.uj) return;
     // Slot Machine: same board-fill win, but use Slot's native-style path
-    // (gotAll + ub/nj + end menu). Plain nj+lj never opens the win screen.
+    // (gotAll Za + uj + end menu). Plain uj never opens the win screen.
     if (
       window.isSlotMachineActive &&
       window.isSlotMachineActive() &&
@@ -358,15 +358,14 @@ window.CatMod.alterSnakeCode = function (code) {
       return;
     }
     try {
-      if (typeof Q4E !== "undefined" && Q4E.rWd && Q4E.rWd.play) Q4E.rWd.play();
-      else if (typeof ybF !== "undefined" && ybF.WIN) ybF.WIN.play();
+      if (typeof mqF !== "undefined" && mqF.WIN && mqF.WIN.play) mqF.WIN.play();
     } catch (_e) {}
-    game.nj = true;
-    game.lj = true;
+    // v14: game over is uj (v13 nj), win is Za (v13 ub), as in the native win.
+    game.Za = true;
+    game.uj = true;
     try {
-      const score = game.Sh != null ? game.Sh : game.Oh;
-      if (typeof A7E === "function") A7E(game.menu, 1400, score);
-      else if (typeof vdF === "function") vdF(game.menu, 1400, score);
+      const score = game.Bi;
+      if (typeof wsF === "function") wsF(game.menu, 1400, score);
       else if (typeof window.__slotShowEndMenu === "function")
         window.__slotShowEndMenu(game.menu, 1400, score);
     } catch (_e2) {}
@@ -376,13 +375,12 @@ window.CatMod.alterSnakeCode = function (code) {
   window.cat_check_score_win = function cat_check_score_win(game) {
     if (!window.isCatActive || !window.isCatActive()) return false;
     const g = game || window.__remixGame;
-    if (!g || g.nj || g.lj) return false;
+    if (!g || g.uj) return false;
     const cap = window.cat_max_score(g);
     if (!cap) return false;
-    let score = (g.Sh != null ? g.Sh : g.Oh) | 0;
+    let score = g.Bi | 0;
     if (score > cap) {
-      if (g.Sh != null) g.Sh = cap;
-      if (g.Oh != null) g.Oh = cap;
+      if (g.Bi != null) g.Bi = cap;
       score = cap;
     }
     if (score < cap) return false;
@@ -435,8 +433,8 @@ window.CatMod.alterSnakeCode = function (code) {
 
   window.cat_wrap_head_if_needed = function cat_wrap_head_if_needed(game) {
     const g = game || window.__remixGame;
-    if (!g || !g.oa || !Array.isArray(g.oa.ka) || !g.oa.ka.length) return false;
-    const head = g.oa.ka[0];
+    if (!g || !g.Yc || !Array.isArray(g.Yc.ka) || !g.Yc.ka.length) return false;
+    const head = g.Yc.ka[0];
     if (!head || head.x == null || head.y == null) return false;
     const sz = window.cat_board_size(g);
     const w = sz.width | 0;
@@ -467,7 +465,7 @@ window.CatMod.alterSnakeCode = function (code) {
     }
     if ((window.cat_lives | 0) <= 0) return false;
     window.cat_lives = (window.cat_lives | 0) - 1;
-    const sh = (game && game.Sh) | 0;
+    const sh = (game && game.Bi) | 0;
     // Half of (score + extra), rounded up.
     const grace = Math.ceil((sh + (window.CAT_GRACE_EXTRA | 3)) / 2);
     window.cat_peaceful_ticks = Math.max(window.cat_peaceful_ticks | 0, grace);
@@ -483,10 +481,10 @@ window.CatMod.alterSnakeCode = function (code) {
     }
     const g = game || window.__remixGame;
     if (!g) return;
-    if (window.__catLastSh != null && g.Sh > window.__catLastSh) {
+    if (window.__catLastSh != null && g.Bi > window.__catLastSh) {
       window.cat_on_apple_eaten(g);
     }
-    window.__catLastSh = g.Sh;
+    window.__catLastSh = g.Bi;
     if ((window.cat_peaceful_ticks | 0) > 0) {
       window.cat_peaceful_ticks = (window.cat_peaceful_ticks | 0) - 1;
     }
@@ -513,35 +511,35 @@ window.CatMod.alterSnakeCode = function (code) {
   };
 
   // --- Border wrap on life-spend (same tick as Peaceful) ---
-  // Sc(a) checks m7 then Oa; the off-board cell `a` is applied after Oa returns,
+  // Hl(a) checks X7 then Ka; the off-board cell `a` is applied after Ka returns,
   // so cancelling death alone leaves the head at x=-1 until the next tick.
-  // When Cat can absorb the hit, wrap `a` via native i7 before the m7/Oa check.
+  // When Cat can absorb the hit, wrap `a` via native U7 before the X7/Ka check.
   catReplace(
-    "Sc border wrap on life",
-    /Sc\(a\)\{m7\(this\.ka,a\)\|\|this\.Oa\(\);/,
-    `Sc(a){if(window.isCatActive&&window.isCatActive()&&!m7(this.ka,a)&&((window.cat_peaceful_ticks|0)>0||(window.cat_lives|0)>0)){if((window.cat_peaceful_ticks|0)<=0){window.cat_try_spend_life(this);}i7(this.ka,a);}m7(this.ka,a)||this.Oa();`
+    "Hl border wrap on life",
+    /Hl\(a\)\{X7\(this\.ka,a\)\|\|this\.Ka\(\);/,
+    `Hl(a){if(window.isCatActive&&window.isCatActive()&&!X7(this.ka,a)&&((window.cat_peaceful_ticks|0)>0||(window.cat_lives|0)>0)){if((window.cat_peaceful_ticks|0)<=0){window.cat_try_spend_life(this);}U7(this.ka,a);}X7(this.ka,a)||this.Ka();`
   );
 
-  // --- e7: temporary Peaceful (mode 21) while grace ticks remain ---
+  // --- M7: temporary Peaceful (mode 21) while grace ticks remain ---
   catReplace(
-    "e7 temporary Peaceful",
-    /if\(!r&&b===10&&window\.BURGER_MODE!=null\)\{if\(a\.ub===window\.BURGER_MODE\|\|a\.ub==='burger'\|\|a\.ob==='burger'\)return!0;if\(\(a\.ub===22\|\|a\.ub==='blender'\)&&a\.rSa&&a\.rSa\.has\(window\.BURGER_MODE\)\)return!0;if\(a\.Qa&&a\.Lc&&\(a\.Lc\.has\(window\.BURGER_MODE\)\|\|a\.Lc\.has\('burger'\)\)\)return!0;\}return r\}/,
-    `if(!r&&b===10&&window.BURGER_MODE!=null){if(a.ub===window.BURGER_MODE||a.ub==='burger'||a.ob==='burger')return!0;if((a.ub===22||a.ub==='blender')&&a.rSa&&a.rSa.has(window.BURGER_MODE))return!0;if(a.Qa&&a.Lc&&(a.Lc.has(window.BURGER_MODE)||a.Lc.has('burger')))return!0;}if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;return r}`
+    "M7 temporary Peaceful",
+    /if\(!r&&b===10&&window\.BURGER_MODE!=null\)\{if\(a\.yb===window\.BURGER_MODE\|\|a\.yb==='burger'\|\|a\.wb==='burger'\)return!0;if\(\(a\.yb===22\|\|a\.yb==='blender'\)&&a\.NSa&&a\.NSa\.has\(window\.BURGER_MODE\)\)return!0;if\(a\.La&&a\.jd&&\(a\.jd\.has\(window\.BURGER_MODE\)\|\|a\.jd\.has\('burger'\)\)\)return!0;\}return r\}/,
+    `if(!r&&b===10&&window.BURGER_MODE!=null){if(a.yb===window.BURGER_MODE||a.yb==='burger'||a.wb==='burger')return!0;if((a.yb===22||a.yb==='blender')&&a.NSa&&a.NSa.has(window.BURGER_MODE))return!0;if(a.La&&a.jd&&(a.jd.has(window.BURGER_MODE)||a.jd.has('burger')))return!0;}if(!r&&b===21&&window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)return!0;return r}`
   );
 
-  // --- Death intercept: Oa() is the real kill path (wall/self/poison crash) ---
+  // --- Death intercept: Ka() is the real kill path (wall/self/poison crash) ---
   catReplace(
-    "Oa() death entry",
-    /Oa\(\)\{if\(!this\.nj\)\{/,
-    `Oa(){if(window.isCatActive&&window.isCatActive()&&window.cat_try_spend_life(this))return;if(!this.nj){`
+    "Ka() death entry",
+    /Ka\(\)\{if\(!this\.uj\)\{/,
+    `Ka(){if(window.isCatActive&&window.isCatActive()&&window.cat_try_spend_life(this))return;if(!this.uj){`
   );
 
-  // Minesweeper A6E kills via Ub+Dc — never calls Oa(). Treat Cat life/grace
+  // Minesweeper urF kills directly — never calls Ka(). Treat Cat life/grace
   // like Peaceful so the mine arms instead of ending the run.
   catReplace(
-    "A6E mine death respects cat life",
-    /g!==0&&\(c\|\|!f\|\|g!==1\|\|e7\(a\.settings,21\)\?b\.X1a===-1&&\(b\.X1a=3\):\(h=!0,s5E\.Ktc\.play\(\),d\(\),y6E\(a\.Ca\),a\.Ca\.Ka=0,e\(\)\)\)/,
-    "g!==0&&(c||!f||g!==1||e7(a.settings,21)||window.isCatActive&&window.isCatActive()&&window.cat_try_spend_life(window.__remixGame||a.wb)?b.X1a===-1&&(b.X1a=3):(h=!0,s5E.Ktc.play(),d(),y6E(a.Ca),a.Ca.Ka=0,e()))"
+    "urF mine death respects cat life",
+    /g!==0&&\(c\|\|!f\|\|g!==1\|\|M7\(a\.settings,21\)\?b\.nLa===-1&&\(b\.nLa=3\):\(h=!0,mqF\.Nuc\.play\(\),d\(\),srF\(a\.Yc\),a\.Yc\.Ga=0,e\(\)\)\)/,
+    "g!==0&&(c||!f||g!==1||M7(a.settings,21)||window.isCatActive&&window.isCatActive()&&window.cat_try_spend_life(window.__remixGame||a.wb)?b.nLa===-1&&(b.nLa=3):(h=!0,mqF.Nuc.play(),d(),srF(a.Yc),a.Yc.Ga=0,e()))"
   );
 
   // --- Tick: cat logic (always run so HUD hides when Cat is off) ---
@@ -560,12 +558,12 @@ window.CatMod.alterSnakeCode = function (code) {
     );
   }
 
-  // Cap classic Vm respawn: no new fruit once score room is exhausted / within reach.
-  // Mexico replaces the chess/portal prefix but leaves this Vm suffix intact.
+  // Cap classic Kc respawn: no new fruit once score room is exhausted / within reach.
+  // Mexico replaces the chess/portal prefix but leaves this Kc suffix intact.
   catReplace(
-    "Vm score-cap gate",
-    /e=a\.settings\.ka!==6&&\(d7\(a\.settings\)\|\|e7\(a\.settings,7\)\),e=a\.Vm\(k,!e,null\)\);/,
-    `e=a.settings.ka!==6&&(d7(a.settings)||e7(a.settings,7)),e=window.isCatActive&&window.isCatActive()&&window.cat_allows_fruit_spawn&&!window.cat_allows_fruit_spawn(a,1,1)?!1:a.Vm(k,!e,null));`
+    "Kc score-cap gate",
+    /e=a\.settings\.ka!==6&&\(Q7\(a\.settings\)\|\|M7\(a\.settings,7\)\),e=a\.Kc\(k,!e,null\)\);/,
+    `e=a.settings.ka!==6&&(Q7(a.settings)||M7(a.settings,7)),e=window.isCatActive&&window.isCatActive()&&window.cat_allows_fruit_spawn&&!window.cat_allows_fruit_spawn(a,1,1)?!1:a.Kc(k,!e,null));`
   );
 
   // --- Reset state (burger shield-init + tally paths) ---
@@ -616,19 +614,19 @@ window.CatMod.alterSnakeCode = function (code) {
   // Match quietly — missing Burger inject is expected when its patch drifts.
   {
     const tallyBurger =
-      /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\);(?:window\.burger_settings_snapshot&&window\.burger_settings_snapshot\(this\.settings\);window\.__burgerStartOk=!1;)?if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;(?:window\.burger_sanitize_start\?window\.burger_sanitize_start\(this\):)?window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/;
-    const tallyRaw = /this\.settings\.ka===6&&\(\$3E\(this\),this\.Ca=!1\)\}/;
+      /this\.settings\.ka===6&&\(qoF\(this\),this\.Ba=!1\);(?:window\.burger_settings_snapshot&&window\.burger_settings_snapshot\(this\.settings\);window\.__burgerStartOk=!1;)?if\(window\.isBurgerSettings&&window\.isBurgerSettings\(this\.settings\)\)\{try\{window\.burger_fruits_eaten=0;(?:window\.burger_sanitize_start\?window\.burger_sanitize_start\(this\):)?window\.burger_assign_timers_all\(this\.ka\);\}catch\(_be\)\{\}\}/;
+    const tallyRaw = /this\.settings\.ka===6&&\(qoF\(this\),this\.Ba=!1\)\}/;
     if (code.match(tallyBurger)) {
       catReplace(
         "tally reset after burger",
         tallyBurger,
-        `this.settings.ka===6&&($3E(this),this.Ca=!1);window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
+        `this.settings.ka===6&&(qoF(this),this.Ba=!1);window.burger_settings_snapshot&&window.burger_settings_snapshot(this.settings);window.__burgerStartOk=!1;if(window.isBurgerSettings&&window.isBurgerSettings(this.settings)){try{window.burger_fruits_eaten=0;window.burger_sanitize_start?window.burger_sanitize_start(this):window.burger_assign_timers_all(this.ka);}catch(_be){}}if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}`
       );
     } else if (code.match(tallyRaw)) {
       catReplace(
         "tally reset raw",
         tallyRaw,
-        `this.settings.ka===6&&($3E(this),this.Ca=!1);if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}}`
+        `this.settings.ka===6&&(qoF(this),this.Ba=!1);if(window.isCatActive&&window.isCatActive()){try{window.cat_reset_state();}catch(_cat){}}}`
       );
     }
   }
@@ -637,14 +635,14 @@ window.CatMod.alterSnakeCode = function (code) {
   if (
     catReplace(
       "snake render alpha",
-      /render\(a,b,c\)\{var d=a,e=Math\.pow\(d,\.2\);this\.wb\.nj&&/,
-      `render(a,b,c){var _catGa=this.ka.globalAlpha;if(window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)this.ka.globalAlpha=_catGa*(window.CAT_PEACEFUL_ALPHA||.75);var d=a,e=Math.pow(d,.2);this.wb.nj&&`
+      /render\(a,b,c\)\{var d=a,e=Math\.pow\(d,\.2\);this\.ub\.uj&&/,
+      `render(a,b,c){var _catGa=this.ka.globalAlpha;if(window.isCatActive&&window.isCatActive()&&(window.cat_peaceful_ticks|0)>0)this.ka.globalAlpha=_catGa*(window.CAT_PEACEFUL_ALPHA||.75);var d=a,e=Math.pow(d,.2);this.ub.uj&&`
     )
   ) {
     catReplace(
       "snake render alpha restore",
-      /J5E\(this,f,d,!1,!1\)\}/,
-      `J5E(this,f,d,!1,!1);this.ka.globalAlpha=_catGa;}`
+      /CqF\(this,f,d,!1\)\}/,
+      `CqF(this,f,d,!1);this.ka.globalAlpha=_catGa;}`
     );
   }
 
@@ -652,11 +650,11 @@ window.CatMod.alterSnakeCode = function (code) {
   if (code.indexOf("window.CAT_MODE)?window.CAT_ICON") < 0) {
     catReplace(
       "deathscreen Zb cat icon",
-      /\(a\.settings\.ob===window\.BURGER_MODE\)\?window\.BURGER_ICON:/,
-      `(a.settings.ob===window.BURGER_MODE)?window.BURGER_ICON:(a.settings.ob===window.CAT_MODE)?window.CAT_ICON:`
+      /\(a\.settings\.wb===window\.BURGER_MODE\)\?window\.BURGER_ICON:/,
+      `(a.settings.wb===window.BURGER_MODE)?window.BURGER_ICON:(a.settings.wb===window.CAT_MODE)?window.CAT_ICON:`
     );
     catReplace(
-      "blender b3E cat icon",
+      "blender PmF cat icon",
       /\(c===window\.BURGER_MODE\)\?window\.BURGER_ICON:/,
       `(c===window.BURGER_MODE)?window.BURGER_ICON:(c===window.CAT_MODE)?window.CAT_ICON:`
     );

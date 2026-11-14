@@ -13,27 +13,27 @@ function read(rel) {
 }
 
 describe("Chess + Portal combo (offline)", () => {
-  it("ChessInit gates P6E for pieces and notes portal twin on fruit", () => {
+  it("ChessInit gates MrF for pieces and notes portal twin on fruit", () => {
     const chess = read("src/ChessInit.js");
     assert.match(chess, /chess_portal_combo/);
     assert.match(chess, /just_ate==='piece'/);
     assert.match(chess, /chess_spawn_unlock_twin/);
     assert.match(chess, /chess_portal_note_fruit_twin/);
     assert.match(chess, /chess_portal_after_fruit_splice/);
-    assert.match(chess, /P6E\(a\.Sa,k,f,e,g\)/);
+    assert.match(chess, /MrF\(a\.La,k,f,e,g\)/);
     assert.match(chess, /_ti=k%2===0\?k\+1:k-1/);
-    assert.match(chess, /rSa\.has\(window\.CHESS_MODE\)/);
+    assert.match(chess, /NSa\.has\(window\.CHESS_MODE\)/);
     assert.match(
       chess,
       /chess_portal_combo\(\)\)\{window\.chess_portal_note_fruit_twin/
     );
     assert.match(
       chess,
-      /else if\(!\(a\.settings\.ka===4\|\|a\.settings\.ka===6\|\|\(a\.settings\.ka===5&&!a\.kc\)\)\)\{window\.chess_fruit_respawn/
+      /else if\(!\(a\.settings\.ka===4\|\|a\.settings\.ka===6\|\|\(a\.settings\.ka===5&&!a\.Qb\)\)\)\{window\.chess_fruit_respawn/
     );
     assert.match(chess, /chess_portal_combo_respawn/);
     assert.match(chess, /chess_spawn_n_pairs/);
-    assert.match(chess, /a\.wa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice/);
+    assert.match(chess, /a\.oa\.ka\.splice\(k,1\),k--,window\.chess_portal_after_fruit_splice/);
   });
 
   it("ChessInit clears locks under Peaceful/Cat and absorbs shield hits", () => {
@@ -45,7 +45,7 @@ describe("Chess + Portal combo (offline)", () => {
 
   it("Mexico eat patch matches Chess portal-combo spawn string", () => {
     const mx = read("src/MexicoInit.js");
-    assert.match(mx, /__chessMakeApple=g7/);
+    assert.match(mx, /__chessMakeApple=S7/);
     assert.match(mx, /chess_portal_note_fruit_twin/);
     assert.match(mx, /else if\(!\(a\.settings\.ka===4/);
     assert.match(
@@ -61,25 +61,25 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
       const g = window.__remixGame;
       window.chess_blending = true;
       window.CurrentModeNum = 22;
-      g.settings.ob = 22;
-      g.settings.ub = 22;
-      if (!g.settings.rSa) g.settings.rSa = new Set();
-      g.settings.rSa.add(window.CHESS_MODE);
-      g.settings.rSa.add(2);
-      g.wa.reset();
+      g.settings.wb = 22;
+      g.settings.yb = 22;
+      if (!g.settings.NSa) g.settings.NSa = new Set();
+      g.settings.NSa.add(window.CHESS_MODE);
+      g.settings.NSa.add(2);
+      g.oa.reset();
       // reset() must not drop blender portal bit
-      g.settings.rSa.add(window.CHESS_MODE);
-      g.settings.rSa.add(2);
-      g.settings.ub = 22;
-      g.settings.ob = 22;
+      g.settings.NSa.add(window.CHESS_MODE);
+      g.settings.NSa.add(2);
+      g.settings.yb = 22;
+      g.settings.wb = 22;
       window.CurrentModeNum = 22;
-      window.appleArray = g.wa.ka;
+      window.appleArray = g.oa.ka;
       return {
         chess: window.isChessActive(),
         combo: window.chess_portal_combo(),
-        apples: g.wa.ka.length,
-        pieces: g.wa.ka.filter((a) => a.isPiece).length,
-        rSa: [...g.settings.rSa],
+        apples: g.oa.ka.length,
+        pieces: g.oa.ka.filter((a) => a.isPiece).length,
+        rSa: [...g.settings.NSa],
       };
     });
   }
@@ -95,9 +95,9 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
 
       const r = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const apples = g.wa.ka;
-        const head = g.oa.ka[0];
-        g.oa.direction = "RIGHT";
+        const apples = g.oa.ka;
+        const head = g.Yc.ka[0];
+        g.Yc.direction = "RIGHT";
         window.head_state = "OPEN";
         window.shield_empty_all && window.shield_empty_all();
 
@@ -116,19 +116,19 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
         eaten.pos.y = head.y;
 
         const headBefore = { x: head.x, y: head.y };
-        const sh0 = g.Sh | 0;
+        const sh0 = g.Bi | 0;
         g.tick();
-        const headAfter = { x: g.oa.ka[0].x, y: g.oa.ka[0].y };
+        const headAfter = { x: g.Yc.ka[0].x, y: g.Yc.ka[0].y };
         return {
           just_ate: window.just_ate,
           head_state: window.head_state,
-          sh: g.Sh | 0,
+          sh: g.Bi | 0,
           sh0,
           headBefore,
           headAfter,
           teleportedToTwin:
             headAfter.x === twinPos.x && headAfter.y === twinPos.y,
-          appleCount: g.wa.ka.length,
+          appleCount: g.oa.ka.length,
         };
       });
 
@@ -154,27 +154,27 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
       const unlock = await h.page.evaluate(() => {
         const g = window.__remixGame;
         // Unlock at an ODD index — old insert-after pairing left an orphan twin.
-        const target = g.wa.ka[1];
+        const target = g.oa.ka[1];
         target.isPiece = true;
         target.ChessPiece = "pawn";
         target.ChessColor = "b";
-        g.wa.ka[0].isPiece = true;
-        g.wa.ka[0].ChessPiece = "rook";
-        g.wa.ka[0].ChessColor = "w";
-        const before = g.wa.ka.length;
+        g.oa.ka[0].isPiece = true;
+        g.oa.ka[0].ChessPiece = "rook";
+        g.oa.ka[0].ChessColor = "w";
+        const before = g.oa.ka.length;
         window.head_state = "rook";
         window.head_color = "w";
         window.selectedFruit = 0;
-        window.appleArray = g.wa.ka;
+        window.appleArray = g.oa.ka;
         const ok = window.capture_attempt(target.pos.x, target.pos.y);
         const fruits = [];
-        for (let i = 0; i < g.wa.ka.length; i++) {
-          if (g.wa.ka[i] && !g.wa.ka[i].isPiece) fruits.push(i);
+        for (let i = 0; i < g.oa.ka.length; i++) {
+          if (g.oa.ka[i] && !g.oa.ka[i].isPiece) fruits.push(i);
         }
         // Unlocked fruit and twin must occupy one even/odd portal pair.
         let paired = false;
-        for (let i = 0; i + 1 < g.wa.ka.length; i += 2) {
-          if (!g.wa.ka[i].isPiece && !g.wa.ka[i + 1].isPiece) {
+        for (let i = 0; i + 1 < g.oa.ka.length; i += 2) {
+          if (!g.oa.ka[i].isPiece && !g.oa.ka[i + 1].isPiece) {
             paired = true;
             break;
           }
@@ -182,7 +182,7 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
         return {
           ok,
           before,
-          after: g.wa.ka.length,
+          after: g.oa.ka.length,
           fruitCount: fruits.length,
           fruitIdxs: fruits,
           paired,
@@ -198,43 +198,43 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
 
       const eat = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const head = g.oa.ka[0];
-        g.oa.direction = "RIGHT";
+        const head = g.Yc.ka[0];
+        g.Yc.direction = "RIGHT";
         window.head_state = "OPEN";
         window.shield_empty_all && window.shield_empty_all();
 
         // Find a fruit pair (two consecutive non-pieces at even base).
         let fi = -1;
-        for (let i = 0; i + 1 < g.wa.ka.length; i += 2) {
-          if (!g.wa.ka[i].isPiece && !g.wa.ka[i + 1].isPiece) {
+        for (let i = 0; i + 1 < g.oa.ka.length; i += 2) {
+          if (!g.oa.ka[i].isPiece && !g.oa.ka[i + 1].isPiece) {
             fi = i;
             break;
           }
         }
         if (fi < 0) return { ok: false, reason: "need portal-paired fruits" };
-        const fruit = g.wa.ka[fi];
-        const twin = g.wa.ka[fi + 1];
+        const fruit = g.oa.ka[fi];
+        const twin = g.oa.ka[fi + 1];
         const twinPos = { x: twin.pos.x, y: twin.pos.y };
         fruit.pos.x = head.x + 1;
         fruit.pos.y = head.y;
 
-        const sh0 = g.Sh | 0;
-        const piecesBefore = g.wa.ka.filter((a) => a.isPiece).length;
+        const sh0 = g.Bi | 0;
+        const piecesBefore = g.oa.ka.filter((a) => a.isPiece).length;
         g.tick();
-        const headAfter = { x: g.oa.ka[0].x, y: g.oa.ka[0].y };
-        const piecesAfter = g.wa.ka.filter((a) => a.isPiece).length;
-        const fruitsAfter = g.wa.ka.filter((a) => !a.isPiece).length;
+        const headAfter = { x: g.Yc.ka[0].x, y: g.Yc.ka[0].y };
+        const piecesAfter = g.oa.ka.filter((a) => a.isPiece).length;
+        const fruitsAfter = g.oa.ka.filter((a) => !a.isPiece).length;
         return {
           ok: true,
           just_ate: window.just_ate,
           sh0,
-          sh: g.Sh | 0,
+          sh: g.Bi | 0,
           teleported:
             headAfter.x === twinPos.x && headAfter.y === twinPos.y,
           piecesBefore,
           piecesAfter,
           fruitsAfter,
-          appleCount: g.wa.ka.length,
+          appleCount: g.oa.ka.length,
         };
       });
       assert.equal(eat.ok, true, JSON.stringify(eat));
@@ -259,15 +259,15 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
       await h.start({ mode: "portal", count: COUNT.ONE, size: SIZE.NORMAL });
       const portal = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const head = g.oa.ka[0];
-        g.oa.direction = "RIGHT";
-        const a0 = g.wa.ka[0];
-        const a1 = g.wa.ka[1];
+        const head = g.Yc.ka[0];
+        g.Yc.direction = "RIGHT";
+        const a0 = g.oa.ka[0];
+        const a1 = g.oa.ka[1];
         const twinPos = { x: a1.pos.x, y: a1.pos.y };
         a0.pos.x = head.x + 1;
         a0.pos.y = head.y;
         g.tick();
-        const headAfter = { x: g.oa.ka[0].x, y: g.oa.ka[0].y };
+        const headAfter = { x: g.Yc.ka[0].x, y: g.Yc.ka[0].y };
         return {
           teleported: headAfter.x === twinPos.x && headAfter.y === twinPos.y,
           combo: window.chess_portal_combo && window.chess_portal_combo(),
@@ -279,12 +279,12 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
       await h.start({ mode: "chess", count: COUNT.ONE, size: SIZE.NORMAL });
       const chess = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const head = g.oa.ka[0];
-        g.oa.direction = "RIGHT";
+        const head = g.Yc.ka[0];
+        g.Yc.direction = "RIGHT";
         window.head_state = "OPEN";
         window.shield_empty_all && window.shield_empty_all();
-        const eaten = g.wa.ka[0];
-        const twin = g.wa.ka[1];
+        const eaten = g.oa.ka[0];
+        const twin = g.oa.ka[1];
         // Keep twin far from the step cell so a normal step cannot look like a warp.
         twin.pos.x = 0;
         twin.pos.y = 0;
@@ -296,7 +296,7 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
         eaten.pos.y = head.y;
         const before = { x: head.x, y: head.y };
         g.tick();
-        const after = { x: g.oa.ka[0].x, y: g.oa.ka[0].y };
+        const after = { x: g.Yc.ka[0].x, y: g.Yc.ka[0].y };
         return {
           combo: window.chess_portal_combo(),
           head_state: window.head_state,
@@ -322,23 +322,23 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
       const r = await h.page.evaluate(() => {
         const g = window.__remixGame;
         // Reproduce: single fruit, no twin — native P6E would throw on .pos
-        const one = g.wa.ka[0];
+        const one = g.oa.ka[0];
         one.isPiece = false;
-        g.wa.ka.length = 1;
-        const head = g.oa.ka[0];
-        g.oa.direction = "RIGHT";
+        g.oa.ka.length = 1;
+        const head = g.Yc.ka[0];
+        g.Yc.direction = "RIGHT";
         window.head_state = "OPEN";
         window.shield_empty_all && window.shield_empty_all();
         one.pos.x = head.x + 1;
         one.pos.y = head.y;
-        const sh0 = g.Sh | 0;
+        const sh0 = g.Bi | 0;
         try {
           g.tick();
           return {
             ok: true,
             just_ate: window.just_ate,
-            sh: (g.Sh | 0) - sh0,
-            apples: g.wa.ka.length,
+            sh: (g.Bi | 0) - sh0,
+            apples: g.oa.ka.length,
           };
         } catch (e) {
           return { ok: false, crash: e.message };
@@ -362,15 +362,15 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
         // Chess in blender set but remix toggle flag off (mode-grid selection).
         window.chess_blending = false;
         window.CurrentModeNum = 22;
-        g.settings.ub = 22;
-        g.settings.ob = 22;
-        g.settings.rSa = new Set([window.CHESS_MODE, 2]);
-        g.wa.reset();
-        g.settings.rSa.add(window.CHESS_MODE);
-        g.settings.rSa.add(2);
-        g.settings.ub = 22;
-        g.settings.ob = 22;
-        window.appleArray = g.wa.ka;
+        g.settings.yb = 22;
+        g.settings.wb = 22;
+        g.settings.NSa = new Set([window.CHESS_MODE, 2]);
+        g.oa.reset();
+        g.settings.NSa.add(window.CHESS_MODE);
+        g.settings.NSa.add(2);
+        g.settings.yb = 22;
+        g.settings.wb = 22;
+        window.appleArray = g.oa.ka;
 
         if (!window.isChessActive() || !window.chess_portal_combo()) {
           return {
@@ -386,41 +386,41 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
         window.head_state = "rook";
         window.head_color = "w";
         window.selectedFruit = 0;
-        if (g.wa.ka.length < 2) return { ok: false, reason: "apples" };
-        g.wa.ka[0].isPiece = true;
-        g.wa.ka[0].ChessColor = "w";
-        g.wa.ka[1].isPiece = true;
-        g.wa.ka[1].ChessColor = "b";
-        window.capture_attempt(g.wa.ka[1].pos.x, g.wa.ka[1].pos.y);
+        if (g.oa.ka.length < 2) return { ok: false, reason: "apples" };
+        g.oa.ka[0].isPiece = true;
+        g.oa.ka[0].ChessColor = "w";
+        g.oa.ka[1].isPiece = true;
+        g.oa.ka[1].ChessColor = "b";
+        window.capture_attempt(g.oa.ka[1].pos.x, g.oa.ka[1].pos.y);
 
         let fi = -1;
-        for (let i = 0; i + 1 < g.wa.ka.length; i += 2) {
-          if (!g.wa.ka[i].isPiece && !g.wa.ka[i + 1].isPiece) {
+        for (let i = 0; i + 1 < g.oa.ka.length; i += 2) {
+          if (!g.oa.ka[i].isPiece && !g.oa.ka[i + 1].isPiece) {
             fi = i;
             break;
           }
         }
-        if (fi < 0) return { ok: false, reason: "no pair", map: g.wa.ka.map((a) => (a.isPiece ? "P" : "F")) };
+        if (fi < 0) return { ok: false, reason: "no pair", map: g.oa.ka.map((a) => (a.isPiece ? "P" : "F")) };
 
-        const head = g.oa.ka[0];
-        g.oa.direction = "RIGHT";
+        const head = g.Yc.ka[0];
+        g.Yc.direction = "RIGHT";
         window.head_state = "OPEN";
         window.shield_empty_all && window.shield_empty_all();
-        const fruit = g.wa.ka[fi];
-        const twin = g.wa.ka[fi + 1];
+        const fruit = g.oa.ka[fi];
+        const twin = g.oa.ka[fi + 1];
         const twinPos = { x: twin.pos.x, y: twin.pos.y };
         fruit.pos.x = head.x + 1;
         fruit.pos.y = head.y;
-        const piecesBefore = g.wa.ka.filter((a) => a.isPiece).length;
+        const piecesBefore = g.oa.ka.filter((a) => a.isPiece).length;
         g.tick();
-        const headAfter = { x: g.oa.ka[0].x, y: g.oa.ka[0].y };
+        const headAfter = { x: g.Yc.ka[0].x, y: g.Yc.ka[0].y };
         return {
           ok: true,
           blending: window.chess_blending,
           teleported: headAfter.x === twinPos.x && headAfter.y === twinPos.y,
-          fruitsAfter: g.wa.ka.filter((a) => !a.isPiece).length,
+          fruitsAfter: g.oa.ka.filter((a) => !a.isPiece).length,
           piecesBefore,
-          piecesAfter: g.wa.ka.filter((a) => a.isPiece).length,
+          piecesAfter: g.oa.ka.filter((a) => a.isPiece).length,
           just_ate: window.just_ate,
         };
       });
@@ -449,57 +449,57 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
         await enableChessPortalBlender(h.page);
         const r = await h.page.evaluate(() => {
           const g = window.__remixGame;
-          g.kc = false;
+          g.Qb = false;
           window.head_state = "rook";
           window.head_color = "w";
           window.selectedFruit = 0;
-          g.wa.ka[0].isPiece = true;
-          g.wa.ka[0].ChessColor = "w";
-          g.wa.ka[1].isPiece = true;
-          g.wa.ka[1].ChessColor = "b";
-          window.appleArray = g.wa.ka;
-          window.capture_attempt(g.wa.ka[1].pos.x, g.wa.ka[1].pos.y);
+          g.oa.ka[0].isPiece = true;
+          g.oa.ka[0].ChessColor = "w";
+          g.oa.ka[1].isPiece = true;
+          g.oa.ka[1].ChessColor = "b";
+          window.appleArray = g.oa.ka;
+          window.capture_attempt(g.oa.ka[1].pos.x, g.oa.ka[1].pos.y);
           let fi = -1;
-          for (let i = 0; i + 1 < g.wa.ka.length; i += 2) {
-            if (!g.wa.ka[i].isPiece && !g.wa.ka[i + 1].isPiece) {
+          for (let i = 0; i + 1 < g.oa.ka.length; i += 2) {
+            if (!g.oa.ka[i].isPiece && !g.oa.ka[i + 1].isPiece) {
               fi = i;
               break;
             }
           }
           if (fi < 0) return { ok: false, reason: "pair" };
-          const fruit = g.wa.ka[fi];
-          const twin = g.wa.ka[fi + 1];
-          g.nj = false;
-          const head = g.oa.ka[0];
-          g.oa.direction = "RIGHT";
+          const fruit = g.oa.ka[fi];
+          const twin = g.oa.ka[fi + 1];
+          g.uj = false;
+          const head = g.Yc.ka[0];
+          g.Yc.direction = "RIGHT";
           window.head_state = "OPEN";
           window.shield_empty_all && window.shield_empty_all();
           fruit.pos.x = head.x + 1;
           fruit.pos.y = head.y;
           g.tick();
           const afterFirst = {
-            pieces: g.wa.ka.filter((a) => a.isPiece).length,
-            fruits: g.wa.ka.filter((a) => !a.isPiece).length,
-            kc: !!g.kc,
+            pieces: g.oa.ka.filter((a) => a.isPiece).length,
+            fruits: g.oa.ka.filter((a) => !a.isPiece).length,
+            kc: !!g.Qb,
           };
           // Later fruit: unlock again and expect +2
-          const pieces = g.wa.ka.filter((a) => a.isPiece);
+          const pieces = g.oa.ka.filter((a) => a.isPiece);
           if (pieces.length < 2) return { ok: false, afterFirst, reason: "need pieces" };
           window.head_state = "rook";
           window.head_color = pieces[0].ChessColor;
           pieces[1].ChessColor = pieces[0].ChessColor === "w" ? "b" : "w";
           window.capture_attempt(pieces[1].pos.x, pieces[1].pos.y);
           fi = -1;
-          for (let i = 0; i + 1 < g.wa.ka.length; i += 2) {
-            if (!g.wa.ka[i].isPiece && !g.wa.ka[i + 1].isPiece) {
+          for (let i = 0; i + 1 < g.oa.ka.length; i += 2) {
+            if (!g.oa.ka[i].isPiece && !g.oa.ka[i + 1].isPiece) {
               fi = i;
               break;
             }
           }
           if (fi < 0) return { ok: false, afterFirst, reason: "pair2" };
-          const fruit2 = g.wa.ka[fi];
-          const before2 = g.wa.ka.filter((a) => a.isPiece).length;
-          const head2 = g.oa.ka[0];
+          const fruit2 = g.oa.ka[fi];
+          const before2 = g.oa.ka.filter((a) => a.isPiece).length;
+          const head2 = g.Yc.ka[0];
           fruit2.pos.x = head2.x + 1;
           fruit2.pos.y = head2.y;
           window.head_state = "OPEN";
@@ -508,8 +508,8 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
             ok: true,
             afterFirst,
             afterSecond: {
-              pieces: g.wa.ka.filter((a) => a.isPiece).length,
-              fruits: g.wa.ka.filter((a) => !a.isPiece).length,
+              pieces: g.oa.ka.filter((a) => a.isPiece).length,
+              fruits: g.oa.ka.filter((a) => !a.isPiece).length,
               before: before2,
             },
           };
@@ -547,22 +547,22 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
             window.head_state = "rook";
             window.head_color = "w";
             window.selectedFruit = 0;
-            g.wa.ka[0].isPiece = true;
-            g.wa.ka[0].ChessColor = "w";
-            g.wa.ka[1].isPiece = true;
-            g.wa.ka[1].ChessColor = "b";
-            window.appleArray = g.wa.ka;
-            window.capture_attempt(g.wa.ka[1].pos.x, g.wa.ka[1].pos.y);
+            g.oa.ka[0].isPiece = true;
+            g.oa.ka[0].ChessColor = "w";
+            g.oa.ka[1].isPiece = true;
+            g.oa.ka[1].ChessColor = "b";
+            window.appleArray = g.oa.ka;
+            window.capture_attempt(g.oa.ka[1].pos.x, g.oa.ka[1].pos.y);
             // Dice start-2 unlock should leave only the fruit pair.
             const onlyPair =
-              g.wa.ka.length === 2 &&
-              g.wa.ka.every((a) => a && !a.isPiece);
+              g.oa.ka.length === 2 &&
+              g.oa.ka.every((a) => a && !a.isPiece);
             let fi = 0;
-            const fruit = g.wa.ka[fi];
-            const twin = g.wa.ka[fi + 1];
-            g.nj = false;
-            const head = g.oa.ka[0];
-            g.oa.direction = "RIGHT";
+            const fruit = g.oa.ka[fi];
+            const twin = g.oa.ka[fi + 1];
+            g.uj = false;
+            const head = g.Yc.ka[0];
+            g.Yc.direction = "RIGHT";
             window.head_state = "OPEN";
             window.shield_empty_all && window.shield_empty_all();
             fruit.pos.x = head.x + 1;
@@ -573,9 +573,9 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
               ok: true,
               onlyPair,
               teleported:
-                g.oa.ka[0].x === twinPos.x && g.oa.ka[0].y === twinPos.y,
-              fruits: g.wa.ka.filter((a) => !a.isPiece).length,
-              pieces: g.wa.ka.filter((a) => a.isPiece).length,
+                g.Yc.ka[0].x === twinPos.x && g.Yc.ka[0].y === twinPos.y,
+              fruits: g.oa.ka.filter((a) => !a.isPiece).length,
+              pieces: g.oa.ka.filter((a) => a.isPiece).length,
             };
           } finally {
             Math.random = orig;
@@ -600,10 +600,10 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
         const r = await h.page.evaluate(() => {
           const g = window.__remixGame;
           // Leave a single opposite-color pair, unlock → fruit pair, eat → empty → wave.
-          const a0 = g.wa.ka[0];
-          const a1 = g.wa.ka[1];
-          g.wa.ka.length = 0;
-          g.wa.ka.push(a0, a1);
+          const a0 = g.oa.ka[0];
+          const a1 = g.oa.ka[1];
+          g.oa.ka.length = 0;
+          g.oa.ka.push(a0, a1);
           a0.isPiece = true;
           a0.ChessColor = "w";
           a0.sequenceNumber = 3;
@@ -613,39 +613,39 @@ describe("Chess + Portal combo (browser)", { skip: !runBrowser }, () => {
           window.head_state = "rook";
           window.head_color = "w";
           window.selectedFruit = 0;
-          window.appleArray = g.wa.ka;
+          window.appleArray = g.oa.ka;
           window.capture_attempt(a1.pos.x, a1.pos.y);
-          const fruits = g.wa.ka.filter((a) => !a.isPiece);
+          const fruits = g.oa.ka.filter((a) => !a.isPiece);
           const twinSeqMatch =
             fruits.length >= 2 &&
             fruits[0].sequenceNumber === fruits[1].sequenceNumber &&
             fruits[0].sequenceNumber === 3;
-          g.wa.wa = 3;
-          g.nj = false;
-          const fi = g.wa.ka.findIndex((a) => !a.isPiece);
-          const fruit = g.wa.ka[fi];
-          const twin = g.wa.ka[fi % 2 === 0 ? fi + 1 : fi - 1];
-          const head = g.oa.ka[0];
-          g.oa.direction = "RIGHT";
+          g.oa.wa = 3;
+          g.uj = false;
+          const fi = g.oa.ka.findIndex((a) => !a.isPiece);
+          const fruit = g.oa.ka[fi];
+          const twin = g.oa.ka[fi % 2 === 0 ? fi + 1 : fi - 1];
+          const head = g.Yc.ka[0];
+          g.Yc.direction = "RIGHT";
           window.head_state = "OPEN";
           window.shield_empty_all && window.shield_empty_all();
           fruit.pos.x = head.x + 1;
           fruit.pos.y = head.y;
           g.tick();
-          const seqs = g.wa.ka.map((a) => a.sequenceNumber);
+          const seqs = g.oa.ka.map((a) => a.sequenceNumber);
           const pairSeqs = [];
-          for (let i = 0; i + 1 < g.wa.ka.length; i += 2) {
-            pairSeqs.push([g.wa.ka[i].sequenceNumber, g.wa.ka[i + 1].sequenceNumber]);
+          for (let i = 0; i + 1 < g.oa.ka.length; i += 2) {
+            pairSeqs.push([g.oa.ka[i].sequenceNumber, g.oa.ka[i + 1].sequenceNumber]);
           }
           return {
             ok: true,
             twinSeqMatch,
-            pieces: g.wa.ka.filter((a) => a.isPiece).length,
-            fruits: g.wa.ka.filter((a) => !a.isPiece).length,
+            pieces: g.oa.ka.filter((a) => a.isPiece).length,
+            fruits: g.oa.ka.filter((a) => !a.isPiece).length,
             seqs,
             pairSeqs,
-            counter: g.wa.wa,
-            allPieces: g.wa.ka.every((a) => a.isPiece),
+            counter: g.oa.wa,
+            allPieces: g.oa.ka.every((a) => a.isPiece),
           };
         });
         assert.equal(r.ok, true, JSON.stringify(r));

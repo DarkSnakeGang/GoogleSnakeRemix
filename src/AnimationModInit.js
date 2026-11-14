@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////
-// Ultra-only Animation Mod (Animated Colours port for v13)
+// Ultra-only Animation Mod (Animated Colours port for v14)
 ////////////////////////////////////////////////////////////////////
 
 window.AnimationMod = {};
@@ -421,11 +421,11 @@ window.animModInstallPatternFns = function animModInstallPatternFns() {
     }
     // Fallback if paint hook not bound yet (mirrors u4E).
     try {
-      const light = c7(board.settings, board.settings.oa, 0);
-      const dark = c7(board.settings, board.settings.oa, 1);
-      const tile = board.wb.ka.ka;
-      const w = board.wb.ka.oa.width;
-      const h = board.wb.ka.oa.height;
+      const light = P7(board.settings, board.settings.oa, 0);
+      const dark = P7(board.settings, board.settings.oa, 1);
+      const tile = board.ub.ka.ka;
+      const w = board.ub.ka.oa.width;
+      const h = board.ub.ka.oa.height;
       const boxes = window.checkboxes && window.checkboxes.checkboxStatuses;
       board.ka.fillStyle = light;
       if (!boxes || boxes.lightTiles) {
@@ -546,13 +546,13 @@ window.animModBindHeadRecolor = function animModBindHeadRecolor(recolor) {
     // Hot path: blink + eat + tongue only. Skip die (face.Ba) — enormous sheet.
     cachedRecolor(face.oa, "#5282F2", headColour);
     cachedRecolor(face.Aa, "#5282F2", headColour);
-    const hue = _.AKd(headColour);
-    const tongue = _.AKd("#C73104");
+    const hue = _.RJ(headColour);
+    const tongue = _.RJ("#C73104");
     tongue[0] = (hue[0] + 180) % 360;
     cachedRecolor(
       face.wa,
       "#C73104",
-      _.HG(_.yKd(tongue[0], tongue[1], tongue[2]))
+      _.PJ(_.iSe(tongue[0], tongue[1], tongue[2]))
     );
   };
 };
@@ -807,32 +807,32 @@ window.AnimationMod.alterSnakeCode = function (code) {
     // takes a different branch, so patch both.
     safeReplaceOnce(
       "face-ref-rainbow",
-      "b=a.Ga;var c=a.wb.oa.Sc;",
-      "b=a.Ga;window.__animFaceRef=b;window.__animGameRef=a;" +
-        "if(window.animModBindHeadRecolor)window.animModBindHeadRecolor(a7);" +
-        "var c=a.wb.oa.Sc;"
+      "d=c.Ga;var e=c.ub.Yc.Hl;",
+      "d=c.Ga;window.__animFaceRef=d;window.__animGameRef=c;" +
+        "if(window.animModBindHeadRecolor)window.animModBindHeadRecolor(N7);" +
+        "var e=c.ub.Yc.Hl;"
     );
 
     safeReplaceOnce(
       "face-ref-classic",
-      "b=a.Ga,C3E(b.oa),C3E(b.Aa),C3E(b.Ba),C3E(b.wa);",
-      "b=a.Ga,window.__animFaceRef=b," +
-        "(window.animModBindHeadRecolor&&window.animModBindHeadRecolor(a7))," +
-        "C3E(b.oa),C3E(b.Aa),C3E(b.Ba),C3E(b.wa);"
+      "d=c.Ga,VnF(d.oa),VnF(d.Aa),VnF(d.Ba),VnF(d.wa);",
+      "d=c.Ga,window.__animFaceRef=d," +
+        "(window.animModBindHeadRecolor&&window.animModBindHeadRecolor(N7))," +
+        "VnF(d.oa),VnF(d.Aa),VnF(d.Ba),VnF(d.wa);"
     );
 
     safeReplaceOnce(
       "u4E-board-ref",
-      "u4E=function(a){a.ka.fillStyle=c7(a.settings,a.settings.oa,0);",
-      "u4E=function(a){window.__animBoardRef=a;window.__animPaintThemeBoard=u4E;" +
-        "a.ka.fillStyle=c7(a.settings,a.settings.oa,0);"
+      "opF=function(a){a.ka.fillStyle=P7(a.settings,a.settings.oa,0);",
+      "opF=function(a){window.__animBoardRef=a;window.__animPaintThemeBoard=opF;" +
+        "a.ka.fillStyle=P7(a.settings,a.settings.oa,0);"
     );
 
     // Frame clock + background: run for every snake colour (Ja always called).
     safeReplaceOnce(
       "Ja-frame-bg",
-      "Ja(a,b,c,d,e=!0){",
-      "Ja(a,b,c,d,e=!0){" +
+      "Aa(a,b,c,d,e=!0){e&&this.Yc.Oa",
+      "Aa(a,b,c,d,e=!0){" +
         "if(window.animateSnakeGlobals){" +
         "if(this.ticks==0){" +
         "window.animateSnakeGlobals.startPlayback=true;" +
@@ -851,11 +851,12 @@ window.AnimationMod.alterSnakeCode = function (code) {
         "window.updateAnimBackground(window.__animBoardRef,__afn);" +
         "}" +
         "}" +
-        "}"
+        "}" +
+        "e&&this.Yc.Oa"
     );
 
     // Snake body colours only when Animated rainbow path is active.
-    const gAssign = "var g=d?r3E:q3E;";
+    const gAssign = "var g=d?LnF:KnF;";
     const inject =
       "if(window.animModSyncColourGate)window.animModSyncColourGate();" +
       "if(window.animateSnakeGlobals&&window.animateSnakeGlobals.startPlayback" +
@@ -870,7 +871,7 @@ window.AnimationMod.alterSnakeCode = function (code) {
       "var __dest=window.animateSnakeGlobals.currentColourArray;" +
       "__dest.length=0;" +
       "for(var __ai=0;__ai<__cols.length;__ai++)__dest.push(__cols[__ai]);" +
-      "if(this.oa)this.oa.Sc=__dest[0];" +
+      "if(this.Yc)this.Yc.Hl=__dest[0];" +
       "if(typeof window.updateAnimHeadColour==='function'&&window.__animFaceRef)" +
       "window.updateAnimHeadColour(window.__animFaceRef,__dest[0]);" +
       "}" +

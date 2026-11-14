@@ -34,30 +34,30 @@ describe("Mexico Mode (offline)", () => {
     assert.match(mx, /mexico_spawn_n_pairs/);
     assert.match(
       mx,
-      /else if\(window\.isMexicoActive&&window\.isMexicoActive\(\)\)\{window\.__chessMakeApple=g7;window\.__chessFreePos=d4E;window\.__chessPickType=Q3E;e=!1;if\(window\.just_ate==='fruit'/
+      /else if\(window\.isMexicoActive&&window\.isMexicoActive\(\)\)\{window\.__chessMakeApple=S7;window\.__chessFreePos=window\.chess_native_free_pos;window\.__chessPickType=hoF;e=!1;if\(window\.just_ate==='fruit'/
     );
     assert.match(mx, /mexico_note_fruit_twin&&window\.mexico_note_fruit_twin/);
     assert.match(mx, /mexico_is_wave_count&&window\.mexico_is_wave_count\(a\)/);
-    assert.match(mx, /j4E\(a\.wa,k,d,a\.Vm\.bind\(a\)\),window\.isMexicoActive/);
+    assert.match(mx, /AoF\(a\.oa,k,d,a\.Kc\.bind\(a\)\),window\.isMexicoActive/);
     assert.match(
       mx,
-      /mexico_constrain_new_apples\(a\.wa,2\)/,
-      "j4E must constrain only the new portal pair"
+      /mexico_constrain_new_apples\(a\.oa,2\)/,
+      "AoF must constrain only the new portal pair"
     );
     assert.doesNotMatch(
       mx,
-      /mexico_constrain_new_apples\(a\.wa,a\.wa\.ka\.length\)/,
-      "must not relocate the whole board on j4E"
+      /mexico_constrain_new_apples\(a\.oa,a\.oa\.ka\.length\)/,
+      "must not relocate the whole board on AoF"
     );
     assert.match(
       mx,
-      /mexico_after_fruit_splice\(a\.wa,a\)/,
+      /mexico_after_fruit_splice\(a\.oa,a\)/,
       "eat splice must clear Mexico portal twin"
     );
     assert.match(
       mx,
-      /mexico_refill_wave\(g\.wa,\s*g\)/,
-      "empty wave refill lives in tick, not j4E"
+      /mexico_refill_wave\(g\.oa,\s*g\)/,
+      "empty wave refill lives in tick, not AoF"
     );
     assert.match(mx, /__mexicoWallDone/);
     assert.match(mx, /Math\.floor\(\(h\s*\|\s*0\)\s*\/\s*2\)/);
@@ -100,9 +100,8 @@ describe("Mexico Mode (offline)", () => {
           this.classList = { add() {} };
         }
       },
-      g7: null,
-      d4E: null,
-      Q3E: null,
+      S7: null,
+      hoF: null,
     };
     vm.createContext(sandbox);
     // Runtime helpers are registered inside alterSnakeCode (before patches).
@@ -122,22 +121,22 @@ describe("Mexico Mode (offline)", () => {
     assert.equal(typeof w.mexico_refill_wave, "function");
     const g = {
       settings: { ka: 6 },
-      kc: false,
-      nj: false,
+      Qb: false,
+      uj: false,
       lj: false,
-      Sh: 5,
-      Ca: {
-        wa: Array.from({ length: 9 }, () => Array(9).fill(0)),
-        Aa: { set() {} },
+      Bi: 5,
+      Tw: {
+        oa: Array.from({ length: 9 }, () => Array(9).fill(0)),
+        wa: { set() {} },
       },
-      oa: { ka: [{ x: 4, y: 4 }] },
-      wa: { ka: [], oa: null },
+      Yc: { ka: [{ x: 4, y: 4 }] },
+      oa: { ka: [], oa: null },
     };
-    g.wa.oa = g.oa;
+    g.oa.oa = g.Yc;
     w.__remixGame = g;
     w.isMexicoActive = () => true;
     let seq = 0;
-    sandbox.g7 = () => ({
+    sandbox.S7 = () => ({
       pos: {
         x: 0,
         y: 0,
@@ -147,7 +146,7 @@ describe("Mexico Mode (offline)", () => {
       },
       type: seq++,
     });
-    sandbox.Q3E = () => 0;
+    sandbox.hoF = () => 0;
     let calls = 0;
     w.mexico_find_spawn = function (_b, _f, _o, half) {
       calls++;
@@ -160,12 +159,12 @@ describe("Mexico Mode (offline)", () => {
         },
       };
     };
-    const added = w.mexico_refill_wave(g.wa, g);
+    const added = w.mexico_refill_wave(g.oa, g);
     assert.equal(added, 10, "5 portal pairs");
-    assert.equal(g.wa.ka.length, 10);
-    assert.equal(g.nj, false, "must not win when refill succeeds");
-    assert.equal(g.wa.wa, 1);
-    const seqs = [...new Set(g.wa.ka.map((f) => f.sequenceNumber))].sort(
+    assert.equal(g.oa.ka.length, 10);
+    assert.equal(g.uj, false, "must not win when refill succeeds");
+    assert.equal(g.oa.wa, 1);
+    const seqs = [...new Set(g.oa.ka.map((f) => f.sequenceNumber))].sort(
       (a, b) => a - b
     );
     assert.deepEqual(seqs, [1, 2, 3, 4, 5]);
@@ -334,8 +333,8 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
 
       const setup = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const mid = window.mexico_mid_y(g.Ca);
-        const apples = (g.wa.ka || []).map((a) => ({
+        const mid = window.mexico_mid_y(g.Tw);
+        const apples = (g.oa.ka || []).map((a) => ({
           x: a.pos.x,
           y: a.pos.y,
         }));
@@ -348,8 +347,8 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
           apples,
           wallDone: !!window.__mexicoWallDone,
           walls:
-            g.Ca && g.Ca.Aa && typeof g.Ca.Aa.size === "number"
-              ? g.Ca.Aa.size
+            g.Tw && g.Tw.wa && typeof g.Tw.wa.size === "number"
+              ? g.Tw.wa.size
               : -1,
         };
       });
@@ -366,19 +365,19 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
 
       const afterFirst = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const mid = window.mexico_mid_y(g.Ca);
-        const w = g.Ca.wa[0].length;
-        g.Sh = 1;
+        const mid = window.mexico_mid_y(g.Tw);
+        const w = g.Tw.oa[0].length;
+        g.Bi = 1;
         window.mexico_place_mid_walls(g);
         let midWalls = 0;
         for (let x = 0; x < w; x++) {
-          if (g.Ca.wa[mid] && g.Ca.wa[mid][x] > 0) midWalls++;
+          if (g.Tw.oa[mid] && g.Tw.oa[mid][x] > 0) midWalls++;
         }
         return {
           wallDone: !!window.__mexicoWallDone,
           midWalls,
           width: w,
-          walls: g.Ca.Aa.size,
+          walls: g.Tw.wa.size,
         };
       });
       assert.equal(afterFirst.wallDone, true, JSON.stringify(afterFirst));
@@ -387,9 +386,9 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
 
       const afterMore = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const before = g.Ca.Aa.size;
+        const before = g.Tw.wa.size;
         for (let i = 0; i < 4; i++) {
-          g.Sh = (g.Sh | 0) + 1;
+          g.Bi = (g.Bi | 0) + 1;
           if (typeof window.mexico_tick_logic === "function") {
             window.mexico_tick_logic(g);
           }
@@ -398,7 +397,7 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
         window.mexico_place_mid_walls(g);
         return {
           before,
-          after: g.Ca.Aa.size,
+          after: g.Tw.wa.size,
           wallDone: !!window.__mexicoWallDone,
         };
       });
@@ -406,16 +405,16 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
 
       const winProbe = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        g.nj = false;
-        g.lj = false;
-        const beforeLen = g.wa.ka.length;
+        g.uj = false;
+        g.Za = false;
+        const beforeLen = g.oa.ka.length;
         const orig = window.mexico_find_spawn;
         window.mexico_find_spawn = function () {
           return null;
         };
         try {
           const n = window.mexico_fruit_respawn(
-            g.wa,
+            g.oa,
             function () {
               return { pos: { x: 0, y: 0 } };
             },
@@ -428,9 +427,9 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
           return {
             n,
             beforeLen,
-            afterLen: g.wa.ka.length,
-            nj: !!g.nj,
-            lj: !!g.lj,
+            afterLen: g.oa.ka.length,
+            nj: !!g.uj,
+            lj: !!g.Za,
           };
         } finally {
           window.mexico_find_spawn = orig;
@@ -443,16 +442,16 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
 
       const winWhenEmpty = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        g.nj = false;
-        g.lj = false;
-        g.wa.ka.length = 0;
+        g.uj = false;
+        g.Za = false;
+        g.oa.ka.length = 0;
         const orig = window.mexico_find_spawn;
         window.mexico_find_spawn = function () {
           return null;
         };
         try {
           window.mexico_fruit_respawn(
-            g.wa,
+            g.oa,
             function () {
               return { pos: { x: 0, y: 0 } };
             },
@@ -461,7 +460,7 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
               return 0;
             }
           );
-          return { nj: !!g.nj, lj: !!g.lj, len: g.wa.ka.length };
+          return { nj: !!g.uj, lj: !!g.Za, len: g.oa.ka.length };
         } finally {
           window.mexico_find_spawn = orig;
         }
@@ -471,31 +470,31 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
 
       const winOccupiedHalf = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const mid = window.mexico_mid_y(g.Ca);
-        const hgt = g.Ca.wa.length;
-        const w = g.Ca.wa[0].length;
-        g.Sh = Math.max(1, g.Sh | 0);
+        const mid = window.mexico_mid_y(g.Tw);
+        const hgt = g.Tw.oa.length;
+        const w = g.Tw.oa[0].length;
+        g.Bi = Math.max(1, g.Bi | 0);
         window.mexico_place_mid_walls(g);
         const body = [];
         body.push(
-          typeof _.Od === "function" ? new _.Od(1, 1) : { x: 1, y: 1 }
+          typeof _.Yd === "function" ? new _.Yd(1, 1) : { x: 1, y: 1 }
         );
         for (let y = mid + 1; y < hgt; y++) {
           for (let x = 0; x < w; x++) {
             body.push(
-              typeof _.Od === "function" ? new _.Od(x, y) : { x: x, y: y }
+              typeof _.Yd === "function" ? new _.Yd(x, y) : { x: x, y: y }
             );
           }
         }
-        g.oa.ka = body;
-        g.nj = false;
-        g.lj = false;
+        g.Yc.ka = body;
+        g.uj = false;
+        g.Za = false;
         // Only one pair: illegal bottom → drop pair → empty → win.
-        g.wa.ka.length = 0;
-        g.wa.ka.push({ pos: { x: 2, y: 2 } });
-        g.wa.ka.push({ pos: { x: 0, y: mid + 1 } });
-        window.mexico_constrain_new_apples(g.wa, g.wa.ka.length);
-        return { nj: !!g.nj, lj: !!g.lj, len: g.wa.ka.length };
+        g.oa.ka.length = 0;
+        g.oa.ka.push({ pos: { x: 2, y: 2 } });
+        g.oa.ka.push({ pos: { x: 0, y: mid + 1 } });
+        window.mexico_constrain_new_apples(g.oa, g.oa.ka.length);
+        return { nj: !!g.uj, lj: !!g.Za, len: g.oa.ka.length };
       });
       assert.equal(winOccupiedHalf.nj, true, JSON.stringify(winOccupiedHalf));
       assert.equal(winOccupiedHalf.lj, true, JSON.stringify(winOccupiedHalf));
@@ -504,26 +503,26 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
       // Stub find_spawn: fail bottom only; two pairs on board; constrain last pair only.
       const keepFruit = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        g.nj = false;
-        g.lj = false;
-        const mid = window.mexico_mid_y(g.Ca);
-        g.wa.ka.length = 0;
-        g.wa.ka.push({ pos: { x: 1, y: 1 } }); // top
-        g.wa.ka.push({ pos: { x: 1, y: mid + 2 } }); // bottom — keep
-        g.wa.ka.push({ pos: { x: 4, y: 2 } }); // top new
-        g.wa.ka.push({ pos: { x: 5, y: 2 } }); // wrong half (should be bottom)
+        g.uj = false;
+        g.Za = false;
+        const mid = window.mexico_mid_y(g.Tw);
+        g.oa.ka.length = 0;
+        g.oa.ka.push({ pos: { x: 1, y: 1 } }); // top
+        g.oa.ka.push({ pos: { x: 1, y: mid + 2 } }); // bottom — keep
+        g.oa.ka.push({ pos: { x: 4, y: 2 } }); // top new
+        g.oa.ka.push({ pos: { x: 5, y: 2 } }); // wrong half (should be bottom)
         const orig = window.mexico_find_spawn;
         window.mexico_find_spawn = function (board, freePos, occ, half) {
           if (half === "bottom") return null;
           return orig.apply(this, arguments);
         };
         try {
-          window.mexico_constrain_new_apples(g.wa, 2);
+          window.mexico_constrain_new_apples(g.oa, 2);
           return {
-            nj: !!g.nj,
-            lj: !!g.lj,
-            len: g.wa.ka.length,
-            apples: g.wa.ka.map((a) => ({ x: a.pos.x, y: a.pos.y })),
+            nj: !!g.uj,
+            lj: !!g.Za,
+            len: g.oa.ka.length,
+            apples: g.oa.ka.map((a) => ({ x: a.pos.x, y: a.pos.y })),
           };
         } finally {
           window.mexico_find_spawn = orig;
@@ -534,12 +533,12 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
 
       const winEmpty = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        g.nj = false;
-        g.lj = false;
-        g.wa.ka.length = 0;
+        g.uj = false;
+        g.Za = false;
+        g.oa.ka.length = 0;
         // Empty after a finished eat/respawn (tick path) — not mid-j4E.
-        window.mexico_win_if_empty(g, g.wa);
-        return { nj: !!g.nj, lj: !!g.lj };
+        window.mexico_win_if_empty(g, g.oa);
+        return { nj: !!g.uj, lj: !!g.Za };
       });
       assert.equal(winEmpty.nj, true, JSON.stringify(winEmpty));
       assert.equal(winEmpty.lj, true, JSON.stringify(winEmpty));
@@ -547,7 +546,7 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
       const reset = await h.page.evaluate(() => {
         window.mexico_reset_state();
         const g = window.__remixGame;
-        g.wa.reset();
+        g.oa.reset();
         return {
           wallDone: !!window.__mexicoWallDone,
           lastSh: window.__mexicoLastSh,
@@ -571,26 +570,26 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
 
       const probe = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const mid = window.mexico_mid_y(g.Ca);
-        const before = (g.wa.ka || []).map((a) => ({
+        const mid = window.mexico_mid_y(g.Tw);
+        const before = (g.oa.ka || []).map((a) => ({
           x: a.pos.x,
           y: a.pos.y,
         }));
-        const target = g.wa.ka[0];
+        const target = g.oa.ka[0];
         const twinPos = {
-          x: g.wa.ka[1].pos.x,
-          y: g.wa.ka[1].pos.y,
+          x: g.oa.ka[1].pos.x,
+          y: g.oa.ka[1].pos.y,
         };
         const eatenPos = { x: target.pos.x, y: target.pos.y };
-        const snake = g.oa.ka;
+        const snake = g.Yc.ka;
         for (let i = 0; i < snake.length; i++) {
           snake[i].x = target.pos.x - 1;
           snake[i].y = target.pos.y;
         }
-        g.oa.direction = "RIGHT";
-        const sh0 = g.Sh | 0;
-        for (let t = 0; t < 8 && (g.Sh | 0) === sh0; t++) g.tick();
-        const after = (g.wa.ka || []).map((a) => ({
+        g.Yc.direction = "RIGHT";
+        const sh0 = g.Bi | 0;
+        for (let t = 0; t < 8 && (g.Bi | 0) === sh0; t++) g.tick();
+        const after = (g.oa.ka || []).map((a) => ({
           x: a.pos.x,
           y: a.pos.y,
           half:
@@ -607,7 +606,7 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
         return {
           beforeCount: before.length,
           afterCount: after.length,
-          sh: g.Sh,
+          sh: g.Bi,
           oldTwinStillThere,
           oldEatenStillThere,
           tops,
@@ -644,30 +643,30 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
 
       const probe = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const mid = window.mexico_mid_y(g.Ca);
-        const beforeLen = (g.wa.ka || []).length;
+        const mid = window.mexico_mid_y(g.Tw);
+        const beforeLen = (g.oa.ka || []).length;
         // Tally only scores the current index (starts at 1).
-        let targetIdx = g.wa.ka.findIndex(
+        let targetIdx = g.oa.ka.findIndex(
           (a) => a && (a.sequenceNumber | 0) === 1
         );
         if (targetIdx < 0) targetIdx = 0;
-        const target = g.wa.ka[targetIdx];
+        const target = g.oa.ka[targetIdx];
         const twinIdx = targetIdx % 2 === 0 ? targetIdx + 1 : targetIdx - 1;
-        const twin = g.wa.ka[twinIdx];
+        const twin = g.oa.ka[twinIdx];
         const eatenPos = { x: target.pos.x, y: target.pos.y };
         const twinPos = { x: twin.pos.x, y: twin.pos.y };
-        const otherBefore = g.wa.ka
+        const otherBefore = g.oa.ka
           .filter((_, i) => i !== targetIdx && i !== twinIdx)
           .map((a) => a.pos.x + "," + a.pos.y)
           .sort();
-        for (let i = 0; i < g.oa.ka.length; i++) {
-          g.oa.ka[i].x = target.pos.x - 1;
-          g.oa.ka[i].y = target.pos.y;
+        for (let i = 0; i < g.Yc.ka.length; i++) {
+          g.Yc.ka[i].x = target.pos.x - 1;
+          g.Yc.ka[i].y = target.pos.y;
         }
-        g.oa.direction = "RIGHT";
-        const sh0 = g.Sh | 0;
-        for (let t = 0; t < 12 && (g.Sh | 0) === sh0; t++) g.tick();
-        const after = (g.wa.ka || []).map((a) => ({
+        g.Yc.direction = "RIGHT";
+        const sh0 = g.Bi | 0;
+        for (let t = 0; t < 12 && (g.Bi | 0) === sh0; t++) g.tick();
+        const after = (g.oa.ka || []).map((a) => ({
           x: a.pos.x,
           y: a.pos.y,
           key: a.pos.x + "," + a.pos.y,
@@ -677,7 +676,7 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
         return {
           beforeLen,
           afterLen: after.length,
-          sh: g.Sh | 0,
+          sh: g.Bi | 0,
           eatenGone: !after.some(
             (a) => a.x === eatenPos.x && a.y === eatenPos.y
           ),
@@ -709,45 +708,45 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
 
       const probe = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        g.Sh = 1;
+        g.Bi = 1;
         window.mexico_place_mid_walls(g);
-        const mid = window.mexico_mid_y(g.Ca);
-        const wallsAfterPlace = g.Ca.Aa.size;
-        const snake = g.oa.ka;
+        const mid = window.mexico_mid_y(g.Tw);
+        const wallsAfterPlace = g.Tw.wa.size;
+        const snake = g.Yc.ka;
         for (let i = 0; i < snake.length; i++) {
           snake[i].x = 8;
           snake[i].y = mid - 1;
         }
-        g.oa.direction = "DOWN";
-        g.nj = false;
+        g.Yc.direction = "DOWN";
+        g.uj = false;
         if (window.cat_lives != null) window.cat_lives = 0;
         if (window.cat_peaceful_ticks != null) window.cat_peaceful_ticks = 0;
 
         let died = false;
         for (let t = 0; t < 4; t++) {
           g.tick();
-          if (g.nj) {
+          if (g.uj) {
             died = true;
             break;
           }
         }
 
-        const before = g.Ca.Aa.size;
-        g.nj = false;
+        const before = g.Tw.wa.size;
+        g.uj = false;
         for (let i = 0; i < snake.length; i++) {
           snake[i].x = 3;
           snake[i].y = 3;
         }
         for (let i = 0; i < 3; i++) {
-          g.Sh = (g.Sh | 0) + 1;
+          g.Bi = (g.Bi | 0) + 1;
           window.mexico_tick_logic(g);
         }
         return {
           died,
           wallsAfterPlace,
-          wallsLater: g.Ca.Aa.size,
+          wallsLater: g.Tw.wa.size,
           before,
-          width: g.Ca.wa[0].length,
+          width: g.Tw.oa[0].length,
           blocksSpawn:
             typeof window.remixMexicoBlocksWallSpawn === "function" &&
             window.remixMexicoBlocksWallSpawn(),
@@ -778,8 +777,8 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
       const before = await h.page.evaluate(() => {
         const g = window.__remixGame;
         return {
-          len: (g.wa.ka || []).length,
-          Sa: g.settings.Sa,
+          len: (g.oa.ka || []).length,
+          Sa: g.settings.Ua,
           Aa: g.settings.Aa,
         };
       });
@@ -788,25 +787,25 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
 
       const after = await h.page.evaluate(() => {
         const g = window.__remixGame;
-        const mid = window.mexico_mid_y(g.Ca);
-        const target = g.wa.ka[0];
-        for (let i = 0; i < g.oa.ka.length; i++) {
-          g.oa.ka[i].x = target.pos.x - 1;
-          g.oa.ka[i].y = target.pos.y;
+        const mid = window.mexico_mid_y(g.Tw);
+        const target = g.oa.ka[0];
+        for (let i = 0; i < g.Yc.ka.length; i++) {
+          g.Yc.ka[i].x = target.pos.x - 1;
+          g.Yc.ka[i].y = target.pos.y;
         }
-        g.oa.direction = "RIGHT";
-        g.nj = false;
-        g.lj = false;
-        const sh0 = g.Sh | 0;
-        for (let t = 0; t < 12 && (g.Sh | 0) === sh0 && !g.nj; t++) g.tick();
+        g.Yc.direction = "RIGHT";
+        g.uj = false;
+        g.Za = false;
+        const sh0 = g.Bi | 0;
+        for (let t = 0; t < 12 && (g.Bi | 0) === sh0 && !g.uj; t++) g.tick();
         // Park clear of the new mid-wall / packed bomb fruit.
-        for (let i = 0; i < g.oa.ka.length; i++) {
-          g.oa.ka[i].x = 1;
-          g.oa.ka[i].y = 1;
+        for (let i = 0; i < g.Yc.ka.length; i++) {
+          g.Yc.ka[i].x = 1;
+          g.Yc.ka[i].y = 1;
         }
-        g.oa.direction = "RIGHT";
-        if (!g.nj) g.tick();
-        const apples = (g.wa.ka || []).map((a) => ({
+        g.Yc.direction = "RIGHT";
+        if (!g.uj) g.tick();
+        const apples = (g.oa.ka || []).map((a) => ({
           y: a.pos.y,
           half: a.pos.y < mid ? "top" : a.pos.y > mid ? "bot" : "mid",
         }));
@@ -816,23 +815,23 @@ describe("Mexico Mode (browser)", { skip: !runBrowser }, () => {
           const want = i % 2 === 0 ? "top" : "bot";
           if (apples[i].half !== want) bad++;
         }
-        for (let i = 0; i + 1 < (g.wa.ka || []).length; i += 2) {
-          const a = g.wa.ka[i];
-          const b = g.wa.ka[i + 1];
+        for (let i = 0; i + 1 < (g.oa.ka || []).length; i += 2) {
+          const a = g.oa.ka[i];
+          const b = g.oa.ka[i + 1];
           if (!a || !b) continue;
           pairTypes.push(a.type | 0);
           if ((a.type | 0) !== (b.type | 0)) bad++;
         }
         return {
-          sh: g.Sh | 0,
-          nj: !!g.nj,
-          lj: !!g.lj,
+          sh: g.Bi | 0,
+          nj: !!g.uj,
+          lj: !!g.Za,
           len: apples.length,
           tops: apples.filter((a) => a.half === "top").length,
           bots: apples.filter((a) => a.half === "bot").length,
           bad,
           wallDone: !!window.__mexicoWallDone,
-          kc: !!g.kc,
+          kc: !!g.Qb,
           distinctPairs: new Set(pairTypes).size,
           pairTypes: pairTypes.slice(0, 8),
         };

@@ -1276,8 +1276,8 @@ window.ultraEnsureChessMode = function () {
       return;
     }
     const blended =
-      settings.ub === 22 ||
-      !!(settings.Qa && settings.Lc && typeof settings.Lc.has === "function" && settings.Lc.has(chessId));
+      settings.yb === 22 ||
+      !!(settings.La && settings.jd && typeof settings.jd.has === "function" && settings.jd.has(chessId));
     if (blended) {
       window.CurrentModeNum = 22;
       window.chess_blending = true;
@@ -1295,18 +1295,19 @@ window.ultraSyncChessPlaceState = function () {
     const mgr = typeof window.ultraAppleManager === "function" ? window.ultraAppleManager() : null;
     const apples =
       (mgr && mgr.ka) ||
-      (window.wholeSnakeObject && window.wholeSnakeObject.wa && window.wholeSnakeObject.wa.ka) ||
+      (window.wholeSnakeObject && window.wholeSnakeObject.oa && window.wholeSnakeObject.oa.ka) ||
       window.appleArray;
     if (apples) window.appleArray = apples;
     const game = window.__remixGame || window.megaWholeSnakeObject || window.wholeSnakeObject;
-    if (game && game.oa) {
-      if (game.oa.ka) window.head_pos = game.oa.ka;
-      if (game.oa.direction) window.head_dir = game.oa.direction;
+    // v14: the snake is `Yc` (v13 `oa`).
+    if (game && game.Yc) {
+      if (game.Yc.ka) window.head_pos = game.Yc.ka;
+      if (game.Yc.direction) window.head_dir = game.Yc.direction;
     }
   } catch (_e) {}
   const apples = window.appleArray;
   if (!apples || !apples.length) return;
-  const field = window.chess_shield_field || "nba";
+  const field = window.chess_shield_field || "h7";
   const locked = window.ultraChessSnakeIsPiece();
   for (let i = 0; i < apples.length; i++) {
     const a = apples[i];
@@ -1314,10 +1315,10 @@ window.ultraSyncChessPlaceState = function () {
     if (locked) {
       const dirs = new Set(["UP", "DOWN", "LEFT", "RIGHT"]);
       a[field] = dirs;
-      a.nba = dirs;
+      a.h7 = dirs;
     } else {
       a[field] = undefined;
-      a.nba = undefined;
+      a.h7 = undefined;
     }
   }
 };
@@ -1355,7 +1356,7 @@ window.ultraPlaceCapture = function (code, re, idx, label) {
 };
 
 window.UltraPlace.alterSnakeCode = function (code) {
-  const coordCtor = window.coordConstructor || "_.Od";
+  const coordCtor = window.coordConstructor || "_.Yd";
   const modeCheck = window.ultraPlaceCapture(
     code,
     /([$a-zA-Z0-9_]{0,8})=function\(a,b\)\{(?:return |var r=)a\.[$a-zA-Z0-9_]{0,8}\?a\.[$a-zA-Z0-9_]{0,8}\.has\(b\):a\.[$a-zA-Z0-9_]{0,8}===22/,
@@ -1364,7 +1365,7 @@ window.UltraPlace.alterSnakeCode = function (code) {
   );
   const addGoal = window.ultraPlaceCapture(
     code,
-    /([$a-zA-Z0-9_]{0,8})=function\(a,b,c\)\{c=\(a\.oa\.size\+c\)\*/,
+    /([$a-zA-Z0-9_]{0,8})=function\(a,b,c\)\{c=\(a\.WJ\.size\+c\)\*/,
     1,
     "addSokogoal"
   );
@@ -1386,25 +1387,25 @@ window.UltraPlace.alterSnakeCode = function (code) {
   }
   const addGate = window.ultraPlaceCapture(
     code,
-    /([$a-zA-Z0-9_]{0,8})=function\(a,b,c,d\)\{c\?\(a\.ka\[b\.y\]\[b\.x\]\.B7\.set\("RIGHT"/,
+    /([$a-zA-Z0-9_]{0,8})=function\(a,b,c,d\)\{c\?\(a\.ka\[b\.y\]\[b\.x\]\.d8\.set\("RIGHT"/,
     1,
     "addGate"
   );
   const addStatue = window.ultraPlaceCapture(
     code,
-    /([$a-zA-Z0-9_]{0,8})=function\(a,b,c\)\{a\.oa\.set\([$a-zA-Z0-9_]{0,8}\(b\),c\);[$a-zA-Z0-9_]{0,8}\(a\.Aa,b,c\)\}/,
+    /([$a-zA-Z0-9_]{0,8})=function\(a,b,c\)\{a\.oa\.set\([$a-zA-Z0-9_]{0,8}\(b\),c\);[$a-zA-Z0-9_]{0,8}\(a\.Tw,b,c\)\}/,
     1,
     "addStatue"
   );
   const addWall = window.ultraPlaceCapture(
     code,
-    /([$a-zA-Z0-9_]{0,8})=function\(a,b,c\)\{a\.Aa\.set\([$a-zA-Z0-9_]{0,8}\(b\),c\);a\.wa\[b\.y\]\[b\.x\]\+\+\}/,
+    /([$a-zA-Z0-9_]{0,8})=function\(a,b,c\)\{a\.wa\.set\([$a-zA-Z0-9_]{0,8}\(b\),c\);a\.oa\[b\.y\]\[b\.x\]\+\+\}/,
     1,
     "addWall"
   );
   const delWall = window.ultraPlaceCapture(
     code,
-    /([$a-zA-Z0-9_]{0,8})=function\(a,b\)\{a\.Aa\.delete\([$a-zA-Z0-9_]{0,8}\(b\)\);a\.wa\[b\.y\]\[b\.x\]--\}/,
+    /([$a-zA-Z0-9_]{0,8})=function\(a,b\)\{a\.wa\.delete\([$a-zA-Z0-9_]{0,8}\(b\)\);a\.oa\[b\.y\]\[b\.x\]--\}/,
     1,
     "delWall"
   );
@@ -1416,25 +1417,25 @@ window.UltraPlace.alterSnakeCode = function (code) {
   );
   const wallContainer = window.ultraPlaceCapture(
     code,
-    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,this\.ka,this\.oa,this\.Ka,this\.Ja\.bind\(this\)\)/,
+    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,this\.ka,this\.Yc,this\.Ba,this\.Aa\.bind\(this\)\)/,
     1,
     "walls"
   );
   const sokoContainer = window.ultraPlaceCapture(
     code,
-    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,this\.ka,this\.oa,this\.wa,this\.Ka,this\.Qa,this\.hb,this\.Ga\)/,
+    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,this\.ka,this\.Yc,this\.oa,this\.Ba,this\.Ca,this\.Ua,this\.wa\)/,
     1,
     "soko"
   );
   const arrowContainer = window.ultraPlaceCapture(
     code,
-    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\s*this\.ka,\s*this\.Ja\.bind\(this\)\);\s*this\.[$a-zA-Z0-9_]{0,8}=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\s*this\.ka,\s*this\.Ja\.bind\(this\)\)/,
+    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\s*this\.ka,\s*this\.Aa\.bind\(this\)\);\s*this\.[$a-zA-Z0-9_]{0,8}=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\s*this\.ka,\s*this\.Aa\.bind\(this\)\)/,
     1,
     "arrows"
   );
   const gateContainer = window.ultraPlaceCapture(
     code,
-    /this\.[$a-zA-Z0-9_]{0,8}=new [$a-zA-Z0-9_]{0,8}\(this\.settings,this\.ka,this\.Ja\.bind\(this\)\);this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,this\.ka,this\.Ja\.bind\(this\)\);this\.[$a-zA-Z0-9_]{0,8}=new [$a-zA-Z0-9_]{0,8}\(this\.settings,this\.ka\)/,
+    /this\.[$a-zA-Z0-9_]{0,8}=new [$a-zA-Z0-9_]{0,8}\(this\.settings,this\.ka,this\.Aa\.bind\(this\)\);this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,this\.ka,this\.Aa\.bind\(this\)\);this\.[$a-zA-Z0-9_]{0,8}=new [$a-zA-Z0-9_]{0,8}\(this\.settings,this\.ka\)/,
     1,
     "gates"
   );
@@ -1446,19 +1447,19 @@ window.UltraPlace.alterSnakeCode = function (code) {
   );
   const statueContainer = window.ultraPlaceCapture(
     code,
-    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\s*this\.ka,\s*this\.oa,\s*this\.hb,\s*this\.Ca\)/,
+    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\s*this\.ka,\s*this\.Yc,\s*this\.Ua,\s*this\.Tw\)/,
     1,
     "statues"
   );
   const mineContainer = window.ultraPlaceCapture(
     code,
-    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\s*this\.ka,\s*this\.oa,\s*this\.wa,\s*this\.hb,\s*this\.Aa/,
+    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,\s*this\.ka,\s*this\.Yc,\s*this\.oa,\s*this\.Ua,\s*this\.Oy/,
     1,
     "mines"
   );
   const keyContainer = window.ultraPlaceCapture(
     code,
-    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,this\.ka,this\.oa,this\.wa,this\.hb,this\.Ca,this\.Aa,this\.Ka\)/,
+    /this\.([$a-zA-Z0-9_]{0,8})=new [$a-zA-Z0-9_]{0,8}\(this\.settings,this\.ka,this\.Yc,this\.oa,this\.Ua,this\.Tw,this\.Oy,this\.Ba\)/,
     1,
     "keys"
   );
@@ -1526,12 +1527,12 @@ window.UltraPlace.alterSnakeCode = function (code) {
   }
 
   patchFn(
-    /([$a-zA-Z0-9_]{0,8}=function\(a\)\{)(var b=[$a-zA-Z0-9_]{0,8}\(a\.ka,null,9\);)/,
+    /([$a-zA-Z0-9_]{0,8}=function\(a\)\{)(var b=a\.ka\.[$a-zA-Z0-9_]{1,8}\(null,9,void 0\);)/,
     "$1if(window.disableMineMode)return;$2",
     "mines"
   );
   patchFn(
-    /([$a-zA-Z0-9_]{0,8}=function\(a\)\{)(var b=[$a-zA-Z0-9_]{0,8}\(a\.ka,null,10\);)/,
+    /([$a-zA-Z0-9_]{0,8}=function\(a\)\{)(var b=a\.ka\.[$a-zA-Z0-9_]{1,8}\(null,10,void 0\);)/,
     "$1if(window.disableBridgeMode)return;$2",
     "bridges"
   );
@@ -1541,12 +1542,12 @@ window.UltraPlace.alterSnakeCode = function (code) {
     "gates"
   );
   patchFn(
-    /([$a-zA-Z0-9_]{0,8}=function\(a,b\)\{)(for\(var c=a\.wa\.ka,d=[$a-zA-Z0-9_]{0,8}\(a\.settings,5\))/,
+    /([$a-zA-Z0-9_]{0,8}=function\(a,b\)\{)(for\(var c=a\.Yc\.ka,d=[$a-zA-Z0-9_]{0,8}\(a\.settings,5\))/,
     "$1if(window.disableStatueBodyPlant)return;$2",
     "statues"
   );
   patchFn(
-    /([$a-zA-Z0-9_]{0,8}=function\(a\)\{)(var b=a\.wa\.ka,c=!1;for\(let d of a\.oa\.keys\(\))/,
+    /([$a-zA-Z0-9_]{0,8}=function\(a\)\{)(var b=a\.Yc\.ka,c=!1;for\(let d of a\.oa\.keys\(\))/,
     "$1if(window.disableStatueBodyPlant)return;$2",
     "statueCrumble"
   );
@@ -1586,7 +1587,7 @@ window.UltraPlace.alterSnakeCode = function (code) {
   globalThis.ultraAppleList = function() {
     const game = window.wholeSnakeObject;
     if(!game) return [];
-    const holder = game.${n.appleHolder} || game.wa;
+    const holder = game.${n.appleHolder} || game.oa;
     if(!holder) return [];
     return holder.${n.appleArr} || holder.ka || [];
   };
@@ -1715,7 +1716,7 @@ window.UltraPlace.alterSnakeCode = function (code) {
     const walls = game.${n.wallContainer}.${n.wallSet};
     const drop = [];
     for(const [k,v] of walls.entries()) {
-      if(v && v.yNa !== undefined && v.yNa !== null) drop.push(v);
+      if(v && v.oOa !== undefined && v.oOa !== null) drop.push(v);
     }
     for(const w of drop) {
       if(w.pos && ${n.delWall}) ${n.delWall}(game.${n.wallContainer}, w.pos);
@@ -1739,17 +1740,17 @@ window.UltraPlace.alterSnakeCode = function (code) {
     if(!walls) return;
     const blocks = [];
     for(const v of walls.values()) {
-      if(v && v.yNa !== undefined && v.yNa !== null && v.pos) blocks.push(v);
+      if(v && v.oOa !== undefined && v.oOa !== null && v.pos) blocks.push(v);
     }
     const used = new Set();
     for(const key of keys) {
-      if(key.r7a) {
-        const hit = blocks.find(b => b.pos.x === key.r7a.x && b.pos.y === key.r7a.y && b.yNa === key.type);
+      if(key.q7a) {
+        const hit = blocks.find(b => b.pos.x === key.q7a.x && b.pos.y === key.q7a.y && b.oOa === key.type);
         if(hit) { used.add(hit); continue; }
       }
-      const free = blocks.find(b => b.yNa === key.type && !used.has(b));
+      const free = blocks.find(b => b.oOa === key.type && !used.has(b));
       if(free) {
-        key.r7a = free.pos.clone ? free.pos.clone() : new ${n.coordCtor}(free.pos.x, free.pos.y);
+        key.q7a = free.pos.clone ? free.pos.clone() : new ${n.coordCtor}(free.pos.x, free.pos.y);
         used.add(free);
       }
     }
@@ -1783,7 +1784,7 @@ window.UltraPlace.alterSnakeCode = function (code) {
       const grid = ultraArrowManager().ka;
       if(grid && grid[boardY] && grid[boardY][boardX]) {
         grid[boardY][boardX].direction = 'NONE';
-        grid[boardY][boardX].wm = false;
+        grid[boardY][boardX].Rm = false;
       }
     }
     if(game.${n.bridgeContainer} && game.${n.bridgeContainer}.oa && game.${n.bridgeContainer}.oa[boardY]) {
@@ -1807,21 +1808,21 @@ window.UltraPlace.alterSnakeCode = function (code) {
     if(game.${n.keyContainer} && game.${n.keyContainer}.keys) {
       game.${n.keyContainer}.keys = game.${n.keyContainer}.keys.filter(k => !(k.pos && k.pos.x === boardX && k.pos.y === boardY));
     }
-    if(game.${n.gateContainer} && game.${n.gateContainer}.pfa) {
+    if(game.${n.gateContainer} && game.${n.gateContainer}.gga) {
       const qa = game.${n.gateContainer};
       const keep = [];
-      for(const g of qa.pfa) {
-        const ox = g.Upa && g.Upa.x, oy = g.Upa && g.Upa.y;
+      for(const g of qa.gga) {
+        const ox = g.Hqa && g.Hqa.x, oy = g.Hqa && g.Hqa.y;
         if(ox <= boardX && boardX <= ox+1 && oy <= boardY && boardY <= oy+1) {
           for(let gy=oy; gy<=oy+1; gy++) for(let gx=ox; gx<=ox+1; gx++) {
             if(qa.ka[gy] && qa.ka[gy][gx]) {
               qa.ka[gy][gx].B7 && qa.ka[gy][gx].B7.clear();
-              qa.ka[gy][gx].pfa && qa.ka[gy][gx].pfa.clear();
+              qa.ka[gy][gx].gga && qa.ka[gy][gx].gga.clear();
             }
           }
         } else keep.push(g);
       }
-      qa.pfa = keep;
+      qa.gga = keep;
     }
   };
 
@@ -1851,8 +1852,8 @@ window.UltraPlace.alterSnakeCode = function (code) {
     }
     const cell = arrows.ka[y][x];
     cell.direction = dir;
-    cell.wm = false;
-    cell.Lh = true;
+    cell.Rm = false;
+    cell.Xg = true;
     if(!cell.color) cell.color = '#4E7CF6';
   };
   globalThis.placeGate = function(x,y,vertical) {
@@ -1862,12 +1863,12 @@ window.UltraPlace.alterSnakeCode = function (code) {
     if(x+1 >= size.width || y+1 >= size.height || x < 0 || y < 0) return;
     const qa = window.wholeSnakeObject.${n.gateContainer};
     ${n.addGate}(qa, new ${n.coordCtor}(x,y), !!vertical, false);
-    // Native addGate always sets wm:true (spawn-in). Show the gate while paused.
-    if(qa && Array.isArray(qa.pfa)) {
-      for(let i = qa.pfa.length - 1; i >= 0; i--) {
-        const g = qa.pfa[i];
-        if(g && g.Upa && g.Upa.x === x && g.Upa.y === y) {
-          g.wm = false;
+    // Native addGate always sets Rm:true (v13 wm) (spawn-in). Show the gate while paused.
+    if(qa && Array.isArray(qa.gga)) {
+      for(let i = qa.gga.length - 1; i >= 0; i--) {
+        const g = qa.gga[i];
+        if(g && g.Hqa && g.Hqa.x === x && g.Hqa.y === y) {
+          g.Rm = false;
           break;
         }
       }
@@ -1879,8 +1880,8 @@ window.UltraPlace.alterSnakeCode = function (code) {
     const ga = window.wholeSnakeObject.${n.bridgeContainer};
     if(!ga || !ga.oa[y]) return;
     const col = ${n.bridgeColor} ? ${n.bridgeColor}(ga, false) : '#e68f1b';
-    // wm:false so the tile is full-size while the board is paused.
-    ga.oa[y][x] = {wm:false, color:col, Lh:!${n.modeCheck}(window.wholeSnakeObject.settings, 11)};
+    // Rm:false (v13 wm) so the tile is full-size while the board is paused.
+    ga.oa[y][x] = {Rm:false, color:col, Xg:!${n.modeCheck}(window.wholeSnakeObject.settings, 11)};
   };
   globalThis.placeMine = function(x,y) {
     window.ensureGameMode(12);
@@ -1892,12 +1893,12 @@ window.UltraPlace.alterSnakeCode = function (code) {
     for(const m of Array.from(ma.oa)) {
       if(m && m.pos && m.pos.x === x && m.pos.y === y) ma.oa.delete(m);
     }
-    // xL:2 so the flag is visible while the board is paused.
+    // gM:2 (v13 xL) so the flag is visible while the board is paused.
     ma.oa.add({
       pos: new ${n.coordCtor}(x,y),
-      X1a: -1,
-      xL: 2,
-      Lh: !${n.modeCheck}(game.settings, 11)
+      nLa: -1,
+      gM: 2,
+      Xg: !${n.modeCheck}(game.settings, 11)
     });
   };
   globalThis.placeStatue = function(x,y,cracked) {
@@ -1910,20 +1911,20 @@ window.UltraPlace.alterSnakeCode = function (code) {
     const coord = new ${n.coordCtor}(x,y);
     const obj = {
       pos: coord,
-      wm: false,
-      m0: false,
-      Lh: true,
-      WQ: {
-        pdb: (typeof window.ultraPlaceStatueIsCracked === 'function')
+      Rm: false,
+      e9: false,
+      Xg: true,
+      iR: {
+        Pcb: (typeof window.ultraPlaceStatueIsCracked === 'function')
           ? window.ultraPlaceStatueIsCracked(cracked)
           : (cracked === true || cracked === 1 || cracked === '1'),
-        O0b: 0,
-        xBb: -1,
+        M0b: 0,
+        JAb: -1,
         color: '#90A4AE',
         type: 1,
         angle: 0,
-        tBc: 0,
-        sBc: 0
+        jCc: 0,
+        iCc: 0
       }
     };
     if(typeof ${n.addStatue} === 'function') ${n.addStatue}(st, coord, obj);
@@ -1938,7 +1939,7 @@ window.UltraPlace.alterSnakeCode = function (code) {
     x = Math.round(x); y = Math.round(y);
     type = Math.max(0, Math.min(23, type|0));
     const coord = new ${n.coordCtor}(x,y);
-    window.wholeSnakeObject.${n.keyContainer}.keys.push({pos:coord, r7a:coord.clone ? coord.clone() : new ${n.coordCtor}(x,y), xL:0, type:type, wm:false, Lh:true});
+    window.wholeSnakeObject.${n.keyContainer}.keys.push({pos:coord, q7a:coord.clone ? coord.clone() : new ${n.coordCtor}(x,y), gM:0, type:type, Rm:false, Xg:true});
     ultraPairKeysAndBlocks();
   };
   globalThis.placeKeyblock = function(x,y,type) {
@@ -1946,37 +1947,37 @@ window.UltraPlace.alterSnakeCode = function (code) {
     x = Math.round(x); y = Math.round(y);
     type = Math.max(0, Math.min(23, type|0));
     const coord = new ${n.coordCtor}(x,y);
-    ${n.addWall}(window.wholeSnakeObject.${n.wallContainer}, coord, {pos:coord, wm:false, yNa:type, m0:false, Lh:!${n.modeCheck}(window.wholeSnakeObject.settings, 11)});
+    ${n.addWall}(window.wholeSnakeObject.${n.wallContainer}, coord, {pos:coord, Rm:false, oOa:type, e9:false, Xg:!${n.modeCheck}(window.wholeSnakeObject.settings, 11)});
     ultraPairKeysAndBlocks();
   };
   globalThis.placePoison = function(x,y,type) {
     window.ensureGameMode(10);
     if(!(type >= 0)) type = window.ultraPlaceFruitType || 0;
-    window.placeApple(x,y,type, undefined, {Oka:true});
+    window.placeApple(x,y,type, undefined, {Bea:true});
   };
   globalThis.placeShield = function(x,y,dir,opts) {
     window.ensureGameMode(15);
     if(window.ultraPlaceCodec && dir) dir = window.ultraPlaceCodec.dirFromLetter(dir) || dir;
     dir = dir || 'UP';
     const addOnly = !!(opts && opts.add);
-    const field = window.chess_shield_field || 'nba';
+    const field = window.chess_shield_field || 'h7';
     let apple = ultraFindAppleAt(x,y);
     const created = !apple;
     if(!apple) {
       const dirs = new Set();
-      const props = {nba: dirs, wm: false};
+      const props = {h7: dirs, Rm: false};
       props[field] = dirs;
       window.placeApple(x,y, window.ultraPlaceFruitType || 0, undefined, props);
       apple = ultraFindAppleAt(x,y) || ultraAppleList().slice(-1)[0];
     }
     if(!apple) return;
-    apple.wm = false;
+    apple.Rm = false;
     apple.__ultraKeepShield = true;
     const next = new Set();
-    const cur = apple[field] || apple.nba;
+    const cur = apple[field] || apple.h7;
     if(cur && typeof cur.forEach === 'function') cur.forEach(function(d){ next.add(d); });
     apple[field] = next;
-    apple.nba = next;
+    apple.h7 = next;
     if(!addOnly && !created && next.has(dir)) next.delete(dir);
     else next.add(dir);
   };
