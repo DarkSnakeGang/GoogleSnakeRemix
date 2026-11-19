@@ -16,8 +16,65 @@ function block(lines) {
   return lines.join(nl);
 }
 
+// Speed Info keys boards by modeToTxt / ModeRegistry labels. FastSnakeStats
+// uses shorter names for three Remix modes, so the WR rows showed None.
+function applyFssBoardNames(src) {
+  if (src.includes("function fssBoardModeName(")) {
+    console.log("fss board names already present");
+    return src;
+  }
+  const fn = [
+    "    function fssModeName(mode, modeKey) {",
+    "        if (modeKey && window.ModeRegistry && typeof window.ModeRegistry.labelModeKey === \"function\") {",
+    "            const label = window.ModeRegistry.labelModeKey(modeKey);",
+    "            if (label && label.indexOf(\",\") < 0) return label;",
+    "        }",
+    "        return window.modeToTxt[mode] && window.modeToTxt[mode].name;",
+    "    }",
+  ].join(nl);
+  if (!src.includes(fn)) {
+    console.error("fssModeName pattern not found in " + path);
+    process.exit(1);
+  }
+  const fnNew = [
+    "    function fssBoardModeName(name) {",
+    "        // FastSnakeStats board keys differ from the in-game trophy labels.",
+    "        if (name === \"Bomb Fruit\") return \"Bomb\";",
+    "        if (name === \"Temp Walls\") return \"Temp Wall\";",
+    "        if (name === \"Fear\") return \"Ghost\";",
+    "        return name;",
+    "    }",
+    "",
+    "    function fssModeName(mode, modeKey) {",
+    "        let name;",
+    "        if (modeKey && window.ModeRegistry && typeof window.ModeRegistry.labelModeKey === \"function\") {",
+    "            const label = window.ModeRegistry.labelModeKey(modeKey);",
+    "            if (label && label.indexOf(\",\") < 0) name = label;",
+    "        }",
+    "        if (!name) name = window.modeToTxt[mode] && window.modeToTxt[mode].name;",
+    "        return fssBoardModeName(name);",
+    "    }",
+  ].join(nl);
+  src = src.replace(fn, fnNew);
+  const lookup = "const modeName = window.modeToTxt[mode].name;";
+  const lookupCount = src.split(lookup).length - 1;
+  if (lookupCount !== 2) {
+    console.error("expected 2 modeName lookups in " + path + ", found " + lookupCount);
+    process.exit(1);
+  }
+  src = src.replaceAll(
+    lookup,
+    "const modeName = fssBoardModeName(window.modeToTxt[mode].name);"
+  );
+  console.log("patched fss board names");
+  return src;
+}
+
+code = applyFssBoardNames(code);
+
 if (code.includes("function remixCeLevelName(mode)")) {
-  console.log("already patched");
+  if (code !== before) fs.writeFileSync(path, code);
+  console.log(code === before ? "already patched" : "wrote " + path);
   process.exit(0);
 }
 

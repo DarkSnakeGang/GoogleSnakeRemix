@@ -1,7 +1,25 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 
 const runBrowser = process.env.RUN_BROWSER_TESTS === "1";
+
+describe("SRC world-record board names", () => {
+  it("maps Fear, Bomb Fruit, and Temp Walls onto FastSnakeStats boards", () => {
+    for (const file of ["RemixMod.js", "RemixUltraMod.js"]) {
+      const src = fs.readFileSync(file, "utf8");
+      assert.match(src, /function fssBoardModeName\(name\)/);
+      assert.match(src, /name === "Fear"\) return "Ghost"/);
+      assert.match(src, /name === "Bomb Fruit"\) return "Bomb"/);
+      assert.match(src, /name === "Temp Walls"\) return "Temp Wall"/);
+      assert.equal(
+        src.split("fssBoardModeName(window.modeToTxt[mode].name)").length - 1,
+        2,
+        file
+      );
+    }
+  });
+});
 
 describe("Remix SpeedInfo gate (browser)", { skip: !runBrowser }, () => {
   it("keeps SpeedInfo toggle enabled and gates data to Candy…Fear custom modes", async () => {
