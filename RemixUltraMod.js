@@ -4295,12 +4295,22 @@ window.SpeedInfo.make = function () {
         return null;
     }
 
+    function fssBoardModeName(name) {
+        // FastSnakeStats board keys differ from the in-game trophy labels.
+        if (name === "Bomb Fruit") return "Bomb";
+        if (name === "Temp Walls") return "Temp Wall";
+        if (name === "Fear") return "Ghost";
+        return name;
+    }
+
     function fssModeName(mode, modeKey) {
+        let name;
         if (modeKey && window.ModeRegistry && typeof window.ModeRegistry.labelModeKey === "function") {
             const label = window.ModeRegistry.labelModeKey(modeKey);
-            if (label && label.indexOf(",") < 0) return label;
+            if (label && label.indexOf(",") < 0) name = label;
         }
-        return window.modeToTxt[mode] && window.modeToTxt[mode].name;
+        if (!name) name = window.modeToTxt[mode] && window.modeToTxt[mode].name;
+        return fssBoardModeName(name);
     }
 
     // Timed: lower ms wins. Highscore: higher apples wins (only when SRC has an HS board). Unheld → gold.
@@ -4751,7 +4761,7 @@ window.SpeedInfo.make = function () {
         }
 
         // Build cache key based on FastSnakeStats format
-        const modeName = window.modeToTxt[mode].name;
+        const modeName = fssBoardModeName(window.modeToTxt[mode].name);
         const countName = window.countToTxt[count].name;
         const speedName = window.speedToTxt[speed].name;
         const sizeName = window.sizeToTxt[size].name;
@@ -5101,7 +5111,7 @@ window.SpeedInfo.make = function () {
             return;
         }
 
-        const modeName = window.modeToTxt[mode].name;
+        const modeName = fssBoardModeName(window.modeToTxt[mode].name);
         const countName = window.countToTxt[count].name;
         const speedName = window.speedToTxt[speed].name;
         const sizeName = window.sizeToTxt[size].name;
